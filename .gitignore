@@ -1,0 +1,28 @@
+# dependencies
+node_modules
+pnpm-lock.yaml
+
+# output
+dist
+build
+coverage
+
+# logs and caches
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+.parcel-cache
+.vite
+.turbo
+.cache
+
+# editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea
+.vscode
+
+docs/

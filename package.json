@@ -1,0 +1,24 @@
+{
+  "name": "seedar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "pnpm-based monorepo",
+  "packageManager": "pnpm@10.25.0",
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=8"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "echo \"Add lint config\""
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.17.9",
+    "typescript": "^5.8.0"
+  }
+}
