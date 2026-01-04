@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatasourceModule } from './datasource/datasource.module';
+import { LoggerModule } from './logger/logger.module';
 import { databaseConfig } from './config/database.config';
 
 @Module({
@@ -16,6 +17,7 @@ import { databaseConfig } from './config/database.config';
         '.env',
       ],
     }),
+    LoggerModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: databaseConfig,
