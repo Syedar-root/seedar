@@ -31,6 +31,118 @@
 $ pnpm install
 ```
 
+## Environment Variables
+
+The application supports multiple environment configurations. Create environment files in the `apps/server` directory:
+
+### Base Configuration (.env)
+```env
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=3306
+DB_USERNAME=root
+DB_PASSWORD=your_password
+DB_DATABASE=seedar_db
+
+# Application Environment
+NODE_ENV=development
+
+# Application Port
+PORT=3000
+```
+
+### Environment-Specific Configurations
+Create additional files for different environments:
+
+**Development** (.env.development):
+```env
+# 开发环境配置
+NODE_ENV=development
+
+# 开发数据库配置
+DB_HOST=localhost
+DB_PORT=3306
+DB_USERNAME=root
+DB_PASSWORD=
+DB_DATABASE=seedar_dev
+
+# 开发服务器端口
+PORT=3000
+```
+
+**Production** (.env.production):
+```env
+# 生产环境配置
+NODE_ENV=production
+
+# 生产数据库配置
+DB_HOST=your-production-db-host
+DB_PORT=3306
+DB_USERNAME=prod_user
+DB_PASSWORD=your_secure_production_password
+DB_DATABASE=seedar_prod
+
+# 生产服务器端口
+PORT=8080
+```
+
+**Staging** (.env.staging):
+```env
+NODE_ENV=staging
+DB_HOST=your-staging-db-host
+DB_DATABASE=seedar_staging
+DB_PASSWORD=staging_password
+PORT=3001
+```
+
+### Loading Order
+Environment files are loaded in the following order (later files override earlier ones):
+1. `.env.{NODE_ENV}` (e.g., `.env.development`)
+2. `.env.local` (local overrides, not committed to version control)
+3. `.env` (base configuration)
+
+### Usage
+Set the `NODE_ENV` environment variable to load the appropriate configuration:
+
+```bash
+# Development
+NODE_ENV=development pnpm run dev:server
+
+# Production
+NODE_ENV=production pnpm run dev:server
+
+# Staging
+NODE_ENV=staging pnpm run dev:server
+```
+
+The application uses NestJS ConfigModule to manage environment variables. Values can be accessed through ConfigService throughout the application.
+
+### Testing Configuration Loading
+
+You can test the configuration by visiting `http://localhost:3000/config` after starting the application. This endpoint will show the current loaded configuration values.
+
+Example response:
+```json
+{
+  "nodeEnv": "development",
+  "port": 3000,
+  "dbHost": "localhost",
+  "dbDatabase": "seedar_dev",
+  "dbUsername": "root"
+}
+```
+
+The values will change based on which environment file is loaded.
+
+### Environment Files
+
+The following environment files have been created for you:
+
+- `.env.development` - Development environment configuration
+- `.env.production` - Production environment configuration
+
+You can modify these files according to your specific environment requirements.
+
 ## Compile and run the project
 
 ```bash

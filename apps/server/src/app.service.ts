@@ -1,8 +1,21 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AppService {
+  constructor(private configService: ConfigService) {}
+
   getHello(): string {
     return 'Hello World!';
+  }
+
+  getConfigInfo() {
+    return {
+      nodeEnv: this.configService.get<string>('NODE_ENV'),
+      port: this.configService.get<number>('PORT'),
+      dbHost: this.configService.get<string>('DB_HOST'),
+      dbDatabase: this.configService.get<string>('DB_DATABASE'),
+      dbUsername: this.configService.get<string>('DB_USERNAME'),
+    };
   }
 }
