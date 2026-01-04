@@ -6,6 +6,7 @@ import { CreateDatasourceRequest } from '../dto/create-datasource.request';
 import { validateDataSourceConfig } from '../datasource.validation';
 import { UpdateDatasourceRequest } from '../dto/update-datasource.request';
 import { DatasourceResponse } from '../dto/datasource.response';
+import { ExceptionFactory } from '../../common/exceptions';
 
 @Injectable()
 export class DatasourceService {
@@ -27,23 +28,21 @@ export class DatasourceService {
         createDatasourceRequest.config,
       );
     } catch (error) {
-      throw new Error(
-        `Invalid configuration for ${createDatasourceRequest.type}: ${error.message}`,
-      );
+      ExceptionFactory.datasourceConfigInvalid(createDatasourceRequest.type, error.message);
     }
 
     // TODO: 使用this.datasourceRepository实现数据源创建逻辑
-    throw new Error('Method not implemented');
+    ExceptionFactory.methodNotImplemented('create');
   }
 
   findAll(): Promise<DatasourceResponse[]> {
     // TODO: 使用this.datasourceRepository实现获取所有数据源逻辑
-    throw new Error('Method not implemented');
+    ExceptionFactory.methodNotImplemented('findAll');
   }
 
   findOne(id: number): Promise<DatasourceResponse> {
     // TODO: 使用this.datasourceRepository实现获取单个数据源逻辑
-    throw new Error('Method not implemented');
+    ExceptionFactory.methodNotImplemented('findOne');
   }
 
   update(
@@ -58,18 +57,16 @@ export class DatasourceService {
           updateDatasourceRequest.config,
         );
       } catch (error) {
-        throw new Error(
-          `Invalid configuration for ${updateDatasourceRequest.type}: ${error.message}`,
-        );
+        ExceptionFactory.datasourceConfigInvalid(updateDatasourceRequest.type, error.message);
       }
     }
 
     // TODO: 使用this.datasourceRepository实现数据源更新逻辑
-    throw new Error('Method not implemented');
+    ExceptionFactory.methodNotImplemented('update');
   }
 
   remove(id: number): Promise<void> {
     // TODO: 使用this.datasourceRepository实现数据源删除逻辑
-    throw new Error('Method not implemented');
+    ExceptionFactory.methodNotImplemented('remove');
   }
 }
