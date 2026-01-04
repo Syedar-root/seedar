@@ -8,10 +8,8 @@ import { DatasourceResponse } from './dto/datasource.response';
 
 @Injectable()
 export class DatasourceService {
-  constructor(
-    @InjectRepository(Datasource)
-    private readonly datasourceRepository: Repository<Datasource>,
-  ) {}
+  @InjectRepository(Datasource)
+  private readonly datasourceRepository!: Repository<Datasource>;
   create(
     createDatasourceRequest: CreateDatasourceRequest,
   ): Promise<DatasourceResponse> {

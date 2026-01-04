@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Inject,
 } from '@nestjs/common';
 import { DatasourceService } from './datasource.service';
 import { CreateDatasourceRequest } from './dto/create-datasource.request';
@@ -14,7 +15,8 @@ import { DatasourceResponse } from './dto/datasource.response';
 
 @Controller('datasource')
 export class DatasourceController {
-  constructor(private readonly datasourceService: DatasourceService) {}
+  @Inject(DatasourceService)
+  private readonly datasourceService!: DatasourceService;
 
   @Post()
   create(

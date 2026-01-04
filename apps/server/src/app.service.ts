@@ -1,13 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LoggerService } from './logger/logger.service';
 
 @Injectable()
-export class AppService {
-  constructor(
-    private configService: ConfigService,
-    private logger: LoggerService,
-  ) {
+export class AppService implements OnModuleInit {
+  @Inject(ConfigService)
+  private readonly configService!: ConfigService;
+
+  @Inject(LoggerService)
+  private readonly logger!: LoggerService;
+
+  onModuleInit() {
     this.logger.setContext('AppService');
   }
 
