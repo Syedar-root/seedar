@@ -1,5 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { DataSourceType } from '../dto/create-datasource.request';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { DataSourceType } from '../datasource.types';
 import { DataSourceStatus } from '../dto/datasource.response';
 
 @Entity('datasources')

@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { DatasourceService } from './datasource.service';
 import { CreateDatasourceRequest } from './dto/create-datasource.request';
+import { DataSourceType } from './datasource.types';
 import { UpdateDatasourceRequest } from './dto/update-datasource.request';
 import { DatasourceResponse } from './dto/datasource.response';
 

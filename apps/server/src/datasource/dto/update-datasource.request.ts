@@ -1,4 +1,9 @@
-import { DataSourceType, MySqlConfig, CsvConfig, ExcelConfig } from './create-datasource.request';
+import {
+  DataSourceType,
+  MySqlConfig,
+  CsvConfig,
+  ExcelConfig,
+} from '../datasource.types';
 
 /**
  * 更新数据源请求

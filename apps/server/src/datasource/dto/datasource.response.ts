@@ -1,12 +1,12 @@
-import { DataSourceType } from './create-datasource.request';
+import { DataSourceType } from '../datasource.types';
 
 /**
  * 数据源状态
  */
 export enum DataSourceStatus {
-  ACTIVE = "active", // 可用
-  INVALID = "invalid", // 校验失败
-  DELETED = "deleted", // 逻辑删除
+  ACTIVE = 'active', // 可用
+  INVALID = 'invalid', // 校验失败
+  DELETED = 'deleted', // 逻辑删除
 }
 
 /**
