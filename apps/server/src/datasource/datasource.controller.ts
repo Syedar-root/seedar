@@ -8,7 +8,7 @@ import {
   Delete,
   Inject,
 } from '@nestjs/common';
-import { DatasourceService } from './datasource.service';
+import { DatasourceService } from './service/datasource.service';
 import { CreateDatasourceRequest } from './dto/create-datasource.request';
 import { DataSourceType } from './datasource.types';
 import { UpdateDatasourceRequest } from './dto/update-datasource.request';

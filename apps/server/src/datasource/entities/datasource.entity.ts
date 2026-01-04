@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { DataSourceType } from '../datasource.types';
 import { DataSourceStatus } from '../dto/datasource.response';
+import { optionalUtcTimeTransformer } from '../transformers/utc-time.transformer';
 
 @Entity('datasources')
 export class Datasource {
@@ -32,7 +33,11 @@ export class Datasource {
   })
   status: DataSourceStatus;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({
+    type: 'datetime',
+    nullable: true,
+    transformer: optionalUtcTimeTransformer,
+  })
   lastValidateAt?: Date;
 
   @CreateDateColumn()

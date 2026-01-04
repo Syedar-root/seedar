@@ -1,16 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Datasource } from './entities/datasource.entity';
-import { CreateDatasourceRequest } from './dto/create-datasource.request';
-import { validateDataSourceConfig } from './datasource.validation';
-import { UpdateDatasourceRequest } from './dto/update-datasource.request';
-import { DatasourceResponse } from './dto/datasource.response';
+import { Datasource } from '../entities/datasource.entity';
+import { CreateDatasourceRequest } from '../dto/create-datasource.request';
+import { validateDataSourceConfig } from '../datasource.validation';
+import { UpdateDatasourceRequest } from '../dto/update-datasource.request';
+import { DatasourceResponse } from '../dto/datasource.response';
 
 @Injectable()
 export class DatasourceService {
   @InjectRepository(Datasource)
   private readonly datasourceRepository!: Repository<Datasource>;
+
+  /**
+   * 创建数据源
+   * @param createDatasourceRequest 创建数据源请求
+   * @returns 创建数据源响应
+   */
   create(
     createDatasourceRequest: CreateDatasourceRequest,
   ): Promise<DatasourceResponse> {

@@ -31,11 +31,14 @@
     "chalk": "^5.6.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
+    "csv-parser": "^3.2.0",
     "mysql2": "^3.11.4",
+    "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.20",
     "winston": "^3.19.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -48,7 +51,6 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
     "@types/supertest": "^6.0.2",
-    "zod": "^3.22.4",
     "cross-env": "^10.1.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
@@ -63,7 +65,8 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.20.0",
+    "zod": "^3.22.4"
   },
   "jest": {
     "moduleFileExtensions": [
