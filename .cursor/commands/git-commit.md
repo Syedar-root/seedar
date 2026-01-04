@@ -15,3 +15,5 @@ Workflow:
 1. Write a concise commit message.
 2. Check Chinese display, avoid garbled text.
 3. If garbled, use simple English.
+
+请尝试用 Git Bash 终端来提交

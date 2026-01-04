@@ -28,7 +28,10 @@ export class DatasourceService {
         createDatasourceRequest.config,
       );
     } catch (error) {
-      ExceptionFactory.datasourceConfigInvalid(createDatasourceRequest.type, error.message);
+      ExceptionFactory.datasourceConfigInvalid(
+        createDatasourceRequest.type,
+        error.message,
+      );
     }
 
     // TODO: 使用this.datasourceRepository实现数据源创建逻辑
@@ -57,7 +60,10 @@ export class DatasourceService {
           updateDatasourceRequest.config,
         );
       } catch (error) {
-        ExceptionFactory.datasourceConfigInvalid(updateDatasourceRequest.type, error.message);
+        ExceptionFactory.datasourceConfigInvalid(
+          updateDatasourceRequest.type,
+          error.message,
+        );
       }
     }
 

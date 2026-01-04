@@ -50,49 +50,85 @@ export class ExceptionFactory {
    * 抛出Bad Request异常
    */
   static badRequest(message: string, details?: any): never {
-    throw new BusinessException(ExceptionType.BAD_REQUEST, message, HttpStatus.BAD_REQUEST, details);
+    throw new BusinessException(
+      ExceptionType.BAD_REQUEST,
+      message,
+      HttpStatus.BAD_REQUEST,
+      details,
+    );
   }
 
   /**
    * 抛出未授权异常
    */
   static unauthorized(message: string = 'Unauthorized'): never {
-    throw new BusinessException(ExceptionType.UNAUTHORIZED, message, HttpStatus.UNAUTHORIZED);
+    throw new BusinessException(
+      ExceptionType.UNAUTHORIZED,
+      message,
+      HttpStatus.UNAUTHORIZED,
+    );
   }
 
   /**
    * 抛出禁止访问异常
    */
   static forbidden(message: string = 'Forbidden'): never {
-    throw new BusinessException(ExceptionType.FORBIDDEN, message, HttpStatus.FORBIDDEN);
+    throw new BusinessException(
+      ExceptionType.FORBIDDEN,
+      message,
+      HttpStatus.FORBIDDEN,
+    );
   }
 
   /**
    * 抛出未找到异常
    */
   static notFound(message: string, details?: any): never {
-    throw new BusinessException(ExceptionType.NOT_FOUND, message, HttpStatus.NOT_FOUND, details);
+    throw new BusinessException(
+      ExceptionType.NOT_FOUND,
+      message,
+      HttpStatus.NOT_FOUND,
+      details,
+    );
   }
 
   /**
    * 抛出冲突异常
    */
   static conflict(message: string, details?: any): never {
-    throw new BusinessException(ExceptionType.CONFLICT, message, HttpStatus.CONFLICT, details);
+    throw new BusinessException(
+      ExceptionType.CONFLICT,
+      message,
+      HttpStatus.CONFLICT,
+      details,
+    );
   }
 
   /**
    * 抛出验证错误异常
    */
   static validationError(message: string, details?: any): never {
-    throw new BusinessException(ExceptionType.VALIDATION_ERROR, message, HttpStatus.UNPROCESSABLE_ENTITY, details);
+    throw new BusinessException(
+      ExceptionType.VALIDATION_ERROR,
+      message,
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      details,
+    );
   }
 
   /**
    * 抛出内部错误异常
    */
-  static internalError(message: string = 'Internal server error', details?: any): never {
-    throw new BusinessException(ExceptionType.INTERNAL_ERROR, message, HttpStatus.INTERNAL_SERVER_ERROR, details);
+  static internalError(
+    message: string = 'Internal server error',
+    details?: any,
+  ): never {
+    throw new BusinessException(
+      ExceptionType.INTERNAL_ERROR,
+      message,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      details,
+    );
   }
 
   /**
@@ -103,7 +139,7 @@ export class ExceptionFactory {
       ExceptionType.DATASOURCE_CONFIG_INVALID,
       `Invalid configuration for datasource type: ${type}`,
       HttpStatus.BAD_REQUEST,
-      details
+      details,
     );
   }
 
@@ -114,7 +150,7 @@ export class ExceptionFactory {
     throw new BusinessException(
       ExceptionType.DATASOURCE_NOT_FOUND,
       `Datasource with id ${id} not found`,
-      HttpStatus.NOT_FOUND
+      HttpStatus.NOT_FOUND,
     );
   }
 
@@ -125,7 +161,7 @@ export class ExceptionFactory {
     throw new BusinessException(
       ExceptionType.DATASOURCE_ALREADY_EXISTS,
       `Datasource with name '${name}' already exists`,
-      HttpStatus.CONFLICT
+      HttpStatus.CONFLICT,
     );
   }
 
@@ -133,7 +169,13 @@ export class ExceptionFactory {
    * 抛出方法未实现异常
    */
   static methodNotImplemented(methodName?: string): never {
-    const message = methodName ? `Method ${methodName} not implemented` : 'Method not implemented';
-    throw new BusinessException(ExceptionType.METHOD_NOT_IMPLEMENTED, message, HttpStatus.NOT_IMPLEMENTED);
+    const message = methodName
+      ? `Method ${methodName} not implemented`
+      : 'Method not implemented';
+    throw new BusinessException(
+      ExceptionType.METHOD_NOT_IMPLEMENTED,
+      message,
+      HttpStatus.NOT_IMPLEMENTED,
+    );
   }
 }
