@@ -1,26 +1,37 @@
 import { Injectable } from '@nestjs/common';
-import { CreateDatasourceDto } from './dto/create-datasource.dto';
-import { UpdateDatasourceDto } from './dto/update-datasource.dto';
+import { CreateDatasourceRequest } from './dto/create-datasource.request';
+import { UpdateDatasourceRequest } from './dto/update-datasource.request';
+import { DatasourceResponse } from './dto/datasource.response';
 
 @Injectable()
 export class DatasourceService {
-  create(createDatasourceDto: CreateDatasourceDto) {
-    return 'This action adds a new datasource';
+  create(
+    createDatasourceRequest: CreateDatasourceRequest,
+  ): Promise<DatasourceResponse> {
+    // TODO: 实现数据源创建逻辑
+    throw new Error('Method not implemented');
   }
 
-  findAll() {
-    return `This action returns all datasource`;
+  findAll(): Promise<DatasourceResponse[]> {
+    // TODO: 实现获取所有数据源逻辑
+    throw new Error('Method not implemented');
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} datasource`;
+  findOne(id: number): Promise<DatasourceResponse> {
+    // TODO: 实现获取单个数据源逻辑
+    throw new Error('Method not implemented');
   }
 
-  update(id: number, updateDatasourceDto: UpdateDatasourceDto) {
-    return `This action updates a #${id} datasource`;
+  update(
+    id: number,
+    updateDatasourceRequest: UpdateDatasourceRequest,
+  ): Promise<DatasourceResponse> {
+    // TODO: 实现数据源更新逻辑
+    throw new Error('Method not implemented');
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} datasource`;
+  remove(id: number): Promise<void> {
+    // TODO: 实现数据源删除逻辑
+    throw new Error('Method not implemented');
   }
 }
