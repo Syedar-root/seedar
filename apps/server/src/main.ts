@@ -4,7 +4,7 @@ import { LoggerService } from './logger/logger.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger: new LoggerService(),
+    logger: false, // 禁用默认logger，我们使用自定义logger
   });
 
   // 设置全局日志上下文

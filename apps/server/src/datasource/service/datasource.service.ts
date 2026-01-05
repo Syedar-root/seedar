@@ -20,6 +20,10 @@ export class DatasourceService {
   @Inject(KnexConnectionFactory)
   private readonly knexFactory!: KnexConnectionFactory;
 
+  constructor(private readonly logger: LoggerService) {
+    this.logger.setContext('DatasourceService');
+  }
+
   /**
    * 创建数据源
    * @param createDatasourceRequest 创建数据源请求
@@ -28,13 +32,24 @@ export class DatasourceService {
   async create(
     createDatasourceRequest: CreateDatasourceRequest,
   ): Promise<DatasourceResponse> {
+    this.logger.log(
+      `开始创建数据源: ${createDatasourceRequest.name} (${createDatasourceRequest.type})`,
+      'CreateDatasourceStart',
+    );
+
     // 运行时验证配置
     try {
       validateDataSourceConfig(
         createDatasourceRequest.type,
         createDatasourceRequest.config,
       );
+      this.logger.debug('数据源配置验证通过', 'ConfigValidation');
     } catch (error) {
+      this.logger.error(
+        `数据源配置验证失败: ${error.message}`,
+        error.stack,
+        'ConfigValidationError',
+      );
       ExceptionFactory.datasourceConfigInvalid(
         createDatasourceRequest.type,
         error.message,
@@ -48,16 +63,27 @@ export class DatasourceService {
     datasource.config = createDatasourceRequest.config;
 
     //验证是否可以连接成功
+    this.logger.debug('开始测试数据库连接', 'ConnectionTest');
     const testResult = await this.knexFactory.testConnection(datasource);
 
     if (!testResult.success) {
+      this.logger.error(
+        `数据库连接测试失败: ${testResult.message}`,
+        testResult.error,
+        'ConnectionTestFailed',
+      );
       ExceptionFactory.datasourceConnectionFailed(
         testResult.message,
         testResult.error,
       );
     }
 
+    this.logger.debug('数据库连接测试通过，开始保存数据源', 'SaveDatasource');
     const savedDatasource = await this.datasourceRepository.save(datasource);
+    this.logger.log(
+      `数据源创建成功: ${savedDatasource.name} (ID: ${savedDatasource.id})`,
+      'CreateDatasourceSuccess',
+    );
 
     return new DatasourceResponse(savedDatasource);
   }
@@ -68,16 +94,29 @@ export class DatasourceService {
   }
 
   async findOne(id: number): Promise<DatasourceResponse> {
+    this.logger.log(`开始查询数据源: ID ${id}`, 'FindOneDatasourceStart');
+
     const datasource = await this.datasourceRepository.findOne({
       where: { id },
     });
 
     if (!datasource) {
+      this.logger.warn(`数据源未找到: ID ${id}`, 'DatasourceNotFound');
       ExceptionFactory.datasourceNotFound(id);
     }
 
+    this.logger.debug(
+      `找到数据源: ${datasource.name} (${datasource.type})`,
+      'DatasourceFound',
+    );
+
     // 获取表和列信息
+    this.logger.debug('开始获取表和列信息', 'GetTablesStart');
     const tables = await this.getTables(datasource);
+    this.logger.log(
+      `数据源查询成功: ${datasource.name}, 表数量: ${tables.length}`,
+      'FindOneDatasourceSuccess',
+    );
 
     return new DatasourceResponse(datasource, tables);
   }
@@ -124,8 +163,13 @@ export class DatasourceService {
       }>;
     }>
   > {
+    this.logger.debug(
+      `开始获取 ${datasource.type} 数据库表信息`,
+      'GetTablesStart',
+    );
     const knexConnection = this.getKnexConnection(datasource);
     const tableNames = await this.getTableNames(datasource);
+    this.logger.debug(`找到 ${tableNames.length} 个表`, 'TableNamesRetrieved');
 
     const tables: Array<{
       tableName: string;
@@ -138,6 +182,7 @@ export class DatasourceService {
     }> = [];
 
     for (const tableName of tableNames) {
+      this.logger.debug(`获取表 ${tableName} 的列信息`, 'GetTableColumns');
       const columns = await this.getTableColumns(
         datasource,
         tableName,
@@ -149,6 +194,10 @@ export class DatasourceService {
       });
     }
 
+    this.logger.debug(
+      `表信息获取完成，共处理 ${tables.length} 个表`,
+      'GetTablesCompleted',
+    );
     return tables;
   }
 

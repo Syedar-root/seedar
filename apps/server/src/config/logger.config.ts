@@ -5,7 +5,7 @@ import * as path from 'path';
 // 自定义颜色格式
 const customFormat = winston.format.combine(
   winston.format.timestamp({
-    format: 'YYYY-MM-DD HH:mm:ss'
+    format: 'YYYY-MM-DD HH:mm:ss',
   }),
   winston.format.errors({ stack: true }),
   winston.format.printf(({ level, message, timestamp, stack, context }) => {
@@ -42,24 +42,24 @@ const customFormat = winston.format.combine(
     const stackStr = stack ? `\n${chalk.gray(stack)}` : '';
 
     return `${chalk.gray(timestamp)} ${coloredLevel}${contextStr} ${coloredMessage}${stackStr}`;
-  })
+  }),
 );
 
 // 文件格式（不带颜色，用于文件写入）
 const fileFormat = winston.format.combine(
   winston.format.timestamp({
-    format: 'YYYY-MM-DD HH:mm:ss'
+    format: 'YYYY-MM-DD HH:mm:ss',
   }),
   winston.format.errors({ stack: true }),
   winston.format.printf(({ level, message, timestamp, stack, context }) => {
     const contextStr = context ? ` [${context}]` : '';
     const stackStr = stack ? `\n${stack}` : '';
     return `${timestamp} [${level.toUpperCase()}]${contextStr} ${message}${stackStr}`;
-  })
+  }),
 );
 
-export const winstonConfig = {
-  level: process.env.LOG_LEVEL || 'info',
+export const winstonConfig = (configService?: any) => ({
+  level: configService?.get('LOG_LEVEL') || 'debug',
   format: customFormat,
   transports: [
     // 控制台输出（带颜色）
@@ -100,4 +100,4 @@ export const winstonConfig = {
       format: fileFormat,
     }),
   ],
-};
+});

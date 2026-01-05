@@ -3,6 +3,7 @@ import {
   LoggerService as NestLoggerService,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as winston from 'winston';
 import { winstonConfig } from '../config/logger.config';
 
@@ -11,8 +12,8 @@ export class LoggerService implements NestLoggerService {
   private winstonLogger: winston.Logger;
   private context?: string;
 
-  constructor() {
-    this.winstonLogger = winston.createLogger(winstonConfig);
+  constructor(private readonly configService: ConfigService) {
+    this.winstonLogger = winston.createLogger(winstonConfig(this.configService));
   }
 
   setContext(context: string) {
@@ -46,27 +47,27 @@ export class LoggerService implements NestLoggerService {
 
   // 兼容NestJS Logger的静态方法
   static log(message: any, context?: string) {
-    const logger = new LoggerService();
-    logger.log(message, context);
+    const logger = winston.createLogger(winstonConfig());
+    logger.info(message, { context });
   }
 
   static error(message: any, stack?: string, context?: string) {
-    const logger = new LoggerService();
-    logger.error(message, stack, context);
+    const logger = winston.createLogger(winstonConfig());
+    logger.error(message, { context, stack });
   }
 
   static warn(message: any, context?: string) {
-    const logger = new LoggerService();
-    logger.warn(message, context);
+    const logger = winston.createLogger(winstonConfig());
+    logger.warn(message, { context });
   }
 
   static debug(message: any, context?: string) {
-    const logger = new LoggerService();
-    logger.debug(message, context);
+    const logger = winston.createLogger(winstonConfig());
+    logger.debug(message, { context });
   }
 
   static verbose(message: any, context?: string) {
-    const logger = new LoggerService();
-    logger.verbose(message, context);
+    const logger = winston.createLogger(winstonConfig());
+    logger.verbose(message, { context });
   }
 }

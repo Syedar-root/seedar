@@ -8,6 +8,7 @@ import { DatasourceModule } from './datasource/datasource.module';
 import { LoggerModule } from './logger/logger.module';
 import { GlobalExceptionFilter } from './common/global-exception.filter';
 import { GlobalResponseInterceptor } from './common/global-response.interceptor';
+import { GlobalLoggingInterceptor } from './common/global-logging.interceptor';
 import { databaseConfig } from './config/database.config';
 
 @Module({
@@ -34,6 +35,10 @@ import { databaseConfig } from './config/database.config';
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: GlobalLoggingInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,
