@@ -18,7 +18,7 @@ export class DatasourceService {
    * @param createDatasourceRequest 创建数据源请求
    * @returns 创建数据源响应
    */
-  create(
+  async create(
     createDatasourceRequest: CreateDatasourceRequest,
   ): Promise<DatasourceResponse> {
     // 运行时验证配置
@@ -35,7 +35,12 @@ export class DatasourceService {
     }
 
     // TODO: 使用this.datasourceRepository实现数据源创建逻辑
-    ExceptionFactory.methodNotImplemented('create');
+    const datasource = new Datasource();
+    datasource.name = createDatasourceRequest.name;
+    datasource.type = createDatasourceRequest.type;
+    datasource.config = createDatasourceRequest.config;
+    await this.datasourceRepository.save(datasource);
+    return new DatasourceResponse(datasource);
   }
 
   findAll(): Promise<DatasourceResponse[]> {

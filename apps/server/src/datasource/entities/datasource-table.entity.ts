@@ -10,7 +10,7 @@ import {
 import { Datasource } from './datasource.entity';
 
 @Entity('datasource_table')
-export class DataSourceTable {
+export class DatasourceTable {
   @PrimaryGeneratedColumn()
   id: number;
 
