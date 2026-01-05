@@ -17,6 +17,7 @@ export enum ExceptionType {
   DATASOURCE_CONFIG_INVALID = 'DATASOURCE_CONFIG_INVALID',
   DATASOURCE_NOT_FOUND = 'DATASOURCE_NOT_FOUND',
   DATASOURCE_ALREADY_EXISTS = 'DATASOURCE_ALREADY_EXISTS',
+  DATASOURCE_CONNECTION_FAILED = 'DATASOURCE_CONNECTION_FAILED', //数据源连接失败
   METHOD_NOT_IMPLEMENTED = 'METHOD_NOT_IMPLEMENTED',
 }
 
@@ -162,6 +163,18 @@ export class ExceptionFactory {
       ExceptionType.DATASOURCE_ALREADY_EXISTS,
       `Datasource with name '${name}' already exists`,
       HttpStatus.CONFLICT,
+    );
+  }
+
+  /**
+   * 抛出数据源连接失败异常
+   */
+  static datasourceConnectionFailed(message: string, details?: any): never {
+    throw new BusinessException(
+      ExceptionType.DATASOURCE_CONNECTION_FAILED,
+      message,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      details,
     );
   }
 

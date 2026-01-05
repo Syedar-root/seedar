@@ -1,4 +1,4 @@
-import { DataSourceType } from '../datasource.types';
+import { DataSourceType, NormalizedDataType } from '../datasource.types';
 import { Datasource } from '../entities/datasource.entity';
 
 /**
@@ -22,7 +22,25 @@ export class DatasourceResponse {
   lastValidateAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-  constructor(datasource: Datasource) {
+  tables?: Array<{
+    tableName: string;
+    columns: Array<{
+      columnName: string;
+      rawDataType: string;
+      normalizedType: NormalizedDataType;
+      nullable: boolean;
+    }>;
+  }>;
+
+  constructor(datasource: Datasource, tables?: Array<{
+    tableName: string;
+    columns: Array<{
+      columnName: string;
+      rawDataType: string;
+      normalizedType: NormalizedDataType;
+      nullable: boolean;
+    }>;
+  }>) {
     this.id = datasource.id;
     this.name = datasource.name;
     this.type = datasource.type;
@@ -31,5 +49,6 @@ export class DatasourceResponse {
     this.lastValidateAt = datasource.lastValidateAt;
     this.createdAt = datasource.createdAt;
     this.updatedAt = datasource.updatedAt;
+    this.tables = tables;
   }
 }
