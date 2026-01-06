@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { DatasourceModule } from './datasource/datasource.module';
+import { DatasourceModule } from './module/datasource/datasource.module';
 import { LoggerModule } from './logger/logger.module';
 import { GlobalExceptionFilter } from './common/global-exception.filter';
 import { GlobalResponseInterceptor } from './common/global-response.interceptor';
