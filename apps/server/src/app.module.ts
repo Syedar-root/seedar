@@ -10,6 +10,7 @@ import { GlobalExceptionFilter } from './common/global-exception.filter';
 import { GlobalResponseInterceptor } from './common/global-response.interceptor';
 import { GlobalLoggingInterceptor } from './common/global-logging.interceptor';
 import { databaseConfig } from './config/database.config';
+import { DatasetModule } from './module/dataset/dataset.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { databaseConfig } from './config/database.config';
       inject: [ConfigService],
     }),
     DatasourceModule,
+    DatasetModule,
   ],
   controllers: [AppController],
   providers: [
