@@ -2,6 +2,8 @@ import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Datasource } from '../entities/datasource.entity';
+import { DatasourceTable } from '../entities/datasource-table.entity';
+import { DatasourceColumn } from '../entities/datasource-column.entity';
 import { CreateDatasourceRequest } from '../dto/create-datasource.request';
 import { validateDataSourceConfig } from '../datasource.validation';
 import { UpdateDatasourceRequest } from '../dto/update-datasource.request';
@@ -10,6 +12,8 @@ import { ExceptionFactory } from '../../../common/exceptions';
 import { LoggerService } from 'src/logger/logger.service';
 import { KnexConnectionFactory } from '../knex-connection.factory';
 import { NormalizedDataType } from '../datasource.types';
+import { DatasourceTableService } from './datasource-table.service';
+import { DatasourceColumnService } from './datasource-column.service';
 import * as knex from 'knex';
 import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
@@ -27,7 +31,11 @@ export class DatasourceService {
 
   private algorithm = 'aes-128-cbc';
 
-  constructor(private readonly logger: LoggerService) {
+  constructor(
+    private readonly logger: LoggerService,
+    private readonly datasourceTableService: DatasourceTableService,
+    private readonly datasourceColumnService: DatasourceColumnService,
+  ) {
     this.logger.setContext('DatasourceService');
   }
 
@@ -164,6 +172,13 @@ export class DatasourceService {
 
     this.logger.debug('数据库连接测试通过，开始保存数据源', 'SaveDatasource');
     const savedDatasource = await this.datasourceRepository.save(datasource);
+
+    // 获取并存储表和列信息
+    await this.saveTablesAndColumns({
+      ...savedDatasource,
+      config: createDatasourceRequest.config,
+    });
+
     this.logger.log(
       `数据源创建成功: ${savedDatasource.name} (ID: ${savedDatasource.id})`,
       'CreateDatasourceSuccess',
@@ -329,6 +344,49 @@ export class DatasourceService {
     // 使用软删除
     await this.datasourceRepository.softDelete(id);
     this.logger.log(`数据源已软删除: ${id}`);
+  }
+
+  /**
+   * 保存数据源的表和列信息到数据库
+   */
+  private async saveTablesAndColumns(datasource: Datasource): Promise<void> {
+    this.logger.debug('开始获取并保存表和列信息', 'SaveTablesAndColumnsStart');
+
+    try {
+      const tables = await this.getTables(datasource);
+
+      for (const table of tables) {
+        // 创建并保存表
+        const savedTable = await this.datasourceTableService.create({
+          dataSourceId: datasource.id,
+          tableName: table.tableName,
+        });
+
+        // 创建并保存列
+        for (const column of table.columns) {
+          await this.datasourceColumnService.create({
+            tableId: savedTable.id,
+            columnName: column.columnName,
+            rawDataType: column.rawDataType,
+            normalizedType: column.normalizedType,
+            nullable: column.nullable,
+          });
+        }
+      }
+
+      this.logger.debug(
+        `表和列信息保存完成，共处理 ${tables.length} 个表`,
+        'SaveTablesAndColumnsCompleted',
+      );
+    } catch (error) {
+      this.logger.error(
+        '保存表和列信息失败',
+        error.stack,
+        'SaveTablesAndColumnsError',
+      );
+      // 这里不抛出异常，因为数据源已经创建成功，只是元数据保存失败
+      // 可以考虑后续通过其他方式重新获取元数据
+    }
   }
 
   /**

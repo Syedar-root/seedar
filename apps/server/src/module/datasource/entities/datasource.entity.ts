@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
+  OneToMany,
 } from 'typeorm';
 import { DataSourceType } from '../datasource.types';
 import { DataSourceStatus } from '../dto/datasource.response';
 import { optionalUtcTimeTransformer } from '../transformers/utc-time.transformer';
+import { DatasourceTable } from './datasource-table.entity';
 
 @Entity('datasources')
 export class Datasource {
@@ -49,4 +51,7 @@ export class Datasource {
 
   @DeleteDateColumn()
   deletedAt?: Date;
+
+  @OneToMany(() => DatasourceTable, (table) => table.datasource)
+  tables: DatasourceTable[];
 }
