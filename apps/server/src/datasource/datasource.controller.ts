@@ -26,11 +26,6 @@ export class DatasourceController {
     return this.datasourceService.create(createDatasourceRequest);
   }
 
-  @Get()
-  findAll(): Promise<DatasourceResponse[]> {
-    return this.datasourceService.findAll();
-  }
-
   @Get(':id')
   findOne(@Param('id') id: string): Promise<DatasourceResponse> {
     return this.datasourceService.findOne(+id);

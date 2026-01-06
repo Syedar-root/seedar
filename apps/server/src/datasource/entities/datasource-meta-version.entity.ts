@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   JoinColumn,
   OneToOne,
 } from 'typeorm';
@@ -36,4 +37,7 @@ export class DataSourceMetaVersion {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
 }

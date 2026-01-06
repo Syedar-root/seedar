@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 import { DataSourceType } from '../datasource.types';
 import { DataSourceStatus } from '../dto/datasource.response';
@@ -45,4 +46,7 @@ export class Datasource {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
 }

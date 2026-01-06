@@ -32,19 +32,25 @@ export class DatasourceResponse {
     }>;
   }>;
 
-  constructor(datasource: Datasource, tables?: Array<{
-    tableName: string;
-    columns: Array<{
-      columnName: string;
-      rawDataType: string;
-      normalizedType: NormalizedDataType;
-      nullable: boolean;
-    }>;
-  }>) {
+  constructor(
+    datasource: Datasource,
+    tables?: Array<{
+      tableName: string;
+      columns: Array<{
+        columnName: string;
+        rawDataType: string;
+        normalizedType: NormalizedDataType;
+        nullable: boolean;
+      }>;
+    }>,
+  ) {
     this.id = datasource.id;
     this.name = datasource.name;
     this.type = datasource.type;
-    this.config = datasource.config;
+
+    const { password, iv, ...restConfig } = datasource.config;
+
+    this.config = restConfig;
     this.status = datasource.status;
     this.lastValidateAt = datasource.lastValidateAt;
     this.createdAt = datasource.createdAt;

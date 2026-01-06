@@ -26,10 +26,8 @@ export class GlobalLoggingInterceptor implements NestInterceptor {
       'RequestStart',
     );
 
-    console.log(body, Object.keys(body).length);
-
     // 记录请求参数（敏感信息过滤）
-    if (Object.keys(body).length > 0) {
+    if (body && Object.keys(body).length > 0) {
       const safeBody = this.filterSensitiveData(body);
 
       console.log('safeBody', safeBody);
