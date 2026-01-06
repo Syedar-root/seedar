@@ -33,3 +33,5 @@ Thumbs.db
 **.env.**
 
 **/logs/**
+
+commit_msg.txt
