@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { Datasource } from './datasource.entity';
 import { DatasourceColumn } from './datasource-column.entity';
+import { DatasetTable } from '@/module/dataset/entities/dataset-table.entity';
 
 @Entity('datasource_tables')
 export class DatasourceTable {
@@ -52,4 +53,10 @@ export class DatasourceTable {
 
   @OneToMany(() => DatasourceColumn, (column) => column.table)
   columns: DatasourceColumn[];
+
+  @OneToMany(() => DatasetTable, (datasetTable) => datasetTable.table, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  datasetTables: DatasetTable[];
 }

@@ -9,7 +9,7 @@ import { validateDataSourceConfig } from '../datasource.validation';
 import { UpdateDatasourceRequest } from '../dto/update-datasource.request';
 import { DatasourceResponse } from '../dto/datasource.response';
 import { ExceptionFactory } from '../../../common/exceptions';
-import { LoggerService } from 'src/logger/logger.service';
+import { LoggerService } from '@/logger/logger.service';
 import { KnexConnectionFactory } from '../knex-connection.factory';
 import { NormalizedDataType } from '../datasource.types';
 import { DatasourceTableService } from './datasource-table.service';
