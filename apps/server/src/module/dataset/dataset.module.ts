@@ -5,10 +5,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Dataset } from './entities/dataset.entity';
 import { DatasetTable } from './entities/dataset-table.entity';
 import { DatasourceModule } from '../datasource/datasource.module';
+import { DatasetJoin } from './entities/dataset-join.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Dataset, DatasetTable]),
+    TypeOrmModule.forFeature([Dataset, DatasetTable, DatasetJoin]),
     DatasourceModule,
   ],
   controllers: [DatasetController],

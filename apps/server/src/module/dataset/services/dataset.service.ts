@@ -3,11 +3,12 @@ import { CreateDatasetRequest } from '../dto/create-dataset.request';
 import { UpdateDatasetDto } from '../dto/update-dataset.dto';
 import { Dataset } from '../entities/dataset.entity';
 import { DatasetTable } from '../entities/dataset-table.entity';
+import { DatasetJoin } from '../entities/dataset-join.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DatasourceService } from '@/module/datasource/service/datasource.service';
 import { DatasourceTableService } from '@/module/datasource/service/datasource-table.service';
-import { DatasetStatus, DatasetType } from '../dataset.types';
+import { DatasetStatus, DatasetType, JoinType } from '../dataset.types';
 
 @Injectable()
 export class DatasetService {
@@ -16,6 +17,9 @@ export class DatasetService {
 
   @InjectRepository(DatasetTable)
   private readonly datasetTableRepository!: Repository<DatasetTable>;
+
+  @InjectRepository(DatasetJoin)
+  private readonly datasetJoinRepository!: Repository<DatasetJoin>;
 
   @Inject(DatasourceService)
   private readonly datasourceService!: DatasourceService;
@@ -67,6 +71,20 @@ export class DatasetService {
     }));
 
     await this.datasetTableRepository.save(datasetTables);
+
+    // 创建数据集join关系
+    if (request.joins && request.joins.length > 0) {
+      const datasetJoins = request.joins.map((join) => ({
+        dataset: { id: savedDataset.id },
+        leftTableId: selectedTables[join.leftTableId]!.id,
+        leftColumnId: join.leftColumnId,
+        rightTableId: selectedTables[join.rightTableId]!.id,
+        rightColumnId: join.rightColumnId,
+        joinType: join.joinType || JoinType.INNER,
+      }));
+
+      await this.datasetJoinRepository.save(datasetJoins);
+    }
 
     // 返回创建的数据集
     return savedDataset;

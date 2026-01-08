@@ -10,7 +10,7 @@ import { Dataset } from './dataset.entity';
 import { JoinType } from '../dataset.types';
 
 @Entity()
-export class datasetJoin {
+export class DatasetJoin {
   @PrimaryGeneratedColumn()
   id: number;
 

@@ -7,6 +7,7 @@ import {
   DeleteDateColumn,
   OneToMany,
 } from 'typeorm';
+import { Dataset } from '../../../module/dataset/entities/dataset.entity';
 import { DataSourceType } from '../datasource.types';
 import { DataSourceStatus } from '../dto/datasource.response';
 import { optionalUtcTimeTransformer } from '../transformers/utc-time.transformer';
@@ -54,4 +55,7 @@ export class Datasource {
 
   @OneToMany(() => DatasourceTable, (table) => table.datasource)
   tables: DatasourceTable[];
+
+  @OneToMany(() => Dataset, (dataset) => dataset.datasource)
+  datasets: Dataset[];
 }

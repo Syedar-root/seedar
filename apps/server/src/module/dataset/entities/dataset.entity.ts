@@ -3,8 +3,8 @@ import {
   Column,
   Entity,
   JoinColumn,
+  ManyToOne,
   OneToMany,
-  OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { DatasetTable } from './dataset-table.entity';
@@ -24,8 +24,8 @@ export class Dataset {
   })
   description?: string;
 
-  @OneToOne(() => Datasource)
-  @JoinColumn()
+  @ManyToOne(() => Datasource)
+  @JoinColumn({ name: 'datasource_id' })
   datasource: Datasource;
 
   @OneToMany(() => DatasetTable, (datasetTable) => datasetTable.dataset, {
@@ -44,7 +44,7 @@ export class Dataset {
   @Column({
     type: 'enum',
     enum: DatasetType,
-    default: DatasetType.SEMANTIC,
+    default: DatasetType.WIDE,
   })
   type: DatasetType;
 }

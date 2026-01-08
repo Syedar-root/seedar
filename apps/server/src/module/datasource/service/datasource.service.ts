@@ -353,7 +353,7 @@ export class DatasourceService {
     this.logger.debug('开始获取并保存表和列信息', 'SaveTablesAndColumnsStart');
 
     try {
-      const tables = await this.getTables(datasource);
+      const tables = await this.getTableSchemas(datasource);
 
       for (const table of tables) {
         // 创建并保存表
@@ -390,7 +390,59 @@ export class DatasourceService {
   }
 
   /**
-   * 获取数据源中的表信息
+   * 获取数据源中的表信息（从数据库schema）
+   */
+  private async getTableSchemas(datasource: Datasource): Promise<
+    Array<{
+      tableName: string;
+      columns: Array<{
+        columnName: string;
+        rawDataType: string;
+        normalizedType: NormalizedDataType;
+        nullable: boolean;
+      }>;
+    }>
+  > {
+    this.logger.debug(
+      `开始获取 ${datasource.type} 数据库表信息`,
+      'GetTableSchemasStart',
+    );
+    const knexConnection = this.getKnexConnection(datasource);
+    const tableNames = await this.getTableNames(datasource);
+    this.logger.debug(`找到 ${tableNames.length} 个表`, 'TableNamesRetrieved');
+
+    const tables: Array<{
+      tableName: string;
+      columns: Array<{
+        columnName: string;
+        rawDataType: string;
+        normalizedType: NormalizedDataType;
+        nullable: boolean;
+      }>;
+    }> = [];
+
+    for (const tableName of tableNames) {
+      this.logger.debug(`获取表 ${tableName} 的列信息`, 'GetTableColumns');
+      const columns = await this.getTableColumns(
+        datasource,
+        tableName,
+        knexConnection,
+      );
+      tables.push({
+        tableName,
+        columns,
+      });
+    }
+
+    this.logger.debug(
+      `表结构获取完成，共处理 ${tables.length} 个表`,
+      'GetTableSchemasCompleted',
+    );
+    return tables;
+  }
+
+  /**
+   * 获取数据源中的表信息（从数据库查询已保存的数据）
    */
   private async getTables(datasource: Datasource): Promise<
     Array<{
@@ -406,12 +458,14 @@ export class DatasourceService {
     }>
   > {
     this.logger.debug(
-      `开始获取 ${datasource.type} 数据库表信息`,
+      `开始获取数据源 ${datasource.id} 的表信息`,
       'GetTablesStart',
     );
-    const knexConnection = this.getKnexConnection(datasource);
-    const tableNames = await this.getTableNames(datasource);
-    this.logger.debug(`找到 ${tableNames.length} 个表`, 'TableNamesRetrieved');
+
+    // 从数据库中查询已保存的表信息
+    const savedTables = await this.datasourceTableService.findByDataSourceId(
+      datasource.id,
+    );
 
     const tables: Array<{
       tableId: number;
@@ -425,17 +479,28 @@ export class DatasourceService {
       }>;
     }> = [];
 
-    for (let i = 0; i < tableNames.length; i++) {
-      const tableName = tableNames[i];
-      this.logger.debug(`获取表 ${tableName} 的列信息`, 'GetTableColumns');
-      const columns = await this.getTableColumns(
-        datasource,
-        tableName,
-        knexConnection,
+    for (const savedTable of savedTables) {
+      this.logger.debug(
+        `获取表 ${savedTable.tableName} 的列信息`,
+        'GetTableColumns',
       );
+
+      // 查询该表的列信息
+      const savedColumns = await this.datasourceColumnService.findByTableId(
+        savedTable.id,
+      );
+
+      const columns = savedColumns.map((savedColumn) => ({
+        columnId: savedColumn.id, // 使用真实的数据库ID
+        columnName: savedColumn.columnName,
+        rawDataType: savedColumn.rawDataType,
+        normalizedType: savedColumn.normalizedType,
+        nullable: savedColumn.nullable,
+      }));
+
       tables.push({
-        tableId: i + 1,
-        tableName,
+        tableId: savedTable.id, // 使用真实的数据库ID
+        tableName: savedTable.tableName,
         columns,
       });
     }
