@@ -1,6 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { DatasetService } from './dataset.service';
-import { CreateDatasetDto } from './dto/create-dataset.dto';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { DatasetService } from './services/dataset.service';
+import { CreateDatasetRequest } from './dto/create-dataset.request';
 import { UpdateDatasetDto } from './dto/update-dataset.dto';
 
 @Controller('dataset')
@@ -8,7 +16,7 @@ export class DatasetController {
   constructor(private readonly datasetService: DatasetService) {}
 
   @Post()
-  create(@Body() createDatasetDto: CreateDatasetDto) {
+  create(@Body() createDatasetDto: CreateDatasetRequest) {
     return this.datasetService.create(createDatasetDto);
   }
 

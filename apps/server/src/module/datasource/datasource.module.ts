@@ -10,7 +10,9 @@ import { DatasourceColumn } from './entities/datasource-column.entity';
 import { KnexConnectionFactory } from './knex-connection.factory';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Datasource, DatasourceTable, DatasourceColumn])],
+  imports: [
+    TypeOrmModule.forFeature([Datasource, DatasourceTable, DatasourceColumn]),
+  ],
   controllers: [DatasourceController],
   providers: [
     DatasourceService,
@@ -18,6 +20,11 @@ import { KnexConnectionFactory } from './knex-connection.factory';
     DatasourceColumnService,
     KnexConnectionFactory,
   ],
-  exports: [KnexConnectionFactory],
+  exports: [
+    DatasourceService,
+    DatasourceTableService,
+    DatasourceColumnService,
+    KnexConnectionFactory,
+  ],
 })
 export class DatasourceModule {}

@@ -394,8 +394,10 @@ export class DatasourceService {
    */
   private async getTables(datasource: Datasource): Promise<
     Array<{
+      tableId: number;
       tableName: string;
       columns: Array<{
+        columnId: number;
         columnName: string;
         rawDataType: string;
         normalizedType: NormalizedDataType;
@@ -412,8 +414,10 @@ export class DatasourceService {
     this.logger.debug(`找到 ${tableNames.length} 个表`, 'TableNamesRetrieved');
 
     const tables: Array<{
+      tableId: number;
       tableName: string;
       columns: Array<{
+        columnId: number;
         columnName: string;
         rawDataType: string;
         normalizedType: NormalizedDataType;
@@ -421,7 +425,8 @@ export class DatasourceService {
       }>;
     }> = [];
 
-    for (const tableName of tableNames) {
+    for (let i = 0; i < tableNames.length; i++) {
+      const tableName = tableNames[i];
       this.logger.debug(`获取表 ${tableName} 的列信息`, 'GetTableColumns');
       const columns = await this.getTableColumns(
         datasource,
@@ -429,6 +434,7 @@ export class DatasourceService {
         knexConnection,
       );
       tables.push({
+        tableId: i + 1,
         tableName,
         columns,
       });
@@ -487,6 +493,7 @@ export class DatasourceService {
     knexConnection: knex.Knex,
   ): Promise<
     Array<{
+      columnId: number;
       columnName: string;
       rawDataType: string;
       normalizedType: NormalizedDataType;
@@ -513,6 +520,7 @@ export class DatasourceService {
     tableName: string,
   ): Promise<
     Array<{
+      columnId: number;
       columnName: string;
       rawDataType: string;
       normalizedType: NormalizedDataType;
@@ -525,7 +533,8 @@ export class DatasourceService {
       .where('TABLE_NAME', tableName)
       .andWhere('TABLE_SCHEMA', knexConnection.client.database());
 
-    return result.map((row) => ({
+    return result.map((row, index) => ({
+      columnId: index + 1,
       columnName: row.COLUMN_NAME,
       rawDataType: row.DATA_TYPE,
       normalizedType: this.normalizeDataType(row.DATA_TYPE),
@@ -541,6 +550,7 @@ export class DatasourceService {
     tableName: string,
   ): Promise<
     Array<{
+      columnId: number;
       columnName: string;
       rawDataType: string;
       normalizedType: NormalizedDataType;
@@ -553,7 +563,8 @@ export class DatasourceService {
       .where('table_name', tableName)
       .andWhere('table_schema', 'public');
 
-    return result.map((row) => ({
+    return result.map((row, index) => ({
+      columnId: index + 1,
       columnName: row.column_name,
       rawDataType: row.data_type,
       normalizedType: this.normalizeDataType(row.data_type),
@@ -569,6 +580,7 @@ export class DatasourceService {
     tableName: string,
   ): Promise<
     Array<{
+      columnId: number;
       columnName: string;
       rawDataType: string;
       normalizedType: NormalizedDataType;
@@ -577,7 +589,8 @@ export class DatasourceService {
   > {
     const result = await knexConnection.raw(`DESCRIBE TABLE ${tableName}`);
 
-    return result.map((row: any) => ({
+    return result.map((row: any, index: number) => ({
+      columnId: index + 1,
       columnName: row.name || row.column,
       rawDataType: row.type,
       normalizedType: this.normalizeDataType(row.type),

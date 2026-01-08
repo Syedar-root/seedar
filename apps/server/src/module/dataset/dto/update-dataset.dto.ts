@@ -1,4 +1,4 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateDatasetDto } from './create-dataset.dto';
+import { CreateDatasetRequest } from './create-dataset.request';
 
-export class UpdateDatasetDto extends PartialType(CreateDatasetDto) {}
+export class UpdateDatasetDto extends PartialType(CreateDatasetRequest) {}
