@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { DatasetTable } from './dataset-table.entity';
 import { DatasetStatus, DatasetType } from '../dataset.types';
+import { DatasetJoin } from './dataset-join.entity';
 
 @Entity('dataset')
 export class Dataset {
@@ -33,6 +34,12 @@ export class Dataset {
     onDelete: 'CASCADE',
   })
   datasetTables: DatasetTable[];
+
+  @OneToMany(() => DatasetJoin, (datasetJoin) => datasetJoin.dataset, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  joins: DatasetJoin[];
 
   @Column({
     type: 'enum',

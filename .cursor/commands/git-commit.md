@@ -16,7 +16,7 @@ Workflow:
 2. Check Chinese display, avoid garbled text.
 3. If garbled, use simple English.
 
-请尝试用 Git Bash 终端来提交，如果不行可以尝试借助 commit_msg.txt 来提交中文 commit
+请尝试用 Git Bash 终端来提交，如果不行可以尝试借助 commit_msg.txt，使用 git commit -F commit_msg.txt 来提交中文 commit
 
 你需要保证提交的格式符合 git 规范
 如：feat/fix/chore/docs/refactor/init: xxxxxxxxx
