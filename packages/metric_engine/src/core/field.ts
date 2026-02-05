@@ -1,20 +1,7 @@
 import { FieldType } from './types';
 
-/**
- * 字段配置选项
- */
-export interface FieldOptions {
-  name: string;
-  type: FieldType;
-  alias?: string;
-  description?: string;
-}
+class FieldBase {
 
-/**
- * 字段实体类
- * 表示数据表中的一个字段，包含字段名和类型信息
- */
-export class Field {
   /**
    * 字段名称
    */
@@ -26,20 +13,38 @@ export class Field {
   public readonly type: FieldType;
 
   /**
-   * 字段别名（可选，用于查询时重命名）
+   * 字段别名
    */
   public readonly alias?: string;
 
   /**
-   * 字段描述（可选）
+   * 字段描述
    */
   public readonly description?: string;
+  
+  /**
+   * 业务名称
+   */
+  public readonly businessName?: string;
 
-  constructor(options: FieldOptions) {
+  constructor(options: FieldBase) {
     this.name = options.name;
     this.type = options.type;
     this.alias = options.alias;
     this.description = options.description;
+    this.businessName = options.businessName;
+  }
+}
+
+/**
+ * 字段实体类
+ * 表示数据表中的一个字段，包含字段名和类型信息
+ */
+export class Field extends FieldBase {
+
+
+  constructor(options: FieldBase) {
+    super(options);
   }
 
   /**

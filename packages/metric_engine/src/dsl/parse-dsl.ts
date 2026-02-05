@@ -59,7 +59,7 @@ export type MinimalDSL = {
 export async function parseMinimalDslToQuery(dsl: MinimalDSL): Promise<Query> {
   if (!dsl || !dsl.table) throw new Error('DSL 必须包含 table 字段');
 
-  const tables = await SchemaInspector.getAllTables();
+  const tables = await SchemaInspector.getAllTables(); // TODO: 使用参数来传入tables
   const mainTable = tables.find(t => t.name === dsl.table);
   if (!mainTable) throw new Error(`找不到主表: ${dsl.table}`);
 

@@ -20,10 +20,16 @@ export abstract class Metric {
    */
   public readonly description?: string;
 
-  constructor(name: string, alias?: string, description?: string) {
+  /**
+   * 业务名称
+   */
+  public readonly businessName?: string;
+
+  constructor(name: string, alias?: string, description?: string, businessName?: string) {
     this.name = name;
     this.alias = alias;
     this.description = description;
+    this.businessName = businessName;
   }
 
   /**
