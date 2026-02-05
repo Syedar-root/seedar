@@ -1,10 +1,13 @@
-import { FieldRole, Aggregation } from '../dataset.types';
+import { FieldType } from '../dataset.types';
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { DatasetTable } from './dataset-table.entity';
 
 @Entity()
 export class DatasetField {
@@ -19,28 +22,34 @@ export class DatasetField {
   @Column({ name: 'data_source_column_id', type: 'int' })
   dataSourceColumnId: number;
 
-  /** 展示名称（业务语义） */
-  @Column({ name: 'display_name', type: 'varchar', length: 255 })
-  displayName: string;
+  /** 所属表ID */
+  @Column({ name: 'table_id', type: 'int' })
+  tableId: number;
 
-  /** 字段角色 */
-  @Column({ type: 'enum', enum: FieldRole })
-  role: FieldRole;
+  /** 所属表 */
+  @ManyToOne(() => DatasetTable, (table) => table.fields)
+  @JoinColumn({ name: 'table_id' })
+  table: DatasetTable;
 
-  /** 允许的聚合方式 */
-  @Column({
-    type: 'simple-array',
-    comment: '允许的聚合方式',
-  })
-  aggregations: Aggregation[];
+  /** 字段名称 */
+  @Column({ type: 'varchar', length: 255 })
+  name: string;
 
-  /** 是否可筛选 */
-  @Column({ name: 'is_filterable', type: 'boolean', default: false })
-  isFilterable: boolean;
+  /** 字段类型 */
+  @Column({ type: 'enum', enum: FieldType })
+  type: FieldType;
 
-  /** 是否可分组 */
-  @Column({ name: 'is_groupable', type: 'boolean', default: false })
-  isGroupable: boolean;
+  /** 字段别名 */
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  alias: string;
+
+  /** 字段描述 */
+  @Column({ type: 'text', nullable: true })
+  description: string;
+
+  /** 业务名称 */
+  @Column({ name: 'business_name', type: 'varchar', length: 255 })
+  businessName: string;
 
   /** 创建时间 */
   @CreateDateColumn({ name: 'created_at' })
