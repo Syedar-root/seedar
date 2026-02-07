@@ -4,16 +4,18 @@ import { Repository } from 'typeorm';
 import { Datasource } from '../entities/datasource.entity';
 import { DatasourceTable } from '../entities/datasource-table.entity';
 import { DatasourceColumn } from '../entities/datasource-column.entity';
+import { DatasourceForeignKey } from '../entities/datasource-foreign-key.entity';
 import { CreateDatasourceRequest } from '../dto/create-datasource.request';
 import { validateDataSourceConfig } from '../datasource.validation';
 import { UpdateDatasourceRequest } from '../dto/update-datasource.request';
-import { DatasourceResponse } from '../dto/datasource.response';
+import { DatasourceResponse, ForeignKeyResponse } from '../dto/datasource.response';
 import { ExceptionFactory } from '../../../common/exceptions';
 import { LoggerService } from '@/logger/logger.service';
 import { KnexConnectionFactory } from '../knex-connection.factory';
 import { NormalizedDataType } from '../datasource.types';
 import { DatasourceTableService } from './datasource-table.service';
 import { DatasourceColumnService } from './datasource-column.service';
+import { DatasourceForeignKeyService } from './datasource-foreign-key.service';
 import * as knex from 'knex';
 import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
@@ -35,6 +37,7 @@ export class DatasourceService {
     private readonly logger: LoggerService,
     private readonly datasourceTableService: DatasourceTableService,
     private readonly datasourceColumnService: DatasourceColumnService,
+    private readonly foreignKeyService: DatasourceForeignKeyService,
   ) {
     this.logger.setContext('DatasourceService');
   }
@@ -210,12 +213,17 @@ export class DatasourceService {
     // 获取表和列信息
     this.logger.debug('开始获取表和列信息', 'GetTablesStart');
     const tables = await this.getTables(datasource);
+
+    // 获取外键关系
+    this.logger.debug('开始获取外键关系', 'GetForeignKeysStart');
+    const foreignKeys = await this.getForeignKeys(datasource);
+
     this.logger.log(
-      `数据源查询成功: ${datasource.name}, 表数量: ${tables.length}`,
+      `数据源查询成功: ${datasource.name}, 表数量: ${tables.length}, 外键数量: ${foreignKeys.length}`,
       'FindOneDatasourceSuccess',
     );
 
-    return new DatasourceResponse(datasource, tables);
+    return new DatasourceResponse(datasource, tables, foreignKeys);
   }
 
   /**
@@ -325,11 +333,29 @@ export class DatasourceService {
       'UpdateDatasourceSuccess',
     );
 
+    // 如果配置发生变化，重新获取并保存表、列和外键关系
+    // if (configChanged) {
+    //   this.logger.debug(
+    //     '配置发生变化，重新获取表、列和外键关系',
+    //     'RefreshMetadata',
+    //   );
+    //   await this.saveTablesAndColumns({
+    //     ...savedDatasource,
+    //     config: finalConfig,
+    //   });
+    // }
+
+    await this.saveTablesAndColumns({
+      ...savedDatasource,
+      config: finalConfig,
+    });
+
     // 返回响应（包含解密后的配置和表信息）
     savedDatasource.config = finalConfig;
     return new DatasourceResponse(
       savedDatasource,
       await this.getTables(savedDatasource),
+      await this.getForeignKeys(savedDatasource),
     );
   }
 
@@ -348,11 +374,16 @@ export class DatasourceService {
 
   /**
    * 保存数据源的表和列信息到数据库
+   * 如果已有表信息会先删除再重新创建
    */
   private async saveTablesAndColumns(datasource: Datasource): Promise<void> {
     this.logger.debug('开始获取并保存表和列信息', 'SaveTablesAndColumnsStart');
 
     try {
+      // 先删除已有的表和列信息（级联删除会自动删除列）
+      await this.datasourceTableService.deleteByDataSourceId(datasource.id);
+      this.logger.debug('已删除旧的表和列信息', 'DeleteOldTables');
+
       const tables = await this.getTableSchemas(datasource);
 
       for (const table of tables) {
@@ -373,6 +404,9 @@ export class DatasourceService {
           });
         }
       }
+
+      // 获取并保存外键关系
+      await this.saveForeignKeys(datasource);
 
       this.logger.debug(
         `表和列信息保存完成，共处理 ${tables.length} 个表`,
@@ -510,6 +544,37 @@ export class DatasourceService {
       'GetTablesCompleted',
     );
     return tables;
+  }
+
+  /**
+   * 获取数据源的外键关系
+   */
+  private async getForeignKeys(
+    datasource: Datasource,
+  ): Promise<ForeignKeyResponse[]> {
+    this.logger.debug(
+      `开始获取数据源 ${datasource.id} 的外键关系`,
+      'GetForeignKeysStart',
+    );
+
+    const foreignKeys = await this.foreignKeyService.findByDataSourceId(
+      datasource.id,
+    );
+
+    const result: ForeignKeyResponse[] = foreignKeys.map((fk) => ({
+      fkName: fk.fkName,
+      sourceTableName: fk.sourceTableName,
+      sourceColumnName: fk.sourceColumnName,
+      targetTableName: fk.targetTableName,
+      targetColumnName: fk.targetColumnName,
+    }));
+
+    this.logger.debug(
+      `外键关系获取完成，共 ${result.length} 个`,
+      'GetForeignKeysCompleted',
+    );
+
+    return result;
   }
 
   /**
@@ -706,5 +771,201 @@ export class DatasourceService {
 
     // 默认当作字符串处理
     return NormalizedDataType.STRING;
+  }
+
+  /**
+   * 获取并保存数据源的外键关系
+   */
+  private async saveForeignKeys(datasource: Datasource): Promise<void> {
+    this.logger.debug(
+      `开始获取 ${datasource.type} 数据库外键关系`,
+      'SaveForeignKeysStart',
+    );
+
+    try {
+      const foreignKeys = await this.getForeignKeySchemas(datasource);
+
+      if (foreignKeys.length > 0) {
+        // 先删除已有的外键关系
+        await this.foreignKeyService.deleteByDataSourceId(datasource.id);
+
+        // 批量保存新的外键关系
+        await this.foreignKeyService.createMany(
+          foreignKeys.map((fk) => ({
+            dataSourceId: datasource.id,
+            fkName: fk.fkName,
+            sourceTableName: fk.sourceTableName,
+            sourceColumnName: fk.sourceColumnName,
+            targetTableName: fk.targetTableName,
+            targetColumnName: fk.targetColumnName,
+          })),
+        );
+
+        this.logger.debug(
+          `外键关系保存完成，共 ${foreignKeys.length} 个`,
+          'SaveForeignKeysCompleted',
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `获取或保存外键关系失败: ${error.message}`,
+        'SaveForeignKeysWarning',
+      );
+      // 外键关系是辅助信息，获取失败不影响主流程
+    }
+  }
+
+  /**
+   * 从数据库获取外键关系信息
+   */
+  private async getForeignKeySchemas(datasource: Datasource): Promise<
+    Array<{
+      fkName: string;
+      sourceTableName: string;
+      sourceColumnName: string;
+      targetTableName: string;
+      targetColumnName: string;
+    }>
+  > {
+    const knexConnection = this.getKnexConnection(datasource);
+
+    switch (datasource.type) {
+      case 'mysql':
+        return await this.getMySqlForeignKeys(knexConnection);
+      case 'postgres':
+        return await this.getPostgresForeignKeys(knexConnection);
+      case 'clickhouse':
+        return await this.getClickHouseForeignKeys(knexConnection);
+      default:
+        this.logger.warn(
+          `不支持的数据源类型: ${datasource.type}`,
+          'UnsupportedDataSourceType',
+        );
+        return [];
+    }
+  }
+
+  /**
+   * 获取 MySQL 外键关系
+   */
+  private async getMySqlForeignKeys(
+    knexConnection: knex.Knex,
+  ): Promise<
+    Array<{
+      fkName: string;
+      sourceTableName: string;
+      sourceColumnName: string;
+      targetTableName: string;
+      targetColumnName: string;
+    }>
+  > {
+    const database = knexConnection.client.database();
+
+    // 使用原始 SQL 查询，避免 Knex 查询构建器的问题
+    const result = await knexConnection.raw(
+      `SELECT
+        kc.CONSTRAINT_NAME as fk_name,
+        kc.TABLE_NAME as source_table_name,
+        kc.COLUMN_NAME as source_column_name,
+        kc.REFERENCED_TABLE_NAME as target_table_name,
+        kc.REFERENCED_COLUMN_NAME as target_column_name
+      FROM information_schema.KEY_COLUMN_USAGE kc
+      WHERE kc.TABLE_SCHEMA = ?
+        AND kc.REFERENCED_TABLE_NAME IS NOT NULL`,
+      [database],
+    );
+
+    return result[0].map((row: any) => ({
+      fkName: row.fk_name,
+      sourceTableName: row.source_table_name,
+      sourceColumnName: row.source_column_name,
+      targetTableName: row.target_table_name,
+      targetColumnName: row.target_column_name,
+    }));
+  }
+
+  /**
+   * 获取 PostgreSQL 外键关系
+   */
+  private async getPostgresForeignKeys(
+    knexConnection: knex.Knex,
+  ): Promise<
+    Array<{
+      fkName: string;
+      sourceTableName: string;
+      sourceColumnName: string;
+      targetTableName: string;
+      targetColumnName: string;
+    }>
+  > {
+    const result = await knexConnection
+      .select(
+        'con.conname as fk_name',
+        'att.attname as source_column_name',
+        'tco.relname as source_table_name',
+        'fatt.attname as target_column_name',
+        'ftco.relname as target_table_name',
+      )
+      .from('pg_constraint as con')
+      .join('pg_attribute as att', 'att.attrelid', 'con.conrelid')
+      .join('pg_class as tco', 'tco.oid', 'con.conrelid')
+      .join('pg_attribute as fatt', 'fatt.attrelid', 'con.confrelid')
+      .join('pg_class as ftco', 'ftco.oid', 'con.confrelid')
+      .where('con.contype', 'f')
+      .andWhere('att.attnum', 'con.conkey[1]')
+      .andWhere('fatt.attnum', 'confkey[1]')
+      .andWhere('tco.relname', '!=', 'datasource_tables')
+      .andWhere('ftco.relname', '!=', 'datasource_tables');
+
+    return result.map((row) => ({
+      fkName: row.fk_name,
+      sourceTableName: row.source_table_name,
+      sourceColumnName: row.source_column_name,
+      targetTableName: row.target_table_name,
+      targetColumnName: row.target_column_name,
+    }));
+  }
+
+  /**
+   * 获取 ClickHouse 外键关系
+   * ClickHouse 目前主要支持 Engine=MySQL 的外键查询
+   * 标准 ClickHouse 表本身不强制外键约束
+   */
+  private async getClickHouseForeignKeys(
+    knexConnection: knex.Knex,
+  ): Promise<
+    Array<{
+      fkName: string;
+      sourceTableName: string;
+      sourceColumnName: string;
+      targetTableName: string;
+      targetColumnName: string;
+    }>
+  > {
+    // ClickHouse 原生不支持查询外键关系
+    // 对于使用 MySQL 引擎的表，可以尝试查询
+    try {
+      const result = await knexConnection
+        .select(
+          'name as fk_name',
+          'expression',
+        )
+        .from('system.settings')
+        .where('name', 'allow_system_settings');
+
+      // 如果启用了系统设置，尝试查询 metadata
+      // 注意：ClickHouse 本身不存储外键元数据
+      this.logger.debug(
+        'ClickHouse 不支持原生外键查询',
+        'ClickHouseForeignKeys',
+      );
+    } catch (error) {
+      this.logger.debug(
+        `ClickHouse 外键查询失败: ${error.message}`,
+        'ClickHouseForeignKeysError',
+      );
+    }
+
+    return [];
   }
 }

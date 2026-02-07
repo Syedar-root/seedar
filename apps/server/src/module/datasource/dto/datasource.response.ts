@@ -11,6 +11,17 @@ export enum DataSourceStatus {
 }
 
 /**
+ * 外键关系响应
+ */
+export interface ForeignKeyResponse {
+  fkName: string;
+  sourceTableName: string;
+  sourceColumnName: string;
+  targetTableName: string;
+  targetColumnName: string;
+}
+
+/**
  * 数据源响应
  */
 export class DatasourceResponse {
@@ -31,6 +42,7 @@ export class DatasourceResponse {
       nullable: boolean;
     }>;
   }>;
+  foreignKeys?: ForeignKeyResponse[];
 
   constructor(
     datasource: Datasource,
@@ -43,6 +55,7 @@ export class DatasourceResponse {
         nullable: boolean;
       }>;
     }>,
+    foreignKeys?: ForeignKeyResponse[],
   ) {
     this.id = datasource.id;
     this.name = datasource.name;
@@ -56,5 +69,6 @@ export class DatasourceResponse {
     this.createdAt = datasource.createdAt;
     this.updatedAt = datasource.updatedAt;
     this.tables = tables;
+    this.foreignKeys = foreignKeys;
   }
 }

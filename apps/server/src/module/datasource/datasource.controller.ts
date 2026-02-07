@@ -13,6 +13,7 @@ import { CreateDatasourceRequest } from './dto/create-datasource.request';
 import { DataSourceType } from './datasource.types';
 import { UpdateDatasourceRequest } from './dto/update-datasource.request';
 import { DatasourceResponse } from './dto/datasource.response';
+import { SuccessMessage } from '@/common/success-message.decorator';
 
 @Controller('datasource')
 export class DatasourceController {
@@ -27,6 +28,7 @@ export class DatasourceController {
   }
 
   @Get(':id')
+  @SuccessMessage('数据源查询成功')
   findOne(@Param('id') id: string): Promise<DatasourceResponse> {
     return this.datasourceService.findOne(+id);
   }
