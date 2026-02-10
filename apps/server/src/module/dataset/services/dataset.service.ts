@@ -8,7 +8,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DatasourceService } from '@/module/datasource/service/datasource.service';
 import { DatasourceTableService } from '@/module/datasource/service/datasource-table.service';
-import { DatasetStatus, DatasetType, JoinType } from '../dataset.types';
+import { DatasetStatus, DatasetType, FieldType, JoinType } from '../dataset.types';
+import { DatasourceForeignKeyService } from '@/module/datasource/service/datasource-foreign-key.service';
+import { ExceptionFactory } from '@/common/exceptions';
+import { DatasetField } from '../entities/dataset-field.entity';
+import { DatasourceColumnService } from '@/module/datasource/service/datasource-column.service';
 
 @Injectable()
 export class DatasetService {
@@ -21,11 +25,21 @@ export class DatasetService {
   @InjectRepository(DatasetJoin)
   private readonly datasetJoinRepository!: Repository<DatasetJoin>;
 
+  @InjectRepository(DatasetField)
+  private readonly datasetFieldRepository!: Repository<DatasetField>;
+
   @Inject(DatasourceService)
   private readonly datasourceService!: DatasourceService;
 
+  @Inject(DatasourceForeignKeyService)
+  private readonly datasourceForeignKeyService!: DatasourceForeignKeyService;
+
+
   @Inject(DatasourceTableService)
   private readonly datasourceTableService!: DatasourceTableService;
+
+  @Inject(DatasourceColumnService)
+  private readonly datasourceColumnService!: DatasourceColumnService;
 
   async create(request: CreateDatasetRequest) {
     // 验证数据源是否存在
@@ -50,41 +64,146 @@ export class DatasetService {
       throw new Error('部分数据表不存在');
     }
 
-    // 创建数据集实体
-    const dataset = this.datasetRepository.create({
-      name: request.name,
-      description: request.description,
-      datasource: { id: datasource.id } as any, // 使用关系对象
-      status: DatasetStatus.ACTIVE,
-      type: DatasetType.SEMANTIC,
-    });
+    // 获取所有选中的表的 ID 列表
+    const selectedTableIds = selectedTables.map((table) => table!.id);
 
-    // 保存数据集
-    const savedDataset = await this.datasetRepository.save(dataset);
+    // 使用事务确保所有操作原子性
+    const savedDataset = await this.datasetRepository.manager.transaction(
+      async (manager) => {
+        // 创建数据集实体
+        const dataset = manager.create(Dataset, {
+          name: request.name,
+          description: request.description,
+          datasource: { id: datasource.id } as Dataset['datasource'],
+          status: DatasetStatus.ACTIVE,
+          type: DatasetType.SEMANTIC,
+        });
 
-    // 创建数据集表关联
-    const datasetTables = selectedTables.map((table) => ({
-      datasetId: savedDataset.id,
-      tableId: table!.id,
-      datasetName: savedDataset.name,
-      tableName: table!.tableName,
-    }));
+        // 保存数据集
+        const saved = await manager.save(dataset);
 
-    await this.datasetTableRepository.save(datasetTables);
+        // 创建数据集表关联
+        const datasetTables = selectedTables.map((table) =>
+          manager.create(DatasetTable, {
+            datasetId: saved.id,
+            tableId: table!.id,
+            datasetName: saved.name,
+            tableName: table!.tableName,
+          }),
+        );
+        await manager.save(datasetTables);
 
-    // 创建数据集join关系
-    if (request.joins && request.joins.length > 0) {
-      const datasetJoins = request.joins.map((join) => ({
-        dataset: { id: savedDataset.id },
-        leftTableId: selectedTables[join.leftTableId]!.id,
-        leftColumnId: join.leftColumnId,
-        rightTableId: selectedTables[join.rightTableId]!.id,
-        rightColumnId: join.rightColumnId,
-        joinType: join.joinType || JoinType.INNER,
-      }));
+        // 验证数据集字段
+        if (!request.fields || request.fields.length === 0) {
+          ExceptionFactory.badRequest('数据集字段不能为空，必须包含至少一个字段');
+        }
 
-      await this.datasetJoinRepository.save(datasetJoins);
-    }
+        // 获取每个表的主键列信息
+        const tablePrimaryKeys = await Promise.all(
+          selectedTableIds.map(async (tableId) => {
+            const columns = await this.datasourceColumnService.findByTableId(
+              tableId,
+            );
+            return {
+              tableId,
+              primaryKeyColumns: columns.filter((col) => col.isPrimaryKey),
+            };
+          }),
+        );
+
+        // 验证每个表都有主键字段在数据集中
+        for (const tableInfo of tablePrimaryKeys) {
+          // 获取该表在请求字段中的字段
+          const tableFieldsInRequest = request.fields.filter(
+            (f) => f.tableId === tableInfo.tableId,
+          );
+
+          // 检查该表是否有主键
+          if (tableInfo.primaryKeyColumns.length > 0) {
+            // 如果有主键列，检查是否至少有一个主键列在数据集中
+            const hasPrimaryKeyInDataset = tableInfo.primaryKeyColumns.some(
+              (pk) =>
+                tableFieldsInRequest.some(
+                  (f) => f.dataSourceColumnId === pk.id,
+                ),
+            );
+
+            if (!hasPrimaryKeyInDataset) {
+              const table = selectedTables.find(
+                (t) => t!.id === tableInfo.tableId,
+              );
+              ExceptionFactory.badRequest(
+                `表 "${table?.tableName}" 的主键字段必须包含在数据集中`,
+              );
+            }
+          }
+        }
+
+        // 创建数据集字段
+        const datasetFields = await Promise.all(
+          request.fields.map(async (field) => {
+            const datasourceColumn =
+              await this.datasourceColumnService.findOne(field.dataSourceColumnId);
+            return manager.create(DatasetField, {
+              datasetId: saved.id,
+              dataSourceColumnId: field.dataSourceColumnId,
+              tableId: field.tableId,
+              description: field.description,
+              businessName: field.businessName,
+              name: field.name,
+              type: datasourceColumn?.normalizedType || FieldType.STRING,
+            });
+          }),
+        );
+        await manager.save(datasetFields);
+
+        // 创建数据集join关系
+        if (request.joins && request.joins.length > 0) {
+          const datasetJoins = request.joins.map((join) =>
+            manager.create(DatasetJoin, {
+              dataset: { id: saved.id } as Dataset,
+              leftTableId: selectedTables[join.leftTableId]!.id,
+              leftField: join.leftColumnId.toString(),
+              rightTableId: selectedTables[join.rightTableId]!.id,
+              rightField: join.rightColumnId.toString(),
+              joinType: join.joinType || JoinType.INNER,
+            }),
+          );
+          await manager.save(datasetJoins);
+        } else {
+          // 默认使用外键关系
+          const foreignKeys =
+            await this.datasourceForeignKeyService.findByDataSourceId(
+              datasource.id,
+            );
+          if (foreignKeys.length > 0) {
+            const datasetJoins = foreignKeys.map((foreignKey) => {
+              const leftTable = selectedTables.find(
+                (t) => t!.tableName === foreignKey.sourceTableName,
+              );
+              const rightTable = selectedTables.find(
+                (t) => t!.tableName === foreignKey.targetTableName,
+              );
+              return manager.create(DatasetJoin, {
+                dataset: { id: saved.id } as Dataset,
+                leftTableId: leftTable?.id ?? 0,
+                leftField: foreignKey.sourceColumnName,
+                rightTableId: rightTable?.id ?? 0,
+                rightField: foreignKey.targetColumnName,
+                joinType: JoinType.INNER,
+              });
+            });
+            await manager.save(datasetJoins);
+          } else {
+            ExceptionFactory.badRequest(
+              '数据源没有外键关系，需要配置表之间的关联关系',
+            );
+          }
+        }
+
+        return saved;
+      },
+    );
 
     // 返回创建的数据集
     return savedDataset;

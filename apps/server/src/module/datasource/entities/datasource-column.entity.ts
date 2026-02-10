@@ -9,7 +9,7 @@ import {
   Index,
 } from 'typeorm';
 import { DatasourceTable } from './datasource-table.entity';
-import { NormalizedDataType } from '../datasource.types';
+import { FieldType } from '../../dataset/dataset.types';
 
 @Entity('datasource_columns')
 export class DatasourceColumn {
@@ -28,9 +28,12 @@ export class DatasourceColumn {
   @Column({
     name: 'normalized_type',
     type: 'enum',
-    enum: NormalizedDataType,
+    enum: FieldType,
   })
-  normalizedType: NormalizedDataType;
+  normalizedType: FieldType;
+
+  @Column({ type: 'boolean', default: false })
+  isPrimaryKey: boolean;
 
   @Column({ type: 'boolean', default: true })
   nullable: boolean;

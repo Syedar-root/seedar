@@ -1,4 +1,4 @@
-import { DataSourceType, NormalizedDataType } from '../datasource.types';
+import { DataSourceType, FieldType } from '../datasource.types';
 import { Datasource } from '../entities/datasource.entity';
 
 /**
@@ -38,8 +38,9 @@ export class DatasourceResponse {
     columns: Array<{
       columnName: string;
       rawDataType: string;
-      normalizedType: NormalizedDataType;
+      normalizedType: FieldType;
       nullable: boolean;
+      isPrimaryKey: boolean;
     }>;
   }>;
   foreignKeys?: ForeignKeyResponse[];
@@ -51,8 +52,9 @@ export class DatasourceResponse {
       columns: Array<{
         columnName: string;
         rawDataType: string;
-        normalizedType: NormalizedDataType;
+        normalizedType: FieldType;
         nullable: boolean;
+        isPrimaryKey: boolean;
       }>;
     }>,
     foreignKeys?: ForeignKeyResponse[],

@@ -31,7 +31,7 @@ export class DatasetField {
   @JoinColumn({ name: 'table_id' })
   table: DatasetTable;
 
-  /** 字段名称 */
+  /** 字段原始名称 */
   @Column({ type: 'varchar', length: 255 })
   name: string;
 

@@ -49,6 +49,7 @@ export enum DataSourceStatus {
 
 /**
  * 系统内部统一字段类型
+ * @deprecated 请使用 FieldType (import { FieldType } from '@/module/dataset/dataset.types')
  */
 export enum NormalizedDataType {
   STRING = 'string',

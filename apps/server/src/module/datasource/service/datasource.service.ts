@@ -12,7 +12,7 @@ import { DatasourceResponse, ForeignKeyResponse } from '../dto/datasource.respon
 import { ExceptionFactory } from '../../../common/exceptions';
 import { LoggerService } from '@/logger/logger.service';
 import { KnexConnectionFactory } from '../knex-connection.factory';
-import { NormalizedDataType } from '../datasource.types';
+import { FieldType } from '../../dataset/dataset.types';
 import { DatasourceTableService } from './datasource-table.service';
 import { DatasourceColumnService } from './datasource-column.service';
 import { DatasourceForeignKeyService } from './datasource-foreign-key.service';
@@ -401,6 +401,7 @@ export class DatasourceService {
             rawDataType: column.rawDataType,
             normalizedType: column.normalizedType,
             nullable: column.nullable,
+            isPrimaryKey: column.isPrimaryKey,
           });
         }
       }
@@ -432,8 +433,9 @@ export class DatasourceService {
       columns: Array<{
         columnName: string;
         rawDataType: string;
-        normalizedType: NormalizedDataType;
+        normalizedType: FieldType;
         nullable: boolean;
+        isPrimaryKey: boolean;
       }>;
     }>
   > {
@@ -450,8 +452,9 @@ export class DatasourceService {
       columns: Array<{
         columnName: string;
         rawDataType: string;
-        normalizedType: NormalizedDataType;
+        normalizedType: FieldType;
         nullable: boolean;
+        isPrimaryKey: boolean;
       }>;
     }> = [];
 
@@ -486,8 +489,9 @@ export class DatasourceService {
         columnId: number;
         columnName: string;
         rawDataType: string;
-        normalizedType: NormalizedDataType;
+        normalizedType: FieldType;
         nullable: boolean;
+        isPrimaryKey: boolean;
       }>;
     }>
   > {
@@ -508,8 +512,9 @@ export class DatasourceService {
         columnId: number;
         columnName: string;
         rawDataType: string;
-        normalizedType: NormalizedDataType;
+        normalizedType: FieldType;
         nullable: boolean;
+        isPrimaryKey: boolean;
       }>;
     }> = [];
 
@@ -530,6 +535,7 @@ export class DatasourceService {
         rawDataType: savedColumn.rawDataType,
         normalizedType: savedColumn.normalizedType,
         nullable: savedColumn.nullable,
+        isPrimaryKey: savedColumn.isPrimaryKey,
       }));
 
       tables.push({
@@ -626,8 +632,9 @@ export class DatasourceService {
       columnId: number;
       columnName: string;
       rawDataType: string;
-      normalizedType: NormalizedDataType;
+      normalizedType: FieldType;
       nullable: boolean;
+      isPrimaryKey: boolean;
     }>
   > {
     switch (datasource.type) {
@@ -653,22 +660,35 @@ export class DatasourceService {
       columnId: number;
       columnName: string;
       rawDataType: string;
-      normalizedType: NormalizedDataType;
+      normalizedType: FieldType;
       nullable: boolean;
+      isPrimaryKey: boolean;
     }>
   > {
-    const result = await knexConnection
+    // 获取列信息
+    const columnsResult = await knexConnection
       .select('COLUMN_NAME', 'DATA_TYPE', 'IS_NULLABLE')
       .from('information_schema.COLUMNS')
       .where('TABLE_NAME', tableName)
       .andWhere('TABLE_SCHEMA', knexConnection.client.database());
 
-    return result.map((row, index) => ({
+    // 获取主键列
+    const primaryKeysResult = await knexConnection
+      .select('kcu.COLUMN_NAME')
+      .from('information_schema.KEY_COLUMN_USAGE kcu')
+      .where('kcu.TABLE_NAME', tableName)
+      .andWhere('kcu.TABLE_SCHEMA', knexConnection.client.database())
+      .andWhere('kcu.CONSTRAINT_NAME', 'PRIMARY');
+
+    const primaryKeyColumns = new Set(primaryKeysResult.map((row) => row.COLUMN_NAME));
+
+    return columnsResult.map((row, index) => ({
       columnId: index + 1,
       columnName: row.COLUMN_NAME,
       rawDataType: row.DATA_TYPE,
       normalizedType: this.normalizeDataType(row.DATA_TYPE),
       nullable: row.IS_NULLABLE === 'YES',
+      isPrimaryKey: primaryKeyColumns.has(row.COLUMN_NAME),
     }));
   }
 
@@ -683,22 +703,37 @@ export class DatasourceService {
       columnId: number;
       columnName: string;
       rawDataType: string;
-      normalizedType: NormalizedDataType;
+      normalizedType: FieldType;
       nullable: boolean;
+      isPrimaryKey: boolean;
     }>
   > {
-    const result = await knexConnection
+    // 获取列信息
+    const columnsResult = await knexConnection
       .select('column_name', 'data_type', 'is_nullable')
       .from('information_schema.columns')
       .where('table_name', tableName)
       .andWhere('table_schema', 'public');
 
-    return result.map((row, index) => ({
+    // 获取主键列
+    const primaryKeysResult = await knexConnection
+      .select('att.attname as column_name')
+      .from('pg_constraint as con')
+      .join('pg_attribute as att', 'att.attrelid', 'con.conrelid')
+      .join('pg_class as tco', 'tco.oid', 'con.conrelid')
+      .where('tco.relname', tableName)
+      .andWhere('con.contype', 'p')
+      .andWhere('att.attnum', 'con.conkey[1]');
+
+    const primaryKeyColumns = new Set(primaryKeysResult.map((row) => row.column_name));
+
+    return columnsResult.map((row, index) => ({
       columnId: index + 1,
       columnName: row.column_name,
       rawDataType: row.data_type,
       normalizedType: this.normalizeDataType(row.data_type),
       nullable: row.is_nullable === 'YES',
+      isPrimaryKey: primaryKeyColumns.has(row.column_name),
     }));
   }
 
@@ -713,8 +748,9 @@ export class DatasourceService {
       columnId: number;
       columnName: string;
       rawDataType: string;
-      normalizedType: NormalizedDataType;
+      normalizedType: FieldType;
       nullable: boolean;
+      isPrimaryKey: boolean;
     }>
   > {
     const result = await knexConnection.raw(`DESCRIBE TABLE ${tableName}`);
@@ -725,13 +761,14 @@ export class DatasourceService {
       rawDataType: row.type,
       normalizedType: this.normalizeDataType(row.type),
       nullable: !row.type?.includes('NOT NULL'),
+      isPrimaryKey: row.is_in_primary_key === 1 || row.default_kind?.includes('MATERIALIZED'),
     }));
   }
 
   /**
    * 标准化数据类型
    */
-  private normalizeDataType(rawType: string): NormalizedDataType {
+  private normalizeDataType(rawType: string): FieldType {
     const type = rawType.toLowerCase();
 
     // 字符串类型
@@ -740,7 +777,7 @@ export class DatasourceService {
       type.includes('text') ||
       type.includes('varchar')
     ) {
-      return NormalizedDataType.STRING;
+      return FieldType.STRING;
     }
 
     // 数值类型
@@ -752,7 +789,7 @@ export class DatasourceService {
       type.includes('double') ||
       type.includes('real')
     ) {
-      return NormalizedDataType.NUMBER;
+      return FieldType.NUMBER;
     }
 
     // 日期时间类型
@@ -761,16 +798,16 @@ export class DatasourceService {
       type.includes('time') ||
       type.includes('timestamp')
     ) {
-      return NormalizedDataType.DATE;
+      return FieldType.DATE;
     }
 
     // 布尔类型
     if (type.includes('bool')) {
-      return NormalizedDataType.BOOLEAN;
+      return FieldType.BOOLEAN;
     }
 
     // 默认当作字符串处理
-    return NormalizedDataType.STRING;
+    return FieldType.STRING;
   }
 
   /**

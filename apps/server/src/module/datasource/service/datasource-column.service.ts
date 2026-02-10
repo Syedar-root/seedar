@@ -5,10 +5,11 @@ import { DatasourceColumn } from '../entities/datasource-column.entity';
 
 @Injectable()
 export class DatasourceColumnService {
-  constructor(
-    @InjectRepository(DatasourceColumn)
-    private readonly datasourceColumnRepository: Repository<DatasourceColumn>,
-  ) {}
+
+  @InjectRepository(DatasourceColumn)
+    private readonly datasourceColumnRepository: Repository<DatasourceColumn>;
+
+  
 
   async findByTableId(tableId: number): Promise<DatasourceColumn[]> {
     return this.datasourceColumnRepository.find({
