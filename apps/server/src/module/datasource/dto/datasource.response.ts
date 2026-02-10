@@ -1,5 +1,7 @@
-import { DataSourceType, FieldType } from '../datasource.types';
+import { DataSourceType } from '../datasource.types';
 import { Datasource } from '../entities/datasource.entity';
+import { FieldType } from '@/module/dataset/dataset.types';
+
 
 /**
  * 数据源状态

@@ -38,6 +38,10 @@ export class DatasourceTable {
   })
   rowCount?: number;
 
+  /** 主键字段 ID */
+  @Column({ name: 'primary_field_id', type: 'int', nullable: true })
+  primaryFieldId?: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -51,6 +51,10 @@ export class DatasetField {
   @Column({ name: 'business_name', type: 'varchar', length: 255 })
   businessName: string;
 
+  /** 是否为主键字段 */
+  @Column({ name: 'is_primary_key', type: 'boolean', default: false })
+  isPrimaryKey: boolean;
+
   /** 创建时间 */
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

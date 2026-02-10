@@ -32,6 +32,10 @@ export class DatasetTable {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  /** 主键字段 ID（关联到 DatasetField） */
+  @Column({ name: 'primary_field_id', type: 'int', nullable: true })
+  primaryFieldId?: number;
+
   /** 字段列表 */
   @OneToMany(() => DatasetField, (field) => field.table)
   fields: DatasetField[];

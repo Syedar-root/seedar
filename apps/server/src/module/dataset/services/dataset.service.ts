@@ -82,17 +82,6 @@ export class DatasetService {
         // 保存数据集
         const saved = await manager.save(dataset);
 
-        // 创建数据集表关联
-        const datasetTables = selectedTables.map((table) =>
-          manager.create(DatasetTable, {
-            datasetId: saved.id,
-            tableId: table!.id,
-            datasetName: saved.name,
-            tableName: table!.tableName,
-          }),
-        );
-        await manager.save(datasetTables);
-
         // 验证数据集字段
         if (!request.fields || request.fields.length === 0) {
           ExceptionFactory.badRequest('数据集字段不能为空，必须包含至少一个字段');
@@ -139,7 +128,7 @@ export class DatasetService {
           }
         }
 
-        // 创建数据集字段
+        // 先创建数据集字段（这样可以获取到它们的 ID）
         const datasetFields = await Promise.all(
           request.fields.map(async (field) => {
             const datasourceColumn =
@@ -152,10 +141,39 @@ export class DatasetService {
               businessName: field.businessName,
               name: field.name,
               type: datasourceColumn?.normalizedType || FieldType.STRING,
+              // 如果请求中指定了 isPrimaryKey，则使用请求的值；否则继承数据源列的主键状态
+              isPrimaryKey: field.isPrimaryKey ?? datasourceColumn?.isPrimaryKey ?? false,
             });
           }),
         );
         await manager.save(datasetFields);
+
+        // 创建字段 ID 映射（dataSourceColumnId -> datasetFieldId）
+        const columnIdToFieldId = new Map(
+          datasetFields.map((f) => [f.dataSourceColumnId, f.id]),
+        );
+
+        // 创建数据集表关联（设置主键字段 ID）
+        const datasetTables = selectedTables.map((table) => {
+          // 查找该表的主键列
+          const primaryKeyInfo = tablePrimaryKeys.find(
+            (pk) => pk.tableId === table!.id,
+          );
+          // 获取主键列的 datasetFieldId
+          const primaryColumn = primaryKeyInfo?.primaryKeyColumns[0];
+          const primaryFieldId = primaryColumn
+            ? columnIdToFieldId.get(primaryColumn.id)
+            : null;
+
+          return manager.create(DatasetTable, {
+            datasetId: saved.id,
+            tableId: table!.id,
+            datasetName: saved.name,
+            tableName: table!.tableName,
+            primaryFieldId: primaryFieldId ?? undefined,
+          });
+        });
+        await manager.save(datasetTables);
 
         // 创建数据集join关系
         if (request.joins && request.joins.length > 0) {

@@ -6,10 +6,11 @@ import { Dataset } from './entities/dataset.entity';
 import { DatasetTable } from './entities/dataset-table.entity';
 import { DatasourceModule } from '../datasource/datasource.module';
 import { DatasetJoin } from './entities/dataset-join.entity';
+import { DatasetField } from './entities/dataset-field.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Dataset, DatasetTable, DatasetJoin]),
+    TypeOrmModule.forFeature([Dataset, DatasetTable, DatasetJoin, DatasetField]),
     DatasourceModule,
   ],
   controllers: [DatasetController],

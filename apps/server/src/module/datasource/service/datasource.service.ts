@@ -386,14 +386,17 @@ export class DatasourceService {
 
       const tables = await this.getTableSchemas(datasource);
 
+      // 第一步：创建所有表和列
+      const savedTables: DatasourceTable[] = [];
       for (const table of tables) {
-        // 创建并保存表
+        // 创建表
         const savedTable = await this.datasourceTableService.create({
           dataSourceId: datasource.id,
           tableName: table.tableName,
         });
+        savedTables.push(savedTable);
 
-        // 创建并保存列
+        // 创建列
         for (const column of table.columns) {
           await this.datasourceColumnService.create({
             tableId: savedTable.id,
@@ -403,6 +406,22 @@ export class DatasourceService {
             nullable: column.nullable,
             isPrimaryKey: column.isPrimaryKey,
           });
+        }
+      }
+
+      // 第二步：更新每个表的 primaryFieldId
+      for (const savedTable of savedTables) {
+        // 获取该表的列
+        const columns = await this.datasourceColumnService.findByTableId(
+          savedTable.id,
+        );
+        // 找到主键列
+        const primaryKeyColumn = columns.find((col) => col.isPrimaryKey);
+        if (primaryKeyColumn) {
+          await this.datasourceTableService.updatePrimaryFieldId(
+            savedTable.id,
+            primaryKeyColumn.id,
+          );
         }
       }
 
@@ -675,7 +694,7 @@ export class DatasourceService {
     // 获取主键列
     const primaryKeysResult = await knexConnection
       .select('kcu.COLUMN_NAME')
-      .from('information_schema.KEY_COLUMN_USAGE kcu')
+      .from('information_schema.KEY_COLUMN_USAGE AS kcu')
       .where('kcu.TABLE_NAME', tableName)
       .andWhere('kcu.TABLE_SCHEMA', knexConnection.client.database())
       .andWhere('kcu.CONSTRAINT_NAME', 'PRIMARY');

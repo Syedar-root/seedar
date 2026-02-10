@@ -12,6 +12,6 @@ export const databaseConfig = (
   database: configService.get<string>('DB_DATABASE', 'seedar_db'),
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   synchronize: configService.get<string>('NODE_ENV') !== 'production', // 生产环境请设为false，使用migration
-  logging: configService.get<string>('NODE_ENV') === 'development',
+  logging: configService.get<string>('NODE_ENV') === 'development'  ? ['error', 'warn', 'log', 'info', 'schema', 'migration'] : ['error', 'warn'],
   charset: 'utf8mb4',
 });

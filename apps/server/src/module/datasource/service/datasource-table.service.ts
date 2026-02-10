@@ -30,4 +30,11 @@ export class DatasourceTableService {
   async deleteByDataSourceId(dataSourceId: number): Promise<void> {
     await this.datasourceTableRepository.delete({ dataSourceId });
   }
+
+  /**
+   * 更新表的主键字段 ID
+   */
+  async updatePrimaryFieldId(tableId: number, primaryFieldId: number): Promise<void> {
+    await this.datasourceTableRepository.update(tableId, { primaryFieldId });
+  }
 }
