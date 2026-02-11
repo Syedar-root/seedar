@@ -128,65 +128,85 @@ export class DatasetService {
           }
         }
 
-        // 先创建数据集字段（这样可以获取到它们的 ID）
+        // 1. 先创建 DatasetTables（不设置 primaryFieldId）
+        const datasetTables = selectedTables.map((table) => {
+          return manager.create(DatasetTable, {
+            datasetId: saved.id,
+            tableId: table!.id,
+            datasetName: saved.name,
+            tableName: table!.tableName,
+          });
+        });
+        const savedDatasetTables = await manager.save(datasetTables);
+
+        // 创建 tableId -> datasetTableId 映射
+        const tableIdToDatasetTableId = new Map(
+          savedDatasetTables.map((t, index) => [selectedTables[index]!.id, t.id])
+        );
+
+        // 2. 创建 DatasetFields
         const datasetFields = await Promise.all(
           request.fields.map(async (field) => {
             const datasourceColumn =
               await this.datasourceColumnService.findOne(field.dataSourceColumnId);
             return manager.create(DatasetField, {
-              datasetId: saved.id,
+              dataSetId: saved.id,
               dataSourceColumnId: field.dataSourceColumnId,
-              tableId: field.tableId,
+              tableId: tableIdToDatasetTableId.get(field.tableId)!,  // 使用新的 tableId
               description: field.description,
               businessName: field.businessName,
               name: field.name,
               type: datasourceColumn?.normalizedType || FieldType.STRING,
-              // 如果请求中指定了 isPrimaryKey，则使用请求的值；否则继承数据源列的主键状态
               isPrimaryKey: field.isPrimaryKey ?? datasourceColumn?.isPrimaryKey ?? false,
             });
           }),
         );
         await manager.save(datasetFields);
 
-        // 创建字段 ID 映射（dataSourceColumnId -> datasetFieldId）
+        // 3. 创建字段 ID 映射（dataSourceColumnId -> datasetFieldId）
         const columnIdToFieldId = new Map(
           datasetFields.map((f) => [f.dataSourceColumnId, f.id]),
         );
 
-        // 创建数据集表关联（设置主键字段 ID）
-        const datasetTables = selectedTables.map((table) => {
+        // 4. 更新 DatasetTables 的 primaryFieldId
+        for (let i = 0; i < savedDatasetTables.length; i++) {
+          const originalTable = selectedTables[i];
+          const savedTable = savedDatasetTables[i];
+
           // 查找该表的主键列
           const primaryKeyInfo = tablePrimaryKeys.find(
-            (pk) => pk.tableId === table!.id,
+            (pk) => pk.tableId === originalTable!.id,
           );
+
           // 获取主键列的 datasetFieldId
           const primaryColumn = primaryKeyInfo?.primaryKeyColumns[0];
           const primaryFieldId = primaryColumn
             ? columnIdToFieldId.get(primaryColumn.id)
             : null;
 
-          return manager.create(DatasetTable, {
-            datasetId: saved.id,
-            tableId: table!.id,
-            datasetName: saved.name,
-            tableName: table!.tableName,
-            primaryFieldId: primaryFieldId ?? undefined,
-          });
-        });
-        await manager.save(datasetTables);
+          if (primaryFieldId) {
+            await manager.update(DatasetTable, savedTable.id, {
+              primaryFieldId,
+            });
+          }
+        }
 
         // 创建数据集join关系
         if (request.joins && request.joins.length > 0) {
-          const datasetJoins = request.joins.map((join) =>
-            manager.create(DatasetJoin, {
+          const datasetJoins = request.joins.map((join) => {
+            // 根据 tableId 找到对应的 datasetTableId
+            const leftDatasetTableId = tableIdToDatasetTableId.get(join.leftTableId);
+            const rightDatasetTableId = tableIdToDatasetTableId.get(join.rightTableId);
+
+            return manager.create(DatasetJoin, {
               dataset: { id: saved.id } as Dataset,
-              leftTableId: selectedTables[join.leftTableId]!.id,
+              leftTableId: leftDatasetTableId!,
               leftField: join.leftColumnId.toString(),
-              rightTableId: selectedTables[join.rightTableId]!.id,
+              rightTableId: rightDatasetTableId!,
               rightField: join.rightColumnId.toString(),
               joinType: join.joinType || JoinType.INNER,
-            }),
-          );
+            });
+          });
           await manager.save(datasetJoins);
         } else {
           // 默认使用外键关系

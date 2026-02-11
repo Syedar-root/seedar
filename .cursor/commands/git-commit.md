@@ -6,6 +6,7 @@
 
 ## 注意
 - 禁止删除 commit_msg.txt
+- 提交完成后需要清空commit_msg.txt中的内容
 - 禁止未更新文件直接提交
 - 推荐使用 Git Bash 终端操作
 - 无需推送到远程仓库

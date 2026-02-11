@@ -5,22 +5,22 @@ import { JoinType } from '../dataset.types';
  */
 export class CreateDatasetJoinRequest {
   /**
-   * 左表ID（相对于datasourceTableIds中的索引）
+   * 左表ID（datasource_table 表的主键 ID）
    */
   leftTableId: number;
 
   /**
-   * 左表的连接列ID
+   * 左表的连接列ID（datasource_column 表的主键 ID）
    */
   leftColumnId: number;
 
   /**
-   * 右表ID（相对于datasourceTableIds中的索引）
+   * 右表ID（datasource_table 表的主键 ID）
    */
   rightTableId: number;
 
   /**
-   * 右表的连接列ID
+   * 右表的连接列ID（datasource_column 表的主键 ID）
    */
   rightColumnId: number;
 
