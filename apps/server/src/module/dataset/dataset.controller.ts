@@ -22,7 +22,7 @@ export class DatasetController {
 
   @Get()
   findAll() {
-    return this.datasetService.findAll();
+    return this.datasetService.findAllWithDetails();
   }
 
   @Get(':id')

@@ -5,13 +5,14 @@ import { Dataset } from '../entities/dataset.entity';
 import { DatasetTable } from '../entities/dataset-table.entity';
 import { DatasetJoin } from '../entities/dataset-join.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { DatasourceService } from '@/module/datasource/service/datasource.service';
 import { DatasourceTableService } from '@/module/datasource/service/datasource-table.service';
 import { DatasetStatus, DatasetType, FieldType, JoinType } from '../dataset.types';
 import { DatasourceForeignKeyService } from '@/module/datasource/service/datasource-foreign-key.service';
 import { ExceptionFactory } from '@/common/exceptions';
 import { DatasetField } from '../entities/dataset-field.entity';
+import { DatasetMetric } from '../entities/dataset-metric.entity';
 import { DatasourceColumnService } from '@/module/datasource/service/datasource-column.service';
 
 @Injectable()
@@ -27,6 +28,9 @@ export class DatasetService {
 
   @InjectRepository(DatasetField)
   private readonly datasetFieldRepository!: Repository<DatasetField>;
+
+  @InjectRepository(DatasetMetric)
+  private readonly datasetMetricRepository!: Repository<DatasetMetric>;
 
   @Inject(DatasourceService)
   private readonly datasourceService!: DatasourceService;
@@ -261,8 +265,197 @@ export class DatasetService {
     return `This action returns all dataset`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} dataset`;
+  /**
+   * 查询所有数据集（带完整信息）
+   * 优化：使用单次查询获取所有数据，避免 N+1 问题
+   */
+  async findAllWithDetails() {
+    // 1. 查询所有数据集及关联的数据源和主表
+    const datasets = await this.datasetRepository.find({
+      relations: ['datasource', 'mainTable'],
+    });
+
+    if (datasets.length === 0) {
+      return [];
+    }
+
+    const datasetIds = datasets.map(d => d.id);
+
+    // 2. 批量查询所有关联的表
+    const allTables = await this.datasetTableRepository.find({
+      where: { datasetId: In(datasetIds) },
+    });
+
+    // 3. 批量查询所有字段
+    const allFields = await this.datasetFieldRepository.find({
+      where: { dataSetId: In(datasetIds) },
+      relations: ['table'],
+      order: { id: 'ASC' },
+    });
+
+    // 4. 批量查询所有指标
+    const allMetrics = await this.datasetMetricRepository.find({
+      where: { dataSetId: In(datasetIds) },
+      relations: ['field', 'leftOperandField', 'rightOperandField', 'sourceMetric', 'leftMetric', 'rightMetricOperandField', 'baseMetric', 'timeField'],
+      order: { id: 'ASC' },
+    });
+
+    // 5. 按 datasetId 分组
+    const tablesMap = this.groupByDatasetId(allTables);
+    const fieldsMap = this.groupByDatasetId(allFields);
+    const metricsMap = this.groupByDatasetId(allMetrics);
+
+    // 6. 转换格式
+    return datasets.map(dataset => 
+      this.transformDataset(
+        dataset,
+        tablesMap.get(dataset.id) || [],
+        fieldsMap.get(dataset.id) || [],
+        metricsMap.get(dataset.id) || [],
+      )
+    );
+  }
+
+  /**
+   * 根据ID查询单个数据集（带完整信息）
+   */
+  async findOne(id: number) {
+    // 查询数据集基本信息及关联的数据源和主表
+    const dataset = await this.datasetRepository.findOne({
+      where: { id },
+      relations: ['datasource', 'mainTable'],
+    });
+
+    if (!dataset) {
+      return null;
+    }
+
+    // 查询关联的表
+    const tables = await this.datasetTableRepository.find({
+      where: { datasetId: id },
+    });
+
+    // 查询字段信息
+    const fields = await this.datasetFieldRepository.find({
+      where: { dataSetId: id },
+      relations: ['table'],
+      order: { id: 'ASC' },
+    });
+
+    // 查询指标信息
+    const metrics = await this.datasetMetricRepository.find({
+      where: { dataSetId: id },
+      relations: ['field', 'leftOperandField', 'rightOperandField', 'sourceMetric', 'leftMetric', 'rightMetricOperandField', 'baseMetric', 'timeField'],
+      order: { id: 'ASC' },
+    });
+
+    // 使用 transformDataset 转换格式
+    return this.transformDataset(dataset, tables, fields, metrics);
+  }
+
+  /**
+   * 按 datasetId 分组
+   */
+  private groupByDatasetId<T extends { dataSetId?: number; datasetId?: number }>(
+    items: T[]
+  ): Map<number, T[]> {
+    const map = new Map<number, T[]>();
+    for (const item of items) {
+      const key = item.dataSetId || item.datasetId || 0;
+      const list = map.get(key) || [];
+      list.push(item);
+      map.set(key, list);
+    }
+    return map;
+  }
+
+  /**
+   * 转换数据集实体为返回格式
+   */
+  private transformDataset(
+    dataset: Dataset,
+    tables: DatasetTable[],
+    fields: DatasetField[],
+    metrics: DatasetMetric[],
+  ) {
+    return {
+      id: dataset.id,
+      name: dataset.name,
+      description: dataset.description,
+      type: dataset.type,
+      status: dataset.status,
+      mainTableId: dataset.mainTableId,
+      datasource: dataset.datasource ? {
+        id: dataset.datasource.id,
+        name: dataset.datasource.name,
+        type: dataset.datasource.type,
+      } : null,
+      mainTable: dataset.mainTable ? {
+        id: dataset.mainTable.id,
+        tableName: dataset.mainTable.tableName,
+        datasetName: dataset.mainTable.datasetName,
+      } : null,
+      tables: tables.map(table => ({
+        id: table.id,
+        tableId: table.tableId,
+        tableName: table.tableName,
+        datasetName: table.datasetName,
+        primaryFieldId: table.primaryFieldId,
+      })),
+      fields: fields.map(field => ({
+        id: field.id,
+        name: field.name,
+        alias: field.alias,
+        type: field.type,
+        description: field.description,
+        businessName: field.businessName,
+        isPrimaryKey: field.isPrimaryKey,
+        tableId: field.tableId,
+        tableName: field.table?.tableName,
+      })),
+      metrics: metrics.map(metric => this.transformMetric(metric)),
+    };
+  }
+
+  /**
+   * 转换指标实体为返回格式
+   */
+  private transformMetric(metric: DatasetMetric) {
+    return {
+      id: metric.id,
+      name: metric.name,
+      alias: metric.alias,
+      description: metric.description,
+      businessName: metric.businessName,
+      metricType: metric.metricType,
+      fieldId: metric.fieldId,
+      fieldName: metric.field?.name,
+      aggregateFunction: metric.aggregateFunction,
+      distinct: metric.distinct,
+      aggregateCondition: metric.aggregateCondition,
+      // 行级指标
+      leftOperand: metric.leftOperand,
+      leftOperandFieldName: metric.leftOperandField?.name,
+      rowOperator: metric.rowOperator,
+      rightOperand: metric.rightOperand,
+      rightOperandFieldName: metric.rightOperandField?.name,
+      // 后聚合指标
+      sourceMetricId: metric.sourceMetricId,
+      sourceMetricName: metric.sourceMetric?.name,
+      // 算术运算指标
+      leftMetricId: metric.leftMetricId,
+      leftMetricName: metric.leftMetric?.name,
+      arithmeticOperator: metric.arithmeticOperator,
+      rightMetricOperand: metric.rightMetricOperand,
+      rightMetricOperandFieldName: metric.rightMetricOperandField?.name,
+      // 同环比指标
+      baseMetricId: metric.baseMetricId,
+      baseMetricName: metric.baseMetric?.name,
+      timeFieldId: metric.timeFieldId,
+      timeFieldName: metric.timeField?.name,
+      periodType: metric.periodType,
+      calculationMode: metric.calculationMode,
+    };
   }
 
   update(id: number, updateDatasetDto: UpdateDatasetDto) {
