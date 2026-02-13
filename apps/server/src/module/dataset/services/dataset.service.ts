@@ -144,6 +144,16 @@ export class DatasetService {
           savedDatasetTables.map((t, index) => [selectedTables[index]!.id, t.id])
         );
 
+        // 如果传入了主表 ID，更新数据集的主表
+        if (request.mainTableId) {
+          const mainDatasetTableId = tableIdToDatasetTableId.get(request.mainTableId);
+          if (mainDatasetTableId) {
+            await manager.update(Dataset, saved.id, {
+              mainTableId: mainDatasetTableId,
+            });
+          }
+        }
+
         // 2. 创建 DatasetFields
         const datasetFields = await Promise.all(
           request.fields.map(async (field) => {

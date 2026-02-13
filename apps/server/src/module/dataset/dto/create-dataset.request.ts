@@ -10,6 +10,11 @@ export class CreateDatasetRequest {
   type: DatasetType;
   wideTableConfig?: Record<string, any>;
 
+  /**
+   * 主表 ID（关联到 datasource_tables 表）
+   */
+  mainTableId?: number;
+
   /*
    * 字段定义
    */
