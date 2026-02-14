@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { DatasetService } from './services/dataset.service';
 import { CreateDatasetRequest } from './dto/create-dataset.request';
-import { UpdateDatasetDto } from './dto/update-dataset.dto';
+import { UpdateDatasetRequest } from './dto/update-dataset.req';
 
 @Controller('dataset')
 export class DatasetController {
@@ -31,8 +31,8 @@ export class DatasetController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDatasetDto: UpdateDatasetDto) {
-    return this.datasetService.update(+id, updateDatasetDto);
+  update(@Body() updateDatasetRequest: UpdateDatasetRequest) {
+    return this.datasetService.update(updateDatasetRequest);
   }
 
   @Delete(':id')

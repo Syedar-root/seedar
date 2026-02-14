@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CreateDatasetRequest } from '../dto/create-dataset.request';
-import { UpdateDatasetDto } from '../dto/update-dataset.dto';
+import { UpdateDatasetRequest } from '../dto/update-dataset.req';
 import { Dataset } from '../entities/dataset.entity';
 import { DatasetTable } from '../entities/dataset-table.entity';
 import { DatasetJoin } from '../entities/dataset-join.entity';
@@ -14,6 +14,7 @@ import { ExceptionFactory } from '@/common/exceptions';
 import { DatasetField } from '../entities/dataset-field.entity';
 import { DatasetMetric } from '../entities/dataset-metric.entity';
 import { DatasourceColumnService } from '@/module/datasource/service/datasource-column.service';
+import { fieldManager, metricManager, joinManager, tableManager } from './helper/dataset.helper';
 
 @Injectable()
 export class DatasetService {
@@ -261,10 +262,6 @@ export class DatasetService {
     return savedDataset;
   }
 
-  findAll() {
-    return `This action returns all dataset`;
-  }
-
   /**
    * 查询所有数据集（带完整信息）
    * 优化：使用单次查询获取所有数据，避免 N+1 问题
@@ -458,8 +455,50 @@ export class DatasetService {
     };
   }
 
-  update(id: number, updateDatasetDto: UpdateDatasetDto) {
-    return `This action updates a #${id} dataset`;
+  async update(updateDatasetRequest: UpdateDatasetRequest) {
+    const { dataSetId, name, description, fields, metrics, joins, tables } = updateDatasetRequest;
+
+    // 1. 验证数据集是否存在
+    const dataset = await this.datasetRepository.findOne({
+      where: { id: dataSetId },
+    });
+
+    if (!dataset) {
+      throw new Error('数据集不存在');
+    }
+
+    // 2. 更新基本属性（name, description）
+    const updateData: Partial<Dataset> = {};
+    if (name !== undefined) {
+      updateData.name = name;
+    }
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await this.datasetRepository.update(dataSetId, updateData);
+    }
+
+    // 3. 使用事务处理所有更新操作
+    await this.datasetRepository.manager.transaction(async (manager) => {
+      // 调用各个管理器处理对应的实体操作
+      if (fields) {
+        await fieldManager.handle(manager, dataSetId, fields);
+      }
+      if (metrics) {
+        await metricManager.handle(manager, dataSetId, metrics);
+      }
+      if (joins) {
+        await joinManager.handle(manager, dataSetId, joins);
+      }
+      if (tables) {
+        await tableManager.handle(manager, dataSetId, tables);
+      }
+    });
+
+    // 4. 返回更新后的数据集完整信息
+    return this.findOne(dataSetId);
   }
 
   remove(id: number) {

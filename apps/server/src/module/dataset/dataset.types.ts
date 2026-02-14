@@ -126,3 +126,21 @@ export interface AggregateConditionConfig {
   /** 自定义SQL模板 */
   sqlTemplate?: string;
 }
+
+/**
+ * 更新数据集操作枚举
+ */
+export enum UpdateDatasetAction {
+  ADD_FIELD = 'addField',
+  ADD_METRIC = 'addMetric',
+  ADD_JOIN = 'addJoin',
+  ADD_TABLE = 'addTable',
+  UPDATE_FIELD = 'updateField',
+  UPDATE_METRIC = 'updateMetric',
+  UPDATE_JOIN = 'updateJoin',
+  UPDATE_TABLE = 'updateTable',
+  REMOVE_FIELD = 'removeField',
+  REMOVE_METRIC = 'removeMetric',
+  REMOVE_JOIN = 'removeJoin',
+  REMOVE_TABLE = 'removeTable',
+}
