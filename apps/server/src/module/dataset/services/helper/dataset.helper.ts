@@ -1,9 +1,9 @@
 import { EntityManager } from 'typeorm';
-import { DatasetField } from '../entities/dataset-field.entity';
-import { DatasetMetric } from '../entities/dataset-metric.entity';
-import { DatasetJoin } from '../entities/dataset-join.entity';
-import { DatasetTable } from '../entities/dataset-table.entity';
-import { Dataset } from '../entities/dataset.entity';
+import { DatasetField } from '../../entities/dataset-field.entity';
+import { DatasetMetric } from '../../entities/dataset-metric.entity';
+import { DatasetJoin } from '../../entities/dataset-join.entity';
+import { DatasetTable } from '../../entities/dataset-table.entity';
+import { Dataset } from '../../entities/dataset.entity';
 
 /**
  * 实体操作动作
@@ -35,8 +35,8 @@ export const fieldManager: IEntityManager<DatasetField> = {
   },
 
   async remove(manager, ids) {
-    if (ids && ids.length {
-      await manager > 0).delete(DatasetField, ids);
+    if (ids && ids.length > 0) {
+      await manager.delete(DatasetField, ids);
     }
   },
 
