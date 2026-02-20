@@ -7,7 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Dataset } from './dataset.entity';
-import { DatasetField } from './dataset-field.entity';
+import { DatasourceColumn } from '../../datasource/entities/datasource-column.entity';
 import {
   MetricType,
   MetricAggregateFunction,
@@ -60,13 +60,13 @@ export class DatasetMetric {
   // ==================== 通用配置 ====================
 
   /** 被计算的字段ID（行级指标、聚合指标使用） */
-  @Column({ name: 'field_id', type: 'int', nullable: true })
-  fieldId: number;
+  @Column({ name: 'data_source_column_id', type: 'int', nullable: true })
+  dataSourceColumnId: number;
 
   /** 被计算的源字段 */
-  @ManyToOne(() => DatasetField, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'field_id' })
-  field: DatasetField;
+  @ManyToOne(() => DatasourceColumn, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'data_source_column_id' })
+  dataSourceColumn: DatasourceColumn;
 
   // ==================== 行级指标配置 ====================
 
@@ -75,9 +75,9 @@ export class DatasetMetric {
   leftOperand: number;
 
   /** 行级指标表达式 - 左操作数字段 */
-  @ManyToOne(() => DatasetField, { onDelete: 'CASCADE', nullable: true })
+  @ManyToOne(() => DatasourceColumn, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'left_operand' })
-  leftOperandField: DatasetField;
+  leftOperandField: DatasourceColumn;
 
   /** 行级指标表达式 - 运算符 */
   @Column({ name: 'row_operator', type: 'varchar', length: 10, nullable: true })
@@ -88,9 +88,9 @@ export class DatasetMetric {
   rightOperand: number;
 
   /** 行级指标表达式 - 右操作数字段 */
-  @ManyToOne(() => DatasetField, { onDelete: 'CASCADE', nullable: true })
+  @ManyToOne(() => DatasourceColumn, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'right_operand' })
-  rightOperandField: DatasetField;
+  rightOperandField: DatasourceColumn;
 
   // ==================== 聚合指标配置 ====================
 
@@ -163,13 +163,13 @@ export class DatasetMetric {
   baseMetric: DatasetMetric;
 
   /** 同环比 - 时间字段ID */
-  @Column({ name: 'time_field_id', type: 'int', nullable: true })
-  timeFieldId: number;
+  @Column({ name: 'time_data_source_column_id', type: 'int', nullable: true })
+  timeDataSourceColumnId: number;
 
   /** 同环比 - 时间字段 */
-  @ManyToOne(() => DatasetField, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'time_field_id' })
-  timeField: DatasetField;
+  @ManyToOne(() => DatasourceColumn, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'time_data_source_column_id' })
+  timeDataSourceColumn: DatasourceColumn;
 
   /** 同环比 - 类型 */
   @Column({

@@ -373,14 +373,14 @@ export class DatasetService {
     const metrics = await this.datasetMetricRepository.find({
       where: { dataSetId: id },
       relations: [
-        'field',
+        'dataSourceColumn',
         'leftOperandField',
         'rightOperandField',
         'sourceMetric',
         'leftMetric',
         'rightMetricOperandField',
         'baseMetric',
-        'timeField',
+        'timeDataSourceColumn',
       ],
       order: { id: 'ASC' },
     });
@@ -468,17 +468,17 @@ export class DatasetService {
       description: metric.description,
       businessName: metric.businessName,
       metricType: metric.metricType,
-      fieldId: metric.fieldId,
-      fieldName: metric.field?.name,
+      dataSourceColumnId: metric.dataSourceColumnId,
+      dataSourceColumnName: metric.dataSourceColumn?.columnName,
       aggregateFunction: metric.aggregateFunction,
       distinct: metric.distinct,
       aggregateCondition: metric.aggregateCondition,
       // 行级指标
       leftOperand: metric.leftOperand,
-      leftOperandFieldName: metric.leftOperandField?.name,
+      leftOperandFieldName: metric.leftOperandField?.columnName,
       rowOperator: metric.rowOperator,
       rightOperand: metric.rightOperand,
-      rightOperandFieldName: metric.rightOperandField?.name,
+      rightOperandFieldName: metric.rightOperandField?.columnName,
       // 后聚合指标
       sourceMetricId: metric.sourceMetricId,
       sourceMetricName: metric.sourceMetric?.name,
@@ -491,8 +491,8 @@ export class DatasetService {
       // 同环比指标
       baseMetricId: metric.baseMetricId,
       baseMetricName: metric.baseMetric?.name,
-      timeFieldId: metric.timeFieldId,
-      timeFieldName: metric.timeField?.name,
+      timeDataSourceColumnId: metric.timeDataSourceColumnId,
+      timeDataSourceColumnName: metric.timeDataSourceColumn?.columnName,
       periodType: metric.periodType,
       calculationMode: metric.calculationMode,
     };
