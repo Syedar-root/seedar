@@ -19,8 +19,8 @@ export class DatasetTable {
   @Column({ name: 'dataset_id', type: 'int' })
   datasetId: number;
 
-  @Column({ name: 'table_id', type: 'int' })
-  tableId: number;
+  @Column({ name: 'datasource_table_id', type: 'int' })
+  datasourceTableId: number;
 
   @Column({ name: 'dataset_name', type: 'varchar', length: 100 })
   datasetName: string;
@@ -52,6 +52,6 @@ export class DatasetTable {
   @ManyToOne(() => DatasourceTable, (table) => table.datasetTables, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'table_id' })
-  table: DatasourceTable;
+  @JoinColumn({ name: 'datasource_table_id' })
+  datasourceTable: DatasourceTable;
 }

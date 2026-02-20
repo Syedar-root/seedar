@@ -30,8 +30,9 @@ export class DatasetController {
     return this.datasetService.findOne(+id);
   }
 
-  @Patch(':id')
+  @Patch()
   update(@Body() updateDatasetRequest: UpdateDatasetRequest) {
+    console.log(updateDatasetRequest);
     return this.datasetService.update(updateDatasetRequest);
   }
 

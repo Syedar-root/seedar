@@ -58,9 +58,13 @@ export class DatasourceTable {
   @OneToMany(() => DatasourceColumn, (column) => column.table)
   columns: DatasourceColumn[];
 
-  @OneToMany(() => DatasetTable, (datasetTable) => datasetTable.table, {
-    cascade: true,
-    onDelete: 'CASCADE',
-  })
+  @OneToMany(
+    () => DatasetTable,
+    (datasetTable) => datasetTable.datasourceTable,
+    {
+      cascade: true,
+      onDelete: 'CASCADE',
+    },
+  )
   datasetTables: DatasetTable[];
 }

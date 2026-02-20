@@ -8,13 +8,23 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { DatasourceService } from '@/module/datasource/service/datasource.service';
 import { DatasourceTableService } from '@/module/datasource/service/datasource-table.service';
-import { DatasetStatus, DatasetType, FieldType, JoinType } from '../dataset.types';
+import {
+  DatasetStatus,
+  DatasetType,
+  FieldType,
+  JoinType,
+} from '../dataset.types';
 import { DatasourceForeignKeyService } from '@/module/datasource/service/datasource-foreign-key.service';
 import { ExceptionFactory } from '@/common/exceptions';
 import { DatasetField } from '../entities/dataset-field.entity';
 import { DatasetMetric } from '../entities/dataset-metric.entity';
 import { DatasourceColumnService } from '@/module/datasource/service/datasource-column.service';
-import { fieldManager, metricManager, joinManager, tableManager } from './helper/dataset.helper';
+import {
+  fieldManager,
+  metricManager,
+  joinManager,
+  tableManager,
+} from './helper/dataset.helper';
 
 @Injectable()
 export class DatasetService {
@@ -38,7 +48,6 @@ export class DatasetService {
 
   @Inject(DatasourceForeignKeyService)
   private readonly datasourceForeignKeyService!: DatasourceForeignKeyService;
-
 
   @Inject(DatasourceTableService)
   private readonly datasourceTableService!: DatasourceTableService;
@@ -89,15 +98,16 @@ export class DatasetService {
 
         // 验证数据集字段
         if (!request.fields || request.fields.length === 0) {
-          ExceptionFactory.badRequest('数据集字段不能为空，必须包含至少一个字段');
+          ExceptionFactory.badRequest(
+            '数据集字段不能为空，必须包含至少一个字段',
+          );
         }
 
         // 获取每个表的主键列信息
         const tablePrimaryKeys = await Promise.all(
           selectedTableIds.map(async (tableId) => {
-            const columns = await this.datasourceColumnService.findByTableId(
-              tableId,
-            );
+            const columns =
+              await this.datasourceColumnService.findByTableId(tableId);
             return {
               tableId,
               primaryKeyColumns: columns.filter((col) => col.isPrimaryKey),
@@ -146,12 +156,17 @@ export class DatasetService {
 
         // 创建 tableId -> datasetTableId 映射
         const tableIdToDatasetTableId = new Map(
-          savedDatasetTables.map((t, index) => [selectedTables[index]!.id, t.id])
+          savedDatasetTables.map((t, index) => [
+            selectedTables[index]!.id,
+            t.id,
+          ]),
         );
 
         // 如果传入了主表 ID，更新数据集的主表
         if (request.mainTableId) {
-          const mainDatasetTableId = tableIdToDatasetTableId.get(request.mainTableId);
+          const mainDatasetTableId = tableIdToDatasetTableId.get(
+            request.mainTableId,
+          );
           if (mainDatasetTableId) {
             await manager.update(Dataset, saved.id, {
               mainTableId: mainDatasetTableId,
@@ -162,17 +177,19 @@ export class DatasetService {
         // 2. 创建 DatasetFields
         const datasetFields = await Promise.all(
           request.fields.map(async (field) => {
-            const datasourceColumn =
-              await this.datasourceColumnService.findOne(field.dataSourceColumnId);
+            const datasourceColumn = await this.datasourceColumnService.findOne(
+              field.dataSourceColumnId,
+            );
             return manager.create(DatasetField, {
               dataSetId: saved.id,
               dataSourceColumnId: field.dataSourceColumnId,
-              tableId: tableIdToDatasetTableId.get(field.tableId)!,  // 使用新的 tableId
+              tableId: tableIdToDatasetTableId.get(field.tableId)!, // 使用新的 tableId
               description: field.description,
               businessName: field.businessName,
               name: field.name,
               type: datasourceColumn?.normalizedType || FieldType.STRING,
-              isPrimaryKey: field.isPrimaryKey ?? datasourceColumn?.isPrimaryKey ?? false,
+              isPrimaryKey:
+                field.isPrimaryKey ?? datasourceColumn?.isPrimaryKey ?? false,
             });
           }),
         );
@@ -210,14 +227,18 @@ export class DatasetService {
         if (request.joins && request.joins.length > 0) {
           const datasetJoins = request.joins.map((join) => {
             // 根据 tableId 找到对应的 datasetTableId
-            const leftDatasetTableId = tableIdToDatasetTableId.get(join.leftTableId);
-            const rightDatasetTableId = tableIdToDatasetTableId.get(join.rightTableId);
+            // const leftDatasetTableId = tableIdToDatasetTableId.get(
+            //   join.leftTableId,
+            // );
+            // const rightDatasetTableId = tableIdToDatasetTableId.get(
+            //   join.rightTableId,
+            // );
 
             return manager.create(DatasetJoin, {
               dataset: { id: saved.id } as Dataset,
-              leftTableId: leftDatasetTableId!,
+              leftTableId: join.leftTableId,
               leftField: join.leftColumnId.toString(),
-              rightTableId: rightDatasetTableId!,
+              rightTableId: join.rightTableId,
               rightField: join.rightColumnId.toString(),
               joinType: join.joinType || JoinType.INNER,
             });
@@ -276,7 +297,7 @@ export class DatasetService {
       return [];
     }
 
-    const datasetIds = datasets.map(d => d.id);
+    const datasetIds = datasets.map((d) => d.id);
 
     // 2. 批量查询所有关联的表
     const allTables = await this.datasetTableRepository.find({
@@ -293,7 +314,16 @@ export class DatasetService {
     // 4. 批量查询所有指标
     const allMetrics = await this.datasetMetricRepository.find({
       where: { dataSetId: In(datasetIds) },
-      relations: ['field', 'leftOperandField', 'rightOperandField', 'sourceMetric', 'leftMetric', 'rightMetricOperandField', 'baseMetric', 'timeField'],
+      relations: [
+        'field',
+        'leftOperandField',
+        'rightOperandField',
+        'sourceMetric',
+        'leftMetric',
+        'rightMetricOperandField',
+        'baseMetric',
+        'timeField',
+      ],
       order: { id: 'ASC' },
     });
 
@@ -303,13 +333,13 @@ export class DatasetService {
     const metricsMap = this.groupByDatasetId(allMetrics);
 
     // 6. 转换格式
-    return datasets.map(dataset => 
+    return datasets.map((dataset) =>
       this.transformDataset(
         dataset,
         tablesMap.get(dataset.id) || [],
         fieldsMap.get(dataset.id) || [],
         metricsMap.get(dataset.id) || [],
-      )
+      ),
     );
   }
 
@@ -342,7 +372,16 @@ export class DatasetService {
     // 查询指标信息
     const metrics = await this.datasetMetricRepository.find({
       where: { dataSetId: id },
-      relations: ['field', 'leftOperandField', 'rightOperandField', 'sourceMetric', 'leftMetric', 'rightMetricOperandField', 'baseMetric', 'timeField'],
+      relations: [
+        'field',
+        'leftOperandField',
+        'rightOperandField',
+        'sourceMetric',
+        'leftMetric',
+        'rightMetricOperandField',
+        'baseMetric',
+        'timeField',
+      ],
       order: { id: 'ASC' },
     });
 
@@ -353,9 +392,9 @@ export class DatasetService {
   /**
    * 按 datasetId 分组
    */
-  private groupByDatasetId<T extends { dataSetId?: number; datasetId?: number }>(
-    items: T[]
-  ): Map<number, T[]> {
+  private groupByDatasetId<
+    T extends { dataSetId?: number; datasetId?: number },
+  >(items: T[]): Map<number, T[]> {
     const map = new Map<number, T[]>();
     for (const item of items) {
       const key = item.dataSetId || item.datasetId || 0;
@@ -382,24 +421,28 @@ export class DatasetService {
       type: dataset.type,
       status: dataset.status,
       mainTableId: dataset.mainTableId,
-      datasource: dataset.datasource ? {
-        id: dataset.datasource.id,
-        name: dataset.datasource.name,
-        type: dataset.datasource.type,
-      } : null,
-      mainTable: dataset.mainTable ? {
-        id: dataset.mainTable.id,
-        tableName: dataset.mainTable.tableName,
-        datasetName: dataset.mainTable.datasetName,
-      } : null,
-      tables: tables.map(table => ({
+      datasource: dataset.datasource
+        ? {
+            id: dataset.datasource.id,
+            name: dataset.datasource.name,
+            type: dataset.datasource.type,
+          }
+        : null,
+      mainTable: dataset.mainTable
+        ? {
+            id: dataset.mainTable.id,
+            tableName: dataset.mainTable.tableName,
+            datasetName: dataset.mainTable.datasetName,
+          }
+        : null,
+      tables: tables.map((table) => ({
         id: table.id,
-        tableId: table.tableId,
+        datasourceTableId: table.datasourceTableId,
         tableName: table.tableName,
         datasetName: table.datasetName,
         primaryFieldId: table.primaryFieldId,
       })),
-      fields: fields.map(field => ({
+      fields: fields.map((field) => ({
         id: field.id,
         name: field.name,
         alias: field.alias,
@@ -410,7 +453,7 @@ export class DatasetService {
         tableId: field.tableId,
         tableName: field.table?.tableName,
       })),
-      metrics: metrics.map(metric => this.transformMetric(metric)),
+      metrics: metrics.map((metric) => this.transformMetric(metric)),
     };
   }
 
@@ -456,7 +499,8 @@ export class DatasetService {
   }
 
   async update(updateDatasetRequest: UpdateDatasetRequest) {
-    const { dataSetId, name, description, fields, metrics, joins, tables } = updateDatasetRequest;
+    const { dataSetId, name, description, fields, metrics, joins, tables } =
+      updateDatasetRequest;
 
     // 1. 验证数据集是否存在
     const dataset = await this.datasetRepository.findOne({

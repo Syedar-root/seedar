@@ -49,7 +49,12 @@ export class DatasetMetric {
   description: string;
 
   /** 业务名称 */
-  @Column({ name: 'business_name', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'business_name',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   businessName: string;
 
   // ==================== 通用配置 ====================
@@ -90,7 +95,12 @@ export class DatasetMetric {
   // ==================== 聚合指标配置 ====================
 
   /** 聚合函数 */
-  @Column({ name: 'aggregate_function', type: 'enum', enum: MetricAggregateFunction, nullable: true })
+  @Column({
+    name: 'aggregate_function',
+    type: 'enum',
+    enum: MetricAggregateFunction,
+    nullable: true,
+  })
   aggregateFunction: MetricAggregateFunction;
 
   /** 是否去重（用于COUNT DISTINCT） */
@@ -124,7 +134,12 @@ export class DatasetMetric {
   leftMetric: DatasetMetric;
 
   /** 算术运算 - 运算符 */
-  @Column({ name: 'arithmetic_operator', type: 'varchar', length: 10, nullable: true })
+  @Column({
+    name: 'arithmetic_operator',
+    type: 'varchar',
+    length: 10,
+    nullable: true,
+  })
   arithmeticOperator: MetricOperator;
 
   /** 算术运算 - 右操作数（指标ID或数字） */
@@ -157,11 +172,21 @@ export class DatasetMetric {
   timeField: DatasetField;
 
   /** 同环比 - 类型 */
-  @Column({ name: 'period_type', type: 'enum', enum: PeriodOverPeriodType, nullable: true })
+  @Column({
+    name: 'period_type',
+    type: 'enum',
+    enum: PeriodOverPeriodType,
+    nullable: true,
+  })
   periodType: PeriodOverPeriodType;
 
   /** 同环比 - 计算模式 */
-  @Column({ name: 'calculation_mode', type: 'enum', enum: PeriodCalculationMode, nullable: true })
+  @Column({
+    name: 'calculation_mode',
+    type: 'enum',
+    enum: PeriodCalculationMode,
+    nullable: true,
+  })
   calculationMode: PeriodCalculationMode;
 
   /** 创建时间 */
