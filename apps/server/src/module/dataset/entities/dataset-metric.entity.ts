@@ -41,6 +41,7 @@ export class DatasetMetric {
   name: string;
 
   /** 指标别名（可选，用于展示） */
+  /** 已废弃 */
   @Column({ type: 'varchar', length: 255, nullable: true })
   alias: string;
 

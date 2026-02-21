@@ -8,7 +8,10 @@ import { DatasourceForeignKey } from '../entities/datasource-foreign-key.entity'
 import { CreateDatasourceRequest } from '../dto/create-datasource.request';
 import { validateDataSourceConfig } from '../datasource.validation';
 import { UpdateDatasourceRequest } from '../dto/update-datasource.request';
-import { DatasourceResponse, ForeignKeyResponse } from '../dto/datasource.response';
+import {
+  DatasourceResponse,
+  ForeignKeyResponse,
+} from '../dto/datasource.response';
 import { ExceptionFactory } from '../../../common/exceptions';
 import { LoggerService } from '@/logger/logger.service';
 import { KnexConnectionFactory } from '../knex-connection.factory';
@@ -83,7 +86,7 @@ export class DatasourceService {
     if (decryptedConfig.password && decryptedConfig.iv) {
       try {
         // 获取密钥
-        let key = this.configService.get<string>('AES_SECRET');
+        const key = this.configService.get<string>('AES_SECRET');
         if (!key) {
           throw new Error('未配置 AES_SECRET');
         }
@@ -699,7 +702,9 @@ export class DatasourceService {
       .andWhere('kcu.TABLE_SCHEMA', knexConnection.client.database())
       .andWhere('kcu.CONSTRAINT_NAME', 'PRIMARY');
 
-    const primaryKeyColumns = new Set(primaryKeysResult.map((row) => row.COLUMN_NAME));
+    const primaryKeyColumns = new Set(
+      primaryKeysResult.map((row) => row.COLUMN_NAME),
+    );
 
     return columnsResult.map((row, index) => ({
       columnId: index + 1,
@@ -744,7 +749,9 @@ export class DatasourceService {
       .andWhere('con.contype', 'p')
       .andWhere('att.attnum', 'con.conkey[1]');
 
-    const primaryKeyColumns = new Set(primaryKeysResult.map((row) => row.column_name));
+    const primaryKeyColumns = new Set(
+      primaryKeysResult.map((row) => row.column_name),
+    );
 
     return columnsResult.map((row, index) => ({
       columnId: index + 1,
@@ -780,7 +787,9 @@ export class DatasourceService {
       rawDataType: row.type,
       normalizedType: this.normalizeDataType(row.type),
       nullable: !row.type?.includes('NOT NULL'),
-      isPrimaryKey: row.is_in_primary_key === 1 || row.default_kind?.includes('MATERIALIZED'),
+      isPrimaryKey:
+        row.is_in_primary_key === 1 ||
+        row.default_kind?.includes('MATERIALIZED'),
     }));
   }
 
@@ -904,9 +913,7 @@ export class DatasourceService {
   /**
    * 获取 MySQL 外键关系
    */
-  private async getMySqlForeignKeys(
-    knexConnection: knex.Knex,
-  ): Promise<
+  private async getMySqlForeignKeys(knexConnection: knex.Knex): Promise<
     Array<{
       fkName: string;
       sourceTableName: string;
@@ -943,9 +950,7 @@ export class DatasourceService {
   /**
    * 获取 PostgreSQL 外键关系
    */
-  private async getPostgresForeignKeys(
-    knexConnection: knex.Knex,
-  ): Promise<
+  private async getPostgresForeignKeys(knexConnection: knex.Knex): Promise<
     Array<{
       fkName: string;
       sourceTableName: string;
@@ -987,9 +992,7 @@ export class DatasourceService {
    * ClickHouse 目前主要支持 Engine=MySQL 的外键查询
    * 标准 ClickHouse 表本身不强制外键约束
    */
-  private async getClickHouseForeignKeys(
-    knexConnection: knex.Knex,
-  ): Promise<
+  private async getClickHouseForeignKeys(knexConnection: knex.Knex): Promise<
     Array<{
       fkName: string;
       sourceTableName: string;
@@ -1002,10 +1005,7 @@ export class DatasourceService {
     // 对于使用 MySQL 引擎的表，可以尝试查询
     try {
       const result = await knexConnection
-        .select(
-          'name as fk_name',
-          'expression',
-        )
+        .select('name as fk_name', 'expression')
         .from('system.settings')
         .where('name', 'allow_system_settings');
 
