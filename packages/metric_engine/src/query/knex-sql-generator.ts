@@ -4,7 +4,14 @@ import { Field } from '../core/field';
 import { Filter, TimeFilter } from './filter';
 import { Join } from '../core/join';
 import { Operator } from '../core/types';
-import { AggregateMetric, SubQueryMetric, RowLevelMetric, ArithmeticMetric, PostAggregateMetric } from '../metrics/metric-classes';
+import {
+  Metric,
+  AggregateMetric,
+  SubQueryMetric,
+  RowLevelMetric,
+  ArithmeticMetric,
+  PostAggregateMetric,
+} from '../metrics/metric-classes';
 import { AliasRegistry } from './alias-registry';
 
 /**
@@ -19,15 +26,17 @@ export class KnexSQLGenerator {
    */
   static initializeKnex(config?: KnexType.Config) {
     if (!this.knexInstance) {
-      this.knexInstance = knex(config || {
-        client: 'mysql2',
-        connection: {
-          host: 'localhost',
-          user: 'root',
-          password: '2586603nnj',
-          database: 'metric_test'
+      this.knexInstance = knex(
+        config || {
+          client: 'mysql2',
+          connection: {
+            host: 'localhost',
+            user: 'root',
+            password: '2586603nnj',
+            database: 'metric_test',
+          },
         }
-      });
+      );
     }
     return this.knexInstance;
   }
@@ -50,13 +59,17 @@ export class KnexSQLGenerator {
 
     // 别名应该在构建 Query 时已经分配好，这里直接使用
     if (!query.mainTable.alias) {
-      throw new Error('Query 的主表必须已分配别名，请先调用 QueryBuilder.assignTableAliases()');
+      throw new Error(
+        'Query 的主表必须已分配别名，请先调用 QueryBuilder.assignTableAliases()'
+      );
     }
 
     let queryBuilder = knex(query.mainTable.name);
     // 如果主表有别名
     if (query.mainTable.alias) {
-      queryBuilder = knex(`${query.mainTable.name} as ${query.mainTable.alias}`);
+      queryBuilder = knex(
+        `${query.mainTable.name} as ${query.mainTable.alias}`
+      );
     }
 
     // 添加JOIN
@@ -74,7 +87,7 @@ export class KnexSQLGenerator {
       const groupByFields: string[] = [];
       const hasJoins = query.joins.length > 0;
 
-      query.dimensions.forEach(dim => {
+      query.dimensions.forEach((dim) => {
         let fieldExpr = dim.field.name;
         if (hasJoins) {
           // 如果有JOIN，需要确定字段属于哪个表
@@ -82,14 +95,18 @@ export class KnexSQLGenerator {
           const fieldInMainTable = query.mainTable.getField(dim.field.name);
 
           if (fieldInMainTable) {
-            fieldExpr = mainTableAlias ? `${mainTableAlias}.${dim.field.name}` : dim.field.name;
+            fieldExpr = mainTableAlias
+              ? `${mainTableAlias}.${dim.field.name}`
+              : dim.field.name;
           } else {
             // 在JOIN表中查找
             for (const join of query.joins) {
               const joinTableAlias = join.rightTable.alias;
               const fieldInJoinTable = join.rightTable.getField(dim.field.name);
               if (fieldInJoinTable) {
-                fieldExpr = joinTableAlias ? `${joinTableAlias}.${dim.field.name}` : dim.field.name;
+                fieldExpr = joinTableAlias
+                  ? `${joinTableAlias}.${dim.field.name}`
+                  : dim.field.name;
                 break;
               }
             }
@@ -103,8 +120,10 @@ export class KnexSQLGenerator {
 
     // 获取SQL和绑定参数
     // 如果需要预聚合（内层子查询），使用 Knex 构建 inner 子查询并在 FROM 使用 (inner) AS inner_metrics（兼容多数方言）
-    const needsPreAggregation = query.metrics.some(metric =>
-      (metric instanceof RowLevelMetric) || (metric instanceof ArithmeticMetric)
+    // TODO: 如果有 PostAggregateMetric 或 ArithmeticMetric 的 filter，需要在outer层进行计算
+    const needsPreAggregation = query.metrics.some(
+      (metric) =>
+        metric instanceof RowLevelMetric || metric instanceof ArithmeticMetric
     );
 
     if (needsPreAggregation && query.dimensions.length > 0) {
@@ -116,26 +135,34 @@ export class KnexSQLGenerator {
       const hasJoins = query.joins.length > 0;
 
       // dims
-      query.dimensions.forEach(dim => {
+      query.dimensions.forEach((dim) => {
         const fieldExpr = (() => {
           if (!hasJoins) return dim.field.name;
           const mainTableAlias = query.mainTable.alias;
           const fieldInMain = query.mainTable.getField(dim.field.name);
-          if (fieldInMain) return mainTableAlias ? `${mainTableAlias}.${dim.field.name}` : dim.field.name;
+          if (fieldInMain)
+            return mainTableAlias
+              ? `${mainTableAlias}.${dim.field.name}`
+              : dim.field.name;
           for (const join of query.joins) {
             const ja = join.rightTable.alias;
-            if (join.rightTable.getField(dim.field.name)) return ja ? `${ja}.${dim.field.name}` : dim.field.name;
+            if (join.rightTable.getField(dim.field.name))
+              return ja ? `${ja}.${dim.field.name}` : dim.field.name;
           }
           return dim.field.name;
         })();
 
-        innerSelectItems.push(this.getKnex().raw(`?? AS ??`, [fieldExpr, `column_${colIdx}`]));
+        innerSelectItems.push(
+          this.getKnex().raw(`?? AS ??`, [fieldExpr, `column_${colIdx}`])
+        );
         colIdx++;
       });
 
       // base metrics for inner
-      const baseMetrics = query.metrics.filter(m => (m instanceof AggregateMetric) || (m instanceof RowLevelMetric));
-      baseMetrics.forEach(metric => {
+      const baseMetrics = query.metrics.filter(
+        (m) => m instanceof AggregateMetric || m instanceof RowLevelMetric
+      );
+      baseMetrics.forEach((metric) => {
         const englishAlias = `column_${colIdx}`;
         let metricSql = metric.toSQL();
         if (hasJoins) {
@@ -144,13 +171,18 @@ export class KnexSQLGenerator {
         if (metric instanceof RowLevelMetric) {
           metricSql = `SUM(${metricSql})`;
         }
-        innerSelectItems.push(this.getKnex().raw(`${metricSql} AS ??`, [englishAlias]));
+        innerSelectItems.push(
+          this.getKnex().raw(`${metricSql} AS ??`, [englishAlias])
+        );
         colIdx++;
       });
 
       // build inner query
       let innerBuilder = knexInstance(query.mainTable.name);
-      if (query.mainTable.alias) innerBuilder = knexInstance(`${query.mainTable.name} as ${query.mainTable.alias}`);
+      if (query.mainTable.alias)
+        innerBuilder = knexInstance(
+          `${query.mainTable.name} as ${query.mainTable.alias}`
+        );
       innerBuilder = this.applyJoins(innerBuilder, query);
       innerBuilder = this.applyFilters(innerBuilder, query);
       innerBuilder = innerBuilder.select(innerSelectItems);
@@ -158,19 +190,25 @@ export class KnexSQLGenerator {
       // group by dims
       if (query.dimensions.length > 0) {
         const groupByFields: string[] = [];
-        query.dimensions.forEach(dim => {
+        query.dimensions.forEach((dim) => {
           let fieldExpr = dim.field.name;
           if (hasJoins) {
             const mainTableAlias = query.mainTable.alias;
             const fieldInMainTable = query.mainTable.getField(dim.field.name);
             if (fieldInMainTable) {
-              fieldExpr = mainTableAlias ? `${mainTableAlias}.${dim.field.name}` : dim.field.name;
+              fieldExpr = mainTableAlias
+                ? `${mainTableAlias}.${dim.field.name}`
+                : dim.field.name;
             } else {
               for (const join of query.joins) {
                 const joinTableAlias = join.rightTable.alias;
-                const fieldInJoinTable = join.rightTable.getField(dim.field.name);
+                const fieldInJoinTable = join.rightTable.getField(
+                  dim.field.name
+                );
                 if (fieldInJoinTable) {
-                  fieldExpr = joinTableAlias ? `${joinTableAlias}.${dim.field.name}` : dim.field.name;
+                  fieldExpr = joinTableAlias
+                    ? `${joinTableAlias}.${dim.field.name}`
+                    : dim.field.name;
                   break;
                 }
               }
@@ -186,21 +224,33 @@ export class KnexSQLGenerator {
       let outerIdx = 1;
       // dims
       query.dimensions.forEach(() => {
-        outerSelectItems.push(this.getKnex().raw(`inner_metrics.?? AS ??`, [`column_${outerIdx}`, `column_${outerIdx}`]));
+        outerSelectItems.push(
+          this.getKnex().raw(`inner_metrics.?? AS ??`, [
+            `column_${outerIdx}`,
+            `column_${outerIdx}`,
+          ])
+        );
         outerIdx++;
       });
 
       // map base metric to inner column index
       const baseMetricStart = query.dimensions.length + 1;
       const baseMetricColumnFor = new Map<any, number>();
-      baseMetrics.forEach((m, i) => baseMetricColumnFor.set(m, baseMetricStart + i));
+      baseMetrics.forEach((m, i) =>
+        baseMetricColumnFor.set(m, baseMetricStart + i)
+      );
 
       // final metrics
-      query.metrics.forEach(metric => {
+      query.metrics.forEach((metric) => {
         const englishAlias = `column_${outerIdx}`;
         if (baseMetricColumnFor.has(metric)) {
           const idx = baseMetricColumnFor.get(metric);
-          outerSelectItems.push(this.getKnex().raw(`inner_metrics.?? AS ??`, [`column_${idx}`, englishAlias]));
+          outerSelectItems.push(
+            this.getKnex().raw(`inner_metrics.?? AS ??`, [
+              `column_${idx}`,
+              englishAlias,
+            ])
+          );
         } else if (metric instanceof ArithmeticMetric) {
           const leftOp = (metric as any).leftMetric;
           const rightOp = (metric as any).rightOperand;
@@ -209,7 +259,8 @@ export class KnexSQLGenerator {
             if (op === null || op === undefined) return 'NULL';
             if (typeof op === 'number') return String(op);
             for (const [bm, idx] of baseMetricColumnFor.entries()) {
-              if (bm === op || (bm.name && op.name && bm.name === op.name)) return `inner_metrics.column_${idx}`;
+              if (bm === op || (bm.name && op.name && bm.name === op.name))
+                return `inner_metrics.column_${idx}`;
             }
             if (typeof op.toSQL === 'function') return op.toSQL();
             if (op.getFullName) return op.getFullName();
@@ -217,27 +268,52 @@ export class KnexSQLGenerator {
           };
           const leftSql = resolveOperandToInner(leftOp);
           const rightSql = resolveOperandToInner(rightOp);
-          outerSelectItems.push(this.getKnex().raw(`(${leftSql} ${operator} ${rightSql}) AS ??`, [englishAlias]));
+          outerSelectItems.push(
+            this.getKnex().raw(`(${leftSql} ${operator} ${rightSql}) AS ??`, [
+              englishAlias,
+            ])
+          );
         } else if (metric instanceof SubQueryMetric) {
-          const queryContext: any = { tableAliases: {}, mainTable: query.mainTable, joins: query.joins };
-          queryContext.tableAliases[query.mainTable.name] = query.mainTable.alias || query.mainTable.name;
-          query.joins.forEach(join => { queryContext.tableAliases[join.rightTable.name] = join.rightTable.alias || join.rightTable.name; });
-          const subSql = `(${(metric as any).generateSubQuerySQL(queryContext)})`;
-          outerSelectItems.push(this.getKnex().raw(`${subSql} AS ??`, [englishAlias]));
+          const queryContext: any = {
+            tableAliases: {},
+            mainTable: query.mainTable,
+            joins: query.joins,
+          };
+          queryContext.tableAliases[query.mainTable.name] =
+            query.mainTable.alias || query.mainTable.name;
+          query.joins.forEach((join) => {
+            queryContext.tableAliases[join.rightTable.name] =
+              join.rightTable.alias || join.rightTable.name;
+          });
+          const subSql = `(${(metric as any).generateSubQuerySQL(
+            queryContext
+          )})`;
+          outerSelectItems.push(
+            this.getKnex().raw(`${subSql} AS ??`, [englishAlias])
+          );
         } else if (metric instanceof PostAggregateMetric) {
           // PostAggregateMetric 应该引用 inner 层的列
           const refMetric = (metric as any).metric;
-          const refIndex = baseMetrics.findIndex(bm => bm.name === refMetric.name);
+          const refIndex = baseMetrics.findIndex(
+            (bm) => bm.name === refMetric.name
+          );
           if (refIndex >= 0) {
             // baseMetricStart 是 inner 层第一个指标列的位置
             // refIndex 是被引用指标在 baseMetrics 数组中的索引
             // 所以 column_X = baseMetricStart + refIndex
             const refColumnIdx = baseMetricStart + refIndex;
             const funcName = metric.function.toUpperCase();
-            outerSelectItems.push(this.getKnex().raw(`${funcName}(inner_metrics.??) AS ??`, [`column_${refColumnIdx}`, englishAlias]));
+            outerSelectItems.push(
+              this.getKnex().raw(`${funcName}(inner_metrics.??) AS ??`, [
+                `column_${refColumnIdx}`,
+                englishAlias,
+              ])
+            );
           } else {
             // fallback: 如果找不到被引用的指标，使用 metric.toSQL()
-            outerSelectItems.push(this.getKnex().raw(`${metric.toSQL()} AS ??`, [englishAlias]));
+            outerSelectItems.push(
+              this.getKnex().raw(`${metric.toSQL()} AS ??`, [englishAlias])
+            );
           }
         } else {
           // fallback: use metric.toSQL()
@@ -246,53 +322,73 @@ export class KnexSQLGenerator {
             // reuse simple replacement
             metricSql = this.resolveFieldReferencesInMetric(metricSql, query);
           }
-          outerSelectItems.push(this.getKnex().raw(`${metricSql} AS ??`, [englishAlias]));
+          outerSelectItems.push(
+            this.getKnex().raw(`${metricSql} AS ??`, [englishAlias])
+          );
         }
         outerIdx++;
       });
 
       // 检查是否有 PostAggregateMetric，需要在外层添加 GROUP BY
-      const hasPostAggregateMetric = query.metrics.some(m => m instanceof PostAggregateMetric);
-      let outerBuilder = knexInstance.select(outerSelectItems).from(innerBuilder.as('inner_metrics'));
+      const hasPostAggregateMetric = query.metrics.some(
+        (m) => m instanceof PostAggregateMetric
+      );
+      let outerBuilder = knexInstance
+        .select(outerSelectItems)
+        .from(innerBuilder.as('inner_metrics'));
       if (hasPostAggregateMetric && query.dimensions.length > 0) {
         // PostAggregateMetric 需要按维度列分组
-        const groupByColumns = query.dimensions.map((_, idx) => `inner_metrics.column_${idx + 1}`);
+        const groupByColumns = query.dimensions.map(
+          (_, idx) => `inner_metrics.column_${idx + 1}`
+        );
         outerBuilder = outerBuilder.groupBy(groupByColumns);
       }
 
       const result = outerBuilder.toSQL();
       return {
         sql: result.sql,
-        bindings: [...result.bindings]
+        bindings: [...result.bindings],
       };
     }
 
     const result = queryBuilder.toSQL();
     return {
       sql: result.sql,
-      bindings: [...result.bindings] // 转换为可变数组
+      bindings: [...result.bindings], // 转换为可变数组
     };
   }
 
   /**
    * 应用JOIN操作
    */
-  private static applyJoins(queryBuilder: KnexType.QueryBuilder, query: Query): KnexType.QueryBuilder {
+  private static applyJoins(
+    queryBuilder: KnexType.QueryBuilder,
+    query: Query
+  ): KnexType.QueryBuilder {
     for (const join of query.joins) {
       const joinType = this.getJoinType(join.type);
-      const rightTable = join.rightTable.alias ? `${join.rightTable.name} as ${join.rightTable.alias}` : join.rightTable.name;
+      const rightTable = join.rightTable.alias
+        ? `${join.rightTable.name} as ${join.rightTable.alias}`
+        : join.rightTable.name;
 
       // 构建JOIN条件
       const knexInstance = this.getKnex();
-      queryBuilder = (queryBuilder as any)[joinType](rightTable, function(this: any) {
-        for (const condition of join.conditions) {
-          const leftTableAlias = join.leftTable.alias;
-          const rightTableAlias = join.rightTable.alias;
-          const leftField = leftTableAlias ? `${leftTableAlias}.${condition.leftField}` : condition.leftField;
-          const rightField = rightTableAlias ? `${rightTableAlias}.${condition.rightField}` : condition.rightField;
-          this.on(knexInstance.raw(`${leftField} = ${rightField}`));
+      queryBuilder = (queryBuilder as any)[joinType](
+        rightTable,
+        function (this: any) {
+          for (const condition of join.conditions) {
+            const leftTableAlias = join.leftTable.alias;
+            const rightTableAlias = join.rightTable.alias;
+            const leftField = leftTableAlias
+              ? `${leftTableAlias}.${condition.leftField}`
+              : condition.leftField;
+            const rightField = rightTableAlias
+              ? `${rightTableAlias}.${condition.rightField}`
+              : condition.rightField;
+            this.on(knexInstance.raw(`${leftField} = ${rightField}`));
+          }
         }
-      });
+      );
     }
 
     return queryBuilder;
@@ -301,7 +397,10 @@ export class KnexSQLGenerator {
   /**
    * 应用WHERE过滤条件
    */
-  private static applyFilters(queryBuilder: KnexType.QueryBuilder, query: Query): KnexType.QueryBuilder {
+  private static applyFilters(
+    queryBuilder: KnexType.QueryBuilder,
+    query: Query
+  ): KnexType.QueryBuilder {
     for (const filter of query.filters) {
       queryBuilder = this.applyFilter(queryBuilder, filter, query);
     }
@@ -312,7 +411,11 @@ export class KnexSQLGenerator {
   /**
    * 应用单个过滤条件
    */
-  private static applyFilter(queryBuilder: KnexType.QueryBuilder, filter: Filter, query: Query): KnexType.QueryBuilder {
+  private static applyFilter(
+    queryBuilder: KnexType.QueryBuilder,
+    filter: Filter,
+    query: Query
+  ): KnexType.QueryBuilder {
     // 特殊处理TimeFilter
     if (filter instanceof TimeFilter) {
       return queryBuilder.where(this.getKnex().raw(filter.toSQL()));
@@ -323,24 +426,36 @@ export class KnexSQLGenerator {
     if (fieldObj && fieldObj.name) {
       // check main table
       if (query.mainTable.getField(fieldObj.name)) {
-        fieldName = (query.mainTable.alias ? `${query.mainTable.alias}` : query.mainTable.name) + `.${fieldObj.name}`;
+        fieldName =
+          (query.mainTable.alias
+            ? `${query.mainTable.alias}`
+            : query.mainTable.name) + `.${fieldObj.name}`;
       } else {
         // check joins
         let found = false;
         for (const join of query.joins) {
           if (join.rightTable.getField(fieldObj.name)) {
-            fieldName = (join.rightTable.alias ? `${join.rightTable.alias}` : join.rightTable.name) + `.${fieldObj.name}`;
+            fieldName =
+              (join.rightTable.alias
+                ? `${join.rightTable.alias}`
+                : join.rightTable.name) + `.${fieldObj.name}`;
             found = true;
             break;
           }
         }
         if (!found) {
           // fallback to raw getFullName
-          fieldName = fieldObj.getFullName ? fieldObj.getFullName() : fieldObj.name;
+          fieldName = fieldObj.getFullName
+            ? fieldObj.getFullName()
+            : fieldObj.name;
         }
       }
     } else {
-      fieldName = filter.field.getFullName ? filter.field.getFullName() : String(filter.field);
+      if (filter.field instanceof Field) {
+        fieldName = filter.field.getFullName();
+      } else {
+        fieldName = `(${filter.field.toSQL()})`;
+      }
     }
 
     switch (filter.operator) {
@@ -372,10 +487,16 @@ export class KnexSQLGenerator {
         return queryBuilder.where(fieldName, 'like', filter.value);
 
       case Operator.IN:
-        return queryBuilder.whereIn(fieldName, Array.isArray(filter.value) ? filter.value : [filter.value]);
+        return queryBuilder.whereIn(
+          fieldName,
+          Array.isArray(filter.value) ? filter.value : [filter.value]
+        );
 
       case Operator.NOT_IN:
-        return queryBuilder.whereNotIn(fieldName, Array.isArray(filter.value) ? filter.value : [filter.value]);
+        return queryBuilder.whereNotIn(
+          fieldName,
+          Array.isArray(filter.value) ? filter.value : [filter.value]
+        );
 
       case Operator.IS_NULL:
         return queryBuilder.whereNull(fieldName);
@@ -385,7 +506,11 @@ export class KnexSQLGenerator {
 
       default:
         // 对于不支持的操作符，使用raw SQL
-        return queryBuilder.where(this.getKnex().raw(`${fieldName} ${filter.operator} ?`, [filter.value]));
+        return queryBuilder.where(
+          this.getKnex().raw(`${fieldName} ${filter.operator} ?`, [
+            filter.value,
+          ])
+        );
     }
   }
 
@@ -399,7 +524,7 @@ export class KnexSQLGenerator {
     const hasJoins = query.joins.length > 0;
 
     // 添加维度（带别名和注释）
-    query.dimensions.forEach(dim => {
+    query.dimensions.forEach((dim) => {
       const englishAlias = `column_${columnIndex}`;
       const chineseName = dim.alias || dim.field.name;
 
@@ -411,14 +536,18 @@ export class KnexSQLGenerator {
         const fieldInMainTable = query.mainTable.getField(dim.field.name);
 
         if (fieldInMainTable) {
-          fieldExpr = mainTableAlias ? `${mainTableAlias}.${dim.field.name}` : dim.field.name;
+          fieldExpr = mainTableAlias
+            ? `${mainTableAlias}.${dim.field.name}`
+            : dim.field.name;
         } else {
           // 在JOIN表中查找
           for (const join of query.joins) {
             const joinTableAlias = join.rightTable.alias;
             const fieldInJoinTable = join.rightTable.getField(dim.field.name);
             if (fieldInJoinTable) {
-              fieldExpr = joinTableAlias ? `${joinTableAlias}.${dim.field.name}` : dim.field.name;
+              fieldExpr = joinTableAlias
+                ? `${joinTableAlias}.${dim.field.name}`
+                : dim.field.name;
               break;
             }
           }
@@ -433,7 +562,7 @@ export class KnexSQLGenerator {
     });
 
     // 添加指标
-    query.metrics.forEach(metric => {
+    query.metrics.forEach((metric) => {
       const englishAlias = `column_${columnIndex}`;
       const chineseName = metric.alias || metric.name;
 
@@ -445,11 +574,13 @@ export class KnexSQLGenerator {
         const queryContext: any = {
           tableAliases: {},
           mainTable: query.mainTable,
-          joins: query.joins
+          joins: query.joins,
         };
-        queryContext.tableAliases[query.mainTable.name] = query.mainTable.alias || query.mainTable.name;
-        query.joins.forEach(join => {
-          queryContext.tableAliases[join.rightTable.name] = join.rightTable.alias || join.rightTable.name;
+        queryContext.tableAliases[query.mainTable.name] =
+          query.mainTable.alias || query.mainTable.name;
+        query.joins.forEach((join) => {
+          queryContext.tableAliases[join.rightTable.name] =
+            join.rightTable.alias || join.rightTable.name;
         });
         // generateSubQuerySQL will replace placeholders like {id} with proper alias.column
         metricSql = `(${(metric as any).generateSubQuerySQL(queryContext)})`;
@@ -476,7 +607,11 @@ export class KnexSQLGenerator {
   /**
    * 根据是否有 GROUP BY，将行级/算术指标包装为聚合表达式
    */
-  private static wrapMetricForGroup(metric: any, metricSql: string, query: Query): string {
+  private static wrapMetricForGroup(
+    metric: any,
+    metricSql: string,
+    query: Query
+  ): string {
     // 保持已有的聚合/子查询/后聚合指标不变
     if (
       metric instanceof AggregateMetric ||
@@ -501,7 +636,11 @@ export class KnexSQLGenerator {
       const aggOperand = (op: any): string => {
         if (op === null || op === undefined) return 'NULL';
         if (typeof op === 'number') return String(op);
-        if (op instanceof AggregateMetric || op instanceof SubQueryMetric || op.constructor.name === 'PostAggregateMetric') {
+        if (
+          op instanceof AggregateMetric ||
+          op instanceof SubQueryMetric ||
+          op.constructor.name === 'PostAggregateMetric'
+        ) {
           return op.toSQL();
         }
         if (op instanceof ArithmeticMetric) {
@@ -530,49 +669,96 @@ export class KnexSQLGenerator {
   /**
    * 解析指标中的字段引用，确保在JOIN查询中字段引用不歧义
    */
-  private static resolveFieldReferencesInMetric(metricSql: string, query: Query): string {
+  private static resolveFieldReferencesInMetric(
+    metricSql: string,
+    query: Query
+  ): string {
     // 处理各种字段歧义问题，包括简单的字段引用和CASE WHEN条件
 
-    // 常见的字段名列表
-    const commonFields = ['id', 'status', 'name', 'user_id', 'module_id', 'duration_seconds', 'access_time',
-                         'project_id', 'task_id', 'employee_id', 'hours', 'entry_date', 'budget', 'hourly_rate'];
+    // 1. 提取所有不带表别名的字段引用
+    // 正则表达式：匹配单词边界，前面不是点号或字母数字，后面可以是各种SQL符号
+    const fieldRegex =
+      /(?<!\w\.)\b([a-zA-Z_][a-zA-Z0-9_]*)\b(?=[\s,)+*;=<>!])/g;
 
-    for (const fieldName of commonFields) {
-      // 使用正则表达式查找不带表别名的字段引用，但避免匹配表别名本身
-      // 这个正则表达式匹配单词边界，但不匹配已经在表别名中的字段
-      const regex = new RegExp(`(?<!\\w\\.)\\b${fieldName}\\b`, 'g');
+    // 收集所有唯一的字段引用
+    const fieldReferences = new Set<string>();
+    let match;
+    while ((match = fieldRegex.exec(metricSql)) !== null) {
+      fieldReferences.add(match[1]);
+    }
 
-      // 查找这个字段在哪个表中
+    // 2. 为每个字段引用查找对应的表
+    for (const fieldName of fieldReferences) {
+      // 查找字段在哪个表中
       let tableAlias = '';
       const mainTableAlias = query.mainTable.alias;
-      const fieldInMainTable = query.mainTable.getField(fieldName);
 
-      if (fieldInMainTable) {
+      // 先检查主表
+      if (query.mainTable.getField(fieldName)) {
         tableAlias = mainTableAlias || query.mainTable.name;
       } else {
-        // 在JOIN表中查找
+        // 再检查所有JOIN表
         for (const join of query.joins) {
-          const joinTableAlias = join.rightTable.alias;
-          const fieldInJoinTable = join.rightTable.getField(fieldName);
-          if (fieldInJoinTable) {
-            tableAlias = joinTableAlias || join.rightTable.name;
+          if (join.rightTable.getField(fieldName)) {
+            tableAlias = join.rightTable.alias || join.rightTable.name;
             break;
           }
         }
       }
 
+      // 如果找到了表，替换字段引用
       if (tableAlias) {
-        // 替换字段引用为带表别名的形式
-        metricSql = metricSql.replace(regex, `${tableAlias}.${fieldName}`);
+        // 使用更精确的正则表达式，确保只替换不带表别名的字段引用
+        const preciseRegex = new RegExp(
+          `(?<!\\w\\.)\\b${fieldName}\\b(?=[\\s,)+*\;=<>!])`,
+          'g'
+        );
+        metricSql = metricSql.replace(
+          preciseRegex,
+          `${tableAlias}.${fieldName}`
+        );
       }
     }
 
-    // 特殊处理子查询中的字段引用
-    // 对于像 "WHERE pt.project_id = projects.id" 这样的子查询，需要确保表引用正确
-    metricSql = metricSql.replace(/\bprojects\.id\b/g, `${query.mainTable.alias || query.mainTable.name}.id`);
-    metricSql = metricSql.replace(/\btasks\.id\b/g, 't.id');
-    metricSql = metricSql.replace(/\bproject_tasks\.project_id\b/g, 'pt.project_id');
-    metricSql = metricSql.replace(/\bproject_tasks\.task_id\b/g, 'pt.task_id');
+    // 3. 处理带表别名的字段引用，确保表别名正确
+    // 提取所有带表别名的字段引用
+    const qualifiedFieldRegex =
+      /\b([a-zA-Z_][a-zA-Z0-9_]*)\.([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+    const qualifiedFields = new Set<string>();
+
+    while ((match = qualifiedFieldRegex.exec(metricSql)) !== null) {
+      qualifiedFields.add(match[0]);
+    }
+
+    // 检查并修正表别名
+    for (const qualifiedField of qualifiedFields) {
+      const [tableName, fieldName] = qualifiedField.split('.');
+
+      // 检查是否是主表
+      if (tableName === query.mainTable.name) {
+        const mainAlias = query.mainTable.alias || query.mainTable.name;
+        if (tableName !== mainAlias) {
+          metricSql = metricSql.replace(
+            new RegExp(`\\b${tableName}\\.${fieldName}\\b`, 'g'),
+            `${mainAlias}.${fieldName}`
+          );
+        }
+      } else {
+        // 检查是否是JOIN表
+        for (const join of query.joins) {
+          if (tableName === join.rightTable.name) {
+            const joinAlias = join.rightTable.alias || join.rightTable.name;
+            if (tableName !== joinAlias) {
+              metricSql = metricSql.replace(
+                new RegExp(`\\b${tableName}\\.${fieldName}\\b`, 'g'),
+                `${joinAlias}.${fieldName}`
+              );
+            }
+            break;
+          }
+        }
+      }
+    }
 
     return metricSql;
   }
@@ -610,7 +796,10 @@ export class KnexSQLGenerator {
   /**
    * 生成查询并返回带绑定参数的对象（用于执行）
    */
-  static generateSQLWithBindings(query: Query): { sql: string; bindings: any[] } {
+  static generateSQLWithBindings(query: Query): {
+    sql: string;
+    bindings: any[];
+  } {
     return this.generateSelect(query);
   }
 }

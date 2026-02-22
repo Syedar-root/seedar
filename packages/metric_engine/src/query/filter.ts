@@ -1,5 +1,6 @@
 import { Field } from '../core/field';
 import { Operator } from '../core/types';
+import { Metric } from '../metrics/metric-classes';
 
 /**
  * 时间范围类型枚举
@@ -8,7 +9,7 @@ export enum TimeRange {
   RECENT_DAYS = 'recent_days',
   RECENT_WEEKS = 'recent_weeks',
   RECENT_MONTHS = 'recent_months',
-  CUSTOM_DATE_RANGE = 'custom_date_range'
+  CUSTOM_DATE_RANGE = 'custom_date_range',
 }
 
 /**
@@ -17,9 +18,9 @@ export enum TimeRange {
  */
 export class Filter {
   /**
-   * 筛选字段
+   * 筛选字段或指标
    */
-  public readonly field: Field;
+  public readonly field: Field | Metric;
 
   /**
    * 运算符
@@ -31,14 +32,19 @@ export class Filter {
    */
   public readonly value: any;
 
-  constructor(field: Field, operator: Operator, value: any) {
+  constructor(field: Field | Metric, operator: Operator, value: any) {
     this.field = field;
     this.operator = operator;
     this.value = value;
   }
 
   toSQL(): string {
-    const fieldExpr = this.field.getFullName();
+    let fieldExpr: string;
+    if (this.field instanceof Field) {
+      fieldExpr = this.field.getFullName();
+    } else {
+      fieldExpr = `(${this.field.toSQL()})`;
+    }
     let valueStr: string;
 
     // 标准化运算符，确保使用正确的SQL运算符
@@ -94,7 +100,7 @@ export class Filter {
     if (sqlOperator === 'IN' || sqlOperator === 'NOT IN') {
       // 处理IN操作符
       if (Array.isArray(this.value)) {
-        valueStr = `(${this.value.map(v => this.formatValue(v)).join(', ')})`;
+        valueStr = `(${this.value.map((v) => this.formatValue(v)).join(', ')})`;
       } else {
         valueStr = `(${this.formatValue(this.value)})`;
       }
@@ -119,7 +125,10 @@ export class Filter {
 
     if (typeof value === 'string') {
       // 检测子查询：以(SELECT开头，以)结尾的字符串不加引号
-      if (value.trim().toUpperCase().startsWith('(SELECT') && value.trim().endsWith(')')) {
+      if (
+        value.trim().toUpperCase().startsWith('(SELECT') &&
+        value.trim().endsWith(')')
+      ) {
         return value;
       }
       return `'${value}'`;
@@ -179,7 +188,10 @@ export class TimeFilter extends Filter {
    */
   static createRecentFilter(
     field: Field,
-    timeRange: TimeRange.RECENT_DAYS | TimeRange.RECENT_WEEKS | TimeRange.RECENT_MONTHS,
+    timeRange:
+      | TimeRange.RECENT_DAYS
+      | TimeRange.RECENT_WEEKS
+      | TimeRange.RECENT_MONTHS,
     timeValue: number
   ): TimeFilter {
     return new TimeFilter(field, timeRange, timeValue);
@@ -193,14 +205,25 @@ export class TimeFilter extends Filter {
     startDate: string,
     endDate: string
   ): TimeFilter {
-    return new TimeFilter(field, TimeRange.CUSTOM_DATE_RANGE, undefined, startDate, endDate);
+    return new TimeFilter(
+      field,
+      TimeRange.CUSTOM_DATE_RANGE,
+      undefined,
+      startDate,
+      endDate
+    );
   }
 
   /**
    * 生成时间过滤的SQL
    */
   toSQL(): string {
-    const fieldExpr = this.field.getFullName();
+    let fieldExpr: string;
+    if (this.field instanceof Field) {
+      fieldExpr = this.field.getFullName();
+    } else {
+      fieldExpr = `(${this.field.toSQL()})`;
+    }
 
     switch (this.timeRange) {
       case TimeRange.RECENT_DAYS:

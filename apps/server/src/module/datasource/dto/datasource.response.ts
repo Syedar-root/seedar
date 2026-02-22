@@ -1,7 +1,6 @@
-import { DataSourceType } from '../datasource.types';
+import { DataSourceType, MySqlConfig } from '../datasource.types';
 import { Datasource } from '../entities/datasource.entity';
 import { FieldType } from '@/module/dataset/dataset.types';
-
 
 /**
  * 数据源状态
@@ -65,7 +64,11 @@ export class DatasourceResponse {
     this.name = datasource.name;
     this.type = datasource.type;
 
-    const { password, iv, ...restConfig } = datasource.config;
+    const {
+      password: _password,
+      iv: _iv,
+      ...restConfig
+    } = datasource.config as MySqlConfig;
 
     this.config = restConfig;
     this.status = datasource.status;

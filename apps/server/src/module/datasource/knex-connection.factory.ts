@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import knex from 'knex';
 import { Datasource } from './entities/datasource.entity';
-import { DataSourceType, MySqlConfig } from './datasource.types';
+import {
+  ClickHouseConfig,
+  DataSourceType,
+  MySqlConfig,
+  PgConfig,
+} from './datasource.types';
 
 @Injectable()
 export class KnexConnectionFactory {
@@ -15,9 +20,11 @@ export class KnexConnectionFactory {
       case DataSourceType.MYSQL:
         return this.createMySqlConnection(datasource.config as MySqlConfig);
       case DataSourceType.POSTGRES:
-        return this.createPostgresConnection(datasource.config);
+        return this.createPostgresConnection(datasource.config as PgConfig);
       case DataSourceType.CLICKHOUSE:
-        return this.createClickHouseConnection(datasource.config);
+        return this.createClickHouseConnection(
+          datasource.config as ClickHouseConfig,
+        );
       default:
         throw new Error(`Unsupported data source type: ${datasource.type}`);
     }
@@ -59,7 +66,8 @@ export class KnexConnectionFactory {
     } catch (error) {
       return {
         success: false,
-        message: `Connection failed: ${error.message}`,
+        message: `Connection failed: ${(error as Error).message}`,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         error,
       };
     } finally {
@@ -95,7 +103,7 @@ export class KnexConnectionFactory {
   /**
    * 创建 PostgreSQL 连接
    */
-  private createPostgresConnection(config: any): knex.Knex {
+  private createPostgresConnection(config: PgConfig): knex.Knex {
     return knex({
       client: 'pg',
       connection: {
@@ -116,7 +124,7 @@ export class KnexConnectionFactory {
   /**
    * 创建 ClickHouse 连接
    */
-  private createClickHouseConnection(config: any): knex.Knex {
+  private createClickHouseConnection(config: ClickHouseConfig): knex.Knex {
     return knex({
       client: 'clickhouse',
       connection: {

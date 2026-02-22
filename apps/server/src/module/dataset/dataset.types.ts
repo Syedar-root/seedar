@@ -49,17 +49,17 @@ export enum FieldType {
   BOOLEAN = 'boolean',
   DATE = 'date',
   DATETIME = 'datetime',
-  DECIMAL = 'decimal'
+  DECIMAL = 'decimal',
 }
 
 /**
  * 指标类型枚举
  */
 export enum MetricType {
-  ROW_LEVEL = 'row_level',       // 行级指标
-  AGGREGATE = 'aggregate',       // 聚合指标
+  ROW_LEVEL = 'row_level', // 行级指标
+  AGGREGATE = 'aggregate', // 聚合指标
   POST_AGGREGATE = 'post_aggregate', // 后聚合指标
-  ARITHMETIC = 'arithmetic',     // 算术运算指标
+  ARITHMETIC = 'arithmetic', // 算术运算指标
   PERIOD_OVER_PERIOD = 'period_over_period', // 同环比指标
 }
 
@@ -100,9 +100,9 @@ export enum PeriodOverPeriodType {
  * 同环比计算模式枚举
  */
 export enum PeriodCalculationMode {
-  PERCENTAGE = 'percentage',  // 百分比
-  ABSOLUTE = 'absolute',      // 绝对值
-  BOTH = 'both',             // 两者都返回
+  PERCENTAGE = 'percentage', // 百分比
+  ABSOLUTE = 'absolute', // 绝对值
+  BOTH = 'both', // 两者都返回
 }
 
 /**
@@ -112,7 +112,11 @@ export interface AggregateConditionConfig {
   /** 时间字段ID */
   timeFieldId?: number;
   /** 时间范围类型 */
-  timeRange?: 'recent_days' | 'recent_weeks' | 'recent_months' | 'custom_date_range';
+  timeRange?:
+    | 'recent_days'
+    | 'recent_weeks'
+    | 'recent_months'
+    | 'custom_date_range';
   /** 时间范围值 */
   timeValue?: number;
   /** 自定义日期范围 - 开始日期 */

@@ -1,4 +1,3 @@
-
 export class CreateDatasetFieldRequest {
   dataSourceColumnId: number;
   tableId: number;

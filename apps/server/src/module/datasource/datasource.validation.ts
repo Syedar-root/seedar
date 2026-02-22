@@ -36,6 +36,9 @@ export const DataSourceConfigSchema = z.union([
  * 根据数据源类型验证配置
  */
 export function validateDataSourceConfig(type: DataSourceType, config: any) {
+  type: DataSourceType,
+  config: DataSourceConfig,
+): DataSourceConfig {
   let schema: z.ZodSchema;
 
   switch (type) {
@@ -48,11 +51,11 @@ export function validateDataSourceConfig(type: DataSourceType, config: any) {
       schema = CsvConfigSchema;
       break;
     case DataSourceType.EXCEL:
-      schema = ExcelConfigSchema;
+      throw new Error(`Unsupported data source type: ${type}`);
       break;
     default:
-      throw new Error(`Unsupported data source type: ${type}`);
+  return schema.parse(config);
   }
 
-  return schema.parse(config);
+  return schema.parse(config) as DataSourceConfig;
 }

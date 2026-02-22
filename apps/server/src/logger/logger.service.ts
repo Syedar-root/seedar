@@ -13,7 +13,9 @@ export class LoggerService implements NestLoggerService {
   private context?: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.winstonLogger = winston.createLogger(winstonConfig(this.configService));
+    this.winstonLogger = winston.createLogger(
+      winstonConfig(this.configService),
+    );
   }
 
   setContext(context: string) {

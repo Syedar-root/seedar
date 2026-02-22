@@ -19,6 +19,28 @@ export class MySqlConfig {
   database: string;
   username: string;
   password: string;
+  iv?: string;
+}
+
+/**
+ * PostgreSQL 数据源配置
+ */
+export class PgConfig {
+  host: string;
+  port?: string = '5432';
+  database: string;
+  username: string;
+  password: string;
+  iv?: string;
+}
+
+export class ClickHouseConfig {
+  host: string;
+  port?: string = '8123';
+  database: string;
+  username: string;
+  password: string;
+  iv?: string;
 }
 
 /**

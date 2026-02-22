@@ -5,11 +5,8 @@ import { DatasourceColumn } from '../entities/datasource-column.entity';
 
 @Injectable()
 export class DatasourceColumnService {
-
   @InjectRepository(DatasourceColumn)
-    private readonly datasourceColumnRepository: Repository<DatasourceColumn>;
-
-  
+  private readonly datasourceColumnRepository: Repository<DatasourceColumn>;
 
   async findByTableId(tableId: number): Promise<DatasourceColumn[]> {
     return this.datasourceColumnRepository.find({
@@ -23,7 +20,9 @@ export class DatasourceColumnService {
     });
   }
 
-  async create(datasourceColumn: Partial<DatasourceColumn>): Promise<DatasourceColumn> {
+  async create(
+    datasourceColumn: Partial<DatasourceColumn>,
+  ): Promise<DatasourceColumn> {
     const entity = this.datasourceColumnRepository.create(datasourceColumn);
     return this.datasourceColumnRepository.save(entity);
   }

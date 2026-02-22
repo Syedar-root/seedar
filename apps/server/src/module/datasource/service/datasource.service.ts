@@ -3,8 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Datasource } from '../entities/datasource.entity';
 import { DatasourceTable } from '../entities/datasource-table.entity';
-import { DatasourceColumn } from '../entities/datasource-column.entity';
-import { DatasourceForeignKey } from '../entities/datasource-foreign-key.entity';
 import { CreateDatasourceRequest } from '../dto/create-datasource.request';
 import { validateDataSourceConfig } from '../datasource.validation';
 import { UpdateDatasourceRequest } from '../dto/update-datasource.request';
@@ -22,6 +20,27 @@ import { DatasourceForeignKeyService } from './datasource-foreign-key.service';
 import * as knex from 'knex';
 import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
+import { DataSourceType, MySqlConfig } from '../datasource.types';
+
+interface MySQLColumnRow {
+  COLUMN_NAME: string;
+  DATA_TYPE: string;
+  IS_NULLABLE: string;
+}
+
+interface PostgreSQLColumnRow {
+  column_name: string;
+  data_type: string;
+  is_nullable: string;
+}
+
+interface ClickHouseColumnRow {
+  name: string;
+  column: string;
+  type: string;
+  is_in_primary_key: number;
+  default_kind: string;
+}
 
 @Injectable()
 export class DatasourceService {
@@ -45,9 +64,12 @@ export class DatasourceService {
     this.logger.setContext('DatasourceService');
   }
 
-  private configEncryption(config: Record<string, any>) {
+  // 加密配置中的密码字段
+  private configEncryption(config: MySqlConfig) {
     // 创建配置对象的深拷贝，避免修改原对象
-    const encryptedConfig = JSON.parse(JSON.stringify(config));
+    const encryptedConfig: MySqlConfig = JSON.parse(
+      JSON.stringify(config),
+    ) as MySqlConfig;
 
     console.log('password', encryptedConfig.password);
     if (encryptedConfig.password) {
@@ -59,7 +81,7 @@ export class DatasourceService {
         : crypto.randomBytes(16);
       try {
         // 获取密钥，确保为 Buffer 类型，且长度符合算法要求
-        let key = this.configService.get<string>('AES_SECRET');
+        const key = this.configService.get<string>('AES_SECRET');
         if (!key) {
           throw new Error('未配置 AES_SECRET');
         }
@@ -79,9 +101,12 @@ export class DatasourceService {
     return encryptedConfig;
   }
 
-  private configDecryption(config: Record<string, any>) {
+  // 解密配置中的密码字段
+  private configDecryption(config: MySqlConfig) {
     // 创建配置对象的深拷贝，避免修改原对象
-    const decryptedConfig = JSON.parse(JSON.stringify(config));
+    const decryptedConfig: MySqlConfig = JSON.parse(
+      JSON.stringify(config),
+    ) as MySqlConfig;
 
     if (decryptedConfig.password && decryptedConfig.iv) {
       try {
@@ -139,15 +164,15 @@ export class DatasourceService {
         createDatasourceRequest.config,
       );
       this.logger.debug('数据源配置验证通过', 'ConfigValidation');
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
-        `数据源配置验证失败: ${error.message}`,
-        error.stack,
+        `数据源配置验证失败: ${(error as unknown as Error).message}`,
+        (error as unknown as Error).stack,
         'ConfigValidationError',
       );
       ExceptionFactory.datasourceConfigInvalid(
         createDatasourceRequest.type,
-        error.message,
+        (error as unknown as Error).message,
       );
     }
 
@@ -174,7 +199,7 @@ export class DatasourceService {
     }
 
     // config中密码加密
-    datasource.config = this.configEncryption(datasource.config);
+    datasource.config = this.configEncryption(datasource.config as MySqlConfig);
 
     this.logger.debug('数据库连接测试通过，开始保存数据源', 'SaveDatasource');
     const savedDatasource = await this.datasourceRepository.save(datasource);
@@ -211,7 +236,7 @@ export class DatasourceService {
     );
 
     // 解码datasource中的config
-    datasource.config = this.configDecryption(datasource.config);
+    datasource.config = this.configDecryption(datasource.config as MySqlConfig);
 
     // 获取表和列信息
     this.logger.debug('开始获取表和列信息', 'GetTablesStart');
@@ -253,7 +278,7 @@ export class DatasourceService {
 
     // 解密现有配置以便比较
     const existingDecryptedConfig = this.configDecryption(
-      existingDatasource.config,
+      existingDatasource.config as MySqlConfig,
     );
 
     // 准备更新的数据源对象
@@ -274,7 +299,7 @@ export class DatasourceService {
       // 合并配置
       finalConfig = {
         ...existingDecryptedConfig,
-        ...updateDatasourceRequest.config,
+        ...(updateDatasourceRequest.config as Partial<MySqlConfig>),
       };
       updatedDatasource.config = finalConfig;
     } else {
@@ -288,13 +313,16 @@ export class DatasourceService {
       try {
         validateDataSourceConfig(configType, finalConfig);
         this.logger.debug('数据源配置验证通过', 'ConfigValidation');
-      } catch (error) {
+      } catch (error: any) {
         this.logger.error(
-          `数据源配置验证失败: ${error.message}`,
-          error.stack,
+          `数据源配置验证失败: ${(error as unknown as Error).message}`,
+          (error as unknown as Error).stack,
           'ConfigValidationError',
         );
-        ExceptionFactory.datasourceConfigInvalid(configType, error.message);
+        ExceptionFactory.datasourceConfigInvalid(
+          configType,
+          (error as unknown as Error).message,
+        );
       }
     }
 
@@ -435,10 +463,10 @@ export class DatasourceService {
         `表和列信息保存完成，共处理 ${tables.length} 个表`,
         'SaveTablesAndColumnsCompleted',
       );
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(
         '保存表和列信息失败',
-        error.stack,
+        (error as unknown as Error).stack,
         'SaveTablesAndColumnsError',
       );
       // 这里不抛出异常，因为数据源已经创建成功，只是元数据保存失败
@@ -619,23 +647,32 @@ export class DatasourceService {
     const knexConnection = this.getKnexConnection(datasource);
 
     switch (datasource.type) {
-      case 'mysql':
-        const mysqlResult = await knexConnection.raw('SHOW TABLES');
-        return mysqlResult[0].map(
-          (row: any) => Object.values(row)[0] as string,
-        );
+      case DataSourceType.MYSQL: {
+        const [rows] =
+          await knexConnection.raw<[Array<{ [key: string]: string }>, any]>(
+            'SHOW TABLES',
+          );
+        return rows.map((row) => Object.values(row)[0]);
+      }
 
-      case 'postgres':
+      case DataSourceType.POSTGRES: {
         const postgresResult = await knexConnection
           .select('table_name')
           .from('information_schema.tables')
           .where('table_schema', 'public')
           .andWhere('table_type', 'BASE TABLE');
-        return postgresResult.map((row) => row.table_name);
+        return postgresResult.map(
+          (row: { table_name: string }) => row.table_name,
+        );
+      }
 
-      case 'clickhouse':
-        const clickhouseResult = await knexConnection.raw('SHOW TABLES');
-        return clickhouseResult.map((row: any) => row.name || row);
+      case DataSourceType.CLICKHOUSE: {
+        const [rows] =
+          await knexConnection.raw<[Array<{ name: string }>, any]>(
+            'SHOW TABLES',
+          );
+        return rows.map((row) => row.name || (row as unknown as string));
+      }
 
       default:
         throw new Error(`Unsupported data source type: ${datasource.type}`);
@@ -660,12 +697,15 @@ export class DatasourceService {
     }>
   > {
     switch (datasource.type) {
-      case 'mysql':
+      case DataSourceType.MYSQL: {
         return await this.getMySqlColumns(knexConnection, tableName);
-      case 'postgres':
+      }
+      case DataSourceType.POSTGRES: {
         return await this.getPostgresColumns(knexConnection, tableName);
-      case 'clickhouse':
+      }
+      case DataSourceType.CLICKHOUSE: {
         return await this.getClickHouseColumns(knexConnection, tableName);
+      }
       default:
         throw new Error(`Unsupported data source type: ${datasource.type}`);
     }
@@ -688,25 +728,30 @@ export class DatasourceService {
     }>
   > {
     // 获取列信息
+
+    const tableSchema = (
+      knexConnection.client as { database(): string }
+    ).database();
+
     const columnsResult = await knexConnection
       .select('COLUMN_NAME', 'DATA_TYPE', 'IS_NULLABLE')
       .from('information_schema.COLUMNS')
       .where('TABLE_NAME', tableName)
-      .andWhere('TABLE_SCHEMA', knexConnection.client.database());
+      .andWhere('TABLE_SCHEMA', tableSchema);
 
     // 获取主键列
     const primaryKeysResult = await knexConnection
       .select('kcu.COLUMN_NAME')
       .from('information_schema.KEY_COLUMN_USAGE AS kcu')
       .where('kcu.TABLE_NAME', tableName)
-      .andWhere('kcu.TABLE_SCHEMA', knexConnection.client.database())
+      .andWhere('kcu.TABLE_SCHEMA', tableSchema)
       .andWhere('kcu.CONSTRAINT_NAME', 'PRIMARY');
 
     const primaryKeyColumns = new Set(
-      primaryKeysResult.map((row) => row.COLUMN_NAME),
+      primaryKeysResult.map((row: MySQLColumnRow) => row.COLUMN_NAME),
     );
 
-    return columnsResult.map((row, index) => ({
+    return columnsResult.map((row: MySQLColumnRow, index) => ({
       columnId: index + 1,
       columnName: row.COLUMN_NAME,
       rawDataType: row.DATA_TYPE,
@@ -750,10 +795,10 @@ export class DatasourceService {
       .andWhere('att.attnum', 'con.conkey[1]');
 
     const primaryKeyColumns = new Set(
-      primaryKeysResult.map((row) => row.column_name),
+      primaryKeysResult.map((row: PostgreSQLColumnRow) => row.column_name),
     );
 
-    return columnsResult.map((row, index) => ({
+    return columnsResult.map((row: PostgreSQLColumnRow, index) => ({
       columnId: index + 1,
       columnName: row.column_name,
       rawDataType: row.data_type,
@@ -779,9 +824,11 @@ export class DatasourceService {
       isPrimaryKey: boolean;
     }>
   > {
-    const result = await knexConnection.raw(`DESCRIBE TABLE ${tableName}`);
+    const result: Array<ClickHouseColumnRow> = await knexConnection.raw(
+      `DESCRIBE TABLE ${tableName}`,
+    );
 
-    return result.map((row: any, index: number) => ({
+    return result.map((row: ClickHouseColumnRow, index: number) => ({
       columnId: index + 1,
       columnName: row.name || row.column,
       rawDataType: row.type,
@@ -871,9 +918,9 @@ export class DatasourceService {
           'SaveForeignKeysCompleted',
         );
       }
-    } catch (error) {
+    } catch (error: any) {
       this.logger.warn(
-        `获取或保存外键关系失败: ${error.message}`,
+        `获取或保存外键关系失败: ${(error as Error).message}`,
         'SaveForeignKeysWarning',
       );
       // 外键关系是辅助信息，获取失败不影响主流程
@@ -895,12 +942,15 @@ export class DatasourceService {
     const knexConnection = this.getKnexConnection(datasource);
 
     switch (datasource.type) {
-      case 'mysql':
+      case DataSourceType.MYSQL: {
         return await this.getMySqlForeignKeys(knexConnection);
-      case 'postgres':
+      }
+      case DataSourceType.POSTGRES: {
         return await this.getPostgresForeignKeys(knexConnection);
-      case 'clickhouse':
+      }
+      case DataSourceType.CLICKHOUSE: {
         return await this.getClickHouseForeignKeys(knexConnection);
+      }
       default:
         this.logger.warn(
           `不支持的数据源类型: ${datasource.type}`,
@@ -922,10 +972,23 @@ export class DatasourceService {
       targetColumnName: string;
     }>
   > {
-    const database = knexConnection.client.database();
+    const database = (
+      knexConnection.client as { database(): string }
+    ).database();
 
     // 使用原始 SQL 查询，避免 Knex 查询构建器的问题
-    const result = await knexConnection.raw(
+    const result = await knexConnection.raw<
+      [
+        Array<{
+          fk_name: string;
+          source_table_name: string;
+          source_column_name: string;
+          target_table_name: string;
+          target_column_name: string;
+        }>,
+        any,
+      ]
+    >(
       `SELECT
         kc.CONSTRAINT_NAME as fk_name,
         kc.TABLE_NAME as source_table_name,
@@ -938,7 +1001,7 @@ export class DatasourceService {
       [database],
     );
 
-    return result[0].map((row: any) => ({
+    return result[0].map((row) => ({
       fkName: row.fk_name,
       sourceTableName: row.source_table_name,
       sourceColumnName: row.source_column_name,
@@ -959,7 +1022,7 @@ export class DatasourceService {
       targetColumnName: string;
     }>
   > {
-    const result = await knexConnection
+    const result = (await knexConnection
       .select(
         'con.conname as fk_name',
         'att.attname as source_column_name',
@@ -976,7 +1039,13 @@ export class DatasourceService {
       .andWhere('att.attnum', 'con.conkey[1]')
       .andWhere('fatt.attnum', 'confkey[1]')
       .andWhere('tco.relname', '!=', 'datasource_tables')
-      .andWhere('ftco.relname', '!=', 'datasource_tables');
+      .andWhere('ftco.relname', '!=', 'datasource_tables')) as Array<{
+      fk_name: string;
+      source_column_name: string;
+      source_table_name: string;
+      target_column_name: string;
+      target_table_name: string;
+    }>;
 
     return result.map((row) => ({
       fkName: row.fk_name,
@@ -1009,15 +1078,30 @@ export class DatasourceService {
         .from('system.settings')
         .where('name', 'allow_system_settings');
 
+      return result.map(
+        (row: {
+          fk_name: string;
+          source_table_name: string;
+          source_column_name: string;
+          target_table_name: string;
+          target_column_name: string;
+        }) => ({
+          fkName: row.fk_name,
+          sourceTableName: row.source_table_name,
+          sourceColumnName: row.source_column_name,
+          targetTableName: row.target_table_name,
+          targetColumnName: row.target_column_name,
+        }),
+      );
       // 如果启用了系统设置，尝试查询 metadata
       // 注意：ClickHouse 本身不存储外键元数据
       this.logger.debug(
         'ClickHouse 不支持原生外键查询',
         'ClickHouseForeignKeys',
       );
-    } catch (error) {
+    } catch (error: any) {
       this.logger.debug(
-        `ClickHouse 外键查询失败: ${error.message}`,
+        `ClickHouse 外键查询失败: ${error instanceof Error ? error.message : '未知错误'}`,
         'ClickHouseForeignKeysError',
       );
     }

@@ -11,7 +11,13 @@ import { DatasetMetric } from './entities/dataset-metric.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Dataset, DatasetTable, DatasetJoin, DatasetField, DatasetMetric]),
+    TypeOrmModule.forFeature([
+      Dataset,
+      DatasetTable,
+      DatasetJoin,
+      DatasetField,
+      DatasetMetric,
+    ]),
     DatasourceModule,
   ],
   controllers: [DatasetController],

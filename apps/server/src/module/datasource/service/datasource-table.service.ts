@@ -22,7 +22,9 @@ export class DatasourceTableService {
     });
   }
 
-  async create(datasourceTable: Partial<DatasourceTable>): Promise<DatasourceTable> {
+  async create(
+    datasourceTable: Partial<DatasourceTable>,
+  ): Promise<DatasourceTable> {
     const entity = this.datasourceTableRepository.create(datasourceTable);
     return this.datasourceTableRepository.save(entity);
   }
@@ -34,7 +36,10 @@ export class DatasourceTableService {
   /**
    * 更新表的主键字段 ID
    */
-  async updatePrimaryFieldId(tableId: number, primaryFieldId: number): Promise<void> {
+  async updatePrimaryFieldId(
+    tableId: number,
+    primaryFieldId: number,
+  ): Promise<void> {
     await this.datasourceTableRepository.update(tableId, { primaryFieldId });
   }
 }
