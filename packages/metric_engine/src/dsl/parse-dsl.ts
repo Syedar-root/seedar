@@ -14,7 +14,7 @@ import { AggregateFunction, Operator } from '../core/types';
 import { Join, JoinCondition } from '../core/join';
 import { QueryBuilder } from '../query/query-builder';
 
-type MinimalMetric = {
+export type MinimalMetric = {
   name?: string;
   // metric kind: 'aggregate' 表示使用 agg 字段指定函数；其它为行级/特殊类型
   type: 'aggregate' | 'subquery' | 'row' | 'post_agg' | 'arithmetic';
@@ -30,14 +30,14 @@ type MinimalMetric = {
   right?: any;
 };
 
-type MinimalFilter = {
+export type MinimalFilter = {
   field: string;
   op: string;
   value?: any;
   raw?: boolean;
 };
 
-type MinimalJoin = {
+export type MinimalJoin = {
   table: string;
   alias?: string;
   type?: 'left' | 'inner' | 'right' | 'full';

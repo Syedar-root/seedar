@@ -11,6 +11,7 @@ import { GlobalResponseInterceptor } from './common/global-response.interceptor'
 import { GlobalLoggingInterceptor } from './common/global-logging.interceptor';
 import { databaseConfig } from './config/database.config';
 import { DatasetModule } from './module/dataset/dataset.module';
+import { QueryModule } from './query/query.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { DatasetModule } from './module/dataset/dataset.module';
     }),
     DatasourceModule,
     DatasetModule,
+    QueryModule,
   ],
   controllers: [AppController],
   providers: [

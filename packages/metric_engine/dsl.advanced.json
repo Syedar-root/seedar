@@ -1,0 +1,21 @@
+{
+  "table": "modules",
+  "dimensions": [
+    { "field": "name", "alias": "模块名称" },
+    { "field": "module_activities.action_type", "alias": "行为类型" }
+  ],
+  "metrics": [
+    { "type": "distinct_count", "field": "module_activities.user_id", "name": "active_users", "alias": "活跃用户数" },
+    { "type": "count", "name": "total_access", "alias": "总访问次数" },
+    { "type": "aggregate", "agg": "avg", "field": "module_activities.duration_seconds", "name": "avg_duration", "alias": "平均时长" },
+    { "type": "post_agg", "name": "avg_user_accesses", "metric": "total_access", "agg": "avg", "alias": "用户平均访问次数" },
+    { "type": "arithmetic", "name": "avg_duration_per_access", "left": { "metric": "avg_duration" }, "operator": "/", "right": { "metric": "total_access" }, "alias": "平均每次访问时长" }
+  ],
+  "joins": [
+    { "table": "module_activities", "alias": "a", "on": [{ "left": "id", "right": "module_id" }], "type": "left" }
+  ],
+  "filters": [
+    { "field": "module_activities.access_time", "op": "recent_days", "value": 30 }
+  ]
+}
+

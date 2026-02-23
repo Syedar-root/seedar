@@ -8,11 +8,12 @@ export * from './query/filter';
 export * from './query/query-builder';
 export * from './query/sql-generator';
 export * from './query/knex-sql-generator';
+export * from './dsl/parse-dsl';
 
 // 导出主要的类以方便使用
 export { PeriodOverPeriodMetric } from './metrics/metric-classes';
 export {
   TimePeriod,
   PeriodOverPeriodType,
-  PeriodCalculationMode
+  PeriodCalculationMode,
 } from './core/types';
