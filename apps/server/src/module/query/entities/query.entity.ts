@@ -4,8 +4,11 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { QueryStatus } from '../query-status.enum';
+import { Dataset } from '@/module/dataset/entities/dataset.entity';
 
 @Entity('query')
 export class Query {
@@ -17,6 +20,10 @@ export class Query {
 
   @Column()
   datasetId: number;
+
+  @ManyToOne(() => Dataset)
+  @JoinColumn({ name: 'datasetId' })
+  dataset: Dataset;
 
   @Column({ type: 'json' })
   dsl: any;

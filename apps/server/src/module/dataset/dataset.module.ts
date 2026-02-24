@@ -22,5 +22,6 @@ import { DatasetMetric } from './entities/dataset-metric.entity';
   ],
   controllers: [DatasetController],
   providers: [DatasetService],
+  exports: [DatasetService],
 })
 export class DatasetModule {}

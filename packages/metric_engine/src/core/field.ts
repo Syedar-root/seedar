@@ -1,7 +1,6 @@
 import { FieldType } from './types';
 
 class FieldBase {
-
   /**
    * 字段名称
    */
@@ -21,7 +20,7 @@ class FieldBase {
    * 字段描述
    */
   public readonly description?: string;
-  
+
   /**
    * 业务名称
    */
@@ -41,8 +40,6 @@ class FieldBase {
  * 表示数据表中的一个字段，包含字段名和类型信息
  */
 export class Field extends FieldBase {
-
-
   constructor(options: FieldBase) {
     super(options);
   }
@@ -60,6 +57,13 @@ export class Field extends FieldBase {
    * 创建字段的副本，但使用新的别名
    */
   withAlias(alias: string): Field {
-    return new Field({ name: this.name, type: this.type, alias, description: this.description });
+    return new Field({
+      name: this.name,
+      type: this.type,
+      alias,
+      description: this.description,
+    });
   }
 }
+
+export class Test {}

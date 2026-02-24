@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DataSourceType } from './datasource.types';
+import { DataSourceType, DataSourceConfig } from './datasource.types';
 
 /**
  * Zod schemas for runtime validation
@@ -35,11 +35,11 @@ export const DataSourceConfigSchema = z.union([
 /**
  * 根据数据源类型验证配置
  */
-export function validateDataSourceConfig(type: DataSourceType, config: any) {
+export function validateDataSourceConfig(
   type: DataSourceType,
   config: DataSourceConfig,
 ): DataSourceConfig {
-  let schema: z.ZodSchema;
+  let schema: z.ZodSchema<DataSourceConfig> = DataSourceConfigSchema;
 
   switch (type) {
     case DataSourceType.MYSQL:
@@ -54,8 +54,7 @@ export function validateDataSourceConfig(type: DataSourceType, config: any) {
       throw new Error(`Unsupported data source type: ${type}`);
       break;
     default:
-  return schema.parse(config);
+      return schema.parse(config);
   }
-
-  return schema.parse(config) as DataSourceConfig;
+  return schema.parse(config);
 }

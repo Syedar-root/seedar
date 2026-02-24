@@ -69,6 +69,14 @@ export enum DataSourceStatus {
   DELETED = 'deleted', // 逻辑删除
 }
 
+export type DataSourceConfig =
+  | MySqlConfig
+  | PgConfig
+  | ClickHouseConfig
+  | CsvConfig
+  | ExcelConfig
+  | Record<string, any>;
+
 /**
  * 系统内部统一字段类型
  * @deprecated 请使用 FieldType (import { FieldType } from '@/module/dataset/dataset.types')

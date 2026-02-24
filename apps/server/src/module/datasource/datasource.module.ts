@@ -34,6 +34,7 @@ import { KnexConnectionFactory } from './knex-connection.factory';
     DatasourceColumnService,
     DatasourceForeignKeyService,
     KnexConnectionFactory,
+    TypeOrmModule,
   ],
 })
 export class DatasourceModule {}

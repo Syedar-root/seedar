@@ -18,9 +18,9 @@ import { DatasourceTableService } from './datasource-table.service';
 import { DatasourceColumnService } from './datasource-column.service';
 import { DatasourceForeignKeyService } from './datasource-foreign-key.service';
 import * as knex from 'knex';
-import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { DataSourceType, MySqlConfig } from '../datasource.types';
+import { configEncryption, configDecryption } from './helper';
 
 interface MySQLColumnRow {
   COLUMN_NAME: string;
@@ -53,8 +53,6 @@ export class DatasourceService {
   @Inject(ConfigService)
   private readonly configService!: ConfigService;
 
-  private algorithm = 'aes-128-cbc';
-
   constructor(
     private readonly logger: LoggerService,
     private readonly datasourceTableService: DatasourceTableService,
@@ -62,86 +60,6 @@ export class DatasourceService {
     private readonly foreignKeyService: DatasourceForeignKeyService,
   ) {
     this.logger.setContext('DatasourceService');
-  }
-
-  // 加密配置中的密码字段
-  private configEncryption(config: MySqlConfig) {
-    // 创建配置对象的深拷贝，避免修改原对象
-    const encryptedConfig: MySqlConfig = JSON.parse(
-      JSON.stringify(config),
-    ) as MySqlConfig;
-
-    console.log('password', encryptedConfig.password);
-    if (encryptedConfig.password) {
-      const base64Str = Buffer.from(encryptedConfig.password, 'utf8').toString(
-        'base64',
-      );
-      const iv = encryptedConfig.iv
-        ? Buffer.from(encryptedConfig.iv, 'hex')
-        : crypto.randomBytes(16);
-      try {
-        // 获取密钥，确保为 Buffer 类型，且长度符合算法要求
-        const key = this.configService.get<string>('AES_SECRET');
-        if (!key) {
-          throw new Error('未配置 AES_SECRET');
-        }
-
-        // 创建加密器（参数：算法、密钥、iv）
-        const cipher = crypto.createCipheriv(this.algorithm, key, iv);
-        // 加密（更新+最终），输出hex格式
-        let encrypted = cipher.update(base64Str, 'utf8', 'hex');
-        encrypted += cipher.final('hex');
-        encryptedConfig.password = encrypted;
-        encryptedConfig.iv = iv.toString('hex');
-        return encryptedConfig;
-      } catch (error) {
-        ExceptionFactory.internalError('AES加密失败', error);
-      }
-    }
-    return encryptedConfig;
-  }
-
-  // 解密配置中的密码字段
-  private configDecryption(config: MySqlConfig) {
-    // 创建配置对象的深拷贝，避免修改原对象
-    const decryptedConfig: MySqlConfig = JSON.parse(
-      JSON.stringify(config),
-    ) as MySqlConfig;
-
-    if (decryptedConfig.password && decryptedConfig.iv) {
-      try {
-        // 获取密钥
-        const key = this.configService.get<string>('AES_SECRET');
-        if (!key) {
-          throw new Error('未配置 AES_SECRET');
-        }
-
-        // 将 iv 从 hex 转换为 Buffer
-        const iv = Buffer.from(decryptedConfig.iv, 'hex');
-
-        // 创建解密器（参数：算法、密钥、iv）
-        const decipher = crypto.createDecipheriv(this.algorithm, key, iv);
-
-        // 解密（更新+最终），输入hex格式，输出utf8
-        let decrypted = decipher.update(
-          decryptedConfig.password,
-          'hex',
-          'utf8',
-        );
-        decrypted += decipher.final('utf8');
-
-        // 从 base64 转换回原始密码
-        const originalPassword = Buffer.from(decrypted, 'base64').toString(
-          'utf8',
-        );
-        decryptedConfig.password = originalPassword;
-
-        return decryptedConfig;
-      } catch (error) {
-        ExceptionFactory.internalError('AES解密失败', error);
-      }
-    }
-    return decryptedConfig;
   }
 
   /**
@@ -199,7 +117,10 @@ export class DatasourceService {
     }
 
     // config中密码加密
-    datasource.config = this.configEncryption(datasource.config as MySqlConfig);
+    datasource.config = configEncryption(
+      datasource.config as MySqlConfig,
+      this.configService,
+    );
 
     this.logger.debug('数据库连接测试通过，开始保存数据源', 'SaveDatasource');
     const savedDatasource = await this.datasourceRepository.save(datasource);
@@ -236,7 +157,10 @@ export class DatasourceService {
     );
 
     // 解码datasource中的config
-    datasource.config = this.configDecryption(datasource.config as MySqlConfig);
+    datasource.config = configDecryption(
+      datasource.config as MySqlConfig,
+      this.configService,
+    );
 
     // 获取表和列信息
     this.logger.debug('开始获取表和列信息', 'GetTablesStart');
@@ -277,8 +201,9 @@ export class DatasourceService {
     }
 
     // 解密现有配置以便比较
-    const existingDecryptedConfig = this.configDecryption(
+    const existingDecryptedConfig = configDecryption(
       existingDatasource.config as MySqlConfig,
+      this.configService,
     );
 
     // 准备更新的数据源对象
@@ -352,7 +277,10 @@ export class DatasourceService {
 
     console.log('config', finalConfig);
     // 加密配置中的密码
-    updatedDatasource.config = this.configEncryption(finalConfig);
+    updatedDatasource.config = configEncryption(
+      finalConfig,
+      this.configService,
+    );
 
     // 保存更新
     this.logger.debug('开始保存更新后的数据源', 'SaveUpdatedDatasource');
