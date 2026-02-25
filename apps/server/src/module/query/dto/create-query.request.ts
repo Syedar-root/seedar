@@ -1,5 +1,6 @@
 import { IsString, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { QueryStatus } from '../query-status.enum';
+import type { QueryDSL } from '../dsl-transformer';
 
 export class CreateQueryRequest {
   @IsString()
@@ -8,8 +9,9 @@ export class CreateQueryRequest {
   @IsNumber()
   datasetId: number;
 
+  @IsOptional()
   @IsObject()
-  dsl: any;
+  dsl?: QueryDSL;
 
   @IsOptional()
   status?: QueryStatus;

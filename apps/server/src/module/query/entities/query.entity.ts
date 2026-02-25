@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { QueryStatus } from '../query-status.enum';
 import { Dataset } from '@/module/dataset/entities/dataset.entity';
+import type { QueryDSL } from '../dsl-transformer';
 
 @Entity('query')
 export class Query {
@@ -25,8 +26,8 @@ export class Query {
   @JoinColumn({ name: 'datasetId' })
   dataset: Dataset;
 
-  @Column({ type: 'json' })
-  dsl: any;
+  @Column({ type: 'json', nullable: true })
+  dsl: QueryDSL | null;
 
   @Column({ type: 'enum', enum: QueryStatus, default: QueryStatus.DRAFT })
   status: QueryStatus;

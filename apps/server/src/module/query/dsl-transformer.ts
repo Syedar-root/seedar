@@ -8,7 +8,6 @@ import {
   Dimension,
   Filter,
   AggregateMetric,
-  FieldType,
   AggregateFunction,
   Operator,
   Join,
@@ -22,9 +21,6 @@ import {
   ArithmeticMetric,
   MetricExpression,
   MinimalDSL,
-  MinimalMetric,
-  MinimalFilter,
-  MinimalJoin,
 } from '@metric-engine/core';
 
 /**
@@ -160,7 +156,11 @@ export class DSLTransformer {
         }
         // 这里简化处理，实际实现需要解析表达式
         const field = resolveField(metric.field!);
-        metricsMap[name] = new RowLevelMetric(name, field as unknown as MetricExpression, metric.alias);
+        metricsMap[name] = new RowLevelMetric(
+          name,
+          field as unknown as MetricExpression,
+          metric.alias,
+        );
         continue;
       }
 

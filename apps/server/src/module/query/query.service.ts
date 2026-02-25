@@ -7,7 +7,7 @@ import { CreateQueryRequest } from './dto/create-query.request';
 import { UpdateQueryRequest } from './dto/update-query.request';
 import { ExecuteQueryResponse } from './dto/execute-query.response';
 import { QueryStatus } from './query-status.enum';
-import { DSLTransformer, QueryDSL } from './dsl-transformer';
+import { DSLTransformer } from './dsl-transformer';
 import { KnexSQLGenerator, Table } from '@metric-engine/core';
 import { Datasource } from '@/module/datasource/entities/datasource.entity';
 import { DatasetService } from '@/module/dataset/services/dataset.service';
@@ -100,11 +100,13 @@ export class QueryService {
     // 从数据库获取表结构信息
     const tables = await this.getTablesFromDataset(query.datasetId);
 
+    // 检查 DSL 是否存在
+    if (!query.dsl) {
+      throw new Error('Query DSL is required for execution');
+    }
+
     // 转换DSL
-    const metricQuery = DSLTransformer.transform(
-      query.dsl as QueryDSL,
-      tables as Table[],
-    );
+    const metricQuery = DSLTransformer.transform(query.dsl, tables as Table[]);
 
     // 创建动态数据库连接
     const knexConnection =
