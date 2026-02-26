@@ -13,6 +13,8 @@ import {
   DatasetType,
   FieldType,
   JoinType,
+  DatasetResponse,
+  DatasetMetricResponse,
 } from '../dataset.types';
 import { DatasourceForeignKeyService } from '@/module/datasource/service/datasource-foreign-key.service';
 import { ExceptionFactory } from '@/common/exceptions';
@@ -327,18 +329,26 @@ export class DatasetService {
       order: { id: 'ASC' },
     });
 
-    // 5. 按 datasetId 分组
+    // 5. 批量查询所有join信息
+    const allJoins = await this.datasetJoinRepository.find({
+      where: datasetIds.map((id) => ({ dataset: { id } })),
+      order: { id: 'ASC' },
+    });
+
+    // 6. 按 datasetId 分组
     const tablesMap = this.groupByDatasetId(allTables);
     const fieldsMap = this.groupByDatasetId(allFields);
     const metricsMap = this.groupByDatasetId(allMetrics);
+    const joinsMap = this.groupByDatasetId(allJoins);
 
-    // 6. 转换格式
+    // 7. 转换格式
     return datasets.map((dataset) =>
       this.transformDataset(
         dataset,
         tablesMap.get(dataset.id) || [],
         fieldsMap.get(dataset.id) || [],
         metricsMap.get(dataset.id) || [],
+        joinsMap.get(dataset.id) || [],
       ),
     );
   }
@@ -346,7 +356,7 @@ export class DatasetService {
   /**
    * 根据ID查询单个数据集（带完整信息）
    */
-  async findOne(id: number) {
+  async findOne(id: number): Promise<DatasetResponse | null> {
     // 查询数据集基本信息及关联的数据源和主表
     const dataset = await this.datasetRepository.findOne({
       where: { id },
@@ -385,19 +395,29 @@ export class DatasetService {
       order: { id: 'ASC' },
     });
 
+    // 查询join信息
+    const joins = await this.datasetJoinRepository.find({
+      where: { dataset: { id } },
+      order: { id: 'ASC' },
+    });
+
     // 使用 transformDataset 转换格式
-    return this.transformDataset(dataset, tables, fields, metrics);
+    return this.transformDataset(dataset, tables, fields, metrics, joins);
   }
 
   /**
    * 按 datasetId 分组
    */
   private groupByDatasetId<
-    T extends { dataSetId?: number; datasetId?: number },
+    T extends {
+      dataSetId?: number;
+      datasetId?: number;
+      dataset?: { id: number };
+    },
   >(items: T[]): Map<number, T[]> {
     const map = new Map<number, T[]>();
     for (const item of items) {
-      const key = item.dataSetId || item.datasetId || 0;
+      const key = item.dataSetId || item.datasetId || item.dataset?.id || 0;
       const list = map.get(key) || [];
       list.push(item);
       map.set(key, list);
@@ -413,7 +433,8 @@ export class DatasetService {
     tables: DatasetTable[],
     fields: DatasetField[],
     metrics: DatasetMetric[],
-  ) {
+    joins: DatasetJoin[],
+  ): DatasetResponse {
     return {
       id: dataset.id,
       name: dataset.name,
@@ -452,15 +473,25 @@ export class DatasetService {
         isPrimaryKey: field.isPrimaryKey,
         tableId: field.tableId,
         tableName: field.table?.tableName,
+        datasourceColumnId: field.dataSourceColumnId,
       })),
       metrics: metrics.map((metric) => this.transformMetric(metric)),
+      joins: joins.map((join) => ({
+        id: join.id,
+        joinType: join.joinType,
+        leftTableId: join.leftTableId,
+        leftField: join.leftField,
+        rightTableId: join.rightTableId,
+        rightField: join.rightField,
+        operator: join.operator,
+      })),
     };
   }
 
   /**
    * 转换指标实体为返回格式
    */
-  private transformMetric(metric: DatasetMetric) {
+  private transformMetric(metric: DatasetMetric): DatasetMetricResponse {
     return {
       id: metric.id,
       name: metric.name,

@@ -15,20 +15,48 @@ import {
   JoinCondition,
   TimeFilter,
   TimeRange,
-  SubQueryMetric,
   RowLevelMetric,
   PostAggregateMetric,
   ArithmeticMetric,
   MetricExpression,
-  MinimalDSL,
+  QueryBuilder,
 } from '@metric-engine/core';
+import {
+  DatasetResponse,
+  DatasetTableResponse,
+  DatasetFieldResponse,
+  DatasetMetricResponse,
+  DatasetJoinResponse,
+  MetricType,
+} from '@/module/dataset/dataset.types';
 
 /**
- * query模块的DSL结构（扩展自metric-engine的MinimalDSL）
+ * query模块的DSL结构（使用ID引用dataset模块中的实体）
  */
-export interface QueryDSL extends MinimalDSL {
+export interface QueryDSL {
   /** 数据集ID */
   datasetId: number;
+  /** 主表ID */
+  tableId: number;
+  /** 维度 - 使用字段ID引用 */
+  dimensions?: Array<number | { fieldId: number; alias?: string }>;
+  /** 指标 - 使用指标ID引用 */
+  metrics?: Array<{
+    id: number;
+    alias?: string;
+  }>;
+  /** 筛选条件 */
+  filters?: Array<{
+    fieldId: number;
+    op: string;
+    value?: any;
+    raw?: boolean;
+  }>;
+  /** 连接 - 使用表ID引用 */
+  joins?: Array<{
+    id: number;
+    type?: 'left' | 'inner' | 'right' | 'full';
+  }>;
 }
 
 /**
@@ -38,43 +66,104 @@ export class DSLTransformer {
   /**
    * 将query DSL转换为metric-engine的Query
    * @param dsl query模块的DSL
+   * @param datasetInfo 数据集信息，包含表、字段、指标等
    * @param tables 表定义数组
    * @returns metric-engine的Query对象
    */
-  static transform(dsl: QueryDSL, tables: Table[]): MetricQuery {
-    if (!dsl || !dsl.table) {
-      throw new Error('DSL必须包含table字段');
+  static transform(
+    dsl: QueryDSL,
+    datasetInfo: DatasetResponse,
+    tables: Table[],
+  ): MetricQuery {
+    if (!dsl || !dsl.tableId) {
+      console.log('DSL:', dsl);
+      throw new Error('DSL必须包含tableId字段');
     }
 
+    // 构建映射表
+    const tableMap = new Map<number, DatasetTableResponse>();
+    const fieldMap = new Map<number, DatasetFieldResponse>();
+    // datasourceColumnId 到 field 的映射
+    const fieldMapWithDCId = new Map<number, DatasetFieldResponse>();
+    const metricMap = new Map<number, DatasetMetricResponse>();
+    const joinMap = new Map<number, DatasetJoinResponse>();
+
+    // 填充映射表
+    (datasetInfo.tables || []).forEach((table: DatasetTableResponse) => {
+      tableMap.set(table.id, table);
+    });
+
+    (datasetInfo.fields || []).forEach((field: DatasetFieldResponse) => {
+      fieldMap.set(field.id, field);
+      // 填充 datasourceColumnId 到 field 的映射
+      if (field.datasourceColumnId) {
+        fieldMapWithDCId.set(field.datasourceColumnId, field);
+      }
+    });
+
+    (datasetInfo.metrics || []).forEach((metric: DatasetMetricResponse) => {
+      metricMap.set(metric.id, metric);
+    });
+
+    (datasetInfo.joins || []).forEach((join: DatasetJoinResponse) => {
+      joinMap.set(join.id, join);
+    });
+
     // 查找主表
-    const mainTable = tables.find((t) => t.name === dsl.table);
+    const mainTableInfo = tableMap.get(dsl.tableId);
+    if (!mainTableInfo) {
+      throw new Error(`找不到主表: ${dsl.tableId}`);
+    }
+
+    const mainTable = tables.find((t) => t.name === mainTableInfo.tableName);
     if (!mainTable) {
-      throw new Error(`找不到主表: ${dsl.table}`);
+      throw new Error(`找不到主表: ${mainTableInfo.tableName}`);
     }
 
     // 创建连接
     const joins: Join[] = [];
+    console.log('hcs joinMap', joinMap);
+    console.log('hcs dsl.joins', dsl.joins);
+
     if (dsl.joins && dsl.joins.length > 0) {
       for (const j of dsl.joins) {
-        const rightTable = tables.find((t) => t.name === j.table);
+        const joinInfo = joinMap.get(j.id);
+        if (!joinInfo) {
+          throw new Error(`找不到连接: ${j.id}`);
+        }
+
+        const rightTableInfo = tableMap.get(joinInfo.rightTableId);
+        if (!rightTableInfo) {
+          throw new Error(`找不到右表: ${joinInfo.rightTableId}`);
+        }
+
+        const rightTable = tables.find(
+          (t) => t.name === rightTableInfo.tableName,
+        );
         if (!rightTable) {
-          throw new Error(`找不到JOIN表: ${j.table}`);
+          throw new Error(`找不到JOIN表: ${rightTableInfo.tableName}`);
         }
 
         // 设置表别名
-        if (j.alias) {
-          (rightTable as any).alias = j.alias;
-        }
+        // 停用表别名，因为metric-engine不支持
+        // if (rightTableInfo.alias) {
+        //   rightTable.alias = rightTableInfo.alias;
+        // }
 
         // 创建连接条件
-        const conditions = (j.on || []).map(
-          (o) => new JoinCondition({ leftField: o.left, rightField: o.right }),
-        );
+        const conditions = [
+          new JoinCondition({
+            leftField:
+              fieldMapWithDCId.get(Number(joinInfo.leftField))?.name || '',
+            rightField:
+              fieldMapWithDCId.get(Number(joinInfo.rightField))?.name || '',
+          }),
+        ];
 
         // 添加连接
         joins.push(
           new Join({
-            type: (j.type || 'left') as JoinType,
+            type: (j.type || joinInfo.joinType) as JoinType,
             leftTable: mainTable,
             rightTable,
             conditions,
@@ -83,8 +172,22 @@ export class DSLTransformer {
       }
     }
 
+    console.log('hcs joins', joins[0].conditions);
+
     // 解析字段引用
-    function resolveField(fieldRef: string): Field {
+    function resolveField(fieldId: number): Field {
+      const fieldInfo = fieldMap.get(fieldId);
+      if (!fieldInfo) {
+        throw new Error(`找不到字段: ${fieldId}`);
+      }
+
+      const tableInfo = tableMap.get(fieldInfo.tableId);
+      if (!tableInfo) {
+        throw new Error(`找不到字段所属表: ${fieldInfo.tableId}`);
+      }
+
+      const fieldRef = `${tableInfo.tableName}.${fieldInfo.name}`;
+
       // 支持"table.field"语法
       if (fieldRef.includes('.')) {
         const [tbl, fld] = fieldRef.split('.');
@@ -116,109 +219,168 @@ export class DSLTransformer {
       throw new Error(`无法解析字段: ${fieldRef}`);
     }
 
-    // 创建维度
+    // 构建维度
     const dimensions = (dsl.dimensions || []).map((dim) => {
-      if (typeof dim === 'string') {
+      if (typeof dim === 'number') {
         const field = resolveField(dim);
         return new Dimension(field);
       } else {
-        const field = resolveField(dim.field);
+        const field = resolveField(dim.fieldId);
         return new Dimension(field, dim.alias);
       }
     });
 
-    // 创建指标（分两轮解析，以支持post_agg和arithmetic引用其他指标）
-    const metricsMap: Record<string, any> = {};
-    const basicMetrics = (dsl.metrics || []).filter(
-      (m) => !['post_agg', 'arithmetic'].includes(m.type),
-    );
-
-    // 解析基础指标
-    for (const metric of basicMetrics) {
-      const name = metric.name || metric.field || metric.type;
-
-      if (metric.type === 'subquery') {
-        // 子查询指标
-        metricsMap[name] = new SubQueryMetric(
-          name,
-          metric.sqlTemplate || '',
-          {},
-          undefined,
-          metric.alias,
-        );
-        continue;
+    // 构建指标
+    const metrics = (dsl.metrics || []).map((metricItem) => {
+      const metricInfo = metricMap.get(metricItem.id);
+      if (!metricInfo) {
+        throw new Error(`找不到指标: ${metricItem.id}`);
       }
 
-      if (metric.type === 'row') {
-        // 行级指标
-        if (!metric.expression || typeof metric.expression !== 'string') {
-          throw new Error('row metric需要expression字段');
+      const name =
+        metricInfo.name || metricItem.alias || `metric_${metricItem.id}`;
+
+      switch (metricInfo.metricType) {
+        case MetricType.AGGREGATE: {
+          const funcMap: Record<string, AggregateFunction> = {
+            count: AggregateFunction.COUNT,
+            sum: AggregateFunction.SUM,
+            avg: AggregateFunction.AVG,
+            max: AggregateFunction.MAX,
+            min: AggregateFunction.MIN,
+            distinct_count: AggregateFunction.DISTINCT_COUNT,
+          };
+
+          const func =
+            funcMap[metricInfo.aggregateFunction || 'sum'] ||
+            AggregateFunction.SUM;
+          const isDistinct = metricInfo.aggregateFunction === 'distinct_count';
+
+          if (!metricInfo.dataSourceColumnId) {
+            // 没有指定字段，使用id字段
+            const idField = mainTable.getField('id');
+            if (!idField) {
+              throw new Error('缺少用于count的字段，请在metric中指定field');
+            }
+            return new AggregateMetric(
+              name,
+              func,
+              idField,
+              isDistinct,
+              metricItem.alias,
+            );
+          } else {
+            // 查找字段信息
+            const fieldInfo = Array.from(fieldMap.values()).find(
+              (f) => f.datasourceColumnId === metricInfo.dataSourceColumnId,
+            );
+            if (!fieldInfo) {
+              throw new Error(
+                `找不到指标字段: ${metricInfo.dataSourceColumnId}`,
+              );
+            }
+            const field = resolveField(fieldInfo.id);
+            return new AggregateMetric(
+              name,
+              func,
+              field,
+              isDistinct,
+              metricItem.alias,
+            );
+          }
         }
-        // 这里简化处理，实际实现需要解析表达式
-        const field = resolveField(metric.field!);
-        metricsMap[name] = new RowLevelMetric(
-          name,
-          field as unknown as MetricExpression,
-          metric.alias,
-        );
-        continue;
-      }
-
-      // 聚合指标
-      const funcMap: Record<string, AggregateFunction> = {
-        count: AggregateFunction.COUNT,
-        sum: AggregateFunction.SUM,
-        avg: AggregateFunction.AVG,
-        max: AggregateFunction.MAX,
-        min: AggregateFunction.MIN,
-        distinct_count: AggregateFunction.DISTINCT_COUNT,
-      };
-
-      const aggName =
-        metric.type === 'aggregate' ? metric.agg || 'sum' : metric.type;
-      const func = funcMap[aggName] || AggregateFunction.SUM;
-      const isDistinct = aggName === 'distinct_count';
-
-      if (!metric.field) {
-        // 没有指定字段，使用id字段
-        const idField = mainTable.getField('id');
-        if (!idField) {
-          throw new Error('缺少用于count的字段，请在metric中指定field');
-        }
-        metricsMap[name] = new AggregateMetric(
-          name,
-          func,
-          idField,
-          isDistinct,
-          metric.alias,
-        );
-      } else {
-        // 使用指定字段
-        const field = resolveField(metric.field);
-        metricsMap[name] = new AggregateMetric(
-          name,
-          func,
-          field,
-          isDistinct,
-          metric.alias,
-        );
-      }
-    }
-
-    // 解析引用其他指标的指标
-    for (const metric of dsl.metrics || []) {
-      if (['post_agg', 'arithmetic'].includes(metric.type)) {
-        const name = metric.name || metric.field || metric.type;
-
-        if (metric.type === 'post_agg') {
-          // 后聚合指标
-          if (!metric.agg || !metric.metric) {
-            throw new Error('post_agg需要agg和metric字段');
+        case MetricType.ROW_LEVEL: {
+          // 行级指标
+          if (
+            !metricInfo.leftOperand ||
+            !metricInfo.rowOperator ||
+            metricInfo.rightOperand === undefined
+          ) {
+            throw new Error(
+              'row_level metric需要leftOperand/rowOperator/rightOperand字段',
+            );
           }
 
-          const refMetric = metricsMap[metric.metric];
-          if (!refMetric) {
-            throw new Error(`找不到被聚合的指标: ${metric.metric}`);
+          const leftField = resolveField(metricInfo.leftOperand);
+          const rightField = resolveField(metricInfo.rightOperand);
+
+          const opMap: Record<string, Operator> = {
+            '+': Operator.PLUS,
+            '-': Operator.MINUS,
+            '*': Operator.MULTIPLY,
+            '/': Operator.DIVIDE,
+          };
+
+          const operatorEnum = opMap[metricInfo.rowOperator] || Operator.PLUS;
+          const metricExpr = new MetricExpression(
+            leftField,
+            operatorEnum,
+            rightField,
+          );
+
+          return new RowLevelMetric(name, metricExpr, metricItem.alias);
+        }
+        case MetricType.POST_AGGREGATE: {
+          // 后聚合指标
+          if (!metricInfo.aggregateFunction || !metricInfo.sourceMetricId) {
+            throw new Error(
+              'post_aggregate需要aggregateFunction和sourceMetricId字段',
+            );
+          }
+
+          const sourceMetricInfo = metricMap.get(metricInfo.sourceMetricId);
+          if (!sourceMetricInfo) {
+            throw new Error(`找不到源指标: ${metricInfo.sourceMetricId}`);
+          }
+
+          // 构建源指标
+          let sourceMetric: any;
+          if (sourceMetricInfo.metricType === 'aggregate') {
+            const funcMap: Record<string, AggregateFunction> = {
+              count: AggregateFunction.COUNT,
+              sum: AggregateFunction.SUM,
+              avg: AggregateFunction.AVG,
+              max: AggregateFunction.MAX,
+              min: AggregateFunction.MIN,
+              distinct_count: AggregateFunction.DISTINCT_COUNT,
+            };
+
+            const func =
+              funcMap[sourceMetricInfo.aggregateFunction || 'sum'] ||
+              AggregateFunction.SUM;
+            const isDistinct =
+              sourceMetricInfo.aggregateFunction === 'distinct_count';
+
+            if (sourceMetricInfo.dataSourceColumnId) {
+              const fieldInfo = fieldMap.get(
+                sourceMetricInfo.dataSourceColumnId,
+              );
+              if (!fieldInfo) {
+                throw new Error(
+                  `找不到指标字段: ${sourceMetricInfo.dataSourceColumnId}`,
+                );
+              }
+              const field = resolveField(fieldInfo.id);
+              sourceMetric = new AggregateMetric(
+                sourceMetricInfo.name,
+                func,
+                field,
+                isDistinct,
+              );
+            } else {
+              const idField = mainTable.getField('id');
+              if (!idField) {
+                throw new Error('缺少用于count的字段，请在metric中指定field');
+              }
+              sourceMetric = new AggregateMetric(
+                sourceMetricInfo.name,
+                func,
+                idField,
+                isDistinct,
+              );
+            }
+          } else {
+            throw new Error('post_aggregate只支持aggregate类型的源指标');
           }
 
           const funcMap: Record<string, AggregateFunction> = {
@@ -229,48 +391,138 @@ export class DSLTransformer {
             min: AggregateFunction.MIN,
           };
 
-          const func = funcMap[metric.agg] || AggregateFunction.AVG;
+          const func =
+            funcMap[metricInfo.aggregateFunction] || AggregateFunction.AVG;
 
-          metricsMap[name] = new PostAggregateMetric(
+          return new PostAggregateMetric(
             name,
             func,
-            refMetric,
+            sourceMetric,
             false,
-            metric.alias,
+            metricItem.alias,
           );
-        } else if (metric.type === 'arithmetic') {
+        }
+        case MetricType.ARITHMETIC: {
           // 算术指标
-          if (!metric.left || !metric.operator || metric.right === undefined) {
-            throw new Error('arithmetic需要left/operator/right');
+          if (
+            !metricInfo.leftMetricId ||
+            !metricInfo.arithmeticOperator ||
+            metricInfo.rightMetricOperand === undefined
+          ) {
+            throw new Error(
+              'arithmetic需要leftMetricId/arithmeticOperator/rightMetricOperand字段',
+            );
           }
 
-          // 解析操作数
-          function resolveOperand(op: any) {
-            if (typeof op === 'number') {
-              return op;
-            }
-            if (typeof op === 'string') {
-              // 作为字段引用
-              return resolveField(op);
-            }
-            if (op.metric) {
-              // 引用其他指标
-              const ref = metricsMap[op.metric];
-              if (!ref) {
-                throw new Error(`找不到引用的指标: ${op.metric}`);
+          const leftMetricInfo = metricMap.get(metricInfo.leftMetricId);
+          if (!leftMetricInfo) {
+            throw new Error(`找不到左操作数指标: ${metricInfo.leftMetricId}`);
+          }
+
+          const rightMetricInfo = metricMap.get(metricInfo.rightMetricOperand);
+          if (!rightMetricInfo) {
+            throw new Error(
+              `找不到右操作数指标: ${metricInfo.rightMetricOperand}`,
+            );
+          }
+
+          // 构建左操作数指标
+          let leftMetric: any;
+          if (leftMetricInfo.metricType === 'aggregate') {
+            const funcMap: Record<string, AggregateFunction> = {
+              count: AggregateFunction.COUNT,
+              sum: AggregateFunction.SUM,
+              avg: AggregateFunction.AVG,
+              max: AggregateFunction.MAX,
+              min: AggregateFunction.MIN,
+              distinct_count: AggregateFunction.DISTINCT_COUNT,
+            };
+
+            const func =
+              funcMap[leftMetricInfo.aggregateFunction || 'sum'] ||
+              AggregateFunction.SUM;
+            const isDistinct =
+              leftMetricInfo.aggregateFunction === 'distinct_count';
+
+            if (leftMetricInfo.dataSourceColumnId) {
+              const fieldInfo = fieldMap.get(leftMetricInfo.dataSourceColumnId);
+              if (!fieldInfo) {
+                throw new Error(
+                  `找不到指标字段: ${leftMetricInfo.dataSourceColumnId}`,
+                );
               }
-              return ref;
+              const field = resolveField(fieldInfo.id);
+              leftMetric = new AggregateMetric(
+                leftMetricInfo.name,
+                func,
+                field,
+                isDistinct,
+              );
+            } else {
+              const idField = mainTable.getField('id');
+              if (!idField) {
+                throw new Error('缺少用于count的字段，请在metric中指定field');
+              }
+              leftMetric = new AggregateMetric(
+                leftMetricInfo.name,
+                func,
+                idField,
+                isDistinct,
+              );
             }
-            if (op.field) {
-              // 引用字段
-              return resolveField(op.field);
-            }
-            throw new Error('无法解析arithmetic操作数');
+          } else {
+            throw new Error('arithmetic只支持aggregate类型的操作数指标');
           }
 
-          const leftOperand = resolveOperand(metric.left);
-          const rightOperand = resolveOperand(metric.right);
-          const opSymbol = metric.operator;
+          // 构建右操作数指标
+          let rightMetric: any;
+          if (rightMetricInfo.metricType === 'aggregate') {
+            const funcMap: Record<string, AggregateFunction> = {
+              count: AggregateFunction.COUNT,
+              sum: AggregateFunction.SUM,
+              avg: AggregateFunction.AVG,
+              max: AggregateFunction.MAX,
+              min: AggregateFunction.MIN,
+              distinct_count: AggregateFunction.DISTINCT_COUNT,
+            };
+
+            const func =
+              funcMap[rightMetricInfo.aggregateFunction || 'sum'] ||
+              AggregateFunction.SUM;
+            const isDistinct =
+              rightMetricInfo.aggregateFunction === 'distinct_count';
+
+            if (rightMetricInfo.dataSourceColumnId) {
+              const fieldInfo = fieldMap.get(
+                rightMetricInfo.dataSourceColumnId,
+              );
+              if (!fieldInfo) {
+                throw new Error(
+                  `找不到指标字段: ${rightMetricInfo.dataSourceColumnId}`,
+                );
+              }
+              const field = resolveField(fieldInfo.id);
+              rightMetric = new AggregateMetric(
+                rightMetricInfo.name,
+                func,
+                field,
+                isDistinct,
+              );
+            } else {
+              const idField = mainTable.getField('id');
+              if (!idField) {
+                throw new Error('缺少用于count的字段，请在metric中指定field');
+              }
+              rightMetric = new AggregateMetric(
+                rightMetricInfo.name,
+                func,
+                idField,
+                isDistinct,
+              );
+            }
+          } else {
+            throw new Error('arithmetic只支持aggregate类型的操作数指标');
+          }
 
           const opMap: Record<string, Operator> = {
             '+': Operator.PLUS,
@@ -279,25 +531,25 @@ export class DSLTransformer {
             '/': Operator.DIVIDE,
           };
 
-          const operatorEnum = opMap[opSymbol] || Operator.PLUS;
+          const operatorEnum =
+            opMap[metricInfo.arithmeticOperator] || Operator.PLUS;
 
-          metricsMap[name] = new ArithmeticMetric(
+          return new ArithmeticMetric(
             name,
-            leftOperand,
+            leftMetric,
             operatorEnum,
-            rightOperand,
-            metric.alias,
+            rightMetric,
+            metricItem.alias,
           );
         }
+        default:
+          throw new Error(`不支持的指标类型: ${metricInfo.metricType}`);
       }
-    }
-
-    // 最终指标数组
-    const metrics = Object.values(metricsMap);
+    });
 
     // 创建筛选条件
     const filters = (dsl.filters || []).map((filter) => {
-      const field = resolveField(filter.field);
+      const field = resolveField(filter.fieldId);
 
       // 支持时间筛选的简化语法
       if (filter.op === 'recent_days' && typeof filter.value === 'number') {
@@ -330,10 +582,17 @@ export class DSLTransformer {
       };
 
       const op = opMap[filter.op] || filter.op;
-      return new Filter(field, op as Operator, value);
+      return new Filter(field, op, value);
     });
 
     // 创建并返回Query对象
-    return new MetricQuery(mainTable, dimensions, metrics, filters, joins);
+    const metricQuery = new MetricQuery(
+      mainTable,
+      dimensions,
+      metrics,
+      filters,
+      joins,
+    );
+    return QueryBuilder.assignTableAliases(metricQuery);
   }
 }

@@ -1,4 +1,9 @@
-import { AggregateFunction, Operator, PeriodOverPeriodType, PeriodCalculationMode } from '../core/types';
+import {
+  AggregateFunction,
+  Operator,
+  PeriodOverPeriodType,
+  PeriodCalculationMode,
+} from '../core/types';
 import { Field } from '../core/field';
 
 /**
@@ -25,7 +30,12 @@ export abstract class Metric {
    */
   public readonly businessName?: string;
 
-  constructor(name: string, alias?: string, description?: string, businessName?: string) {
+  constructor(
+    name: string,
+    alias?: string,
+    description?: string,
+    businessName?: string
+  ) {
     this.name = name;
     this.alias = alias;
     this.description = description;
@@ -55,7 +65,12 @@ export class RowLevelMetric extends Metric {
    */
   public readonly expression: MetricExpression;
 
-  constructor(name: string, expression: MetricExpression, alias?: string, description?: string) {
+  constructor(
+    name: string,
+    expression: MetricExpression,
+    alias?: string,
+    description?: string
+  ) {
     super(name, alias, description);
     this.expression = expression;
   }
@@ -81,7 +96,11 @@ export interface AggregateCondition {
   /**
    * 时间范围类型
    */
-  timeRange?: 'recent_days' | 'recent_weeks' | 'recent_months' | 'custom_date_range';
+  timeRange?:
+    | 'recent_days'
+    | 'recent_weeks'
+    | 'recent_months'
+    | 'custom_date_range';
 
   /**
    * 时间范围值（比如7表示最近7天）
@@ -155,7 +174,11 @@ export class AggregateMetric extends Metric {
   }
 
   toSQL(): string {
-    const fieldExpr = this.field instanceof Field ? this.field.getFullName() : this.field.toSQL();
+    console.log(this.field);
+    const fieldExpr =
+      this.field instanceof Field
+        ? this.field.getFullName()
+        : this.field.toSQL();
 
     let baseSql: string;
     let caseCondition = '';
@@ -326,16 +349,21 @@ export class SubQueryMetric extends Metric {
     let sql = this.subQueryTemplate;
 
     // 替换上下文字段引用
-    Object.entries(this.contextFieldMapping).forEach(([placeholder, mainField]) => {
-      // 查找主查询中对应字段的表别名
-      const tableAlias = this.findFieldTableAlias(mainField, queryContext);
-      if (tableAlias) {
-        sql = sql.replace(new RegExp(`{${placeholder}}`, 'g'), `${tableAlias}.${mainField}`);
-      } else {
-        // 如果找不到表别名，假设字段在主表中
-        sql = sql.replace(new RegExp(`{${placeholder}}`, 'g'), mainField);
+    Object.entries(this.contextFieldMapping).forEach(
+      ([placeholder, mainField]) => {
+        // 查找主查询中对应字段的表别名
+        const tableAlias = this.findFieldTableAlias(mainField, queryContext);
+        if (tableAlias) {
+          sql = sql.replace(
+            new RegExp(`{${placeholder}}`, 'g'),
+            `${tableAlias}.${mainField}`
+          );
+        } else {
+          // 如果找不到表别名，假设字段在主表中
+          sql = sql.replace(new RegExp(`{${placeholder}}`, 'g'), mainField);
+        }
       }
-    });
+    );
 
     // 替换静态参数
     if (this.parameters) {
@@ -351,18 +379,27 @@ export class SubQueryMetric extends Metric {
    * 查找字段对应的表别名
    * 注意：这里的字段查找是基于主查询上下文的，用于映射主查询字段到子查询
    */
-  private findFieldTableAlias(fieldName: string, queryContext: any): string | null {
+  private findFieldTableAlias(
+    fieldName: string,
+    queryContext: any
+  ): string | null {
     if (!queryContext) return null;
 
     // 首先检查主表
-    if (queryContext.mainTable && this.fieldExistsInTable(fieldName, queryContext.mainTable)) {
+    if (
+      queryContext.mainTable &&
+      this.fieldExistsInTable(fieldName, queryContext.mainTable)
+    ) {
       return queryContext.mainTable.alias;
     }
 
     // 然后检查JOIN表
     if (queryContext.joins) {
       for (const join of queryContext.joins) {
-        if (join.rightTable && this.fieldExistsInTable(fieldName, join.rightTable)) {
+        if (
+          join.rightTable &&
+          this.fieldExistsInTable(fieldName, join.rightTable)
+        ) {
           return join.rightTable.alias;
         }
       }
@@ -425,11 +462,15 @@ export class ArithmeticMetric extends Metric {
     // Prefer to use full SQL of nested metrics/fields when available
     const leftSQL = (this.leftMetric as any)?.toSQL
       ? (this.leftMetric as any).toSQL()
-      : ((this.leftMetric as any)?.getFullName ? (this.leftMetric as any).getFullName() : String(this.leftMetric));
+      : (this.leftMetric as any)?.getFullName
+      ? (this.leftMetric as any).getFullName()
+      : String(this.leftMetric);
 
     const rightSQL = (this.rightOperand as any)?.toSQL
       ? (this.rightOperand as any).toSQL()
-      : ((this.rightOperand as any)?.getFullName ? (this.rightOperand as any).getFullName() : String(this.rightOperand));
+      : (this.rightOperand as any)?.getFullName
+      ? (this.rightOperand as any).getFullName()
+      : String(this.rightOperand);
 
     return `(${leftSQL} ${this.operator} ${rightSQL})`;
   }
@@ -470,8 +511,13 @@ export class PeriodOverPeriodMetric extends Metric {
   ) {
     // 自动生成名称和描述
     const periodName = `${baseMetric.name}_${periodType}`;
-    const periodAlias = alias || `${baseMetric.getDisplayName()}_${periodType.toUpperCase()}`;
-    const periodDesc = description || `${baseMetric.getDisplayName()}的${PeriodOverPeriodMetric.getPeriodTypeDescription(periodType)}`;
+    const periodAlias =
+      alias || `${baseMetric.getDisplayName()}_${periodType.toUpperCase()}`;
+    const periodDesc =
+      description ||
+      `${baseMetric.getDisplayName()}的${PeriodOverPeriodMetric.getPeriodTypeDescription(
+        periodType
+      )}`;
 
     super(periodName, periodAlias, periodDesc);
 
@@ -484,13 +530,15 @@ export class PeriodOverPeriodMetric extends Metric {
   /**
    * 获取周期类型的描述
    */
-  private static getPeriodTypeDescription(periodType: PeriodOverPeriodType): string {
+  private static getPeriodTypeDescription(
+    periodType: PeriodOverPeriodType
+  ): string {
     const descriptions: Record<PeriodOverPeriodType, string> = {
       [PeriodOverPeriodType.MONTH_OVER_MONTH]: '月环比',
       [PeriodOverPeriodType.YEAR_OVER_YEAR]: '年同比',
       [PeriodOverPeriodType.WEEK_OVER_WEEK]: '周环比',
       [PeriodOverPeriodType.QUARTER_OVER_QUARTER]: '季环比',
-      [PeriodOverPeriodType.DAY_OVER_DAY]: '日环比'
+      [PeriodOverPeriodType.DAY_OVER_DAY]: '日环比',
     };
     return descriptions[periodType] || '同环比';
   }
@@ -543,19 +591,27 @@ export class PeriodOverPeriodMetric extends Metric {
         if (offset === 0) {
           return `${timeFieldName} >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND ${timeFieldName} < DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01')`;
         } else {
-          return `${timeFieldName} >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(offset)} MONTH), '%Y-%m-01') AND ${timeFieldName} < DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(offset) - 1} MONTH), '%Y-%m-01')`;
+          return `${timeFieldName} >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(
+            offset
+          )} MONTH), '%Y-%m-01') AND ${timeFieldName} < DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL ${
+            Math.abs(offset) - 1
+          } MONTH), '%Y-%m-01')`;
         }
 
       case PeriodOverPeriodType.YEAR_OVER_YEAR:
         if (offset === 0) {
           return `YEAR(${timeFieldName}) = YEAR(CURDATE())`;
         } else {
-          return `YEAR(${timeFieldName}) = YEAR(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(offset)} MONTH))`;
+          return `YEAR(${timeFieldName}) = YEAR(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(
+            offset
+          )} MONTH))`;
         }
 
       // 其他周期类型的实现可以类似扩展
       default:
-        return `${timeFieldName} >= DATE_SUB(CURDATE(), INTERVAL ${Math.abs(offset)} DAY)`;
+        return `${timeFieldName} >= DATE_SUB(CURDATE(), INTERVAL ${Math.abs(
+          offset
+        )} DAY)`;
     }
   }
 
@@ -569,11 +625,19 @@ export class PeriodOverPeriodMetric extends Metric {
    * 用于在SELECT子句中直接计算同环比
    */
   generatePeriodOverPeriodSQLExpression(tableAlias?: string): string {
-    const timeFieldExpr = tableAlias ? `${tableAlias}.${this.timeField.name}` : this.timeField.name;
+    const timeFieldExpr = tableAlias
+      ? `${tableAlias}.${this.timeField.name}`
+      : this.timeField.name;
 
     // 生成当前周期和对比周期的聚合表达式
-    const currentPeriodExpr = this.generatePeriodAggregationSQL('current', tableAlias);
-    const comparisonPeriodExpr = this.generatePeriodAggregationSQL('comparison', tableAlias);
+    const currentPeriodExpr = this.generatePeriodAggregationSQL(
+      'current',
+      tableAlias
+    );
+    const comparisonPeriodExpr = this.generatePeriodAggregationSQL(
+      'comparison',
+      tableAlias
+    );
 
     // 根据计算模式生成最终表达式
     let popExpression: string;
@@ -587,7 +651,8 @@ export class PeriodOverPeriodMetric extends Metric {
     } else if (this.calculationMode === PeriodCalculationMode.ABSOLUTE) {
       // 只返回绝对值差异
       popExpression = `(${currentPeriodExpr} - ${comparisonPeriodExpr})`;
-    } else { // BOTH
+    } else {
+      // BOTH
       // 返回百分比和绝对值，用特殊分隔符连接
       const percentageExpr = `CASE WHEN ${comparisonPeriodExpr} = 0 OR ${comparisonPeriodExpr} IS NULL
                               THEN NULL
@@ -603,8 +668,13 @@ export class PeriodOverPeriodMetric extends Metric {
   /**
    * 生成周期聚合的SQL表达式
    */
-  private generatePeriodAggregationSQL(period: 'current' | 'comparison', tableAlias?: string): string {
-    const timeFieldExpr = tableAlias ? `${tableAlias}.${this.timeField.name}` : this.timeField.name;
+  private generatePeriodAggregationSQL(
+    period: 'current' | 'comparison',
+    tableAlias?: string
+  ): string {
+    const timeFieldExpr = tableAlias
+      ? `${tableAlias}.${this.timeField.name}`
+      : this.timeField.name;
     const baseFieldExpr = this.baseMetric.toSQL();
 
     // 生成时间筛选条件
@@ -621,7 +691,10 @@ export class PeriodOverPeriodMetric extends Metric {
   /**
    * 生成时间条件的SQL
    */
-  private generateTimeConditionSQL(period: 'current' | 'comparison', timeFieldExpr: string): string {
+  private generateTimeConditionSQL(
+    period: 'current' | 'comparison',
+    timeFieldExpr: string
+  ): string {
     const offset = period === 'current' ? 0 : this.getPeriodOffset();
 
     // 使用日期函数生成时间范围条件
@@ -634,7 +707,9 @@ export class PeriodOverPeriodMetric extends Metric {
           return `DATE_FORMAT(${timeFieldExpr}, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')`;
         } else {
           // 上个月
-          return `DATE_FORMAT(${timeFieldExpr}, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(offset)} MONTH), '%Y-%m')`;
+          return `DATE_FORMAT(${timeFieldExpr}, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(
+            offset
+          )} MONTH), '%Y-%m')`;
         }
 
       case PeriodOverPeriodType.YEAR_OVER_YEAR:
@@ -643,7 +718,9 @@ export class PeriodOverPeriodMetric extends Metric {
           return `YEAR(${timeFieldExpr}) = YEAR(CURDATE())`;
         } else {
           // 去年
-          return `YEAR(${timeFieldExpr}) = YEAR(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(offset)} YEAR))`;
+          return `YEAR(${timeFieldExpr}) = YEAR(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(
+            offset
+          )} YEAR))`;
         }
 
       case PeriodOverPeriodType.WEEK_OVER_WEEK:
@@ -652,7 +729,9 @@ export class PeriodOverPeriodMetric extends Metric {
           return `YEARWEEK(${timeFieldExpr}, 1) = YEARWEEK(CURDATE(), 1)`;
         } else {
           // 上周
-          return `YEARWEEK(${timeFieldExpr}, 1) = YEARWEEK(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(offset)} WEEK), 1)`;
+          return `YEARWEEK(${timeFieldExpr}, 1) = YEARWEEK(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(
+            offset
+          )} WEEK), 1)`;
         }
 
       case PeriodOverPeriodType.QUARTER_OVER_QUARTER:
@@ -661,7 +740,11 @@ export class PeriodOverPeriodMetric extends Metric {
           return `CONCAT(YEAR(${timeFieldExpr}), '-', QUARTER(${timeFieldExpr})) = CONCAT(YEAR(CURDATE()), '-', QUARTER(CURDATE()))`;
         } else {
           // 上季度
-          return `CONCAT(YEAR(${timeFieldExpr}), '-', QUARTER(${timeFieldExpr})) = CONCAT(YEAR(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(offset)} MONTH)), '-', QUARTER(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(offset)} MONTH)))`;
+          return `CONCAT(YEAR(${timeFieldExpr}), '-', QUARTER(${timeFieldExpr})) = CONCAT(YEAR(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(
+            offset
+          )} MONTH)), '-', QUARTER(DATE_SUB(CURDATE(), INTERVAL ${Math.abs(
+            offset
+          )} MONTH)))`;
         }
 
       case PeriodOverPeriodType.DAY_OVER_DAY:
@@ -670,7 +753,9 @@ export class PeriodOverPeriodMetric extends Metric {
           return `DATE(${timeFieldExpr}) = CURDATE()`;
         } else {
           // 前几天
-          return `DATE(${timeFieldExpr}) = DATE_SUB(CURDATE(), INTERVAL ${Math.abs(offset)} DAY)`;
+          return `DATE(${timeFieldExpr}) = DATE_SUB(CURDATE(), INTERVAL ${Math.abs(
+            offset
+          )} DAY)`;
         }
 
       default:
@@ -731,20 +816,25 @@ export class PeriodOverPeriodMetric extends Metric {
       baseMetric: this.baseMetric,
       periodOffset: this.getPeriodOffset(),
       currentPeriodExpression: this.getCurrentPeriodExpression(),
-      comparisonPeriodExpression: this.getComparisonPeriodExpression()
+      comparisonPeriodExpression: this.getComparisonPeriodExpression(),
     };
   }
 
   /**
    * 生成合并的同环比查询SQL
    */
-  private generateCombinedQuerySQL(currentSQL: string, comparisonSQL: string): string {
+  private generateCombinedQuerySQL(
+    currentSQL: string,
+    comparisonSQL: string
+  ): string {
     // 这里需要根据实际需求生成合并查询
     // 这是一个简化的实现
 
     // 从当前查询中提取SELECT和FROM部分
     const selectMatch = currentSQL.match(/SELECT\s+(.+?)\s+FROM/i);
-    const fromMatch = currentSQL.match(/FROM\s+(.+?)(?:\s+WHERE|\s+GROUP|\s+ORDER|\s+LIMIT|$)/i);
+    const fromMatch = currentSQL.match(
+      /FROM\s+(.+?)(?:\s+WHERE|\s+GROUP|\s+ORDER|\s+LIMIT|$)/i
+    );
 
     if (!selectMatch || !fromMatch) {
       return currentSQL;
@@ -757,9 +847,15 @@ export class PeriodOverPeriodMetric extends Metric {
     const popSelectClause = this.generatePopSelectClause(selectClause);
 
     return `SELECT ${popSelectClause} FROM (
-  ${currentSQL.replace(/SELECT\s+(.+?)\s+FROM/i, 'SELECT $1 as current_$1 FROM')}
+  ${currentSQL.replace(
+    /SELECT\s+(.+?)\s+FROM/i,
+    'SELECT $1 as current_$1 FROM'
+  )}
 ) current_data FULL OUTER JOIN (
-  ${comparisonSQL.replace(/SELECT\s+(.+?)\s+FROM/i, 'SELECT $1 as comparison_$1 FROM')}
+  ${comparisonSQL.replace(
+    /SELECT\s+(.+?)\s+FROM/i,
+    'SELECT $1 as comparison_$1 FROM'
+  )}
 ) comparison_data ON /* 连接条件 */ 1=1`;
   }
 
@@ -770,28 +866,38 @@ export class PeriodOverPeriodMetric extends Metric {
     // 解析原始SELECT子句并生成同环比计算
     // 这是一个简化的实现
 
-    const fields = originalSelect.split(',').map(field => field.trim());
+    const fields = originalSelect.split(',').map((field) => field.trim());
     const popFields: string[] = [];
 
-    fields.forEach(field => {
+    fields.forEach((field) => {
       // 为每个字段添加同环比计算
-      const fieldName = field.split(/\s+AS\s+/i).pop()?.trim() || field;
+      const fieldName =
+        field
+          .split(/\s+AS\s+/i)
+          .pop()
+          ?.trim() || field;
       const currentField = `current_${fieldName}`;
       const comparisonField = `comparison_${fieldName}`;
 
       popFields.push(`${currentField} as ${fieldName}_current`);
       popFields.push(`${comparisonField} as ${fieldName}_previous`);
 
-      if (this.calculationMode === PeriodCalculationMode.PERCENTAGE ||
-          this.calculationMode === PeriodCalculationMode.BOTH) {
+      if (
+        this.calculationMode === PeriodCalculationMode.PERCENTAGE ||
+        this.calculationMode === PeriodCalculationMode.BOTH
+      ) {
         popFields.push(`CASE WHEN ${comparisonField} = 0 THEN NULL
                          ELSE ROUND(((${currentField} - ${comparisonField}) * 100.0 / ${comparisonField}), 2)
                          END as ${fieldName}_pop_percentage`);
       }
 
-      if (this.calculationMode === PeriodCalculationMode.ABSOLUTE ||
-          this.calculationMode === PeriodCalculationMode.BOTH) {
-        popFields.push(`(${currentField} - ${comparisonField}) as ${fieldName}_pop_absolute`);
+      if (
+        this.calculationMode === PeriodCalculationMode.ABSOLUTE ||
+        this.calculationMode === PeriodCalculationMode.BOTH
+      ) {
+        popFields.push(
+          `(${currentField} - ${comparisonField}) as ${fieldName}_pop_absolute`
+        );
       }
     });
 
@@ -830,15 +936,17 @@ export class MetricExpression {
   }
 
   toSQL(): string {
-    const leftStr = this.left instanceof Field
-      ? this.left.getFullName()
-      : (this.left instanceof Metric)
+    const leftStr =
+      this.left instanceof Field
+        ? this.left.getFullName()
+        : this.left instanceof Metric
         ? this.left.toSQL()
         : this.left.toString();
 
-    const rightStr = this.right instanceof Field
-      ? this.right.getFullName()
-      : (this.right instanceof Metric)
+    const rightStr =
+      this.right instanceof Field
+        ? this.right.getFullName()
+        : this.right instanceof Metric
         ? this.right.toSQL()
         : this.right.toString();
 

@@ -148,3 +148,110 @@ export enum UpdateDatasetAction {
   REMOVE_JOIN = 'removeJoin',
   REMOVE_TABLE = 'removeTable',
 }
+
+/**
+ * 数据源返回类型
+ */
+export interface DatasourceResponse {
+  id: number;
+  name: string;
+  type: string;
+}
+
+/**
+ * 主表返回类型
+ */
+export interface MainTableResponse {
+  id: number;
+  tableName: string;
+  datasetName: string;
+}
+
+/**
+ * 表返回类型
+ */
+export interface DatasetTableResponse {
+  id: number;
+  datasourceTableId: number;
+  tableName: string;
+  datasetName: string;
+  primaryFieldId?: number;
+  alias?: string;
+}
+
+/**
+ * 字段返回类型
+ */
+export interface DatasetFieldResponse {
+  id: number;
+  name: string;
+  alias?: string;
+  type: FieldType;
+  description?: string;
+  businessName: string;
+  isPrimaryKey: boolean;
+  tableId: number;
+  tableName?: string;
+  datasourceColumnId?: number;
+}
+
+/**
+ * 指标返回类型
+ */
+export interface DatasetMetricResponse {
+  id: number;
+  name: string;
+  alias?: string;
+  description?: string;
+  businessName?: string;
+  metricType: MetricType;
+  dataSourceColumnId?: number;
+  dataSourceColumnName?: string;
+  aggregateFunction?: MetricAggregateFunction;
+  distinct: boolean;
+  aggregateCondition?: AggregateConditionConfig;
+  leftOperand?: number;
+  leftOperandFieldName?: string;
+  rowOperator?: MetricOperator;
+  rightOperand?: number;
+  rightOperandFieldName?: string;
+  sourceMetricId?: number;
+  sourceMetricName?: string;
+  leftMetricId?: number;
+  leftMetricName?: string;
+  arithmeticOperator?: MetricOperator;
+  rightMetricOperand?: number;
+  rightMetricOperandFieldName?: string;
+  baseMetricId?: number;
+  baseMetricName?: string;
+  timeDataSourceColumnId?: number;
+  timeDataSourceColumnName?: string;
+  periodType?: PeriodOverPeriodType;
+  calculationMode?: PeriodCalculationMode;
+}
+
+/**
+ * 数据集返回类型
+ */
+export interface DatasetJoinResponse {
+  id: number;
+  rightTableId: number;
+  leftField: string;
+  rightField: string;
+  joinType: JoinType;
+}
+
+export interface DatasetResponse {
+  id: number;
+  name: string;
+  description?: string;
+  type: DatasetType;
+  status: DatasetStatus;
+  mainTableId?: number;
+  datasource: DatasourceResponse | null;
+  mainTable: MainTableResponse | null;
+  tables: DatasetTableResponse[];
+  fields: DatasetFieldResponse[];
+  metrics: DatasetMetricResponse[];
+  joins?: DatasetJoinResponse[];
+}

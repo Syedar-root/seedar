@@ -8,12 +8,15 @@ import { UpdateQueryRequest } from './dto/update-query.request';
 import { ExecuteQueryResponse } from './dto/execute-query.response';
 import { QueryStatus } from './query-status.enum';
 import { DSLTransformer } from './dsl-transformer';
-import { KnexSQLGenerator, Table } from '@metric-engine/core';
+import { KnexSQLGenerator, Table, Field } from '@metric-engine/core';
 import { Datasource } from '@/module/datasource/entities/datasource.entity';
 import { DatasetService } from '@/module/dataset/services/dataset.service';
 import { KnexConnectionFactory } from '@/module/datasource/knex-connection.factory';
 import { configDecryption } from '@/module/datasource/service/helper';
 import { MySqlConfig } from '@/module/datasource/datasource.types';
+import { DataSourceType } from '@/module/datasource/datasource.types';
+import { DatasetResponse } from '@/module/dataset/dataset.types';
+import { console } from 'inspector';
 
 @Injectable()
 export class QueryService {
@@ -97,8 +100,8 @@ export class QueryService {
       this.configService,
     );
 
-    // 从数据库获取表结构信息
-    const tables = await this.getTablesFromDataset(query.datasetId);
+    // 从数据集获取表结构信息
+    const tables = this.getTablesFromDataset(dataset);
 
     // 检查 DSL 是否存在
     if (!query.dsl) {
@@ -106,7 +109,7 @@ export class QueryService {
     }
 
     // 转换DSL
-    const metricQuery = DSLTransformer.transform(query.dsl, tables as Table[]);
+    const metricQuery = DSLTransformer.transform(query.dsl, dataset, tables);
 
     // 创建动态数据库连接
     const knexConnection =
@@ -115,7 +118,10 @@ export class QueryService {
     try {
       // 初始化KnexSQLGenerator
       KnexSQLGenerator.initializeKnex({
-        client: datasourceEntity.type,
+        client:
+          datasourceEntity.type === DataSourceType.MYSQL
+            ? 'mysql2'
+            : datasourceEntity.type,
         connection: datasourceEntity.config,
       });
 
@@ -128,6 +134,9 @@ export class QueryService {
         sqlResult.sql,
         sqlResult.bindings,
       );
+
+      console.log('hcs result', results);
+
       const executionTime = Date.now() - startTime;
 
       // 构建响应
@@ -144,30 +153,31 @@ export class QueryService {
 
   /**
    * 从数据集获取表结构信息
-   * @param datasetId 数据集ID
+   * @param dataset 数据集对象
    * @returns 表定义数组
    */
-  private async getTablesFromDataset(datasetId: number): Promise<any[]> {
-    const dataset = await this.datasetService.findOne(datasetId);
-    if (!dataset) {
-      throw new NotFoundException(`Dataset with ID ${datasetId} not found`);
-    }
-
-    // 转换表结构信息为所需格式
-    return dataset.tables.map((table) => ({
-      name: table.tableName,
-      alias: table.datasetName,
-      getField: (fieldName: string) => {
-        const field = dataset.fields.find(
-          (f) => f.tableId === table.id && f.name === fieldName,
+  private getTablesFromDataset(dataset: DatasetResponse): Table[] {
+    // 转换表结构信息为 Table 类型
+    return dataset.tables.map((table) => {
+      // 为当前表创建字段列表
+      const fields = dataset.fields
+        .filter((f) => f.tableId === table.id)
+        .map(
+          (field) =>
+            new Field({
+              name: field.name,
+              type: field.type,
+              alias: field.alias,
+              description: field.description,
+              businessName: field.businessName,
+            }),
         );
-        if (!field) return null;
-        return {
-          name: field.name,
-          type: field.type,
-          isPrimaryKey: field.isPrimaryKey,
-        };
-      },
-    }));
+
+      // 创建并返回 Table 对象
+      return new Table({
+        name: table.tableName,
+        fields,
+      });
+    });
   }
 }
