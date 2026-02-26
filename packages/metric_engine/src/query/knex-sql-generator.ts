@@ -15,6 +15,19 @@ import {
 import { AliasRegistry } from './alias-registry';
 
 /**
+ * 列映射接口
+ */
+export interface ColumnMapping {
+  alias: string;
+  type: 'dimension' | 'metric';
+  field?: Field;
+  metric?: Metric;
+  originalName: string;
+  displayName: string;
+  businessName?: string;
+}
+
+/**
  * 基于Knex的SQL生成器
  * 使用Knex查询构建器替代字符串拼接
  */
@@ -54,7 +67,11 @@ export class KnexSQLGenerator {
   /**
    * 生成SELECT查询
    */
-  static generateSelect(query: Query): { sql: string; bindings: any[] } {
+  static generateSelect(query: Query): {
+    sql: string;
+    bindings: any[];
+    columnMappings: ColumnMapping[];
+  } {
     const knex = this.getKnex();
 
     // 别名应该在构建 Query 时已经分配好，这里直接使用
@@ -79,7 +96,7 @@ export class KnexSQLGenerator {
     queryBuilder = this.applyFilters(queryBuilder, query);
 
     // 构建SELECT子句
-    const selectItems = this.buildSelectItems(query);
+    const { selectItems, columnMappings } = this.buildSelectItems(query);
     queryBuilder = queryBuilder.select(selectItems);
 
     // 添加GROUP BY
@@ -134,6 +151,9 @@ export class KnexSQLGenerator {
       let colIdx = 1;
       const hasJoins = query.joins.length > 0;
 
+      // 构建列映射
+      const innerColumnMappings: ColumnMapping[] = [];
+
       // dims
       query.dimensions.forEach((dim) => {
         const fieldExpr = (() => {
@@ -155,6 +175,14 @@ export class KnexSQLGenerator {
         innerSelectItems.push(
           this.getKnex().raw(`?? AS ??`, [fieldExpr, `column_${colIdx}`])
         );
+        innerColumnMappings.push({
+          alias: `column_${colIdx}`,
+          type: 'dimension',
+          field: dim.field,
+          originalName: dim.field.name,
+          displayName: dim.alias || dim.field.name,
+          businessName: dim.field.businessName,
+        });
         colIdx++;
       });
 
@@ -174,6 +202,14 @@ export class KnexSQLGenerator {
         innerSelectItems.push(
           this.getKnex().raw(`${metricSql} AS ??`, [englishAlias])
         );
+        innerColumnMappings.push({
+          alias: englishAlias,
+          type: 'metric',
+          metric: metric,
+          originalName: metric.name,
+          displayName: metric.alias || metric.name,
+          businessName: metric.businessName,
+        });
         colIdx++;
       });
 
@@ -222,14 +258,26 @@ export class KnexSQLGenerator {
       // outer select: dims from inner, base metrics mapped, others computed
       const outerSelectItems: any[] = [];
       let outerIdx = 1;
+
+      // 构建外层列映射
+      const outerColumnMappings: ColumnMapping[] = [];
+
       // dims
-      query.dimensions.forEach(() => {
+      query.dimensions.forEach((dim) => {
         outerSelectItems.push(
           this.getKnex().raw(`inner_metrics.?? AS ??`, [
             `column_${outerIdx}`,
             `column_${outerIdx}`,
           ])
         );
+        outerColumnMappings.push({
+          alias: `column_${outerIdx}`,
+          type: 'dimension',
+          field: dim.field,
+          originalName: dim.field.name,
+          displayName: dim.alias || dim.field.name,
+          businessName: dim.field.businessName,
+        });
         outerIdx++;
       });
 
@@ -326,6 +374,14 @@ export class KnexSQLGenerator {
             this.getKnex().raw(`${metricSql} AS ??`, [englishAlias])
           );
         }
+        outerColumnMappings.push({
+          alias: englishAlias,
+          type: 'metric',
+          metric: metric,
+          originalName: metric.name,
+          displayName: metric.alias || metric.name,
+          businessName: metric.businessName,
+        });
         outerIdx++;
       });
 
@@ -348,6 +404,7 @@ export class KnexSQLGenerator {
       return {
         sql: result.sql,
         bindings: [...result.bindings],
+        columnMappings: outerColumnMappings,
       };
     }
 
@@ -355,6 +412,7 @@ export class KnexSQLGenerator {
     return {
       sql: result.sql,
       bindings: [...result.bindings], // 转换为可变数组
+      columnMappings: columnMappings,
     };
   }
 
@@ -517,8 +575,12 @@ export class KnexSQLGenerator {
   /**
    * 构建SELECT子句项
    */
-  private static buildSelectItems(query: Query): any[] {
+  private static buildSelectItems(query: Query): {
+    selectItems: any[];
+    columnMappings: ColumnMapping[];
+  } {
     const selectItems: any[] = [];
+    const columnMappings: ColumnMapping[] = [];
     let columnIndex = 1;
 
     const hasJoins = query.joins.length > 0;
@@ -558,6 +620,17 @@ export class KnexSQLGenerator {
       selectItems.push(
         this.getKnex().raw(`?? AS ??`, [fieldExpr, englishAlias])
       );
+
+      // 添加列映射
+      columnMappings.push({
+        alias: englishAlias,
+        type: 'dimension',
+        field: dim.field,
+        originalName: dim.field.name,
+        displayName: dim.alias || dim.field.name,
+        businessName: dim.field.businessName,
+      });
+
       columnIndex++;
     });
 
@@ -598,10 +671,21 @@ export class KnexSQLGenerator {
       selectItems.push(
         this.getKnex().raw(`${metricSql} AS ??`, [englishAlias])
       );
+
+      // 添加列映射
+      columnMappings.push({
+        alias: englishAlias,
+        type: 'metric',
+        metric: metric,
+        originalName: metric.name,
+        displayName: metric.alias || metric.name,
+        businessName: (metric as any).businessName,
+      });
+
       columnIndex++;
     });
 
-    return selectItems;
+    return { selectItems, columnMappings };
   }
 
   /**
@@ -799,6 +883,7 @@ export class KnexSQLGenerator {
   static generateSQLWithBindings(query: Query): {
     sql: string;
     bindings: any[];
+    columnMappings: ColumnMapping[];
   } {
     return this.generateSelect(query);
   }

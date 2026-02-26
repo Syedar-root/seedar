@@ -28,6 +28,7 @@ import {
   DatasetMetricResponse,
   DatasetJoinResponse,
   MetricType,
+  MetricAggregateFunction,
 } from '@/module/dataset/dataset.types';
 
 /**
@@ -254,7 +255,9 @@ export class DSLTransformer {
           const func =
             funcMap[metricInfo.aggregateFunction || 'sum'] ||
             AggregateFunction.SUM;
-          const isDistinct = metricInfo.aggregateFunction === 'distinct_count';
+          const isDistinct =
+            metricInfo.aggregateFunction ===
+            MetricAggregateFunction.DISTINCT_COUNT;
 
           if (!metricInfo.dataSourceColumnId) {
             // 没有指定字段，使用id字段
@@ -262,13 +265,14 @@ export class DSLTransformer {
             if (!idField) {
               throw new Error('缺少用于count的字段，请在metric中指定field');
             }
-            return new AggregateMetric(
+            return new AggregateMetric({
               name,
-              func,
-              idField,
-              isDistinct,
-              metricItem.alias,
-            );
+              function: func,
+              field: idField,
+              distinct: isDistinct,
+              alias: metricItem.alias,
+              businessName: metricInfo.businessName,
+            });
           } else {
             // 查找字段信息
             const fieldInfo = Array.from(fieldMap.values()).find(
@@ -280,13 +284,14 @@ export class DSLTransformer {
               );
             }
             const field = resolveField(fieldInfo.id);
-            return new AggregateMetric(
+            return new AggregateMetric({
               name,
-              func,
+              function: func,
               field,
-              isDistinct,
-              metricItem.alias,
-            );
+              distinct: isDistinct,
+              alias: metricItem.alias,
+              businessName: metricInfo.businessName,
+            });
           }
         }
         case MetricType.ROW_LEVEL: {
@@ -312,13 +317,18 @@ export class DSLTransformer {
           };
 
           const operatorEnum = opMap[metricInfo.rowOperator] || Operator.PLUS;
-          const metricExpr = new MetricExpression(
-            leftField,
-            operatorEnum,
-            rightField,
-          );
+          const metricExpr = new MetricExpression({
+            left: leftField,
+            operator: operatorEnum,
+            right: rightField,
+          });
 
-          return new RowLevelMetric(name, metricExpr, metricItem.alias);
+          return new RowLevelMetric({
+            name,
+            expression: metricExpr,
+            alias: metricItem.alias,
+            businessName: metricInfo.businessName,
+          });
         }
         case MetricType.POST_AGGREGATE: {
           // 后聚合指标
@@ -334,8 +344,8 @@ export class DSLTransformer {
           }
 
           // 构建源指标
-          let sourceMetric: any;
-          if (sourceMetricInfo.metricType === 'aggregate') {
+          let sourceMetric: AggregateMetric | RowLevelMetric;
+          if (sourceMetricInfo.metricType === MetricType.AGGREGATE) {
             const funcMap: Record<string, AggregateFunction> = {
               count: AggregateFunction.COUNT,
               sum: AggregateFunction.SUM,
@@ -349,7 +359,8 @@ export class DSLTransformer {
               funcMap[sourceMetricInfo.aggregateFunction || 'sum'] ||
               AggregateFunction.SUM;
             const isDistinct =
-              sourceMetricInfo.aggregateFunction === 'distinct_count';
+              sourceMetricInfo.aggregateFunction ===
+              MetricAggregateFunction.DISTINCT_COUNT;
 
             if (sourceMetricInfo.dataSourceColumnId) {
               const fieldInfo = fieldMap.get(
@@ -361,23 +372,25 @@ export class DSLTransformer {
                 );
               }
               const field = resolveField(fieldInfo.id);
-              sourceMetric = new AggregateMetric(
-                sourceMetricInfo.name,
-                func,
+              sourceMetric = new AggregateMetric({
+                name: sourceMetricInfo.name,
+                function: func,
                 field,
-                isDistinct,
-              );
+                distinct: isDistinct,
+                businessName: sourceMetricInfo.businessName,
+              });
             } else {
               const idField = mainTable.getField('id');
               if (!idField) {
                 throw new Error('缺少用于count的字段，请在metric中指定field');
               }
-              sourceMetric = new AggregateMetric(
-                sourceMetricInfo.name,
-                func,
-                idField,
-                isDistinct,
-              );
+              sourceMetric = new AggregateMetric({
+                name: sourceMetricInfo.name,
+                function: func,
+                field: idField,
+                distinct: isDistinct,
+                businessName: sourceMetricInfo.businessName,
+              });
             }
           } else {
             throw new Error('post_aggregate只支持aggregate类型的源指标');
@@ -394,13 +407,14 @@ export class DSLTransformer {
           const func =
             funcMap[metricInfo.aggregateFunction] || AggregateFunction.AVG;
 
-          return new PostAggregateMetric(
+          return new PostAggregateMetric({
             name,
-            func,
-            sourceMetric,
-            false,
-            metricItem.alias,
-          );
+            function: func,
+            metric: sourceMetric,
+            distinct: false,
+            alias: metricItem.alias,
+            businessName: metricInfo.businessName,
+          });
         }
         case MetricType.ARITHMETIC: {
           // 算术指标
@@ -427,8 +441,8 @@ export class DSLTransformer {
           }
 
           // 构建左操作数指标
-          let leftMetric: any;
-          if (leftMetricInfo.metricType === 'aggregate') {
+          let leftMetric: AggregateMetric | RowLevelMetric;
+          if (leftMetricInfo.metricType === MetricType.AGGREGATE) {
             const funcMap: Record<string, AggregateFunction> = {
               count: AggregateFunction.COUNT,
               sum: AggregateFunction.SUM,
@@ -442,7 +456,8 @@ export class DSLTransformer {
               funcMap[leftMetricInfo.aggregateFunction || 'sum'] ||
               AggregateFunction.SUM;
             const isDistinct =
-              leftMetricInfo.aggregateFunction === 'distinct_count';
+              leftMetricInfo.aggregateFunction ===
+              MetricAggregateFunction.DISTINCT_COUNT;
 
             if (leftMetricInfo.dataSourceColumnId) {
               const fieldInfo = fieldMap.get(leftMetricInfo.dataSourceColumnId);
@@ -452,31 +467,33 @@ export class DSLTransformer {
                 );
               }
               const field = resolveField(fieldInfo.id);
-              leftMetric = new AggregateMetric(
-                leftMetricInfo.name,
-                func,
+              leftMetric = new AggregateMetric({
+                name: leftMetricInfo.name,
+                function: func,
                 field,
-                isDistinct,
-              );
+                distinct: isDistinct,
+                businessName: leftMetricInfo.businessName,
+              });
             } else {
               const idField = mainTable.getField('id');
               if (!idField) {
                 throw new Error('缺少用于count的字段，请在metric中指定field');
               }
-              leftMetric = new AggregateMetric(
-                leftMetricInfo.name,
-                func,
-                idField,
-                isDistinct,
-              );
+              leftMetric = new AggregateMetric({
+                name: leftMetricInfo.name,
+                function: func,
+                field: idField,
+                distinct: isDistinct,
+                businessName: leftMetricInfo.businessName,
+              });
             }
           } else {
             throw new Error('arithmetic只支持aggregate类型的操作数指标');
           }
 
           // 构建右操作数指标
-          let rightMetric: any;
-          if (rightMetricInfo.metricType === 'aggregate') {
+          let rightMetric: AggregateMetric | RowLevelMetric;
+          if (rightMetricInfo.metricType === MetricType.AGGREGATE) {
             const funcMap: Record<string, AggregateFunction> = {
               count: AggregateFunction.COUNT,
               sum: AggregateFunction.SUM,
@@ -490,7 +507,8 @@ export class DSLTransformer {
               funcMap[rightMetricInfo.aggregateFunction || 'sum'] ||
               AggregateFunction.SUM;
             const isDistinct =
-              rightMetricInfo.aggregateFunction === 'distinct_count';
+              rightMetricInfo.aggregateFunction ===
+              MetricAggregateFunction.DISTINCT_COUNT;
 
             if (rightMetricInfo.dataSourceColumnId) {
               const fieldInfo = fieldMap.get(
@@ -502,23 +520,25 @@ export class DSLTransformer {
                 );
               }
               const field = resolveField(fieldInfo.id);
-              rightMetric = new AggregateMetric(
-                rightMetricInfo.name,
-                func,
+              rightMetric = new AggregateMetric({
+                name: rightMetricInfo.name,
+                function: func,
                 field,
-                isDistinct,
-              );
+                distinct: isDistinct,
+                businessName: rightMetricInfo.businessName,
+              });
             } else {
               const idField = mainTable.getField('id');
               if (!idField) {
                 throw new Error('缺少用于count的字段，请在metric中指定field');
               }
-              rightMetric = new AggregateMetric(
-                rightMetricInfo.name,
-                func,
-                idField,
-                isDistinct,
-              );
+              rightMetric = new AggregateMetric({
+                name: rightMetricInfo.name,
+                function: func,
+                field: idField,
+                distinct: isDistinct,
+                businessName: rightMetricInfo.businessName,
+              });
             }
           } else {
             throw new Error('arithmetic只支持aggregate类型的操作数指标');
@@ -534,13 +554,14 @@ export class DSLTransformer {
           const operatorEnum =
             opMap[metricInfo.arithmeticOperator] || Operator.PLUS;
 
-          return new ArithmeticMetric(
+          return new ArithmeticMetric({
             name,
             leftMetric,
-            operatorEnum,
-            rightMetric,
-            metricItem.alias,
-          );
+            operator: operatorEnum,
+            rightOperand: rightMetric,
+            alias: metricItem.alias,
+            businessName: metricInfo.businessName,
+          });
         }
         default:
           throw new Error(`不支持的指标类型: ${metricInfo.metricType}`);
@@ -561,7 +582,7 @@ export class DSLTransformer {
       }
 
       // 处理原始SQL值
-      let value = filter.value;
+      let value = filter.value as unknown;
       if (filter.raw && typeof value === 'string') {
         value = { rawSql: value };
       }

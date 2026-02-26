@@ -1,59 +1,57 @@
-# Query Service Fix - 实施计划
+# Query Service Type Safety Fix - Implementation Plan
 
-## 问题分析
-1. `getTablesFromDataset` 方法返回的类型不是 `Table` 类型，而是使用了类型断言
-2. 代码中存在重复调用 `datasetService.findOne` 的问题，影响性能
-
-## 任务分解与优先级
-
-### [x] 任务 1: 修复类型不匹配问题
-- **Priority**: P0
-- **Depends On**: None
-- **Description**:
-  - 修改 `getTablesFromDataset` 方法，使其返回正确的 `Table` 类型数组
-  - 导入 `Field` 类并使用它创建字段对象
-  - 移除 `execute` 方法中的类型断言
-- **Success Criteria**:
-  - `getTablesFromDataset` 方法的返回类型为 `Promise<Table[]>`
-  - 方法返回的是真正的 `Table` 类型对象数组
-  - `execute` 方法中不再需要类型断言
-- **Test Requirements**:
-  - `programmatic` TR-1.1: 代码编译通过，无类型错误
-  - `programmatic` TR-1.2: 运行时测试通过，DSL 转换正常工作
-  - `human-judgement` TR-1.3: 代码结构清晰，类型使用正确
-- **Status**: 已完成
-  - 导入了 `Field` 类
-  - 修改了 `getTablesFromDataset` 方法返回类型为 `Promise<Table[]>`
-  - 使用 `Field` 和 `Table` 构造函数创建正确的对象
-  - 移除了 `execute` 方法中的类型断言
-
-### [x] 任务 2: 消除重复调用问题
+## [ ] Task 1: Add type safety for sqlResult.columnMappings access
 - **Priority**: P1
-- **Depends On**: 任务 1
-- **Description**:
-  - 修改 `getTablesFromDataset` 方法，使其接受一个已有的 dataset 对象作为参数
-  - 移除方法内部的数据库查询逻辑
-  - 更新 `execute` 方法中的调用，传递已获取的 dataset 对象
+- **Depends On**: None
+- **Description**: 
+  - Add proper null/undefined checks for sqlResult.columnMappings
+  - Ensure type safety when accessing mapping properties
 - **Success Criteria**:
-  - `getTablesFromDataset` 方法不再查询数据库
-  - `execute` 方法中只查询一次数据库
-  - 代码性能得到提升
+  - No TypeScript errors related to unsafe access of columnMappings
+  - Code handles cases where columnMappings is undefined or null
 - **Test Requirements**:
-  - `programmatic` TR-2.1: 代码编译通过，无语法错误
-  - `programmatic` TR-2.2: 运行时测试通过，功能正常
-  - `human-judgement` TR-2.3: 代码逻辑清晰，无重复查询
-- **Status**: 已完成
-  - 修改了 `getTablesFromDataset` 方法参数为 dataset 对象
-  - 移除了方法内部的数据库查询逻辑
-  - 更新了 `execute` 方法中的调用，传递已获取的 dataset 对象
+  - `programmatic` TR-1.1: TypeScript compilation passes without errors
+  - `programmatic` TR-1.2: Code handles both cases where columnMappings exists and doesn't exist
+- **Notes**: Need to ensure backward compatibility while fixing type issues
 
-## 实施步骤
-1. 完成任务 1：修复类型不匹配问题
-2. 完成任务 2：消除重复调用问题
-3. 运行测试验证修复效果
-4. 提交代码变更
+## [ ] Task 2: Fix rawRows[0].map access safety
+- **Priority**: P1
+- **Depends On**: Task 1
+- **Description**: 
+  - Add proper checks for rawRows[0] existence and array type
+  - Ensure safe access to map method
+- **Success Criteria**:
+  - No TypeScript errors related to unsafe access of rawRows[0].map
+  - Code handles cases where rawRows[0] is not an array
+- **Test Requirements**:
+  - `programmatic` TR-2.1: TypeScript compilation passes without errors
+  - `programmatic` TR-2.2: Code handles both cases where rawRows[0] is an array and not
+- **Notes**: Need to maintain the original functionality while adding safety checks
 
-## 预期成果
-- 代码类型使用正确，无类型断言
-- 消除重复数据库查询，提高性能
-- 代码结构更清晰，维护性更好
+## [ ] Task 3: Add proper type annotations
+- **Priority**: P2
+- **Depends On**: Task 2
+- **Description**: 
+  - Add type annotations for variables where missing
+  - Ensure type consistency throughout the code
+- **Success Criteria**:
+  - No TypeScript errors related to missing type annotations
+  - Code is more self-documenting with proper types
+- **Test Requirements**:
+  - `programmatic` TR-3.1: TypeScript compilation passes without errors
+  - `human-judgement` TR-3.2: Code is readable and type annotations are appropriate
+- **Notes**: Use TypeScript's type inference where possible, add explicit types only when needed
+
+## [ ] Task 4: Verify fix with tests
+- **Priority**: P1
+- **Depends On**: Task 3
+- **Description**: 
+  - Run TypeScript compilation to verify no errors
+  - Ensure the functionality still works as expected
+- **Success Criteria**:
+  - TypeScript compilation passes without errors
+  - All existing tests pass
+- **Test Requirements**:
+  - `programmatic` TR-4.1: `tsc --noEmit` runs without errors
+  - `programmatic` TR-4.2: All existing tests pass
+- **Notes**: Make sure the fix doesn't break existing functionality

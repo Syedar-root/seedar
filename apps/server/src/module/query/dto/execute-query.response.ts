@@ -1,5 +1,9 @@
 export class ExecuteQueryResponse {
   sql: string;
-  results: any[];
+  results: {
+    header: string[];
+    rows: any[];
+  };
   executionTime: number;
+  columnMappings?: any[];
 }

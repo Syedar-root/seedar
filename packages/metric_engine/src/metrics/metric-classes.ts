@@ -7,6 +7,31 @@ import {
 import { Field } from '../core/field';
 
 /**
+ * 指标基类选项
+ */
+export interface MetricOptions {
+  /**
+   * 指标名称
+   */
+  name: string;
+
+  /**
+   * 指标别名（可选）
+   */
+  alias?: string;
+
+  /**
+   * 指标描述（可选）
+   */
+  description?: string;
+
+  /**
+   * 业务名称
+   */
+  businessName?: string;
+}
+
+/**
  * 指标基类
  */
 export abstract class Metric {
@@ -30,16 +55,32 @@ export abstract class Metric {
    */
   public readonly businessName?: string;
 
+  // 构造函数重载
   constructor(
     name: string,
     alias?: string,
     description?: string,
     businessName?: string
+  );
+  constructor(options: MetricOptions);
+  constructor(
+    nameOrOptions: string | MetricOptions,
+    alias?: string,
+    description?: string,
+    businessName?: string
   ) {
-    this.name = name;
-    this.alias = alias;
-    this.description = description;
-    this.businessName = businessName;
+    if (typeof nameOrOptions === 'object') {
+      const options = nameOrOptions;
+      this.name = options.name;
+      this.alias = options.alias;
+      this.description = options.description;
+      this.businessName = options.businessName;
+    } else {
+      this.name = nameOrOptions;
+      this.alias = alias;
+      this.description = description;
+      this.businessName = businessName;
+    }
   }
 
   /**
@@ -56,6 +97,16 @@ export abstract class Metric {
 }
 
 /**
+ * 行级指标选项
+ */
+export interface RowLevelMetricOptions extends MetricOptions {
+  /**
+   * 运算表达式
+   */
+  expression: MetricExpression;
+}
+
+/**
  * 行级指标
  * 同一条记录的不同字段进行运算
  */
@@ -65,14 +116,28 @@ export class RowLevelMetric extends Metric {
    */
   public readonly expression: MetricExpression;
 
+  // 构造函数重载
   constructor(
     name: string,
     expression: MetricExpression,
     alias?: string,
     description?: string
+  );
+  constructor(options: RowLevelMetricOptions);
+  constructor(
+    nameOrOptions: string | RowLevelMetricOptions,
+    expression?: MetricExpression,
+    alias?: string,
+    description?: string
   ) {
-    super(name, alias, description);
-    this.expression = expression;
+    if (typeof nameOrOptions === 'object') {
+      const options = nameOrOptions;
+      super(options);
+      this.expression = options.expression;
+    } else {
+      super(nameOrOptions, alias, description);
+      this.expression = expression!;
+    }
   }
 
   toSQL(): string {
@@ -136,6 +201,31 @@ export interface AggregateCondition {
   sqlTemplate?: string;
 }
 
+/**
+ * 聚合指标选项
+ */
+export interface AggregateMetricOptions extends MetricOptions {
+  /**
+   * 聚合函数
+   */
+  function: AggregateFunction;
+
+  /**
+   * 被聚合的字段或指标
+   */
+  field: Field | RowLevelMetric;
+
+  /**
+   * 是否去重（用于COUNT DISTINCT）
+   */
+  distinct?: boolean;
+
+  /**
+   * 聚合条件配置（可选，用于添加时间筛选、CASE条件等）
+   */
+  condition?: AggregateCondition;
+}
+
 export class AggregateMetric extends Metric {
   /**
    * 聚合函数
@@ -157,20 +247,40 @@ export class AggregateMetric extends Metric {
    */
   public readonly condition?: AggregateCondition;
 
+  // 构造函数重载
   constructor(
     name: string,
     functionType: AggregateFunction,
     field: Field | RowLevelMetric,
+    distinct?: boolean,
+    alias?: string,
+    description?: string,
+    condition?: AggregateCondition
+  );
+  constructor(options: AggregateMetricOptions);
+  constructor(
+    nameOrOptions: string | AggregateMetricOptions,
+    functionType?: AggregateFunction,
+    field?: Field | RowLevelMetric,
     distinct: boolean = false,
     alias?: string,
     description?: string,
     condition?: AggregateCondition
   ) {
-    super(name, alias, description);
-    this.function = functionType;
-    this.field = field;
-    this.distinct = distinct;
-    this.condition = condition;
+    if (typeof nameOrOptions === 'object') {
+      const options = nameOrOptions;
+      super(options);
+      this.function = options.function;
+      this.field = options.field;
+      this.distinct = options.distinct ?? false;
+      this.condition = options.condition;
+    } else {
+      super(nameOrOptions, alias, description);
+      this.function = functionType!;
+      this.field = field!;
+      this.distinct = distinct;
+      this.condition = condition;
+    }
   }
 
   toSQL(): string {
@@ -266,6 +376,27 @@ export class AggregateMetric extends Metric {
  * 后聚合指标
  * 对其他指标进行聚合运算
  */
+
+/**
+ * 后聚合指标选项
+ */
+export interface PostAggregateMetricOptions extends MetricOptions {
+  /**
+   * 聚合函数
+   */
+  function: AggregateFunction;
+
+  /**
+   * 被聚合的指标
+   */
+  metric: Metric;
+
+  /**
+   * 是否去重
+   */
+  distinct?: boolean;
+}
+
 export class PostAggregateMetric extends Metric {
   /**
    * 聚合函数
@@ -282,18 +413,36 @@ export class PostAggregateMetric extends Metric {
    */
   public readonly distinct: boolean = false;
 
+  // 构造函数重载
   constructor(
     name: string,
     functionType: AggregateFunction,
     metric: Metric,
+    distinct?: boolean,
+    alias?: string,
+    description?: string
+  );
+  constructor(options: PostAggregateMetricOptions);
+  constructor(
+    nameOrOptions: string | PostAggregateMetricOptions,
+    functionType?: AggregateFunction,
+    metric?: Metric,
     distinct: boolean = false,
     alias?: string,
     description?: string
   ) {
-    super(name, alias, description);
-    this.function = functionType;
-    this.metric = metric;
-    this.distinct = distinct;
+    if (typeof nameOrOptions === 'object') {
+      const options = nameOrOptions;
+      super(options);
+      this.function = options.function;
+      this.metric = options.metric;
+      this.distinct = options.distinct ?? false;
+    } else {
+      super(nameOrOptions, alias, description);
+      this.function = functionType!;
+      this.metric = metric!;
+      this.distinct = distinct;
+    }
   }
 
   toSQL(): string {
@@ -306,6 +455,32 @@ export class PostAggregateMetric extends Metric {
  * 子查询指标
  * 支持复杂的子查询逻辑，用于实现高级聚合计算
  */
+
+/**
+ * 子查询指标选项
+ */
+export interface SubQueryMetricOptions extends MetricOptions {
+  /**
+   * 子查询SQL模板
+   * 可以使用 {field_name} 占位符引用主查询中的字段
+   * 例如: "SELECT COUNT(*) FROM related_table WHERE related_table.main_id = {id}"
+   */
+  subQueryTemplate: string;
+
+  /**
+   * 上下文字段映射
+   * 将主查询中的字段名映射为子查询中使用的占位符
+   * 例如: { main_id: 'id' } 表示主查询的 'id' 字段在子查询中用 {main_id} 引用
+   */
+  contextFieldMapping?: Record<string, string>;
+
+  /**
+   * 子查询参数
+   * 额外的静态参数，用于替换模板中的占位符
+   */
+  parameters?: Record<string, string | number>;
+}
+
 export class SubQueryMetric extends Metric {
   /**
    * 子查询SQL模板
@@ -327,18 +502,36 @@ export class SubQueryMetric extends Metric {
    */
   public readonly parameters?: Record<string, string | number>;
 
+  // 构造函数重载
   constructor(
     name: string,
     subQueryTemplate: string,
+    contextFieldMapping?: Record<string, string>,
+    parameters?: Record<string, string | number>,
+    alias?: string,
+    description?: string
+  );
+  constructor(options: SubQueryMetricOptions);
+  constructor(
+    nameOrOptions: string | SubQueryMetricOptions,
+    subQueryTemplate?: string,
     contextFieldMapping: Record<string, string> = {},
     parameters?: Record<string, string | number>,
     alias?: string,
     description?: string
   ) {
-    super(name, alias, description);
-    this.subQueryTemplate = subQueryTemplate;
-    this.contextFieldMapping = contextFieldMapping;
-    this.parameters = parameters;
+    if (typeof nameOrOptions === 'object') {
+      const options = nameOrOptions;
+      super(options);
+      this.subQueryTemplate = options.subQueryTemplate;
+      this.contextFieldMapping = options.contextFieldMapping || {};
+      this.parameters = options.parameters;
+    } else {
+      super(nameOrOptions, alias, description);
+      this.subQueryTemplate = subQueryTemplate!;
+      this.contextFieldMapping = contextFieldMapping;
+      this.parameters = parameters;
+    }
   }
 
   /**
@@ -428,6 +621,27 @@ export class SubQueryMetric extends Metric {
  * 算术运算指标
  * 对指标进行加减乘除等算术运算
  */
+
+/**
+ * 算术运算指标选项
+ */
+export interface ArithmeticMetricOptions extends MetricOptions {
+  /**
+   * 左操作数指标
+   */
+  leftMetric: Metric;
+
+  /**
+   * 运算符
+   */
+  operator: Operator;
+
+  /**
+   * 右操作数（指标或数值）
+   */
+  rightOperand: Metric | number;
+}
+
 export class ArithmeticMetric extends Metric {
   /**
    * 左操作数指标
@@ -444,6 +658,7 @@ export class ArithmeticMetric extends Metric {
    */
   public readonly rightOperand: Metric | number;
 
+  // 构造函数重载
   constructor(
     name: string,
     leftMetric: Metric,
@@ -451,11 +666,28 @@ export class ArithmeticMetric extends Metric {
     rightOperand: Metric | number,
     alias?: string,
     description?: string
+  );
+  constructor(options: ArithmeticMetricOptions);
+  constructor(
+    nameOrOptions: string | ArithmeticMetricOptions,
+    leftMetric?: Metric,
+    operator?: Operator,
+    rightOperand?: Metric | number,
+    alias?: string,
+    description?: string
   ) {
-    super(name, alias, description);
-    this.leftMetric = leftMetric;
-    this.operator = operator;
-    this.rightOperand = rightOperand;
+    if (typeof nameOrOptions === 'object') {
+      const options = nameOrOptions;
+      super(options);
+      this.leftMetric = options.leftMetric;
+      this.operator = options.operator;
+      this.rightOperand = options.rightOperand;
+    } else {
+      super(nameOrOptions, alias, description);
+      this.leftMetric = leftMetric!;
+      this.operator = operator!;
+      this.rightOperand = rightOperand!;
+    }
   }
 
   toSQL(): string {
@@ -480,6 +712,47 @@ export class ArithmeticMetric extends Metric {
  * 同环比指标
  * 为任何指标添加同环比计算功能
  */
+
+/**
+ * 同环比指标选项
+ */
+export interface PeriodOverPeriodMetricOptions {
+  /**
+   * 原始指标
+   */
+  baseMetric: Metric;
+
+  /**
+   * 同环比类型
+   */
+  periodType: PeriodOverPeriodType;
+
+  /**
+   * 计算模式
+   */
+  calculationMode?: PeriodCalculationMode;
+
+  /**
+   * 时间字段（用于确定时间周期）
+   */
+  timeField: Field;
+
+  /**
+   * 指标别名（可选）
+   */
+  alias?: string;
+
+  /**
+   * 指标描述（可选）
+   */
+  description?: string;
+
+  /**
+   * 业务名称
+   */
+  businessName?: string;
+}
+
 export class PeriodOverPeriodMetric extends Metric {
   /**
    * 原始指标
@@ -501,30 +774,66 @@ export class PeriodOverPeriodMetric extends Metric {
    */
   public readonly timeField: Field;
 
+  // 构造函数重载
   constructor(
     baseMetric: Metric,
     periodType: PeriodOverPeriodType,
     timeField: Field,
+    calculationMode?: PeriodCalculationMode,
+    alias?: string,
+    description?: string
+  );
+  constructor(options: PeriodOverPeriodMetricOptions);
+  constructor(
+    baseMetricOrOptions: Metric | PeriodOverPeriodMetricOptions,
+    periodType?: PeriodOverPeriodType,
+    timeField?: Field,
     calculationMode: PeriodCalculationMode = PeriodCalculationMode.PERCENTAGE,
     alias?: string,
     description?: string
   ) {
-    // 自动生成名称和描述
-    const periodName = `${baseMetric.name}_${periodType}`;
-    const periodAlias =
-      alias || `${baseMetric.getDisplayName()}_${periodType.toUpperCase()}`;
-    const periodDesc =
-      description ||
-      `${baseMetric.getDisplayName()}的${PeriodOverPeriodMetric.getPeriodTypeDescription(
-        periodType
-      )}`;
+    if (
+      typeof baseMetricOrOptions === 'object' &&
+      'baseMetric' in baseMetricOrOptions
+    ) {
+      const options = baseMetricOrOptions;
+      // 自动生成名称和描述
+      const periodName = `${options.baseMetric.name}_${options.periodType}`;
+      const periodAlias =
+        options.alias ||
+        `${options.baseMetric.getDisplayName()}_${options.periodType.toUpperCase()}`;
+      const periodDesc =
+        options.description ||
+        `${options.baseMetric.getDisplayName()}的${PeriodOverPeriodMetric.getPeriodTypeDescription(
+          options.periodType
+        )}`;
 
-    super(periodName, periodAlias, periodDesc);
+      super(periodName, periodAlias, periodDesc, options.businessName);
 
-    this.baseMetric = baseMetric;
-    this.periodType = periodType;
-    this.calculationMode = calculationMode;
-    this.timeField = timeField;
+      this.baseMetric = options.baseMetric;
+      this.periodType = options.periodType;
+      this.calculationMode =
+        options.calculationMode ?? PeriodCalculationMode.PERCENTAGE;
+      this.timeField = options.timeField;
+    } else {
+      // 自动生成名称和描述
+      const baseMetric = baseMetricOrOptions as Metric;
+      const periodName = `${baseMetric.name}_${periodType}`;
+      const periodAlias =
+        alias || `${baseMetric.getDisplayName()}_${periodType!.toUpperCase()}`;
+      const periodDesc =
+        description ||
+        `${baseMetric.getDisplayName()}的${PeriodOverPeriodMetric.getPeriodTypeDescription(
+          periodType!
+        )}`;
+
+      super(periodName, periodAlias, periodDesc);
+
+      this.baseMetric = baseMetric;
+      this.periodType = periodType!;
+      this.calculationMode = calculationMode;
+      this.timeField = timeField!;
+    }
   }
 
   /**
@@ -909,6 +1218,27 @@ export class PeriodOverPeriodMetric extends Metric {
  * 指标表达式
  * 表示指标的计算表达式
  */
+
+/**
+ * 指标表达式选项
+ */
+export interface MetricExpressionOptions {
+  /**
+   * 左操作数
+   */
+  left: Field | RowLevelMetric | number;
+
+  /**
+   * 运算符
+   */
+  operator: Operator;
+
+  /**
+   * 右操作数
+   */
+  right: Field | RowLevelMetric | number;
+}
+
 export class MetricExpression {
   /**
    * 左操作数
@@ -925,14 +1255,28 @@ export class MetricExpression {
    */
   public readonly right: Field | RowLevelMetric | number;
 
+  // 构造函数重载
   constructor(
     left: Field | RowLevelMetric | number,
     operator: Operator,
     right: Field | RowLevelMetric | number
+  );
+  constructor(options: MetricExpressionOptions);
+  constructor(
+    leftOrOptions: Field | RowLevelMetric | number | MetricExpressionOptions,
+    operator?: Operator,
+    right?: Field | RowLevelMetric | number
   ) {
-    this.left = left;
-    this.operator = operator;
-    this.right = right;
+    if (typeof leftOrOptions === 'object' && 'operator' in leftOrOptions) {
+      const options = leftOrOptions;
+      this.left = options.left;
+      this.operator = options.operator;
+      this.right = options.right;
+    } else {
+      this.left = leftOrOptions;
+      this.operator = operator!;
+      this.right = right!;
+    }
   }
 
   toSQL(): string {

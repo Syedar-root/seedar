@@ -16,7 +16,7 @@ import { configDecryption } from '@/module/datasource/service/helper';
 import { MySqlConfig } from '@/module/datasource/datasource.types';
 import { DataSourceType } from '@/module/datasource/datasource.types';
 import { DatasetResponse } from '@/module/dataset/dataset.types';
-import { console } from 'inspector';
+import { LoggerService } from '@/logger/logger.service';
 
 @Injectable()
 export class QueryService {
@@ -30,6 +30,7 @@ export class QueryService {
     @Inject(KnexConnectionFactory)
     private readonly knexConnectionFactory: KnexConnectionFactory,
     private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
   ) {}
 
   async create(createQueryRequest: CreateQueryRequest): Promise<Query> {
@@ -130,20 +131,51 @@ export class QueryService {
       const sqlResult = KnexSQLGenerator.generateSQLWithBindings(metricQuery);
 
       // 执行SQL
-      const results = await knexConnection.raw<{ rows: any[] }>(
+      const results = await knexConnection.raw<any[][]>(
         sqlResult.sql,
         sqlResult.bindings,
       );
 
-      console.log('hcs result', results);
-
       const executionTime = Date.now() - startTime;
+
+      // 处理执行结果
+      let rawRows: any[] = [];
+      if (Array.isArray(results)) {
+        // 对于返回数组的情况（如某些数据库驱动）
+        rawRows = results;
+      } else {
+        // 对于其他情况，尝试转换
+        rawRows = [results];
+      }
+
+      // 生成 header
+      const columnMappings = sqlResult.columnMappings || [];
+
+      const header = columnMappings.map(
+        (mapping) => mapping.businessName || mapping.displayName,
+      );
+
+      // 将对象数组转换为二维数组，顺序与 header 一致
+      const columnAliases = columnMappings.map((mapping) => mapping.alias);
+
+      const rows = Array.isArray(rawRows[0])
+        ? rawRows[0].map((row: Record<string, unknown>) => {
+            return columnAliases.map((alias: string) => {
+              const value = row[alias];
+              return typeof value === 'number' ? value : String(value);
+            });
+          })
+        : [];
 
       // 构建响应
       return {
         sql: sqlResult.sql,
-        results: results.rows || [],
+        results: {
+          header,
+          rows,
+        },
         executionTime,
+        // columnMappings: sqlResult.columnMappings || [],
       };
     } finally {
       // 确保连接正确关闭
