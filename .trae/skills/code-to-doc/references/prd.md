@@ -2,7 +2,7 @@
 
 ## 文档目标
 
-帮助新人在30分钟内理解"系统为什么存在"，建立业务认知框架，无需了解技术实现、代码逻辑和开发细节。
+帮助新人在 30 分钟内理解"系统为什么存在"，建立业务认知框架，无需了解技术实现、代码逻辑和开发细节。
 
 ## 支持的业务领域
 
@@ -12,7 +12,7 @@
 
 1. 业务背景
 2. 业务目标
-3. 核心流程（Mermaid流程图）
+3. 核心流程（Mermaid 流程图）
 4. 关键业务规则
 5. 用户角色
 6. 功能范围（已实现和未实现）
@@ -22,12 +22,12 @@
 ## 通用生成步骤
 
 1. 识别业务领域
-2. 查找业务文档（README.md、docs/business.md、docs/prd.md等）
-3. 查找用户角色定义（*user*.ts/js/py、*role*.ts/js/py、*permission*.ts/js/py等）
-4. 查找功能定义（*controller*.ts/js/py、*service*.ts/js/py等）
-5. 查找业务规则（*validation*.ts/js/py、*rules*.ts/js/py等）
-6. 查找成功指标（docs/metrics.md、docs/kpis.md等）
-7. 查找风险和限制（docs/risks.md、docs/limitations.md等）
+2. 查找业务文档（README.md、docs/business.md、docs/prd.md 等）
+3. 查找用户角色定义（_user_.ts/js/py、_role_.ts/js/py、_permission_.ts/js/py 等）
+4. 查找功能定义（_controller_.ts/js/py、_service_.ts/js/py 等）
+5. 查找业务规则（_validation_.ts/js/py、_rules_.ts/js/py 等）
+6. 查找成功指标（docs/metrics.md、docs/kpis.md 等）
+7. 查找风险和限制（docs/risks.md、docs/limitations.md 等）
 8. 提取业务背景
 9. 提取业务目标
 10. 提取核心流程
@@ -52,3 +52,7 @@
 - 适用于不同业务领域
 - 适用于不同项目类型
 - 适用于不同编程语言
+
+## 示例模板
+
+基础示例模板请参考[base-prd.md](../template/prd/base.md)

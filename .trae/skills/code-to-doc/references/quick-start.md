@@ -2,15 +2,15 @@
 
 ## 文档目标
 
-帮助新人在30分钟内运行项目并看到效果，无需了解复杂配置和理论说明。
+帮助新人在 30 分钟内运行项目并看到效果，无需了解复杂配置和理论说明。
 
 ## 支持的编程语言
 
-- Node.js、Python、Java、Go、Rust、C#、PHP、Ruby等
+- Node.js、Python、Java、Go、Rust、C#、PHP、Ruby 等
 
 ## 支持的依赖服务
 
-- PostgreSQL、MySQL、Redis、MongoDB等
+- PostgreSQL、MySQL、Redis、MongoDB 等
 
 ## 文档结构
 
@@ -26,11 +26,11 @@
 
 ## 通用生成步骤
 
-1. 识别项目类型（Web应用、API服务、CLI工具、库/SDK等）
-2. 查找配置文件（package.json、requirements.txt、pom.xml、go.mod、Cargo.toml等）
+1. 识别项目类型（Web 应用、API 服务、CLI 工具、库/SDK 等）
+2. 查找配置文件（package.json、requirements.txt、pom.xml、go.mod、Cargo.toml 等）
 3. 提取环境要求（运行时版本、依赖服务、其他工具）
-4. 提取安装和启动命令（从scripts字段、Makefile等）
-5. 提取使用示例（从README.md、examples/、测试文件等）
+4. 提取安装和启动命令（从 scripts 字段、Makefile 等）
+5. 提取使用示例（从 README.md、examples/、测试文件等）
 6. 生成文档
 
 ## 注意事项
@@ -43,3 +43,7 @@
 - 根据项目类型选择合适的文档格式
 - 支持多种编程语言和框架
 - 提供多种安装方式（如包管理器、源码编译）
+
+## 示例模板
+
+基础示例模板请参考[base-quick-start.md](../template/quick-start/base.md)

@@ -11,19 +11,19 @@
 ## 文档结构
 
 1. 业务背景
-2. 核心业务流程（Mermaid流程图）
+2. 核心业务流程（Mermaid 流程图）
 3. 关键业务规则
-4. 业务实体关系（Mermaid ER图）
-5. 业务状态流转（Mermaid状态图）
+4. 业务实体关系（Mermaid ER 图）
+5. 业务状态流转（Mermaid 状态图）
 6. 业务约束
 
 ## 通用生成步骤
 
 1. 识别业务领域
-2. 查找业务逻辑代码（*service*.ts/js/py、*business*.ts/js/py、*logic*.ts/js/py等）
-3. 查找业务实体（*entity*.ts/js/py、*model*.ts/js/py等）
-4. 查找状态定义（*status*.ts/js/py、*state*.ts/js/py、*enum*.ts/js/py等）
-5. 查找验证规则（*validation*.ts/js/py、*validator*.ts/js/py等）
+2. 查找业务逻辑代码（_service_.ts/js/py、_business_.ts/js/py、_logic_.ts/js/py 等）
+3. 查找业务实体（_entity_.ts/js/py、_model_.ts/js/py 等）
+4. 查找状态定义（_status_.ts/js/py、_state_.ts/js/py、_enum_.ts/js/py 等）
+5. 查找验证规则（_validation_.ts/js/py、_validator_.ts/js/py 等）
 6. 提取业务流程
 7. 提取业务规则
 8. 提取实体关系
@@ -39,3 +39,7 @@
 - 避免使用技术术语
 - 适用于不同业务领域
 - 适用于不同编程语言和框架
+
+## 示例模板
+
+基础示例模板请参考[base-business-logic.md](../template/business-logic/base.md)
