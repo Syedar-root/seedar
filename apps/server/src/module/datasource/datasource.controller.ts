@@ -1,0 +1,48 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Inject,
+} from '@nestjs/common';
+import { DatasourceService } from './service/datasource.service';
+import { CreateDatasourceRequest } from './dto/create-datasource.request';
+import { DataSourceType } from './datasource.types';
+import { UpdateDatasourceRequest } from './dto/update-datasource.request';
+import { DatasourceResponse } from './dto/datasource.response';
+import { SuccessMessage } from '@/common/success-message.decorator';
+
+@Controller('datasource')
+export class DatasourceController {
+  @Inject(DatasourceService)
+  private readonly datasourceService!: DatasourceService;
+
+  @Post()
+  create(
+    @Body() createDatasourceRequest: CreateDatasourceRequest,
+  ): Promise<DatasourceResponse> {
+    return this.datasourceService.create(createDatasourceRequest);
+  }
+
+  @Get(':id')
+  @SuccessMessage('数据源查询成功')
+  findOne(@Param('id') id: string): Promise<DatasourceResponse> {
+    return this.datasourceService.findOne(+id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() updateDatasourceRequest: UpdateDatasourceRequest,
+  ): Promise<DatasourceResponse> {
+    return this.datasourceService.update(+id, updateDatasourceRequest);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string): Promise<void> {
+    return this.datasourceService.remove(+id);
+  }
+}

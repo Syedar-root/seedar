@@ -1,0 +1,54 @@
+{
+  "name": "@metric-engine/core",
+  "version": "1.0.0",
+  "description": "Metric Engine - 一个简单的指标计算和查询 DSL 库",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});\""
+  },
+  "keywords": [
+    "metric",
+    "analytics",
+    "dsl",
+    "query",
+    "knex",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/metric-engine"
+  },
+  "peerDependencies": {
+    "knex": ">=2.0.0",
+    "mysql2": ">=2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "knex": {
+      "optional": true
+    },
+    "mysql2": {
+      "optional": true
+    }
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/knex": "^0.16.1",
+    "@types/node": "^25.0.9",
+    "typescript": "^5.3.0"
+  }
+}
