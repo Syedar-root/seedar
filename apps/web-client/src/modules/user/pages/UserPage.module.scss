@@ -1,0 +1,41 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  
+  h2 {
+    margin-bottom: 1.5rem;
+    color: #333;
+  }
+}
+
+.userList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.userItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .name {
+    font-weight: 500;
+    color: #333;
+  }
+  
+  .email {
+    color: #666;
+    font-size: 0.875rem;
+  }
+}
