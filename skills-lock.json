@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "VTable Development Assistant": {
+      "source": "VisActor/VTable",
+      "sourceType": "github",
+      "computedHash": "50c73844e72b4fe148d1779b33ef4c37f4623c66a014cb282622bd6c7d00343a"
+    },
+    "vchart-development-assistant": {
+      "source": "VisActor/VChart",
+      "sourceType": "github",
+      "computedHash": "ba292dbccb70f99b29394311f41fac8468285aa30eec5b00e54b177486f4314e"
+    }
+  }
+}
