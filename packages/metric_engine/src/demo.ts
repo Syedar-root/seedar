@@ -151,6 +151,27 @@ function demo() {
     console.log('生成的SQL:');
     console.log(result.sql);
   }
+
+  // 7. 分页功能演示
+  console.log('\n=== 分页功能演示 ===\n');
+
+  // 7.1 使用 limit 限制返回条数
+  console.log('7.1 限制返回 5 条记录:');
+  const queryWithLimit = query.withLimit(5);
+  const resultWithLimit = SQLGenerator.generate(queryWithLimit);
+  console.log(resultWithLimit.sql);
+
+  // 7.2 使用分页（limit + offset）
+  console.log('\n7.2 第 2 页，每页 5 条记录:');
+  const queryWithPage2 = query.withPagination(5, 5); // limit=5, offset=5
+  const resultWithPage2 = SQLGenerator.generate(queryWithPage2);
+  console.log(resultWithPage2.sql);
+
+  // 7.3 第 3 页，每页 10 条记录
+  console.log('\n7.3 第 3 页，每页 10 条记录:');
+  const queryWithPage3 = query.withPagination(10, 20); // limit=10, offset=20
+  const resultWithPage3 = SQLGenerator.generate(queryWithPage3);
+  console.log(resultWithPage3.sql);
 }
 
 // 运行演示

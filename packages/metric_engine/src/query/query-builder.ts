@@ -61,18 +61,32 @@ export class Query {
    */
   public readonly filters: Filter[];
 
+  /**
+   * 限制返回的记录数（可选）
+   */
+  public readonly limit?: number;
+
+  /**
+   * 偏移量（用于分页，可选）
+   */
+  public readonly offset?: number;
+
   constructor(
     mainTable: Table,
     dimensions: Dimension[],
     metrics: Metric[],
     filters: Filter[] = [],
-    joins: Join[] = []
+    joins: Join[] = [],
+    limit?: number,
+    offset?: number
   ) {
     this.mainTable = mainTable;
     this.dimensions = dimensions;
     this.metrics = metrics;
     this.filters = filters;
     this.joins = joins;
+    this.limit = limit;
+    this.offset = offset;
   }
 
   /**
@@ -84,7 +98,58 @@ export class Query {
       this.dimensions,
       this.metrics,
       this.filters,
-      [...this.joins, join]
+      [...this.joins, join],
+      this.limit,
+      this.offset
+    );
+  }
+
+  /**
+   * 设置分页参数
+   * @param limit 每页记录数
+   * @param offset 偏移量（可选，默认为0）
+   */
+  withPagination(limit: number, offset: number = 0): Query {
+    return new Query(
+      this.mainTable,
+      this.dimensions,
+      this.metrics,
+      this.filters,
+      this.joins,
+      limit,
+      offset
+    );
+  }
+
+  /**
+   * 设置限制条数
+   * @param limit 限制的记录数
+   */
+  withLimit(limit: number): Query {
+    return new Query(
+      this.mainTable,
+      this.dimensions,
+      this.metrics,
+      this.filters,
+      this.joins,
+      limit,
+      this.offset
+    );
+  }
+
+  /**
+   * 设置偏移量
+   * @param offset 偏移量
+   */
+  withOffset(offset: number): Query {
+    return new Query(
+      this.mainTable,
+      this.dimensions,
+      this.metrics,
+      this.filters,
+      this.joins,
+      this.limit,
+      offset
     );
   }
 }
@@ -216,7 +281,9 @@ export class QueryBuilder {
       query.dimensions,
       query.metrics,
       query.filters,
-      newJoins
+      newJoins,
+      query.limit,
+      query.offset
     );
   }
 }

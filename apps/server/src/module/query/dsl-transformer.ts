@@ -58,6 +58,10 @@ export interface QueryDSL {
     id: number;
     type?: 'left' | 'inner' | 'right' | 'full';
   }>;
+  /** 限制返回的记录数（可选） */
+  limit?: number;
+  /** 偏移量（用于分页，可选） */
+  offset?: number;
 }
 
 /**
@@ -613,6 +617,8 @@ export class DSLTransformer {
       metrics,
       filters,
       joins,
+      dsl.limit,
+      dsl.offset,
     );
     return QueryBuilder.assignTableAliases(metricQuery);
   }
