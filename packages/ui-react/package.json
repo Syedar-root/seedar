@@ -1,0 +1,19 @@
+{
+  "name": "@seedar/ui-react",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "exports": {
+    ".": "./src/index.tsx"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "dependencies": {
+    "@seedar/ui-core": "workspace:*",
+    "@visactor/react-vchart": "^2.0.17",
+    "@visactor/vchart": "^2.0.17"
+  }
+}

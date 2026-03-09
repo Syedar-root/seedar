@@ -12,7 +12,10 @@
     "strict": true,
     "noEmit": true,
     "baseUrl": ".",
-    "paths": {}
-  }
+    "paths": {
+      "@seedar/ui-core": ["./packages/ui-core/src/index.ts"],
+      "@seedar/ui-react": ["./packages/ui-react/src/index.tsx"]
+    }
+  },
+  "include": ["packages/**/*", "apps/**/*"]
 }
-
