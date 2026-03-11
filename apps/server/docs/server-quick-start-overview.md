@@ -35,15 +35,15 @@ cp .env.example .env
 
 配置项说明：
 
-| 配置项 | 描述 | 示例值 |
-|--------|------|--------|
-| `PORT` | 服务端口 | `3000` |
-| `NODE_ENV` | 运行环境 | `development` |
-| `DB_HOST` | 数据库主机 | `localhost` |
-| `DB_PORT` | 数据库端口 | `3306` |
-| `DB_USERNAME` | 数据库用户名 | `root` |
-| `DB_PASSWORD` | 数据库密码 | `password` |
-| `DB_DATABASE` | 数据库名称 | `seedar` |
+| 配置项        | 描述         | 示例值        |
+| ------------- | ------------ | ------------- |
+| `PORT`        | 服务端口     | `3000`        |
+| `NODE_ENV`    | 运行环境     | `development` |
+| `DB_HOST`     | 数据库主机   | `localhost`   |
+| `DB_PORT`     | 数据库端口   | `3306`        |
+| `DB_USERNAME` | 数据库用户名 | `root`        |
+| `DB_PASSWORD` | 数据库密码   | `password`    |
+| `DB_DATABASE` | 数据库名称   | `seedar`      |
 
 ## 2. 启动服务
 
@@ -87,6 +87,7 @@ curl -X POST http://localhost:3000/datasource \
 ```
 
 **支持的数据源类型**：
+
 - `mysql`：MySQL 数据库
 - `postgresql`：PostgreSQL 数据库
 - `clickhouse`：ClickHouse 数据库
@@ -152,12 +153,12 @@ curl -X POST http://localhost:3000/query/execute \
 
 ## 5. 常用命令
 
-| 命令 | 描述 |
-|------|------|
+| 命令                 | 描述                     |
+| -------------------- | ------------------------ |
 | `pnpm run start:dev` | 启动开发服务器（热重载） |
-| `pnpm run build` | 构建生产版本 |
-| `pnpm run lint` | 代码检查和修复 |
-| `pnpm run test` | 运行单元测试 |
+| `pnpm run build`     | 构建生产版本             |
+| `pnpm run lint`      | 代码检查和修复           |
+| `pnpm run test`      | 运行单元测试             |
 
 ## 6. 目录结构
 
