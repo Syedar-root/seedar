@@ -1,4 +1,4 @@
-import { ApiConfig } from '@seedar/types';
+import { ApiConfig } from '#pkg/seedar/types';
 
 /**
  * 默认 API 配置

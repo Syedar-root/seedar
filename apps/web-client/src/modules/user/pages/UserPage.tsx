@@ -2,9 +2,16 @@ import { useEffect } from 'react';
 import { useUserStore } from '../store/userStore';
 import { Chart } from '#pkg/seedar/ui-react';
 import styles from './UserPage.module.scss';
+import { useExecuteQuery } from '#pkg/seedar/ui-react';
 
 const UserPage = () => {
   const { users, isLoading, fetchUsers, setCurrentUser } = useUserStore();
+
+  const { data, isLoading: queryIsLoading, error, mutate } = useExecuteQuery();
+
+  useEffect(() => {
+    mutate(6);
+  }, [mutate]);
 
   useEffect(() => {
     fetchUsers();

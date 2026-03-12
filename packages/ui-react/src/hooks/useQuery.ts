@@ -1,4 +1,8 @@
-import { useQuery as useReactQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useQuery as useReactQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useQueryApi } from './useApi';
 import type {
   QueryResponse,
@@ -6,7 +10,7 @@ import type {
   UpdateQueryRequest,
   ExecuteQueryResponse,
   QueryStatus,
-} from '@seedar/types';
+} from '#pkg/seedar/types';
 
 /**
  * 查询键工厂
@@ -79,7 +83,9 @@ export const useUpdateQuery = () => {
       queryApi.update(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.detail(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.detail(variables.id),
+      });
     },
   });
 };

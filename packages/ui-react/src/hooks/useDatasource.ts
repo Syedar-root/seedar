@@ -4,7 +4,7 @@ import type {
   DatasourceResponse,
   CreateDatasourceRequest,
   UpdateDatasourceRequest,
-} from '@seedar/types';
+} from '#pkg/seedar/types';
 
 /**
  * 查询键工厂
@@ -13,7 +13,8 @@ import type {
 const datasourceKeys = {
   all: ['datasources'] as const,
   lists: () => [...datasourceKeys.all, 'list'] as const,
-  list: (filters?: Record<string, any>) => [...datasourceKeys.lists(), filters] as const,
+  list: (filters?: Record<string, any>) =>
+    [...datasourceKeys.lists(), filters] as const,
   details: () => [...datasourceKeys.all, 'detail'] as const,
   detail: (id: number) => [...datasourceKeys.details(), id] as const,
 };
@@ -75,7 +76,9 @@ export const useUpdateDatasource = () => {
       datasourceApi.update(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: datasourceKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: datasourceKeys.detail(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: datasourceKeys.detail(variables.id),
+      });
     },
   });
 };

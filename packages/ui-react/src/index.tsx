@@ -38,4 +38,4 @@ export type {
   DatasourceResponse,
   DatasetResponse,
   QueryResponse,
-} from '@seedar/types';
+} from '#pkg/seedar/types';

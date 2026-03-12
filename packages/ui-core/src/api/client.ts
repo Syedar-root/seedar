@@ -4,7 +4,7 @@ import {
   ApiResponse,
   ApiError,
   RequestOptions,
-} from '@seedar/types';
+} from '#pkg/seedar/types';
 import { DatasourceApi } from './datasource.js';
 import { DatasetApi } from './dataset.js';
 import { QueryApi } from './query.js';

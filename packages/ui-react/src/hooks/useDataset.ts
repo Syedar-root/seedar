@@ -4,7 +4,7 @@ import type {
   DatasetResponse,
   CreateDatasetRequest,
   UpdateDatasetRequest,
-} from '@seedar/types';
+} from '#pkg/seedar/types';
 
 /**
  * 查询键工厂
@@ -13,7 +13,8 @@ import type {
 const datasetKeys = {
   all: ['datasets'] as const,
   lists: () => [...datasetKeys.all, 'list'] as const,
-  list: (filters?: Record<string, any>) => [...datasetKeys.lists(), filters] as const,
+  list: (filters?: Record<string, any>) =>
+    [...datasetKeys.lists(), filters] as const,
   details: () => [...datasetKeys.all, 'detail'] as const,
   detail: (id: number) => [...datasetKeys.details(), id] as const,
 };
@@ -75,7 +76,9 @@ export const useUpdateDataset = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: datasetKeys.lists() });
       if (variables.dataSetId) {
-        queryClient.invalidateQueries({ queryKey: datasetKeys.detail(variables.dataSetId) });
+        queryClient.invalidateQueries({
+          queryKey: datasetKeys.detail(variables.dataSetId),
+        });
       }
     },
   });

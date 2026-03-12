@@ -5,7 +5,11 @@
   "main": "src/index.tsx",
   "types": "src/index.tsx",
   "exports": {
-    ".": "./src/index.tsx"
+    ".": {
+      "types": "./src/index.tsx",
+      "import": "./src/index.tsx",
+      "require": "./src/index.tsx"
+    }
   },
   "peerDependencies": {
     "react": ">=18.0.0",
