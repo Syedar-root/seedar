@@ -13,8 +13,7 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@seedar/ui-core": ["./packages/ui-core/src/index.ts"],
-      "@seedar/ui-react": ["./packages/ui-react/src/index.tsx"]
+      "@seedar/ui-core": ["./packages/ui-core/src/index.ts"]
     }
   },
   "include": ["packages/**/*", "apps/**/*"]

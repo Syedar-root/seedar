@@ -9,9 +9,7 @@
   },
   "peerDependencies": {
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
-  },
-  "dependencies": {
+    "react-dom": ">=18.0.0",
     "@seedar/types": "workspace:*",
     "@seedar/ui-core": "workspace:*",
     "@tanstack/react-query": "^5.0.0",

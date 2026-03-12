@@ -1,14 +1,6 @@
-export { ChartContainer } from './components/common';
+export { Chart } from './components/charts';
 
-export { LineChart } from './components/charts/LineChart';
-export { BarChart } from './components/charts/BarChart';
-export { PieChart } from './components/charts/PieChart';
-
-export {
-  useDatasourceApi,
-  useDatasetApi,
-  useQueryApi,
-} from './hooks/useApi';
+export { useDatasourceApi, useDatasetApi, useQueryApi } from './hooks/useApi';
 
 export {
   useDatasources,
@@ -35,19 +27,9 @@ export {
   useExecuteQuery,
 } from './hooks/useQuery';
 
-export {
-  useChartData,
-  useChartTheme,
-} from './hooks';
+export { useChartData, useChartTheme } from './hooks';
 
-export type {
-  ChartSize,
-  ChartData,
-  BaseChartProps,
-  LineChartProps,
-  BarChartProps,
-  PieChartProps,
-} from './types/chart';
+export type { ISpec } from './types/chart';
 
 export type {
   ApiResponse,
