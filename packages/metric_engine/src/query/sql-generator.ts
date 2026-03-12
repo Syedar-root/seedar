@@ -61,6 +61,14 @@ export class SQLGenerator {
       sql += `\nGROUP BY ${groupByClause}`;
     }
 
+    if (query.limit !== undefined) {
+      sql += `\nLIMIT ${query.limit}`;
+    }
+
+    if (query.offset !== undefined && query.offset > 0) {
+      sql += `\nOFFSET ${query.offset}`;
+    }
+
     return sql;
   }
 
@@ -660,7 +668,16 @@ export class SQLGenerator {
 
     const outerSelectSQL = outerSelectItems.join(', ');
 
-    const finalSQL = `WITH ${innerSQL}\nSELECT ${outerSelectSQL}\nFROM ${innerName}`;
+    let finalSQL = `WITH ${innerSQL}\nSELECT ${outerSelectSQL}\nFROM ${innerName}`;
+
+    if (originalQuery.limit !== undefined) {
+      finalSQL += `\nLIMIT ${originalQuery.limit}`;
+    }
+
+    if (originalQuery.offset !== undefined && originalQuery.offset > 0) {
+      finalSQL += `\nOFFSET ${originalQuery.offset}`;
+    }
+
     return finalSQL;
   }
 
@@ -935,6 +952,14 @@ export class SQLGenerator {
       .join(' AND ');
 
     sql += joinConditions;
+
+    if (originalQuery.limit !== undefined) {
+      sql += `\nLIMIT ${originalQuery.limit}`;
+    }
+
+    if (originalQuery.offset !== undefined && originalQuery.offset > 0) {
+      sql += `\nOFFSET ${originalQuery.offset}`;
+    }
 
     return sql;
   }

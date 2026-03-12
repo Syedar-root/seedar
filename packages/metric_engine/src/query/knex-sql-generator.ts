@@ -135,6 +135,14 @@ export class KnexSQLGenerator {
       queryBuilder = queryBuilder.groupBy(groupByFields);
     }
 
+    if (query.limit !== undefined) {
+      queryBuilder = queryBuilder.limit(query.limit);
+    }
+
+    if (query.offset !== undefined && query.offset > 0) {
+      queryBuilder = queryBuilder.offset(query.offset);
+    }
+
     // 获取SQL和绑定参数
     // 如果需要预聚合（内层子查询），使用 Knex 构建 inner 子查询并在 FROM 使用 (inner) AS inner_metrics（兼容多数方言）
     // TODO: 如果有 PostAggregateMetric 或 ArithmeticMetric 的 filter，需要在outer层进行计算
@@ -398,6 +406,14 @@ export class KnexSQLGenerator {
           (_, idx) => `inner_metrics.column_${idx + 1}`
         );
         outerBuilder = outerBuilder.groupBy(groupByColumns);
+      }
+
+      if (query.limit !== undefined) {
+        outerBuilder = outerBuilder.limit(query.limit);
+      }
+
+      if (query.offset !== undefined && query.offset > 0) {
+        outerBuilder = outerBuilder.offset(query.offset);
       }
 
       const result = outerBuilder.toSQL();
