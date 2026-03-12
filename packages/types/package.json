@@ -1,0 +1,56 @@
+{
+  "name": "@seedar/types",
+  "version": "1.0.0",
+  "description": "Seedar 项目的类型定义包",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./datasource": {
+      "types": "./dist/datasource/index.d.ts",
+      "import": "./dist/datasource/index.mjs",
+      "require": "./dist/datasource/index.js"
+    },
+    "./dataset": {
+      "types": "./dist/dataset/index.d.ts",
+      "import": "./dist/dataset/index.mjs",
+      "require": "./dist/dataset/index.js"
+    },
+    "./query": {
+      "types": "./dist/query/index.d.ts",
+      "import": "./dist/query/index.mjs",
+      "require": "./dist/query/index.js"
+    },
+    "./common": {
+      "types": "./dist/common/index.d.ts",
+      "import": "./dist/common/index.mjs",
+      "require": "./dist/common/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "types",
+    "typescript",
+    "seedar"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.6",
+    "rimraf": "^5.0.5"
+  },
+  "sideEffects": false
+}

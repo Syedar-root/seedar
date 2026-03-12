@@ -12,8 +12,14 @@
     "react-dom": ">=18.0.0"
   },
   "dependencies": {
+    "@seedar/types": "workspace:*",
     "@seedar/ui-core": "workspace:*",
+    "@tanstack/react-query": "^5.0.0",
     "@visactor/react-vchart": "^2.0.17",
     "@visactor/vchart": "^2.0.17"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.27",
+    "@types/react-dom": "^18.3.7"
   }
 }

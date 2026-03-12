@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { ChartData } from '@seedar/ui-core';
+import type { ChartData } from '../types/chart';
 import { validateData } from '@seedar/ui-core';
 
 export function useChartData(data: ChartData) {

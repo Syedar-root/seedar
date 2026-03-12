@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
-import type { ThemeType } from '@seedar/ui-core';
-import { DEFAULT_THEME } from '@seedar/ui-core';
+
+type ThemeType = 'light' | 'dark';
+
+const DEFAULT_THEME: ThemeType = 'light';
 
 export function useChartTheme(theme?: ThemeType) {
   const currentTheme = useMemo(() => theme ?? DEFAULT_THEME, [theme]);

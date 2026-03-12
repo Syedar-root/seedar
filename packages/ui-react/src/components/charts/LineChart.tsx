@@ -1,31 +1,26 @@
 import { useMemo } from 'react';
-import { ReactVChart } from '@visactor/react-vchart';
-import type { LineChartProps } from '@seedar/ui-core';
-import { DEFAULT_CHART_CONFIG } from '@seedar/ui-core';
+import { LineChart as VLineChart } from '@visactor/react-vchart';
+import type { LineChartProps } from '../../types/chart';
 
 export const LineChart: React.FC<LineChartProps> = (props) => {
-  const {
-    data,
-    width,
-    height,
-    xField,
-    yField,
-    seriesName = '数据',
-  } = props;
+  const { data, width, height, xField, yField, seriesName = '数据' } = props;
 
   const chartOption = useMemo(
     () => ({
-      ...DEFAULT_CHART_CONFIG,
-      type: 'line',
       data: {
         values: data,
       },
-      xField,
-      yField,
-      series: [{ name: seriesName, type: 'line' }],
+      series: [
+        {
+          type: 'line' as const,
+          xField,
+          yField,
+          seriesField: seriesName,
+        },
+      ],
     }),
     [data, xField, yField, seriesName]
   );
 
-  return <ReactVChart option={chartOption} width={width} height={height} />;
+  return <VLineChart {...chartOption} width={width} height={height} />;
 };
