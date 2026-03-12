@@ -152,7 +152,7 @@ export enum UpdateDatasetAction {
 /**
  * 数据源返回类型（简化版，用于数据集引用）
  */
-export interface DatasourceResponse {
+interface DatasourceResponse {
   id: number;
   name: string;
   type: string;

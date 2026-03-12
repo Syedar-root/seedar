@@ -2,34 +2,32 @@
   "name": "@seedar/types",
   "version": "1.0.0",
   "description": "Seedar 项目的类型定义包",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "types": "index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "types": "./index.ts",
+      "import": "./index.ts",
+      "require": "./index.ts"
     },
     "./datasource": {
-      "types": "./dist/datasource/index.d.ts",
-      "import": "./dist/datasource/index.mjs",
-      "require": "./dist/datasource/index.js"
+      "types": "./src/datasource/index.ts",
+      "import": "./src/datasource/index.ts",
+      "require": "./src/datasource/index.ts"
     },
     "./dataset": {
-      "types": "./dist/dataset/index.d.ts",
-      "import": "./dist/dataset/index.mjs",
-      "require": "./dist/dataset/index.js"
+      "types": "./src/dataset/index.ts",
+      "import": "./src/dataset/index.ts",
+      "require": "./src/dataset/index.ts"
     },
     "./query": {
-      "types": "./dist/query/index.d.ts",
-      "import": "./dist/query/index.mjs",
-      "require": "./dist/query/index.js"
+      "types": "./src/query/index.ts",
+      "import": "./src/query/index.ts",
+      "require": "./src/query/index.ts"
     },
     "./common": {
-      "types": "./dist/common/index.d.ts",
-      "import": "./dist/common/index.mjs",
-      "require": "./dist/common/index.js"
+      "types": "./src/common/index.ts",
+      "import": "./src/common/index.ts",
+      "require": "./src/common/index.ts"
     }
   },
   "files": [

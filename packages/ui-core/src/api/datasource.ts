@@ -3,8 +3,8 @@ import {
   CreateDatasourceRequest,
   UpdateDatasourceRequest,
   DatasourceResponse,
-} from '@seedar/types';
-import { RequestOptions } from '@seedar/types';
+} from '#pkg/seedar/types';
+import { RequestOptions } from '#pkg/seedar/types';
 
 /**
  * 数据源 API 类
@@ -16,7 +16,9 @@ export class DatasourceApi {
    * @param options - 请求选项
    * @returns 数据源列表
    */
-  static async findAll(options?: RequestOptions): Promise<DatasourceResponse[]> {
+  static async findAll(
+    options?: RequestOptions
+  ): Promise<DatasourceResponse[]> {
     return ApiClient.get<DatasourceResponse[]>('/datasource', options);
   }
 
@@ -71,10 +73,7 @@ export class DatasourceApi {
    * @param options - 请求选项
    * @returns 删除结果
    */
-  static async remove(
-    id: number,
-    options?: RequestOptions
-  ): Promise<void> {
+  static async remove(id: number, options?: RequestOptions): Promise<void> {
     return ApiClient.delete<void>(`/datasource/${id}`, options);
   }
 }

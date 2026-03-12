@@ -2,20 +2,15 @@
   "name": "@seedar/ui-core",
   "version": "1.0.0",
   "type": "module",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "require": "./src/index.ts"
     }
   },
   "scripts": {
-    "build": "tsc",
-    "type-check": "tsc --noEmit",
-    "clean": "rimraf dist"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@seedar/types": "workspace:*",
