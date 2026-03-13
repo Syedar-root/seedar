@@ -7,7 +7,7 @@ import { useExecuteQuery } from '#pkg/seedar/ui-react';
 const UserPage = () => {
   const { users, isLoading, fetchUsers, setCurrentUser } = useUserStore();
 
-  const { data, isLoading: queryIsLoading, error, mutate } = useExecuteQuery();
+  const { data, isPending: queryIsLoading, error, mutate } = useExecuteQuery();
 
   useEffect(() => {
     mutate(6);
@@ -29,7 +29,7 @@ const UserPage = () => {
   const mockData = {
     vchartProps: {
       spec: {
-        type: 'bar',
+        type: 'bar' as const,
         data: [
           {
             id: 'userData',
@@ -48,13 +48,13 @@ const UserPage = () => {
         seriesField: 'type',
         axes: [
           {
-            orient: 'left',
-            type: 'linear',
+            orient: 'left' as const,
+            type: 'linear' as const,
             title: { visible: true, text: '用户数量' },
           },
           {
-            orient: 'bottom',
-            type: 'band',
+            orient: 'bottom' as const,
+            type: 'band' as const,
             title: { visible: true, text: '月份' },
           },
         ],
