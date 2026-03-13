@@ -19,11 +19,16 @@
     "@visactor/react-vtable": "^1.23.3",
     "@visactor/vchart": "^2.0.17",
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "react-dom": ">=18.0.0",
+    "react-grid-layout": "^2.2.2",
+    "react-resizable": "^3.1.3"
   },
   "devDependencies": {
     "@types/react": "^18.3.27",
     "@types/react-dom": "^18.3.7",
-    "@visactor/react-vtable": "^1.23.3"
+    "@types/react-grid-layout": "^1.3.5",
+    "@visactor/react-vtable": "^1.23.3",
+    "react-grid-layout": "^2.2.2",
+    "react-resizable": "^3.1.3"
   }
 }

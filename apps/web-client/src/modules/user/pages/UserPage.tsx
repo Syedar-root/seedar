@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useUserStore } from '../store/userStore';
-import { Chart, ListTable } from '#pkg/seedar/ui-react';
+import { Chart, ListTable, GridContainer } from '#pkg/seedar/ui-react';
 import styles from './UserPage.module.scss';
 import { useExecuteQuery } from '#pkg/seedar/ui-react';
 
@@ -63,8 +63,9 @@ const UserPage = () => {
   return (
     <div className={styles.container}>
       <h2>用户管理</h2>
-      <Chart vchartProps={mockData.vchartProps} />
-      <ListTable queryId={6} />
+      {/* <Chart vchartProps={mockData.vchartProps} />
+      <ListTable queryId={6} /> */}
+      <GridContainer />
     </div>
   );
 };
