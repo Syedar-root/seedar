@@ -4,6 +4,8 @@ import {
   Responsive,
   useContainerWidth,
 } from 'react-grid-layout';
+import { GridPanel } from './gridPanel/gridPanel';
+import { SeedarPanel } from './gridPanel/seedarPanel';
 
 const COLS_RATE = 2;
 const COLS = {
@@ -32,7 +34,7 @@ export const GridContainer: React.FC = () => {
 
   const layouts = {
     lg: [
-      { i: '1', x: 0, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
+      { i: '1', x: 0, y: 0, w: 9, h: 7, minW: 2, minH: 2 },
       { i: '2', x: 2, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
       { i: '3', x: 4, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
     ],
@@ -61,15 +63,8 @@ export const GridContainer: React.FC = () => {
             width={width}
             compactor={myCompactor}
           >
-            <div style={{ background: 'red' }} key="1">
-              1
-            </div>
-            <div style={{ background: 'green' }} key="2">
-              2
-            </div>
-            <div style={{ background: 'blue' }} key="3">
-              3
-            </div>
+            <SeedarPanel panelId="1" key="1" />
+            <GridPanel panelId="2" key="2" />
           </Responsive>
         )}
       </div>
