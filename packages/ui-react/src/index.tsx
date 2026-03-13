@@ -1,4 +1,4 @@
-export { Chart } from './components/charts';
+export * from './components';
 
 export { useDatasourceApi, useDatasetApi, useQueryApi } from './hooks/useApi';
 

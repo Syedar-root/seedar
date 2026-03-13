@@ -1,7 +1,8 @@
 .container {
-  max-width: 800px;
-  margin: 0 auto;
-  
+  position: relative;
+  margin: 0;
+  height: auto;
+
   h2 {
     margin-bottom: 1.5rem;
     color: #333;
@@ -24,16 +25,16 @@
   border-radius: 8px;
   cursor: pointer;
   transition: box-shadow 0.2s;
-  
+
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
-  
+
   .name {
     font-weight: 500;
     color: #333;
   }
-  
+
   .email {
     color: #666;
     font-size: 0.875rem;

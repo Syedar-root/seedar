@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useUserStore } from '../store/userStore';
-import { Chart } from '#pkg/seedar/ui-react';
+import { Chart, ListTable } from '#pkg/seedar/ui-react';
 import styles from './UserPage.module.scss';
 import { useExecuteQuery } from '#pkg/seedar/ui-react';
 
@@ -12,19 +12,6 @@ const UserPage = () => {
   useEffect(() => {
     mutate(6);
   }, [mutate]);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
-  const handleUserClick = (user: {
-    id: string;
-    name: string;
-    email: string;
-  }) => {
-    setCurrentUser(user);
-    console.log('Current user:', user);
-  };
 
   const mockData = {
     vchartProps: {
@@ -76,23 +63,8 @@ const UserPage = () => {
   return (
     <div className={styles.container}>
       <h2>用户管理</h2>
-      {isLoading ? (
-        <p>加载中...</p>
-      ) : (
-        <ul className={styles.userList}>
-          {users.map((user) => (
-            <li
-              key={user.id}
-              className={styles.userItem}
-              onClick={() => handleUserClick(user)}
-            >
-              <span className={styles.name}>{user.name}</span>
-              <span className={styles.email}>{user.email}</span>
-            </li>
-          ))}
-        </ul>
-      )}
       <Chart vchartProps={mockData.vchartProps} />
+      <ListTable queryId={6} />
     </div>
   );
 };

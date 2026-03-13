@@ -1,14 +1,11 @@
 import { ApiClient } from './client.js';
-import { RequestOptions } from '@seedar/types';
-import {
-  QueryResponse,
-  QueryStatus,
-} from '@seedar/types';
+import { RequestOptions } from '#pkg/seedar/types';
+import { QueryResponse, QueryStatus } from '#pkg/seedar/types';
 import {
   CreateQueryRequest,
   UpdateQueryRequest,
   ExecuteQueryResponse,
-} from '@seedar/types';
+} from '#pkg/seedar/types';
 
 /**
  * Query API 类
@@ -21,7 +18,10 @@ export class QueryApi {
    * @param options - 请求选项
    * @returns 查询列表
    */
-  static async findAll(status?: QueryStatus, options?: RequestOptions): Promise<QueryResponse[]> {
+  static async findAll(
+    status?: QueryStatus,
+    options?: RequestOptions
+  ): Promise<QueryResponse[]> {
     const params: Record<string, any> = {};
     if (status) {
       params.status = status;
@@ -35,7 +35,10 @@ export class QueryApi {
    * @param options - 请求选项
    * @returns 查询详情
    */
-  static async findOne(id: number, options?: RequestOptions): Promise<QueryResponse> {
+  static async findOne(
+    id: number,
+    options?: RequestOptions
+  ): Promise<QueryResponse> {
     return ApiClient.get<QueryResponse>(`/query/${id}`, options);
   }
 
@@ -45,7 +48,10 @@ export class QueryApi {
    * @param options - 请求选项
    * @returns 创建的查询
    */
-  static async create(data: CreateQueryRequest, options?: RequestOptions): Promise<QueryResponse> {
+  static async create(
+    data: CreateQueryRequest,
+    options?: RequestOptions
+  ): Promise<QueryResponse> {
     return ApiClient.post<QueryResponse>('/query', data, options);
   }
 
@@ -56,7 +62,11 @@ export class QueryApi {
    * @param options - 请求选项
    * @returns 更新后的查询
    */
-  static async update(id: number, data: UpdateQueryRequest, options?: RequestOptions): Promise<QueryResponse> {
+  static async update(
+    id: number,
+    data: UpdateQueryRequest,
+    options?: RequestOptions
+  ): Promise<QueryResponse> {
     return ApiClient.patch<QueryResponse>(`/query/${id}`, data, options);
   }
 
@@ -76,7 +86,14 @@ export class QueryApi {
    * @param options - 请求选项
    * @returns 执行结果
    */
-  static async execute(queryId: number, options?: RequestOptions): Promise<ExecuteQueryResponse> {
-    return ApiClient.post<ExecuteQueryResponse>('/query/execute', { queryId }, options);
+  static async execute(
+    queryId: number,
+    options?: RequestOptions
+  ): Promise<ExecuteQueryResponse> {
+    return ApiClient.post<ExecuteQueryResponse>(
+      '/query/execute',
+      { queryId },
+      options
+    );
   }
 }
