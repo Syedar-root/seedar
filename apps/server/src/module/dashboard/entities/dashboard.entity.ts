@@ -7,6 +7,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { DashboardPanelRelation } from './dashboard-panel-relation.entity';
+import { Layouts } from '../dto/create-dashboard.request';
 
 @Entity('dashboard')
 export class Dashboard {
@@ -17,7 +18,7 @@ export class Dashboard {
   name: string;
 
   @Column({ type: 'json', nullable: true })
-  layout: Record<string, any> | null;
+  layout: Layouts | null;
 
   @OneToMany(() => DashboardPanelRelation, (relation) => relation.dashboard, {
     cascade: true,

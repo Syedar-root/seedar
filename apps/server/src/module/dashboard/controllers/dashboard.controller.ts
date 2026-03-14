@@ -11,6 +11,7 @@ import {
 import { DashboardService } from '../services/dashboard.service';
 import { CreateDashboardRequest } from '../dto/create-dashboard.request';
 import { UpdateDashboardRequest } from '../dto/update-dashboard.request';
+import type { Layouts } from '../dto/create-dashboard.request';
 
 @Controller('dashboard')
 export class DashboardController {
@@ -45,7 +46,7 @@ export class DashboardController {
   }
 
   @Put(':id/layout')
-  updateLayout(@Param('id') id: string, @Body() layout: Record<string, any>) {
+  updateLayout(@Param('id') id: string, @Body() layout: Layouts) {
     return this.dashboardService.updateLayout(id, layout);
   }
 
