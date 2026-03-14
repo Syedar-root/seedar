@@ -78,6 +78,28 @@ Seedar 后端服务是一个基于 NestJS 框架开发的数据分析平台后�
 | `/query/:id`     | DELETE | 删除查询     |
 | `/query/execute` | POST   | 执行查询     |
 
+### 3.4 仪表盘模块 (Dashboard)
+
+仪表盘模块负责管理仪表盘和面板，支持创建、查询、更新、删除仪表盘和面板，以及管理仪表盘布局和面板关联。
+
+**详细接口文档**：[dashboard-module-api-doc.md](module/dashboard/docs/dashboard-api-doc.md)
+
+| 接口路径                         | 方法   | 功能描述         |
+| -------------------------------- | ------ | ---------------- |
+| `/dashboard`                     | POST   | 创建仪表盘       |
+| `/dashboard`                     | GET    | 获取所有仪表盘   |
+| `/dashboard/:id`                 | GET    | 获取单个仪表盘   |
+| `/dashboard/:id`                 | PATCH  | 更新仪表盘       |
+| `/dashboard/:id`                 | DELETE | 删除仪表盘       |
+| `/dashboard/:id/layout`          | PUT    | 更新仪表盘布局   |
+| `/dashboard/:id/panels`          | POST   | 向仪表盘添加面板 |
+| `/dashboard/:id/panels/:panelId` | DELETE | 从仪表盘移除面板 |
+| `/panel`                         | POST   | 创建面板         |
+| `/panel`                         | GET    | 获取所有面板     |
+| `/panel/:id`                     | GET    | 获取单个面板     |
+| `/panel/:id`                     | PATCH  | 更新面板         |
+| `/panel/:id`                     | DELETE | 删除面板         |
+
 ## 4. 模块交互关系
 
 ```mermaid
@@ -85,10 +107,12 @@ flowchart TD
     User[用户] --> Datasource[数据源模块]
     User --> Dataset[数据集模块]
     User --> Query[查询模块]
+    User --> Dashboard[仪表盘模块]
 
     Dataset --> Datasource
     Query --> Dataset
     Query --> Datasource
+    Dashboard --> Query
 
     Datasource --> DB1[(MySQL)]
     Datasource --> DB2[(PostgreSQL)]
@@ -102,6 +126,7 @@ flowchart TD
 - 数据集模块依赖数据源模块（从数据源获取表和字段）
 - 查询模块依赖数据集模块（基于数据集定义查询）
 - 查询模块依赖数据源模块（执行查询时连接数据源）
+- 仪表盘模块依赖查询模块（面板关联查询数据）
 
 ## 5. 错误处理
 
@@ -220,6 +245,26 @@ flowchart TD
 - STOPPED（已停止）
 
 **详细业务逻辑**：[query-business-logic.md](module/query/docs/query-business-logic.md)
+
+### 3.4 仪表盘模块
+
+仪表盘模块负责管理仪表盘和面板，支持创建、查询、更新、删除仪表盘和面板，以及管理仪表盘布局和面板关联。
+
+**核心功能**：
+
+- **仪表盘管理**：创建、查询、更新、删除仪表盘
+- **面板管理**：创建、查询、更新、删除面板
+- **布局管理**：更新仪表盘布局
+- **面板关联**：向仪表盘添加或移除面板
+
+**面板类型**：
+
+- chart（图表）
+- table（表格）
+- text（文本）
+- card（卡片）
+
+**详细业务逻辑**：[dashboard-business-logic.md](module/dashboard/docs/dashboard-business-logic.md)
 
 ## 4. 模块交互流程
 
@@ -358,12 +403,13 @@ flowchart TD
 
 - 数据集模块依赖数据源模块
 - 查询模块依赖数据集模块和数据源模块
+- 仪表盘模块依赖查询模块
 - 所有模块依赖 TypeORM 进行数据持久化
 - 查询模块依赖 metric-engine 进行 DSL 转换
 
 ## 10. 总结
 
-Seedar 后端服务通过三个核心模块的协作，提供了完整的数据分析能力。数据源模块作为基础组件管理各种数据源，数据集模块在其上构建数据模型，查询模块最终实现数据分析功能。模块之间职责清晰，依赖关系明确，便于扩展和维护。
+Seedar 后端服务通过四个核心模块的协作，提供了完整的数据分析能力。数据源模块作为基础组件管理各种数据源，数据集模块在其上构建数据模型，查询模块实现数据分析功能，仪表盘模块则提供数据可视化展示能力。模块之间职责清晰，依赖关系明确，便于扩展和维护。
 
 # Seedar 后端服务数据模型总览文档
 
@@ -389,6 +435,10 @@ erDiagram
     DATASET_FIELD }o--|| DATASOURCE_COLUMN : references
 
     QUERY }o--|| DATASET : uses
+
+    DASHBOARD ||--o{ DASHBOARD_PANEL_RELATION : contains
+    PANEL ||--o{ DASHBOARD_PANEL_RELATION : used_in
+    PANEL }o--|| QUERY : references
 ```
 
 ## 3. 模块数据模型
@@ -430,14 +480,26 @@ erDiagram
 
 **详细数据模型**：[query-data-model.md](module/query/docs/query-data-model.md)
 
+### 3.4 仪表盘模块
+
+包含 3 个核心实体：
+
+| 实体                     | 描述           | 关键字段                                         |
+| ------------------------ | -------------- | ------------------------------------------------ |
+| `Dashboard`              | 仪表盘基本信息 | id, name, layout                                 |
+| `Panel`                  | 面板基本信息   | id, title, type, query_id, config, width, height |
+| `DashboardPanelRelation` | 仪表盘面板关系 | dashboard_id, panel_id                           |
+
+**详细数据模型**：[dashboard-data-model.md](module/dashboard/docs/dashboard-data-model.md)
+
 ## 4. 数据流关系
 
 ```
-数据源 → 数据集 → 查询
-  ↓         ↓       ↓
-表结构    字段定义   DSL
-  ↓         ↓       ↓
-列信息    关联关系   SQL
+数据源 → 数据集 → 查询 → 仪表盘
+  ↓         ↓       ↓       ↓
+表结构    字段定义   DSL     面板
+  ↓         ↓       ↓       ↓
+列信息    关联关系   SQL     布局
 ```
 
 ## 5. 数据类型标准化
@@ -503,6 +565,15 @@ erDiagram
 | `inner` | 内连接 |
 | `left`  | 左连接 |
 | `right` | 右连接 |
+
+### 面板类型 (PanelType)
+
+| 值      | 描述 |
+| ------- | ---- |
+| `chart` | 图表 |
+| `table` | 表格 |
+| `text`  | 文本 |
+| `card`  | 卡片 |
 
 ## 7. 数据安全
 
@@ -575,11 +646,12 @@ Seedar 是一个基于 NestJS 框架开发的数据分析平台后端服务，�
 
 ### 1.3 项目包含哪些模块？
 
-项目包含三个核心模块：
+项目包含四个核心模块：
 
 - **数据源模块**：管理各种类型的数据源连接
 - **数据集模块**：管理和处理数据模型
 - **查询模块**：管理和执行数据查询
+- **仪表盘模块**：管理仪表盘和面板，提供数据可视化展示
 
 ## 2. 快速入门问题
 
@@ -834,7 +906,7 @@ Seedar 后端服务是一个基于 NestJS 框架开发的数据分析平台后�
 
 ### 2.1 模块架构
 
-系统采用模块化设计，包含三个核心业务模块：
+系统采用模块化设计，包含四个核心业务模块：
 
 ```mermaid
 flowchart TD
@@ -842,10 +914,12 @@ flowchart TD
     API --> Datasource[数据源模块]
     API --> Dataset[数据集模块]
     API --> Query[查询模块]
+    API --> Dashboard[仪表盘模块]
 
     Dataset --> Datasource
     Query --> Dataset
     Query --> Datasource
+    Dashboard --> Query
 
     Datasource --> DB[(数据库)]
 ```
@@ -923,6 +997,27 @@ flowchart TD
 - ACTIVE（使用中）
 - STOPPED（已停止）
 
+### 3.4 仪表盘模块
+
+**功能描述**：管理仪表盘和面板，支持创建、查询、更新、删除仪表盘和面板，以及管理仪表盘布局和面板关联。
+
+**详细PRD**：[dashboard-prd.md](module/dashboard/docs/dashboard-prd.md)
+
+**核心功能**：
+| 功能 | 描述 | 优先级 |
+|------|------|--------|
+| 仪表盘管理 | 创建、查询、更新、删除仪表盘 | 高 |
+| 面板管理 | 创建、查询、更新、删除面板 | 高 |
+| 布局管理 | 更新仪表盘布局 | 高 |
+| 面板关联 | 向仪表盘添加或移除面板 | 高 |
+
+**面板类型**：
+
+- chart（图表）
+- table（表格）
+- text（文本）
+- card（卡片）
+
 ## 4. 业务流程
 
 ### 4.1 典型业务流程
@@ -936,6 +1031,10 @@ flowchart TD
     E --> F[定义DSL]
     F --> G[执行查询]
     G --> H[获取结果]
+    H --> I[创建面板]
+    I --> J[创建仪表盘]
+    J --> K[添加面板到仪表盘]
+    K --> L[配置仪表盘布局]
 ```
 
 ### 4.2 模块交互流程
@@ -972,6 +1071,14 @@ flowchart TD
 | 实体  | 描述     |
 | ----- | -------- |
 | Query | 查询定义 |
+
+### 5.4 仪表盘模块
+
+| 实体                   | 描述           |
+| ---------------------- | -------------- |
+| Dashboard              | 仪表盘基本信息 |
+| Panel                  | 面板基本信息   |
+| DashboardPanelRelation | 仪表盘面板关系 |
 
 详细数据模型参考 [server-data-model-overview.md](server-data-model-overview.md)
 
@@ -1240,5 +1347,6 @@ apps/server/src/
 └── module/                # 功能模块
     ├── datasource/        # 数据源模块
     ├── dataset/           # 数据集模块
-    └── query/             # 查询模块
+    ├── query/             # 查询模块
+    └── dashboard/         # 仪表盘模块
 ```
