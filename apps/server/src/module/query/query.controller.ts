@@ -30,7 +30,7 @@ export class QueryController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.queryService.findOne(+id);
+    return this.queryService.findOne(id);
   }
 
   @Patch(':id')
@@ -38,12 +38,12 @@ export class QueryController {
     @Param('id') id: string,
     @Body() updateQueryRequest: UpdateQueryRequest,
   ) {
-    return this.queryService.update(+id, updateQueryRequest);
+    return this.queryService.update(id, updateQueryRequest);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.queryService.remove(+id);
+    return this.queryService.remove(id);
   }
 
   @Post('execute')

@@ -12,7 +12,7 @@ interface SeedarPanelProps {
 interface SeedarPanel {
   panelId: string | number;
   panelType: 'chart' | 'listTable' | 'text';
-  queryId?: string | number;
+  queryId?: string;
   titleConfig?: {
     content?: string;
     type: 'plain' | 'flag';
@@ -25,7 +25,7 @@ const mockFetch = (panelId: string | number) => {
     : 'listTable';
   return {
     panelType: panelType,
-    queryId: 6,
+    queryId: '550e8400-e29b-41d4-a716-446655440000',
     titleConfig: {
       content: '销售趋势图',
       type: 'flag' as const,

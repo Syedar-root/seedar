@@ -107,7 +107,7 @@ export const useQueryApi = () => {
     []
   );
 
-  const findOne = useCallback((id: number, options?: RequestOptions) => {
+  const findOne = useCallback((id: string, options?: RequestOptions) => {
     return QueryApi.findOne(id, options);
   }, []);
 
@@ -119,17 +119,17 @@ export const useQueryApi = () => {
   );
 
   const update = useCallback(
-    (id: number, data: UpdateQueryRequest, options?: RequestOptions) => {
+    (id: string, data: UpdateQueryRequest, options?: RequestOptions) => {
       return QueryApi.update(id, data, options);
     },
     []
   );
 
-  const remove = useCallback((id: number, options?: RequestOptions) => {
+  const remove = useCallback((id: string, options?: RequestOptions) => {
     return QueryApi.remove(id, options);
   }, []);
 
-  const execute = useCallback((queryId: number, options?: RequestOptions) => {
+  const execute = useCallback((queryId: string, options?: RequestOptions) => {
     return QueryApi.execute(queryId, options);
   }, []);
 

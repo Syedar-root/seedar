@@ -13,8 +13,8 @@ import type { QueryDSL } from '../dsl-transformer';
 
 @Entity('query')
 export class Query {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ length: 255 })
   name: string;

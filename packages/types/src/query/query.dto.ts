@@ -24,7 +24,7 @@ export interface UpdateQueryRequest extends Partial<CreateQueryRequest> {}
  * 执行查询请求接口
  */
 export interface ExecuteQueryRequest {
-  queryId: number;
+  queryId: string;
 }
 
 /**

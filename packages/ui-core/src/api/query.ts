@@ -36,7 +36,7 @@ export class QueryApi {
    * @returns 查询详情
    */
   static async findOne(
-    id: number,
+    id: string,
     options?: RequestOptions
   ): Promise<QueryResponse> {
     return ApiClient.get<QueryResponse>(`/query/${id}`, options);
@@ -63,7 +63,7 @@ export class QueryApi {
    * @returns 更新后的查询
    */
   static async update(
-    id: number,
+    id: string,
     data: UpdateQueryRequest,
     options?: RequestOptions
   ): Promise<QueryResponse> {
@@ -76,7 +76,7 @@ export class QueryApi {
    * @param options - 请求选项
    * @returns 删除结果
    */
-  static async remove(id: number, options?: RequestOptions): Promise<void> {
+  static async remove(id: string, options?: RequestOptions): Promise<void> {
     return ApiClient.delete<void>(`/query/${id}`, options);
   }
 
@@ -87,7 +87,7 @@ export class QueryApi {
    * @returns 执行结果
    */
   static async execute(
-    queryId: number,
+    queryId: string,
     options?: RequestOptions
   ): Promise<ExecuteQueryResponse> {
     return ApiClient.post<ExecuteQueryResponse>(
