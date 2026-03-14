@@ -1,11 +1,38 @@
-import { VChart } from '@visactor/react-vchart';
+import { ExecuteQueryResponse } from '#pkg/seedar/ui-core';
+import { ISpec, VChart } from '@visactor/react-vchart';
+import { useEffect, useState } from 'react';
+import { useExecuteQuery } from '../../hooks';
+import { transformData } from './transformer';
 
 export interface ChartProps {
   vchartProps?: React.ComponentProps<typeof VChart>;
+  spec: ISpec;
   queryId?: string | number;
 }
 
 export const Chart: React.FC<ChartProps> = (props) => {
-  const { vchartProps } = props;
-  return <VChart {...vchartProps} />;
+  const { vchartProps = {}, spec = { type: 'bar' }, queryId } = props;
+  const { mutate: executeQuery } = useExecuteQuery();
+
+  const [rawData, setRawData] = useState<ExecuteQueryResponse>();
+  const [specOption, setSpecOption] = useState<ISpec>();
+
+  // 仅在 queryId 变化时执行查询
+  useEffect(() => {
+    if (!queryId) return;
+    executeQuery(Number(queryId), {
+      onSuccess: (data) => {
+        setRawData(data);
+      },
+    });
+  }, [queryId, executeQuery]);
+
+  // 仅在 rawData 或 spec 变化时转换数据
+  useEffect(() => {
+    if (!rawData) return;
+    const transformed = transformData(rawData, spec);
+    setSpecOption(transformed);
+  }, [rawData, spec]);
+
+  return <VChart spec={specOption} {...vchartProps} />;
 };
