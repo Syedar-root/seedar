@@ -1,6 +1,6 @@
 import { Entity, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Dashboard } from './dashboard.entity';
-import { DashboardPanel } from './dashboard-panel.entity';
+import { Panel } from './panel.entity';
 
 @Entity('dashboard_panels')
 export class DashboardPanelRelation {
@@ -14,7 +14,7 @@ export class DashboardPanelRelation {
   @JoinColumn({ name: 'dashboard_id' })
   dashboard: Dashboard;
 
-  @ManyToOne(() => DashboardPanel, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Panel, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'panel_id' })
-  panel: DashboardPanel;
+  panel: Panel;
 }

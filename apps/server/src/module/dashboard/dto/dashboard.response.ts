@@ -1,11 +1,11 @@
 import { Dashboard } from '../entities/dashboard.entity';
-import { DashboardPanel } from '../entities/dashboard-panel.entity';
+import { Panel } from '../entities/panel.entity';
 
 export class DashboardResponse {
   id: string;
   name: string;
   layout: Record<string, any> | null;
-  panels: DashboardPanel[];
+  panels: Panel[];
   createdAt: Date;
   updatedAt: Date;
 

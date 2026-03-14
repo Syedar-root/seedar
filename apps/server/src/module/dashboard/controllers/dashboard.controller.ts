@@ -8,9 +8,9 @@ import {
   Delete,
   Put,
 } from '@nestjs/common';
-import { DashboardService } from './services/dashboard.service';
-import { CreateDashboardRequest } from './dto/create-dashboard.request';
-import { UpdateDashboardRequest } from './dto/update-dashboard.request';
+import { DashboardService } from '../services/dashboard.service';
+import { CreateDashboardRequest } from '../dto/create-dashboard.request';
+import { UpdateDashboardRequest } from '../dto/update-dashboard.request';
 
 @Controller('dashboard')
 export class DashboardController {

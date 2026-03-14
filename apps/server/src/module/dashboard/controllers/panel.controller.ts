@@ -7,9 +7,9 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { PanelService } from './services/panel.service';
-import { CreatePanelRequest } from './dto/create-panel.request';
-import { UpdatePanelRequest } from './dto/update-panel.request';
+import { PanelService } from '../services/panel.service';
+import { CreatePanelRequest } from '../dto/create-panel.request';
+import { UpdatePanelRequest } from '../dto/update-panel.request';
 
 @Controller('panel')
 export class PanelController {

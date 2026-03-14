@@ -6,7 +6,7 @@ import {
   IsOptional,
   IsUUID,
 } from 'class-validator';
-import { PanelType } from '../panel-type.enum';
+import { PanelType } from '../panel-types.enum';
 
 export class CreatePanelRequest {
   @IsOptional()

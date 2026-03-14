@@ -8,39 +8,41 @@ import {
   JoinColumn,
   OneToMany,
 } from 'typeorm';
+import { PanelType } from '../panel-types.enum';
 import { Query } from '@/module/query/entities/query.entity';
-import { PanelType } from '../panel-type.enum';
 import { DashboardPanelRelation } from './dashboard-panel-relation.entity';
 
-@Entity('dashboard_panel')
-export class DashboardPanel {
+@Entity('panel')
+export class Panel {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ length: 255, nullable: true })
-  title: string | null;
+  @Column({ name: 'title', length: 255, nullable: true })
+  title?: string;
 
   @Column({
+    name: 'type',
     type: 'enum',
     enum: PanelType,
+    default: PanelType.CHART,
   })
   type: PanelType;
 
   @Column({ name: 'query_id', nullable: true })
-  queryId: string | null;
+  queryId?: string;
 
   @ManyToOne(() => Query, { nullable: true })
   @JoinColumn({ name: 'query_id' })
-  query: Query | null;
+  query?: Query;
 
-  @Column({ type: 'json', nullable: true })
-  config: Record<string, any> | null;
+  @Column({ name: 'config', type: 'json', nullable: true })
+  config?: Record<string, any>;
 
-  @Column({ type: 'int', nullable: true })
-  width: number | null;
+  @Column({ name: 'width', type: 'int', nullable: true })
+  width?: number;
 
-  @Column({ type: 'int', nullable: true })
-  height: number | null;
+  @Column({ name: 'height', type: 'int', nullable: true })
+  height?: number;
 
   @OneToMany(() => DashboardPanelRelation, (relation) => relation.panel, {
     cascade: true,

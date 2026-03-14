@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { DashboardPanel } from '../entities/dashboard-panel.entity';
+import { Panel } from '../entities/panel.entity';
 import { CreatePanelRequest } from '../dto/create-panel.request';
 import { UpdatePanelRequest } from '../dto/update-panel.request';
 import { PanelResponse } from '../dto/panel.response';
@@ -9,18 +9,18 @@ import { PanelResponse } from '../dto/panel.response';
 @Injectable()
 export class PanelService {
   constructor(
-    @InjectRepository(DashboardPanel)
-    private readonly panelRepository: Repository<DashboardPanel>,
+    @InjectRepository(Panel)
+    private readonly panelRepository: Repository<Panel>,
   ) {}
 
   async create(createPanelRequest: CreatePanelRequest): Promise<PanelResponse> {
     const panel = this.panelRepository.create({
-      title: createPanelRequest.title || null,
+      title: createPanelRequest.title,
       type: createPanelRequest.type,
-      queryId: createPanelRequest.queryId || null,
-      config: createPanelRequest.config || null,
-      width: createPanelRequest.width || null,
-      height: createPanelRequest.height || null,
+      queryId: createPanelRequest.queryId,
+      config: createPanelRequest.config,
+      width: createPanelRequest.width,
+      height: createPanelRequest.height,
     });
     const saved = await this.panelRepository.save(panel);
     return PanelResponse.fromEntity(saved);

@@ -1,17 +1,17 @@
-import { DashboardPanel } from '../entities/dashboard-panel.entity';
+import { Panel } from '../entities/panel.entity';
 
 export class PanelResponse {
   id: string;
-  title: string | null;
+  title?: string;
   type: string;
-  queryId: string | null;
-  config: Record<string, any> | null;
-  width: number | null;
-  height: number | null;
+  queryId?: string;
+  config?: Record<string, any>;
+  width?: number;
+  height?: number;
   createdAt: Date;
   updatedAt: Date;
 
-  static fromEntity(panel: DashboardPanel): PanelResponse {
+  static fromEntity(panel: Panel): PanelResponse {
     const response = new PanelResponse();
     response.id = panel.id;
     response.title = panel.title;
