@@ -1,0 +1,598 @@
+openapi: 3.0.3
+info:
+  title: Dashboard 模块 API
+  description: Dashboard 模块提供了仪表盘和面板的管理功能，包括创建、查询、更新、删除操作，以及仪表盘布局管理和面板关联管理。
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:3000/api
+    description: 本地开发服务器
+
+tags:
+  - name: Dashboard
+    description: 仪表盘管理
+  - name: Panel
+    description: 面板管理
+
+paths:
+  /dashboard:
+    get:
+      tags:
+        - Dashboard
+      summary: 获取所有仪表盘
+      description: 获取系统中所有仪表盘的列表
+      operationId: getAllDashboards
+      responses:
+        '200':
+          description: 成功获取仪表盘列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dashboard'
+    post:
+      tags:
+        - Dashboard
+      summary: 创建仪表盘
+      description: 创建一个新的仪表盘
+      operationId: createDashboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDashboardRequest'
+      responses:
+        '201':
+          description: 仪表盘创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '400':
+          description: 请求参数错误（布局中包含无效的面板 ID）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /dashboard/{id}:
+    get:
+      tags:
+        - Dashboard
+      summary: 获取单个仪表盘
+      description: 根据ID获取指定仪表盘的详细信息
+      operationId: getDashboardById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 仪表盘ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功获取仪表盘信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardDetail'
+        '404':
+          description: 仪表盘不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - Dashboard
+      summary: 更新仪表盘
+      description: 更新指定仪表盘的信息
+      operationId: updateDashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 仪表盘ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDashboardRequest'
+      responses:
+        '200':
+          description: 仪表盘更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '404':
+          description: 仪表盘不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Dashboard
+      summary: 删除仪表盘
+      description: 删除指定的仪表盘
+      operationId: deleteDashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 仪表盘ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 仪表盘删除成功
+        '404':
+          description: 仪表盘不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /dashboard/{id}/layout:
+    put:
+      tags:
+        - Dashboard
+      summary: 更新仪表盘布局
+      description: 更新指定仪表盘的布局配置
+      operationId: updateDashboardLayout
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 仪表盘ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Layout'
+      responses:
+        '200':
+          description: 布局更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '404':
+          description: 仪表盘不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: 请求参数错误（布局中包含无效的面板 ID）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /dashboard/{id}/panels:
+    post:
+      tags:
+        - Dashboard
+      summary: 向仪表盘添加面板
+      description: 将指定面板添加到仪表盘中
+      operationId: addPanelToDashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 仪表盘ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - panelId
+              properties:
+                panelId:
+                  type: string
+                  format: uuid
+                  description: 面板ID
+      responses:
+        '200':
+          description: 面板添加成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '404':
+          description: 仪表盘不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /dashboard/{id}/panels/{panelId}:
+    delete:
+      tags:
+        - Dashboard
+      summary: 从仪表盘移除面板
+      description: 从仪表盘中移除指定的面板
+      operationId: removePanelFromDashboard
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 仪表盘ID
+          schema:
+            type: string
+            format: uuid
+        - name: panelId
+          in: path
+          required: true
+          description: 面板ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 面板移除成功
+        '404':
+          description: 面板不存在于仪表盘中
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /panel:
+    get:
+      tags:
+        - Panel
+      summary: 获取所有面板
+      description: 获取系统中所有面板的列表
+      operationId: getAllPanels
+      responses:
+        '200':
+          description: 成功获取面板列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Panel'
+    post:
+      tags:
+        - Panel
+      summary: 创建面板
+      description: 创建一个新的面板
+      operationId: createPanel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePanelRequest'
+      responses:
+        '201':
+          description: 面板创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Panel'
+
+  /panel/{id}:
+    get:
+      tags:
+        - Panel
+      summary: 获取单个面板
+      description: 根据ID获取指定面板的详细信息
+      operationId: getPanelById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 面板ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功获取面板信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Panel'
+        '404':
+          description: 面板不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - Panel
+      summary: 更新面板
+      description: 更新指定面板的信息
+      operationId: updatePanel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 面板ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePanelRequest'
+      responses:
+        '200':
+          description: 面板更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Panel'
+        '404':
+          description: 面板不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Panel
+      summary: 删除面板
+      description: 删除指定的面板
+      operationId: deletePanel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 面板ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 面板删除成功
+        '404':
+          description: 面板不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Dashboard:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 仪表盘ID
+        name:
+          type: string
+          description: 仪表盘名称
+        layout:
+          $ref: '#/components/schemas/Layout'
+        panels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Panel'
+          description: 关联的面板列表
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间
+        updatedAt:
+          type: string
+          format: date-time
+          description: 更新时间
+
+    DashboardDetail:
+      allOf:
+        - $ref: '#/components/schemas/Dashboard'
+        - type: object
+          properties:
+            panels:
+              type: array
+              items:
+                $ref: '#/components/schemas/Panel'
+
+    CreateDashboardRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: 仪表盘名称
+        layout:
+          $ref: '#/components/schemas/Layout'
+
+    UpdateDashboardRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 新仪表盘名称
+
+    Layout:
+      type: object
+      description: 响应式布局配置
+      properties:
+        lg:
+          type: array
+          description: 大屏幕布局 (≥1200px)
+          items:
+            $ref: '#/components/schemas/LayoutItem'
+        md:
+          type: array
+          description: 中等屏幕布局 (≥996px)
+          items:
+            $ref: '#/components/schemas/LayoutItem'
+        sm:
+          type: array
+          description: 小屏幕布局 (≥768px)
+          items:
+            $ref: '#/components/schemas/LayoutItem'
+        xs:
+          type: array
+          description: 超小屏幕布局 (≥480px)
+          items:
+            $ref: '#/components/schemas/LayoutItem'
+        xxs:
+          type: array
+          description: 极小屏幕布局 (<480px)
+          items:
+            $ref: '#/components/schemas/LayoutItem'
+
+    LayoutItem:
+      type: object
+      required:
+        - i
+        - x
+        - y
+        - w
+        - h
+      properties:
+        i:
+          type: string
+          description: 面板ID（对应 panel.id）
+        x:
+          type: number
+          description: 水平位置（网格列号）
+        y:
+          type: number
+          description: 垂直位置（网格行号）
+        w:
+          type: number
+          description: 宽度（网格列数）
+        h:
+          type: number
+          description: 高度（网格行数）
+        minW:
+          type: number
+          description: 最小宽度
+        minH:
+          type: number
+          description: 最小高度
+        maxW:
+          type: number
+          description: 最大宽度
+        maxH:
+          type: number
+          description: 最大高度
+        static:
+          type: boolean
+          description: 是否静态（不可拖拽/调整大小）
+        isDraggable:
+          type: boolean
+          description: 是否可拖拽
+        isResizable:
+          type: boolean
+          description: 是否可调整大小
+
+    Panel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 面板ID
+        title:
+          type: string
+          description: 面板标题
+        type:
+          type: string
+          enum: [chart, table, text, card]
+          description: 面板类型
+        queryId:
+          type: string
+          format: uuid
+          description: 关联的查询ID
+        config:
+          type: object
+          description: 面板配置
+        width:
+          type: number
+          description: 面板宽度
+        height:
+          type: number
+          description: 面板高度
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间
+        updatedAt:
+          type: string
+          format: date-time
+          description: 更新时间
+
+    CreatePanelRequest:
+      type: object
+      required:
+        - title
+        - type
+      properties:
+        title:
+          type: string
+          description: 面板标题
+        type:
+          type: string
+          enum: [chart, table, text, card]
+          description: 面板类型
+        queryId:
+          type: string
+          format: uuid
+          description: 关联的查询ID
+        config:
+          type: object
+          description: 面板配置
+        width:
+          type: number
+          description: 面板宽度
+        height:
+          type: number
+          description: 面板高度
+
+    UpdatePanelRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: 新面板标题
+        config:
+          type: object
+          description: 面板配置
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: 错误信息
+        code:
+          type: string
+          description: 错误代码

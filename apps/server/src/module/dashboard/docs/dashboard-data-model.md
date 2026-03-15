@@ -35,8 +35,6 @@ erDiagram
     DASHBOARD_PANEL_RELATION {
         string dashboardId PK, FK
         string panelId PK, FK
-        datetime createdAt
-        datetime updatedAt
     }
 
     QUERY {
@@ -57,7 +55,7 @@ erDiagram
 |--------|----------|------|------|
 | `id` | `string` | `PRIMARY KEY, UUID` | 仪表盘唯一标识符 |
 | `name` | `string` | `NOT NULL, VARCHAR(255)` | 仪表盘名称 |
-| `layout` | `json` | `NULL` | 仪表盘布局配置 |
+| `layout` | `json` | `NULL` | 仪表盘布局配置（响应式布局） |
 | `createdAt` | `datetime` | `NOT NULL, DEFAULT CURRENT_TIMESTAMP` | 创建时间 |
 | `updatedAt` | `datetime` | `NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | 更新时间 |
 
@@ -65,6 +63,43 @@ erDiagram
 - 一对多：`Dashboard` → `DashboardPanelRelation`
   - 一个仪表盘可以包含多个面板
   - 级联操作：删除仪表盘时，级联删除关联的面板关系
+
+**布局结构说明**：
+
+`layout` 字段存储响应式布局配置，支持多个断点：
+
+```json
+{
+  "lg": [
+    {
+      "i": "panel-uuid",
+      "x": 0,
+      "y": 0,
+      "w": 6,
+      "h": 4,
+      "minW": 2,
+      "minH": 2,
+      "maxW": 12,
+      "maxH": 8,
+      "static": false,
+      "isDraggable": true,
+      "isResizable": true
+    }
+  ],
+  "md": [...],
+  "sm": [...],
+  "xs": [...],
+  "xxs": [...]
+}
+```
+
+| 断点 | 描述 | 典型屏幕宽度 |
+|------|------|-------------|
+| `lg` | 大屏幕 | ≥1200px |
+| `md` | 中等屏幕 | ≥996px |
+| `sm` | 小屏幕 | ≥768px |
+| `xs` | 超小屏幕 | ≥480px |
+| `xxs` | 极小屏幕 | <480px |
 
 ### 3.2 Panel（面板）
 
@@ -94,8 +129,6 @@ erDiagram
 |--------|----------|------|------|
 | `dashboardId` | `string` | `PRIMARY KEY, UUID, FOREIGN KEY` | 仪表盘 ID |
 | `panelId` | `string` | `PRIMARY KEY, UUID, FOREIGN KEY` | 面板 ID |
-| `createdAt` | `datetime` | `NOT NULL, DEFAULT CURRENT_TIMESTAMP` | 创建时间 |
-| `updatedAt` | `datetime` | `NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` | 更新时间 |
 
 **关联关系**：
 - 多对一：`DashboardPanelRelation` → `Dashboard`
@@ -105,21 +138,48 @@ erDiagram
 
 ## 4. 数据传输对象（DTO）
 
-### 4.1 创建仪表盘请求（CreateDashboardRequest）
+### 4.1 创建仪表盘请求
 
 | 字段名 | 数据类型 | 约束 | 描述 |
 |--------|----------|------|------|
 | `name` | `string` | `REQUIRED` | 仪表盘名称 |
-| `layout` | `object` | `OPTIONAL` | 仪表盘布局配置 |
+| `layout` | `Layouts` | `OPTIONAL` | 仪表盘布局配置 |
 
-### 4.2 更新仪表盘请求（UpdateDashboardRequest）
+**Layouts 结构**：
+
+```typescript
+interface Layouts {
+  lg?: LayoutItem[];
+  md?: LayoutItem[];
+  sm?: LayoutItem[];
+  xs?: LayoutItem[];
+  xxs?: LayoutItem[];
+}
+
+interface LayoutItem {
+  i: string;        // 面板 ID
+  x: number;        // 水平位置
+  y: number;        // 垂直位置
+  w: number;        // 宽度
+  h: number;        // 高度
+  minW?: number;    // 最小宽度
+  minH?: number;    // 最小高度
+  maxW?: number;    // 最大宽度
+  maxH?: number;    // 最大高度
+  static?: boolean; // 是否静态
+  isDraggable?: boolean; // 是否可拖拽
+  isResizable?: boolean; // 是否可调整大小
+}
+```
+
+### 4.2 更新仪表盘请求
 
 | 字段名 | 数据类型 | 约束 | 描述 |
 |--------|----------|------|------|
 | `name` | `string` | `OPTIONAL` | 仪表盘名称 |
-| `layout` | `object` | `OPTIONAL` | 仪表盘布局配置 |
+| `layout` | `Layouts` | `OPTIONAL` | 仪表盘布局配置 |
 
-### 4.3 创建面板请求（CreatePanelRequest）
+### 4.3 创建面板请求
 
 | 字段名 | 数据类型 | 约束 | 描述 |
 |--------|----------|------|------|
@@ -130,7 +190,7 @@ erDiagram
 | `width` | `number` | `OPTIONAL` | 面板宽度 |
 | `height` | `number` | `OPTIONAL` | 面板高度 |
 
-### 4.4 更新面板请求（UpdatePanelRequest）
+### 4.4 更新面板请求
 
 | 字段名 | 数据类型 | 约束 | 描述 |
 |--------|----------|------|------|
@@ -141,18 +201,18 @@ erDiagram
 | `width` | `number` | `OPTIONAL` | 面板宽度 |
 | `height` | `number` | `OPTIONAL` | 面板高度 |
 
-### 4.5 仪表盘响应（DashboardResponse）
+### 4.5 仪表盘响应
 
 | 字段名 | 数据类型 | 描述 |
 |--------|----------|------|
 | `id` | `string` | 仪表盘 ID |
 | `name` | `string` | 仪表盘名称 |
-| `layout` | `object` | 仪表盘布局配置 |
-| `panels` | `array` | 仪表盘包含的面板列表 |
+| `layout` | `Layouts \| null` | 仪表盘布局配置 |
+| `panels` | `Panel[]` | 仪表盘包含的面板列表 |
 | `createdAt` | `datetime` | 创建时间 |
 | `updatedAt` | `datetime` | 更新时间 |
 
-### 4.6 面板响应（PanelResponse）
+### 4.6 面板响应
 
 | 字段名 | 数据类型 | 描述 |
 |--------|----------|------|
@@ -172,6 +232,7 @@ erDiagram
 
 - **模块化**：将仪表盘和面板分离为独立实体，便于单独管理
 - **灵活性**：使用 JSON 字段存储布局和配置，支持灵活的自定义
+- **响应式设计**：布局支持多断点配置，适配不同屏幕尺寸
 - **可扩展性**：通过关联关系支持复杂的仪表盘结构
 - **性能优化**：合理设计索引和关联关系，提高查询性能
 
@@ -222,19 +283,19 @@ CREATE INDEX "idx_panel_type" ON "panel" ("type");
 CREATE INDEX "idx_panel_query_id" ON "panel" ("query_id");
 ```
 
-### 6.3 dashboard_panel_relation 表
+### 6.3 dashboard_panels 表
 
 ```sql
-CREATE TABLE "dashboard_panel_relation" (
-  "dashboardId" uuid NOT NULL REFERENCES "dashboard" ("id") ON DELETE CASCADE,
-  "panelId" uuid NOT NULL REFERENCES "panel" ("id") ON DELETE CASCADE,
-  "createdAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY ("dashboardId", "panelId")
+CREATE TABLE "dashboard_panels" (
+  "dashboard_id" char(36) NOT NULL,
+  "panel_id" char(36) NOT NULL,
+  PRIMARY KEY ("dashboard_id", "panel_id"),
+  CONSTRAINT "fk_dashboard_panels_dashboard" FOREIGN KEY ("dashboard_id") REFERENCES "dashboard" ("id") ON DELETE CASCADE,
+  CONSTRAINT "fk_dashboard_panels_panel" FOREIGN KEY ("panel_id") REFERENCES "panel" ("id") ON DELETE CASCADE
 );
 
-CREATE INDEX "idx_relation_dashboard_id" ON "dashboard_panel_relation" ("dashboardId");
-CREATE INDEX "idx_relation_panel_id" ON "dashboard_panel_relation" ("panelId");
+CREATE INDEX "idx_dashboard_panels_dashboard_id" ON "dashboard_panels" ("dashboard_id");
+CREATE INDEX "idx_dashboard_panels_panel_id" ON "dashboard_panels" ("panel_id");
 ```
 
 ## 7. 数据模型使用指南
@@ -243,13 +304,13 @@ CREATE INDEX "idx_relation_panel_id" ON "dashboard_panel_relation" ("panelId");
 
 - **创建仪表盘**：插入 `dashboard` 表
 - **创建面板**：插入 `panel` 表
-- **关联面板**：插入 `dashboard_panel_relation` 表
+- **关联面板**：插入 `dashboard_panels` 表
 - **查询仪表盘**：使用 JOIN 查询获取关联的面板
 - **更新布局**：更新 `dashboard.layout` 字段
 
 ### 7.2 最佳实践
 
-- **布局设计**：合理设计布局结构，避免过于复杂的嵌套
+- **布局设计**：合理设计布局结构，为不同断点配置合适的布局
 - **配置管理**：面板配置应根据面板类型进行合理设计
 - **性能优化**：对于大型仪表盘，考虑分页加载面板数据
 - **数据备份**：定期备份仪表盘和面板数据
@@ -258,7 +319,7 @@ CREATE INDEX "idx_relation_panel_id" ON "dashboard_panel_relation" ("panelId");
 
 | 问题 | 原因 | 解决方案 |
 |------|------|----------|
-| 布局更新失败 | JSON 格式错误 | 确保布局 JSON 格式正确 |
+| 布局更新失败 | JSON 格式错误或面板 ID 无效 | 确保布局 JSON 格式正确，面板 ID 存在 |
 | 面板关联失败 | 面板不存在 | 检查面板 ID 是否正确 |
 | 查询性能慢 | 关联查询过多 | 优化查询语句，使用索引 |
 
@@ -277,3 +338,7 @@ CREATE INDEX "idx_relation_panel_id" ON "dashboard_panel_relation" ("panelId");
 - 避免过度设计
 - 考虑向后兼容性
 - 定期优化数据库结构
+
+---
+
+> 【更新于 2026-03-15】：根据代码变更，修正关联表名称为 `dashboard_panels`，移除关联表的时间戳字段，更新布局结构为响应式布局格式（支持 lg/md/sm/xs/xxs 断点），新增 LayoutItem 接口说明。
