@@ -45,6 +45,8 @@ export {
   useRemovePanel,
 } from './useDashboard';
 
+export { useDashboardActions } from './useDashboardActions';
+
 export {
   usePanels,
   usePanel,

@@ -1,6 +1,6 @@
-import { GridContainer } from './gridContainter';
-import { SeedarPanel } from './gridPanel/seedarPanel';
-import { useDashboard } from '../../hooks';
+import { GridContainer } from '../gridContainter';
+import { SeedarPanel } from './seedarPanel';
+import { useDashboard } from '../../../hooks';
 
 interface SeedarDashboardProps {
   dashboardId: string;

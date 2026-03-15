@@ -1,5 +1,5 @@
 import { forwardRef, useMemo } from 'react';
-import { GridPanel } from './gridPanel';
+import { GridPanel } from '../gridPanel/gridPanel';
 import { Chart } from '../../charts';
 import { ListTable } from '../../table';
 import { Title } from './components/title';
