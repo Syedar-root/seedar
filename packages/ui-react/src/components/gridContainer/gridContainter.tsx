@@ -64,7 +64,6 @@ export const GridContainer: React.FC = () => {
             compactor={myCompactor}
           >
             <SeedarPanel panelId="1" key="1" />
-            <GridPanel panelId="2" key="2" />
           </Responsive>
         )}
       </div>

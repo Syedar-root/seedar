@@ -26,6 +26,7 @@ export interface Layouts {
   sm?: LayoutItem[];
   xs?: LayoutItem[];
   xxs?: LayoutItem[];
+  [key: string]: LayoutItem[] | undefined;
 }
 
 export interface PanelResponse {
@@ -43,7 +44,7 @@ export interface PanelResponse {
 export interface DashboardResponse {
   id: string;
   name: string;
-  layout: Layouts | null;
+  layout: Layouts;
   panels: PanelResponse[];
   createdAt: Date;
   updatedAt: Date;

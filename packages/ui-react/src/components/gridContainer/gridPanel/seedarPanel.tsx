@@ -3,15 +3,18 @@ import { GridPanel } from './gridPanel';
 import { Chart } from '../../charts';
 import { ListTable } from '../../table';
 import { Title } from './components/title';
+import { PanelResponse } from '#pkg/seedar/types';
+import { usePanel } from '../../../hooks';
+import { ISpec } from '@visactor/vchart';
 
 interface SeedarPanelProps {
-  panelId: string | number;
-  [key: string]: any;
+  panelId: string;
+  panel?: PanelResponse;
 }
 
 interface SeedarPanel {
   panelId: string | number;
-  panelType: 'chart' | 'listTable' | 'text';
+  panelType: 'chart' | 'table' | 'text';
   queryId?: string;
   titleConfig?: {
     content?: string;
@@ -19,39 +22,45 @@ interface SeedarPanel {
   };
 }
 
-const mockFetch = (panelId: string | number) => {
-  const panelType = panelId.toString().startsWith('chart')
-    ? 'chart'
-    : 'listTable';
-  return {
-    panelType: panelType,
-    queryId: '550e8400-e29b-41d4-a716-446655440000',
-    titleConfig: {
-      content: '销售趋势图',
-      type: 'flag' as const,
-    },
-  };
-};
-
 export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
-  ({ panelId, ...rest }, ref) => {
-    const { panelType, queryId, titleConfig } = mockFetch(panelId);
+  ({ panelId, panel, ...rest }, ref) => {
+    // 只有当 panel 为 undefined 时才发起请求
+    const { data: panelData, isPending, isError } = usePanel(panelId, !panel);
+
+    // 只有当 panel 为 undefined 时才使用请求的数据
+    const finalPanel = panel || panelData;
+
     const content = useMemo(() => {
+      if (!finalPanel) return null;
+      const { type: panelType, queryId, config } = finalPanel;
       if (panelType === 'chart') {
-        return <Chart queryId={queryId} />;
+        return <Chart spec={config as ISpec} queryId={queryId} />;
       }
-      if (panelType === 'listTable') {
+      if (panelType === 'table') {
+        console.log(queryId);
         return <ListTable queryId={queryId} />;
       }
       if (panelType === 'text') {
-        return queryId;
+        return <div>{config?.content}</div>;
       }
-    }, [panelId]);
+    }, [finalPanel]);
+
+    if (!finalPanel && isPending) {
+      //TODO: 加载中状态展示
+      return null;
+    } else if (isError) {
+      //TODO: 错误状态展示
+      return null;
+    } else if (!finalPanel) {
+      //TODO: 空状态展示
+      return null;
+    }
+    const { title } = finalPanel;
 
     return (
       <GridPanel
         panelId={panelId}
-        title={<Title {...titleConfig} />}
+        title={<Title content={title} />}
         ref={ref}
         content={content}
         {...rest}

@@ -26,13 +26,13 @@ export const usePanels = () => {
   });
 };
 
-export const usePanel = (id: string) => {
+export const usePanel = (id: string, enabled: boolean = true) => {
   const panelApi = usePanelApi();
 
   return useReactQuery({
     queryKey: panelKeys.detail(id),
     queryFn: () => panelApi.findOne(id),
-    enabled: !!id,
+    enabled: !!id && enabled,
   });
 };
 

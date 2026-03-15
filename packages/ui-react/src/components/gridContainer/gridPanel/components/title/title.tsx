@@ -2,10 +2,13 @@ import styles from './title.module.css';
 
 interface TitleProps {
   content?: string;
-  type: 'plain' | 'flag';
+  type?: 'plain' | 'flag';
 }
 
-export const Title: React.FC<TitleProps> = ({ content, type }: TitleProps) => {
+export const Title: React.FC<TitleProps> = ({
+  content,
+  type = 'plain',
+}: TitleProps) => {
   if (type === 'plain') {
     return <h3>{content}</h3>;
   }
