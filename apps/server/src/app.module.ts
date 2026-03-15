@@ -12,6 +12,7 @@ import { GlobalLoggingInterceptor } from './common/global-logging.interceptor';
 import { databaseConfig } from './config/database.config';
 import { DatasetModule } from './module/dataset/dataset.module';
 import { QueryModule } from './module/query/query.module';
+import { DashboardModule } from './module/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { QueryModule } from './module/query/query.module';
     DatasourceModule,
     DatasetModule,
     QueryModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

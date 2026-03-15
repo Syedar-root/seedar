@@ -1,6 +1,6 @@
-import { IsNumber } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class ExecuteQueryRequest {
-  @IsNumber()
-  queryId: number;
+  @IsString()
+  queryId: string;
 }

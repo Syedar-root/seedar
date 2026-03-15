@@ -5,7 +5,7 @@ import { ExecuteQueryResponse } from '#pkg/seedar/types';
 
 export interface ListTableProps {
   vtableProps?: React.ComponentProps<typeof VListTable>;
-  queryId?: number;
+  queryId?: string;
 }
 
 export const ListTable: React.FC<ListTableProps> = (props) => {

@@ -48,7 +48,7 @@ export class QueryService {
     return this.queryRepository.find();
   }
 
-  async findOne(id: number): Promise<Query> {
+  async findOne(id: string): Promise<Query> {
     const query = await this.queryRepository.findOne({ where: { id } });
     if (!query) {
       throw new NotFoundException(`Query with ID ${id} not found`);
@@ -57,7 +57,7 @@ export class QueryService {
   }
 
   async update(
-    id: number,
+    id: string,
     updateQueryRequest: UpdateQueryRequest,
   ): Promise<Query> {
     const query = await this.findOne(id);
@@ -65,15 +65,14 @@ export class QueryService {
     return this.queryRepository.save(query);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     const result = await this.queryRepository.delete(id);
     if (result.affected === 0) {
       throw new NotFoundException(`Query with ID ${id} not found`);
     }
   }
 
-  async execute(queryId: number): Promise<ExecuteQueryResponse> {
-    // 查找查询
+  async execute(queryId: string): Promise<ExecuteQueryResponse> {
     const query = await this.findOne(queryId);
 
     // 获取数据集

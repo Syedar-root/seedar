@@ -14,7 +14,7 @@ export enum QueryStatus {
  * 查询响应接口
  */
 export interface QueryResponse {
-  id: number;
+  id: string;
   name: string;
   datasetId: number;
   dsl: any;

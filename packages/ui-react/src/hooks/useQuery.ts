@@ -21,8 +21,8 @@ const queryKeys = {
   lists: () => [...queryKeys.all, 'list'] as const,
   list: (status?: QueryStatus) => [...queryKeys.lists(), status] as const,
   details: () => [...queryKeys.all, 'detail'] as const,
-  detail: (id: number) => [...queryKeys.details(), id] as const,
-  execution: (id: number) => [...queryKeys.all, 'execution', id] as const,
+  detail: (id: string) => [...queryKeys.details(), id] as const,
+  execution: (id: string) => [...queryKeys.all, 'execution', id] as const,
 };
 
 /**
@@ -44,7 +44,7 @@ export const useQueries = (status?: QueryStatus) => {
  * @param id - 查询 ID
  * @returns 包含查询详情、加载状态和错误信息的查询结果
  */
-export const useQuery = (id: number) => {
+export const useQuery = (id: string) => {
   const queryApi = useQueryApi();
 
   return useReactQuery({
@@ -79,7 +79,7 @@ export const useUpdateQuery = () => {
   const queryApi = useQueryApi();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateQueryRequest }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateQueryRequest }) =>
       queryApi.update(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
@@ -99,7 +99,7 @@ export const useDeleteQuery = () => {
   const queryApi = useQueryApi();
 
   return useMutation({
-    mutationFn: (id: number) => queryApi.remove(id),
+    mutationFn: (id: string) => queryApi.remove(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
     },
@@ -114,6 +114,6 @@ export const useExecuteQuery = () => {
   const queryApi = useQueryApi();
 
   return useMutation({
-    mutationFn: (queryId: number) => queryApi.execute(queryId),
+    mutationFn: (queryId: string) => queryApi.execute(queryId),
   });
 };

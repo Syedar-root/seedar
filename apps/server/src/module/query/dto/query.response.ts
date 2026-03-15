@@ -1,7 +1,7 @@
 import { QueryStatus } from '../query-status.enum';
 
 export class QueryResponse {
-  id: number;
+  id: string;
   name: string;
   datasetId: number;
   dsl: any;

@@ -7,7 +7,7 @@ import { transformData } from './transformer';
 export interface ChartProps {
   vchartProps?: React.ComponentProps<typeof VChart>;
   spec: ISpec;
-  queryId?: string | number;
+  queryId?: string;
 }
 
 export const Chart: React.FC<ChartProps> = (props) => {
@@ -20,7 +20,7 @@ export const Chart: React.FC<ChartProps> = (props) => {
   // 仅在 queryId 变化时执行查询
   useEffect(() => {
     if (!queryId) return;
-    executeQuery(Number(queryId), {
+    executeQuery(queryId, {
       onSuccess: (data) => {
         setRawData(data);
       },
