@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { DatasourceApi, DatasetApi, QueryApi } from '#pkg/seedar/ui-core';
+import { DatasourceApi, DatasetApi, QueryApi, DashboardApi, PanelApi } from '#pkg/seedar/ui-core';
 import type {
   DatasourceResponse,
   CreateDatasourceRequest,
@@ -12,6 +12,13 @@ import type {
   UpdateQueryRequest,
   ExecuteQueryResponse,
   QueryStatus,
+  DashboardResponse,
+  CreateDashboardRequest,
+  UpdateDashboardRequest,
+  PanelResponse,
+  CreatePanelRequest,
+  UpdatePanelRequest,
+  Layouts,
   RequestOptions,
 } from '#pkg/seedar/types';
 
@@ -140,5 +147,101 @@ export const useQueryApi = () => {
     update,
     remove,
     execute,
+  };
+};
+
+export const useDashboardApi = () => {
+  const findAll = useCallback((options?: RequestOptions) => {
+    return DashboardApi.findAll(options);
+  }, []);
+
+  const findOne = useCallback((id: string, options?: RequestOptions) => {
+    return DashboardApi.findOne(id, options);
+  }, []);
+
+  const create = useCallback(
+    (data: CreateDashboardRequest, options?: RequestOptions) => {
+      return DashboardApi.create(data, options);
+    },
+    []
+  );
+
+  const update = useCallback(
+    (id: string, data: UpdateDashboardRequest, options?: RequestOptions) => {
+      return DashboardApi.update(id, data, options);
+    },
+    []
+  );
+
+  const remove = useCallback((id: string, options?: RequestOptions) => {
+    return DashboardApi.remove(id, options);
+  }, []);
+
+  const updateLayout = useCallback(
+    (id: string, layout: Layouts, options?: RequestOptions) => {
+      return DashboardApi.updateLayout(id, layout, options);
+    },
+    []
+  );
+
+  const addPanel = useCallback(
+    (id: string, panelId: string, options?: RequestOptions) => {
+      return DashboardApi.addPanel(id, panelId, options);
+    },
+    []
+  );
+
+  const removePanel = useCallback(
+    (id: string, panelId: string, options?: RequestOptions) => {
+      return DashboardApi.removePanel(id, panelId, options);
+    },
+    []
+  );
+
+  return {
+    findAll,
+    findOne,
+    create,
+    update,
+    remove,
+    updateLayout,
+    addPanel,
+    removePanel,
+  };
+};
+
+export const usePanelApi = () => {
+  const findAll = useCallback((options?: RequestOptions) => {
+    return PanelApi.findAll(options);
+  }, []);
+
+  const findOne = useCallback((id: string, options?: RequestOptions) => {
+    return PanelApi.findOne(id, options);
+  }, []);
+
+  const create = useCallback(
+    (data: CreatePanelRequest, options?: RequestOptions) => {
+      return PanelApi.create(data, options);
+    },
+    []
+  );
+
+  const update = useCallback(
+    (id: string, data: UpdatePanelRequest, options?: RequestOptions) => {
+      return PanelApi.update(id, data, options);
+    },
+    []
+  );
+
+  const remove = useCallback((id: string, options?: RequestOptions) => {
+    return PanelApi.remove(id, options);
+  }, []);
+
+  return {
+    findAll,
+    findOne,
+    create,
+    update,
+    remove,
   };
 };

@@ -8,6 +8,8 @@ import {
 import { DatasourceApi } from './datasource.js';
 import { DatasetApi } from './dataset.js';
 import { QueryApi } from './query.js';
+import { DashboardApi } from './dashboard.js';
+import { PanelApi } from './panel.js';
 
 /**
  * API 客户端类
@@ -252,3 +254,7 @@ export const datasetApi = new DatasetApi();
  * 提供查询相关的 API 接口
  */
 export const queryApi = new QueryApi();
+
+export const dashboardApi = new DashboardApi();
+
+export const panelApi = new PanelApi();

@@ -5,6 +5,8 @@ export {
   useDatasourceApi,
   useDatasetApi,
   useQueryApi,
+  useDashboardApi,
+  usePanelApi,
 } from './useApi';
 
 export {
@@ -31,3 +33,22 @@ export {
   useDeleteQuery,
   useExecuteQuery,
 } from './useQuery';
+
+export {
+  useDashboards,
+  useDashboard,
+  useCreateDashboard,
+  useUpdateDashboard,
+  useDeleteDashboard,
+  useUpdateLayout,
+  useAddPanel,
+  useRemovePanel,
+} from './useDashboard';
+
+export {
+  usePanels,
+  usePanel,
+  useCreatePanel,
+  useUpdatePanel,
+  useDeletePanel,
+} from './usePanel';
