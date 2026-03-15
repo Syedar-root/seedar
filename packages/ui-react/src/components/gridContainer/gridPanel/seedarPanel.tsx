@@ -37,7 +37,6 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
         return <Chart spec={config as ISpec} queryId={queryId} />;
       }
       if (panelType === 'table') {
-        console.log(queryId);
         return <ListTable queryId={queryId} />;
       }
       if (panelType === 'text') {

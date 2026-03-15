@@ -11,14 +11,18 @@ export interface ListTableProps {
 export const ListTable: React.FC<ListTableProps> = (props) => {
   const { vtableProps = {}, queryId } = props;
   const { mutate: executeQuery } = useExecuteQuery();
-  const tableRef = useRef<any>(null);
 
-  // 初始化表格配置：自动高度 + 关闭分页
+  // 🔥 修复1：修正ref类型 → 指向VListTable组件实例（不是div）
+  const tableRef = useRef<any>(null);
+  // 🔥 修复2：新增父容器ref，用于监听尺寸变化
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 初始化表格配置
   const [tableOption, setTableOption] = useState({
     ...vtableProps.option,
   });
 
-  // 请求数据
+  // 数据请求 + 配置更新
   useEffect(() => {
     if (!queryId) return;
 
@@ -26,7 +30,6 @@ export const ListTable: React.FC<ListTableProps> = (props) => {
       onSuccess: (data) => {
         const transformed = transformData(data);
         setTableOption({
-          height: 'auto',
           ...transformed,
           ...vtableProps.option,
         });
@@ -34,35 +37,71 @@ export const ListTable: React.FC<ListTableProps> = (props) => {
     });
   }, [queryId, vtableProps.option]);
 
-  // ✅ 修复：React 版必须用 .table 才是真实实例
   useEffect(() => {
-    console.log(tableRef.current);
+    const container = containerRef.current;
+    if (!container) return;
+
+    // 防抖：避免频繁重绘（100ms延迟，可调整）
+    let timer: NodeJS.Timeout;
+    const handleResize = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        tableRef.current?.render();
+      }, 300);
+    };
+
+    // 监听父容器尺寸
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(container);
+
+    // 清理监听（防止内存泄漏）
+    return () => {
+      clearTimeout(timer);
+      resizeObserver.unobserve(container);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // 🔥 修复5：移除错误的DOM高度获取，替换为正确的表格实例操作
+  useEffect(() => {
     if (tableRef.current?.table) {
-      // 正确写法！
-      const realHeight = tableRef.current.table.getTableHeight();
-      console.log('表格真实高度：', realHeight);
+      const realTable = tableRef.current.table;
+      console.log('表格真实高度：', realTable.getTableHeight());
+      console.log('表格真实宽度：', realTable.getTableWidth());
     }
   }, [tableOption]);
 
   return (
-    <VListTable
-      ref={tableRef}
-      option={tableOption}
-      width="100%"
-      // ✅ 关键：绝对不要写 height="100%"
-      {...vtableProps}
-    />
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        minHeight: '300px', // 最小高度，避免表格塌陷
+      }}
+    >
+      <VListTable
+        ref={tableRef}
+        option={tableOption}
+        // ✅ 自适应配置：宽度100%，自动填充父容器
+        width="100%"
+        autoFillWidth={true}
+        {...vtableProps}
+      />
+    </div>
   );
 };
 
+// 数据转换函数（保持不变，优化空值兼容）
 const transformData = (data: ExecuteQueryResponse) => {
+  const headers = data.results?.header || [];
   return {
-    columns:
-      data.results.header.map((item, index) => ({
-        title: item,
-        field: `${index}`,
-        width: `${(1 / data.results.header.length) * 100}%`,
-      })) || [],
+    columns: headers.map((item, index) => ({
+      title: item,
+      field: `${index}`,
+      width: `${(1 / headers.length) * 100}%`, // 等宽分列
+      headerStyle: { textAlign: 'center' }, // 可选：表头居中
+    })),
     records: data?.results?.rows || [],
   };
 };

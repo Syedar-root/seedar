@@ -7,10 +7,10 @@ interface TitleProps {
 
 export const Title: React.FC<TitleProps> = ({
   content,
-  type = 'plain',
+  type = 'flag',
 }: TitleProps) => {
   if (type === 'plain') {
-    return <h3>{content}</h3>;
+    return <h3 className={styles.plain}>{content}</h3>;
   }
   if (type === 'flag') {
     return (

@@ -4,8 +4,7 @@ import {
   Responsive,
   useContainerWidth,
 } from 'react-grid-layout';
-import { GridPanel } from './gridPanel/gridPanel';
-import { SeedarPanel } from './gridPanel/seedarPanel';
+import type { Layouts } from '#pkg/seedar/types';
 
 const COLS_RATE = 2;
 const COLS = {
@@ -17,7 +16,15 @@ const COLS = {
 };
 const MARGIN = 10;
 
-export const GridContainer: React.FC = () => {
+interface GridContainerProps {
+  layouts: Layouts;
+  children: React.ReactNode;
+}
+
+export const GridContainer: React.FC<GridContainerProps> = ({
+  layouts,
+  children,
+}) => {
   const { width, containerRef, mounted } = useContainerWidth();
 
   const currentCols =
@@ -32,22 +39,9 @@ export const GridContainer: React.FC = () => {
       : COLS.xxs;
   const rowHeight = (width - MARGIN * (currentCols - 1)) / currentCols;
 
-  const layouts = {
-    lg: [
-      { i: '1', x: 0, y: 0, w: 9, h: 7, minW: 2, minH: 2 },
-      { i: '2', x: 2, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
-      { i: '3', x: 4, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
-    ],
-    md: [
-      { i: '1', x: 0, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
-      { i: '2', x: 2, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
-      { i: '3', x: 4, y: 0, w: 2, h: 2, minW: 2, minH: 2 },
-    ],
-  };
-
   const myCompactor = {
     ...noCompactor,
-    preventCollision: true, // 核心：阻止元素重叠
+    preventCollision: true,
   };
 
   return (
@@ -63,7 +57,7 @@ export const GridContainer: React.FC = () => {
             width={width}
             compactor={myCompactor}
           >
-            <SeedarPanel panelId="1" key="1" />
+            {children}
           </Responsive>
         )}
       </div>

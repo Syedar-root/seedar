@@ -15,7 +15,7 @@ export const Chart: React.FC<ChartProps> = (props) => {
   const { mutate: executeQuery } = useExecuteQuery();
 
   const [rawData, setRawData] = useState<ExecuteQueryResponse>();
-  const [specOption, setSpecOption] = useState<ISpec>();
+  const [specOption, setSpecOption] = useState<ISpec>(spec);
 
   // 仅在 queryId 变化时执行查询
   useEffect(() => {
@@ -29,8 +29,9 @@ export const Chart: React.FC<ChartProps> = (props) => {
 
   // 仅在 rawData 或 spec 变化时转换数据
   useEffect(() => {
-    if (!rawData) return;
+    if (!rawData || !spec) return;
     const transformed = transformData(rawData, spec);
+    if (!transformed) return;
     setSpecOption(transformed);
   }, [rawData, spec]);
 
