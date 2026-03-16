@@ -1,5 +1,9 @@
 import React from 'react';
 import { useSeedarDashboardContext } from './seedarDashboardContext';
+import { DefaultAddPanelDialog } from './components/defaultAddPanelDialog';
+import { Dialog } from '@base-ui/react/dialog';
+
+export { DefaultAddPanelDialog };
 
 interface TriggersProps {
   children: React.ReactNode;
@@ -17,7 +21,9 @@ interface SaveTriggerRenderProps {
 }
 
 interface SaveTriggerProps {
-  children?: React.ReactNode | ((props: SaveTriggerRenderProps) => React.ReactNode);
+  children?:
+    | React.ReactNode
+    | ((props: SaveTriggerRenderProps) => React.ReactNode);
 }
 
 export const SaveTrigger: React.FC<SaveTriggerProps> = ({ children }) => {
@@ -54,7 +60,9 @@ interface CancelTriggerRenderProps {
 }
 
 interface CancelTriggerProps {
-  children?: React.ReactNode | ((props: CancelTriggerRenderProps) => React.ReactNode);
+  children?:
+    | React.ReactNode
+    | ((props: CancelTriggerRenderProps) => React.ReactNode);
 }
 
 export const CancelTrigger: React.FC<CancelTriggerProps> = ({ children }) => {
@@ -83,46 +91,6 @@ export const CancelTrigger: React.FC<CancelTriggerProps> = ({ children }) => {
   );
 };
 
-interface AddPanelTriggerRenderProps {
-  onClick: () => void;
-  disabled: boolean;
-  isAdding: boolean;
-}
-
-interface AddPanelTriggerProps {
-  panelId: string;
-  children?: React.ReactNode | ((props: AddPanelTriggerRenderProps) => React.ReactNode);
-}
-
-export const AddPanelTrigger: React.FC<AddPanelTriggerProps> = ({
-  panelId,
-  children,
-}) => {
-  const { actions, state } = useSeedarDashboardContext();
-
-  const handleClick = () => {
-    if (!state.isAddingPanel) {
-      actions.addPanel(panelId);
-    }
-  };
-
-  const renderProps: AddPanelTriggerRenderProps = {
-    onClick: handleClick,
-    disabled: state.isAddingPanel,
-    isAdding: state.isAddingPanel,
-  };
-
-  if (typeof children === 'function') {
-    return <>{children(renderProps)}</>;
-  }
-
-  return (
-    <button onClick={handleClick} disabled={renderProps.disabled}>
-      {children || '添加 Panel'}
-    </button>
-  );
-};
-
 interface RemovePanelTriggerRenderProps {
   onClick: () => void;
   disabled: boolean;
@@ -131,7 +99,9 @@ interface RemovePanelTriggerRenderProps {
 
 interface RemovePanelTriggerProps {
   panelId: string;
-  children?: React.ReactNode | ((props: RemovePanelTriggerRenderProps) => React.ReactNode);
+  children?:
+    | React.ReactNode
+    | ((props: RemovePanelTriggerRenderProps) => React.ReactNode);
 }
 
 export const RemovePanelTrigger: React.FC<RemovePanelTriggerProps> = ({
@@ -160,5 +130,51 @@ export const RemovePanelTrigger: React.FC<RemovePanelTriggerProps> = ({
     <button onClick={handleClick} disabled={renderProps.disabled}>
       {children || '移除 Panel'}
     </button>
+  );
+};
+
+interface AddPanelTriggerRenderProps {
+  onClick: () => void;
+}
+
+interface AddPanelTriggerProps {
+  children?:
+    | React.ReactNode
+    | ((props: AddPanelTriggerRenderProps) => React.ReactNode);
+  panelsDialog?: (props: { onClose: () => void }) => React.ReactNode;
+}
+
+export const AddPanelTrigger: React.FC<AddPanelTriggerProps> = ({
+  children,
+  panelsDialog,
+}) => {
+  const { actions, state } = useSeedarDashboardContext();
+
+  const handleClick = () => {
+    actions.openAddPanelDialog();
+  };
+
+  const renderProps: AddPanelTriggerRenderProps = {
+    onClick: handleClick,
+  };
+
+  return (
+    <>
+      {typeof children === 'function' ? (
+        children(renderProps)
+      ) : (
+        <button onClick={handleClick}>{children || '添加 Panel'}</button>
+      )}
+      <Dialog.Root
+        open={state.isAddPanelDialogOpen}
+        onOpenChange={(open) => !open && actions.closeAddPanelDialog()}
+      >
+        {panelsDialog ? (
+          panelsDialog({ onClose: actions.closeAddPanelDialog })
+        ) : (
+          <DefaultAddPanelDialog onClose={actions.closeAddPanelDialog} />
+        )}
+      </Dialog.Root>
+    </>
   );
 };

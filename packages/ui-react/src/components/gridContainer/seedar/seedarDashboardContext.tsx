@@ -11,6 +11,8 @@ interface SeedarDashboardContextValue {
     updateLayout: (layout: Layouts) => void;
     saveLayout: () => void;
     cancelChanges: () => void;
+    openAddPanelDialog: () => void;
+    closeAddPanelDialog: () => void;
   };
   state: {
     isLoading: boolean;
@@ -27,15 +29,19 @@ interface SeedarDashboardContextValue {
     isSaveLayoutError: boolean;
     hasUnsavedChanges: boolean;
     localLayout: Layouts;
+    isAddPanelDialogOpen: boolean;
   };
 }
 
-export const SeedarDashboardContext = createContext<SeedarDashboardContextValue | null>(null);
+export const SeedarDashboardContext =
+  createContext<SeedarDashboardContextValue | null>(null);
 
 export const useSeedarDashboardContext = () => {
   const context = useContext(SeedarDashboardContext);
   if (!context) {
-    throw new Error('useSeedarDashboardContext must be used within SeedarDashboard');
+    throw new Error(
+      'useSeedarDashboardContext must be used within SeedarDashboard'
+    );
   }
   return context;
 };

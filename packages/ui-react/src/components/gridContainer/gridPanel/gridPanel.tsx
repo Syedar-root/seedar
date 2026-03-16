@@ -1,7 +1,8 @@
 import React, { forwardRef } from 'react';
+import { clsx } from 'clsx';
 import styles from './gridPanel.module.css';
 
-interface GridPanelProps {
+export interface GridPanelProps {
   panelId: string | number;
   key: string | number;
   children: React.ReactNode;
@@ -37,7 +38,7 @@ export const GridPanel = forwardRef<HTMLDivElement, GridPanelProps>(
       <div
         ref={ref}
         key={key}
-        className={`${styles['grid-panel']} ${className}`}
+        className={clsx(styles['grid-panel'], className)}
         style={style}
         {...rest}
       >

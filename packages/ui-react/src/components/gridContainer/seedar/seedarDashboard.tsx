@@ -7,6 +7,7 @@ import {
   CancelTrigger,
   AddPanelTrigger,
   RemovePanelTrigger,
+  DefaultAddPanelDialog,
 } from './seedarDashboardTriggers';
 import { useDashboardActions } from '../../../hooks';
 import type { Layouts } from '#pkg/seedar/types';
@@ -23,6 +24,7 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
   CancelTrigger: typeof CancelTrigger;
   AddPanelTrigger: typeof AddPanelTrigger;
   RemovePanelTrigger: typeof RemovePanelTrigger;
+  DefaultAddPanelDialog: typeof DefaultAddPanelDialog;
 } = ({ dashboardId, autoUpdate = false, children }) => {
   const { data, actions, state } = useDashboardActions(dashboardId, autoUpdate);
 
@@ -38,6 +40,7 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
     <SeedarDashboardContext.Provider
       value={{ dashboardId, data, actions, state }}
     >
+      {children}
       <GridContainer
         layouts={state.localLayout}
         onLayoutChange={handleLayoutChange}
@@ -46,7 +49,6 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
           <SeedarPanel key={panel.id} panelId={panel.id} panel={panel} />
         ))}
       </GridContainer>
-      {children}
     </SeedarDashboardContext.Provider>
   );
 };
@@ -56,3 +58,4 @@ SeedarDashboard.SaveTrigger = SaveTrigger;
 SeedarDashboard.CancelTrigger = CancelTrigger;
 SeedarDashboard.AddPanelTrigger = AddPanelTrigger;
 SeedarDashboard.RemovePanelTrigger = RemovePanelTrigger;
+SeedarDashboard.DefaultAddPanelDialog = DefaultAddPanelDialog;

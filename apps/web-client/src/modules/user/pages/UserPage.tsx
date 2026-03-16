@@ -13,7 +13,11 @@ const UserPage = () => {
       <SeedarDashboard
         autoUpdate={true}
         dashboardId="c6a83ac6-06ea-405d-a67e-d10a89450e3f"
-      />
+      >
+        <SeedarDashboard.AddPanelTrigger>
+          添加 Panel
+        </SeedarDashboard.AddPanelTrigger>
+      </SeedarDashboard>
     </div>
   );
 };

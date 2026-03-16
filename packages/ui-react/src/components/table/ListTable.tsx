@@ -86,7 +86,7 @@ export const ListTable: React.FC<ListTableProps> = (props) => {
       style={{
         width: '100%',
         height: '100%',
-        minHeight: '300px', // 最小高度，避免表格塌陷
+        // minHeight: '300px', // 最小高度，避免表格塌陷
       }}
     >
       <VListTable

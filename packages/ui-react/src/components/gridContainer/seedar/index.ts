@@ -5,5 +5,6 @@ export {
   CancelTrigger,
   AddPanelTrigger,
   RemovePanelTrigger,
+  DefaultAddPanelDialog,
 } from './seedarDashboardTriggers';
 export { useSeedarDashboardContext } from './seedarDashboardContext';

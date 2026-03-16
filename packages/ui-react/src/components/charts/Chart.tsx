@@ -15,7 +15,10 @@ export const Chart: React.FC<ChartProps> = (props) => {
   const { mutate: executeQuery } = useExecuteQuery();
 
   const [rawData, setRawData] = useState<ExecuteQueryResponse>();
-  const [specOption, setSpecOption] = useState<ISpec>(spec);
+  const [specOption, setSpecOption] = useState<ISpec>({
+    ...spec,
+    autoFit: true,
+  });
 
   // 仅在 queryId 变化时执行查询
   useEffect(() => {

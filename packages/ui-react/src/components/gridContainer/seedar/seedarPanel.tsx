@@ -1,5 +1,5 @@
 import { forwardRef, useMemo } from 'react';
-import { GridPanel } from '../gridPanel/gridPanel';
+import { GridPanel, GridPanelProps } from '../gridPanel/gridPanel';
 import { Chart } from '../../charts';
 import { ListTable } from '../../table';
 import { Title } from './components/title';
@@ -7,9 +7,11 @@ import { PanelResponse } from '#pkg/seedar/types';
 import { usePanel } from '../../../hooks';
 import { ISpec } from '@visactor/vchart';
 
-interface SeedarPanelProps {
+export interface SeedarPanelProps extends GridPanelProps {
   panelId: string;
   panel?: PanelResponse;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 interface SeedarPanel {
@@ -23,7 +25,7 @@ interface SeedarPanel {
 }
 
 export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
-  ({ panelId, panel, ...rest }, ref) => {
+  ({ panelId, panel, className = '', style = {}, ...rest }, ref) => {
     // 只有当 panel 为 undefined 时才发起请求
     const { data: panelData, isPending, isError } = usePanel(panelId, !panel);
 
@@ -62,6 +64,8 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
         title={<Title content={title} />}
         ref={ref}
         content={content}
+        className={className}
+        style={style}
         {...rest}
       />
     );
