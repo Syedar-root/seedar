@@ -70,7 +70,14 @@ export const useDashboardActions = (
 
   const handleUpdateLayout = (layout: Layouts) => {
     if (autoUpdate) {
-      updateLayout.mutate({ id: dashboardId, layout });
+      updateLayout.mutate(
+        { id: dashboardId, layout },
+        {
+          onSuccess: (data) => {
+            setLocalLayout(data.layout);
+          },
+        }
+      );
     } else {
       setLocalLayout(layout);
     }

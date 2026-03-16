@@ -51,7 +51,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     _layout: Layout,
     allLayouts: Partial<Record<string, Layout>>
   ) => {
-    if (onLayoutChange && !layouts) {
+    if (onLayoutChange && Object.keys(layouts).length !== 0) {
       onLayoutChange(allLayouts as Layouts);
     }
   };

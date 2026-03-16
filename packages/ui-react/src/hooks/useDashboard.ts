@@ -85,9 +85,9 @@ export const useUpdateLayout = () => {
     mutationFn: ({ id, layout }: { id: string; layout: Layouts }) =>
       dashboardApi.updateLayout(id, layout),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: dashboardKeys.detail(variables.id),
-      });
+      // queryClient.invalidateQueries({
+      //   queryKey: dashboardKeys.detail(variables.id),
+      // });
     },
   });
 };

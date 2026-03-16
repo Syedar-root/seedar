@@ -10,7 +10,10 @@ const UserPage = () => {
       <h2>用户管理</h2>
       {/* <Chart vchartProps={mockData.vchartProps} />
       <ListTable queryId={6} /> */}
-      <SeedarDashboard dashboardId="c6a83ac6-06ea-405d-a67e-d10a89450e3f" />
+      <SeedarDashboard
+        autoUpdate={true}
+        dashboardId="c6a83ac6-06ea-405d-a67e-d10a89450e3f"
+      />
     </div>
   );
 };
