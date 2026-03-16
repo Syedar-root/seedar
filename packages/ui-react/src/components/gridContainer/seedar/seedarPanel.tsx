@@ -7,25 +7,19 @@ import { PanelResponse } from '#pkg/seedar/types';
 import { usePanel } from '../../../hooks';
 import { ISpec } from '@visactor/vchart';
 
-export interface SeedarPanelProps extends GridPanelProps {
+export interface SeedarPanelProps extends Omit<GridPanelProps, 'headerExtra'> {
   panelId: string;
   panel?: PanelResponse;
   className?: string;
   style?: React.CSSProperties;
-}
-
-interface SeedarPanel {
-  panelId: string | number;
-  panelType: 'chart' | 'table' | 'text';
-  queryId?: string;
-  titleConfig?: {
-    content?: string;
-    type: 'plain' | 'flag';
-  };
+  headerExtra?: (panelId: string) => React.ReactNode;
 }
 
 export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
-  ({ panelId, panel, className = '', style = {}, ...rest }, ref) => {
+  (
+    { panelId, panel, className = '', style = {}, headerExtra, ...rest },
+    ref
+  ) => {
     // 只有当 panel 为 undefined 时才发起请求
     const { data: panelData, isPending, isError } = usePanel(panelId, !panel);
 
@@ -66,6 +60,7 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
         content={content}
         className={className}
         style={style}
+        headerExtra={headerExtra?.(panelId)}
         {...rest}
       />
     );

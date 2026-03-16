@@ -8,7 +8,8 @@ export interface GridPanelProps {
   children: React.ReactNode;
   content?: React.ReactNode;
   title?: React.ReactNode;
-  showTitle?: boolean;
+  showHeader?: boolean;
+  headerExtra?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
   [key: string]: any;
@@ -27,7 +28,8 @@ export const GridPanel = forwardRef<HTMLDivElement, GridPanelProps>(
       children,
       content,
       title,
-      showTitle = true,
+      showHeader = true,
+      headerExtra,
       className = '',
       style = {},
       ...rest
@@ -42,7 +44,12 @@ export const GridPanel = forwardRef<HTMLDivElement, GridPanelProps>(
         style={style}
         {...rest}
       >
-        <div className={styles['grid-panel-header']}>{showTitle && title}</div>
+        {showHeader && (
+          <div className={styles['grid-panel-header']}>
+            {title}
+            {headerExtra}
+          </div>
+        )}
         {content && (
           <div
             className={styles['grid-panel-content']}

@@ -10,6 +10,7 @@ import type {
   DashboardResponse,
   UpdateDashboardRequest,
   Layouts,
+  LayoutItem,
 } from '#pkg/seedar/types';
 
 interface UseDashboardActionsReturn {
@@ -73,11 +74,24 @@ export const useDashboardActions = (
   }, [localLayout, data?.layout]);
 
   const handleUpdateLayout = (layout: Layouts) => {
+    // 验证是否有重复的 i
+    const breakpoints = ['lg', 'md', 'sm', 'xs', 'xxs'] as const;
+    breakpoints.forEach((b) => {
+      if (layout[b]) {
+        const seen = new Map<string, LayoutItem>();
+        layout[b].forEach((item) => {
+          seen.set(item.i, item);
+        });
+        layout[b] = Array.from(seen.values());
+      }
+    });
+
     if (autoUpdate) {
       updateLayout.mutate(
         { id: dashboardId, layout },
         {
           onSuccess: (data) => {
+            console.log('updateLayout success', layout);
             setLocalLayout(data.layout);
           },
         }
@@ -106,16 +120,13 @@ export const useDashboardActions = (
     setIsAddPanelDialogOpen(false);
   };
 
-  const handleAddPanel = (panelId: string) => {
+  const handleAddPanel = (panelId: string, min?: { w: number; h: number }) => {
     addPanel.mutate(
       { id: dashboardId, panelId },
       {
-        onSuccess: (responseData) => {
-          const panel = responseData.panels.find((p) => p.id === panelId);
-          if (!panel) return;
-
-          const defaultWidth = panel.width || 6;
-          const defaultHeight = panel.height || 4;
+        onSuccess: () => {
+          const defaultWidth = min?.w || 6;
+          const defaultHeight = min?.h || 4;
 
           const newLayoutItem = {
             i: panelId,
@@ -143,6 +154,27 @@ export const useDashboardActions = (
             ];
           });
 
+          handleUpdateLayout(updatedLayout);
+        },
+      }
+    );
+  };
+
+  const handleRemovePanel = (panelId: string) => {
+    removePanel.mutate(
+      { id: dashboardId, panelId },
+      {
+        onSuccess: () => {
+          const updatedLayout: Layouts = {};
+          const breakpoints = ['lg', 'md', 'sm', 'xs', 'xxs'] as const;
+
+          breakpoints.forEach((breakpoint) => {
+            const currentItems = localLayout[breakpoint] || [];
+            updatedLayout[breakpoint] = currentItems.filter(
+              (item) => item.i !== panelId
+            );
+          });
+
           if (autoUpdate) {
             updateLayout.mutate({ id: dashboardId, layout: updatedLayout });
           } else {
@@ -159,8 +191,7 @@ export const useDashboardActions = (
       updateDashboard: (data: UpdateDashboardRequest) =>
         updateDashboard.mutate({ id: dashboardId, data }),
       addPanel: handleAddPanel,
-      removePanel: (panelId: string) =>
-        removePanel.mutate({ id: dashboardId, panelId }),
+      removePanel: handleRemovePanel,
       updateLayout: handleUpdateLayout,
       saveLayout: handleSaveLayout,
       cancelChanges: handleCancelChanges,

@@ -15,7 +15,10 @@ import type { Layouts } from '#pkg/seedar/types';
 interface SeedarDashboardProps {
   dashboardId: string;
   autoUpdate?: boolean;
+  header?: React.ReactNode;
   children?: React.ReactNode;
+  footer?: React.ReactNode;
+  panelHeaderExtra?: (panelId: string) => React.ReactNode;
 }
 
 export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
@@ -25,7 +28,14 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
   AddPanelTrigger: typeof AddPanelTrigger;
   RemovePanelTrigger: typeof RemovePanelTrigger;
   DefaultAddPanelDialog: typeof DefaultAddPanelDialog;
-} = ({ dashboardId, autoUpdate = false, children }) => {
+} = ({
+  dashboardId,
+  autoUpdate = false,
+  header,
+  children,
+  footer,
+  panelHeaderExtra,
+}) => {
   const { data, actions, state } = useDashboardActions(dashboardId, autoUpdate);
 
   if (state.isLoading || state.isError || !data) {
@@ -40,15 +50,22 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
     <SeedarDashboardContext.Provider
       value={{ dashboardId, data, actions, state }}
     >
+      {header}
       {children}
       <GridContainer
         layouts={state.localLayout}
         onLayoutChange={handleLayoutChange}
       >
         {data.panels.map((panel) => (
-          <SeedarPanel key={panel.id} panelId={panel.id} panel={panel} />
+          <SeedarPanel
+            key={panel.id}
+            panelId={panel.id}
+            panel={panel}
+            headerExtra={panelHeaderExtra}
+          />
         ))}
       </GridContainer>
+      {footer}
     </SeedarDashboardContext.Provider>
   );
 };

@@ -6,6 +6,7 @@ import {
 } from 'react-grid-layout';
 import type { Layout } from 'react-grid-layout';
 import type { Layouts } from '#pkg/seedar/types';
+import { useRef, useEffect } from 'react';
 
 const COLS_RATE = 2;
 const COLS = {
@@ -29,6 +30,11 @@ export const GridContainer: React.FC<GridContainerProps> = ({
   children,
 }) => {
   const { width, containerRef, mounted } = useContainerWidth();
+  const layoutsRef = useRef(layouts);
+
+  useEffect(() => {
+    layoutsRef.current = layouts;
+  }, [layouts]);
 
   const currentCols =
     width >= 1200
@@ -47,18 +53,24 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     preventCollision: true,
   };
 
-  const handleLayoutChange = (
-    _layout: Layout,
-    allLayouts: Partial<Record<string, Layout>>
-  ) => {
-    if (onLayoutChange && Object.keys(layouts).length !== 0) {
-      onLayoutChange(allLayouts as Layouts);
+  const handleDragStop = () => {
+    if (onLayoutChange) {
+      onLayoutChange(layoutsRef.current);
+    }
+  };
+
+  const handleResizeStop = () => {
+    if (onLayoutChange) {
+      onLayoutChange(layoutsRef.current);
     }
   };
 
   return (
     containerRef && (
-      <div ref={containerRef as React.RefObject<HTMLDivElement>}>
+      <div
+        style={{ overflow: 'hidden' }}
+        ref={containerRef as React.RefObject<HTMLDivElement>}
+      >
         {mounted && (
           <Responsive
             layouts={layouts}
@@ -67,8 +79,9 @@ export const GridContainer: React.FC<GridContainerProps> = ({
             margin={[MARGIN, MARGIN]}
             rowHeight={rowHeight}
             width={width}
-            // compactor={myCompactor}
-            onLayoutChange={handleLayoutChange}
+            compactor={myCompactor}
+            onDragStop={handleDragStop}
+            onResizeStop={handleResizeStop}
           >
             {children}
           </Responsive>

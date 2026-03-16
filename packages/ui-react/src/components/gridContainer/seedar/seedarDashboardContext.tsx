@@ -6,7 +6,7 @@ interface SeedarDashboardContextValue {
   data: DashboardResponse | undefined;
   actions: {
     updateDashboard: (data: any) => void;
-    addPanel: (panelId: string) => void;
+    addPanel: (panelId: string, min?: { w: number; h: number }) => void;
     removePanel: (panelId: string) => void;
     updateLayout: (layout: Layouts) => void;
     saveLayout: () => void;

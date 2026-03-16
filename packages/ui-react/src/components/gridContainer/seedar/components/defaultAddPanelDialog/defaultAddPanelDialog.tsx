@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useSeedarDashboardContext } from '../../seedarDashboardContext';
 import { usePanels } from '../../../../../hooks';
 import { Dialog } from '@base-ui/react/dialog';
@@ -11,21 +11,52 @@ interface DefaultAddPanelDialogProps {
   onClose: () => void;
 }
 
+const MIN_W = 3;
+const MIN_H = 3;
+
 export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
   onClose,
 }) => {
-  const { actions, state } = useSeedarDashboardContext();
+  const { actions } = useSeedarDashboardContext();
   const { data: panels, isLoading } = usePanels();
   const [selectedPanelId, setSelectedPanelId] = React.useState<string>(
     panels?.[0]?.id || ''
   );
 
-  const handlePanelSelect = () => {
-    actions.addPanel(selectedPanelId);
+  const handlePanelSelect = useCallback(() => {
+    if (!selectedPanelId) return;
+    actions.addPanel(selectedPanelId, { w: MIN_W, h: MIN_H });
     onClose();
-  };
+  }, [actions, selectedPanelId, onClose]);
 
   const id = React.useId();
+
+  const panelList = useMemo(() => {
+    if (isLoading) return <div className={styles.loading}>加载中...</div>;
+    if (!panels?.length) return null;
+
+    return panels.map((panel) => (
+      <div key={panel.id} className={styles.panelItem}>
+        <div className={styles.panelItemHeader}>
+          <Radio.Root value={panel.id} className={styles.Radio}>
+            <Radio.Indicator className={styles.Indicator} />
+          </Radio.Root>
+          {panel.title}
+        </div>
+        <div style={{ flex: 1 }}>
+          <SeedarPanel
+            style={{
+              padding: 0,
+              backgroundColor: 'transparent',
+              border: 'none',
+            }}
+            showHeader={false}
+            panelId={panel.id}
+          />
+        </div>
+      </div>
+    ));
+  }, [isLoading, panels]);
 
   return (
     <Dialog.Portal>
@@ -38,41 +69,10 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
           </Dialog.Description>
           <RadioGroup
             aria-labelledby={id}
-            defaultValue={panels?.[0]?.id || ''}
             onValueChange={setSelectedPanelId}
             className={styles.panelList}
           >
-            {isLoading ? (
-              <div className={styles.loading}>加载中...</div>
-            ) : (
-              panels?.map((panel) => (
-                <div
-                  key={panel.id}
-                  // onClick={() => handlePanelSelect(panel.id)}
-                  className={styles.panelItem}
-                >
-                  <div
-                    style={{ display: 'flex', gap: 8, alignItems: 'center' }}
-                  >
-                    <Radio.Root value={panel.id} className={styles.Radio}>
-                      <Radio.Indicator className={styles.Indicator} />
-                    </Radio.Root>
-                    {panel.title}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <SeedarPanel
-                      style={{
-                        padding: 0,
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                      }}
-                      showTitle={false}
-                      panelId={panel.id}
-                    />
-                  </div>
-                </div>
-              ))
-            )}
+            {panelList}
           </RadioGroup>
 
           <div className={styles.actions}>

@@ -101,6 +101,12 @@
   }
 }
 
+.panelItemHeader {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .panelButton:hover {
   background: #e8e8e8;
   border-color: #d0d0d0;
