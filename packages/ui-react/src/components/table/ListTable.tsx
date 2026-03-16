@@ -10,7 +10,7 @@ export interface ListTableProps {
 
 export const ListTable: React.FC<ListTableProps> = (props) => {
   const { vtableProps = {}, queryId } = props;
-  const { mutate: executeQuery } = useExecuteQuery();
+  const { mutate: executeQuery, data } = useExecuteQuery();
 
   // 🔥 修复1：修正ref类型 → 指向VListTable组件实例（不是div）
   const tableRef = useRef<any>(null);
@@ -20,6 +20,7 @@ export const ListTable: React.FC<ListTableProps> = (props) => {
   // 初始化表格配置
   const [tableOption, setTableOption] = useState({
     ...vtableProps.option,
+    autoFillWidth: true,
   });
 
   // 数据请求 + 配置更新
@@ -29,10 +30,10 @@ export const ListTable: React.FC<ListTableProps> = (props) => {
     executeQuery(queryId, {
       onSuccess: (data) => {
         const transformed = transformData(data);
-        setTableOption({
+        setTableOption((prev) => ({
+          ...prev,
           ...transformed,
-          ...vtableProps.option,
-        });
+        }));
       },
     });
   }, [queryId, vtableProps.option]);
@@ -46,7 +47,15 @@ export const ListTable: React.FC<ListTableProps> = (props) => {
     const handleResize = () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        tableRef.current?.render();
+        // if (data) {
+        //   console.log('data', data);
+        //   const transformed = transformData(data);
+        //   setTableOption((prev) => ({
+        //     ...prev,
+        //     ...transformed,
+        //   }));
+        // }
+        // tableRef.current?.renderWithRecreateCells();
       }, 300);
     };
 
@@ -84,9 +93,8 @@ export const ListTable: React.FC<ListTableProps> = (props) => {
         ref={tableRef}
         option={tableOption}
         // ✅ 自适应配置：宽度100%，自动填充父容器
-        width="100%"
-        autoFillWidth={true}
-        {...vtableProps}
+        // width="100%"
+        // {...vtableProps}
       />
     </div>
   );
@@ -99,8 +107,9 @@ const transformData = (data: ExecuteQueryResponse) => {
     columns: headers.map((item, index) => ({
       title: item,
       field: `${index}`,
-      width: `${(1 / headers.length) * 100}%`, // 等宽分列
-      headerStyle: { textAlign: 'center' }, // 可选：表头居中
+      // width: `${(1 / headers.length) * 100}%`, // 等宽分列
+      width: 'auto',
+      headerStyle: { textAlign: 'left' }, // 可选：表头居中
     })),
     records: data?.results?.rows || [],
   };
