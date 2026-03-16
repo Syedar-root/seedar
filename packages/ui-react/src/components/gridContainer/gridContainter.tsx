@@ -4,6 +4,7 @@ import {
   Responsive,
   useContainerWidth,
 } from 'react-grid-layout';
+import type { Layout } from 'react-grid-layout';
 import type { Layouts } from '#pkg/seedar/types';
 
 const COLS_RATE = 2;
@@ -18,11 +19,13 @@ const MARGIN = 10;
 
 interface GridContainerProps {
   layouts: Layouts;
+  onLayoutChange?: (layouts: Layouts) => void;
   children: React.ReactNode;
 }
 
 export const GridContainer: React.FC<GridContainerProps> = ({
   layouts,
+  onLayoutChange,
   children,
 }) => {
   const { width, containerRef, mounted } = useContainerWidth();
@@ -44,6 +47,15 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     preventCollision: true,
   };
 
+  const handleLayoutChange = (
+    _layout: Layout,
+    allLayouts: Partial<Record<string, Layout>>
+  ) => {
+    if (onLayoutChange && !layouts) {
+      onLayoutChange(allLayouts as Layouts);
+    }
+  };
+
   return (
     containerRef && (
       <div ref={containerRef as React.RefObject<HTMLDivElement>}>
@@ -56,6 +68,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
             rowHeight={rowHeight}
             width={width}
             compactor={myCompactor}
+            onLayoutChange={handleLayoutChange}
           >
             {children}
           </Responsive>

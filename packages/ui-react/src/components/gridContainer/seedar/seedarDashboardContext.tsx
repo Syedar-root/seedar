@@ -1,0 +1,41 @@
+import { createContext, useContext } from 'react';
+import type { DashboardResponse, Layouts } from '#pkg/seedar/types';
+
+interface SeedarDashboardContextValue {
+  dashboardId: string;
+  data: DashboardResponse | undefined;
+  actions: {
+    updateDashboard: (data: any) => void;
+    addPanel: (panelId: string) => void;
+    removePanel: (panelId: string) => void;
+    updateLayout: (layout: Layouts) => void;
+    saveLayout: () => void;
+    cancelChanges: () => void;
+  };
+  state: {
+    isLoading: boolean;
+    isError: boolean;
+    isUpdatingDashboard: boolean;
+    isAddingPanel: boolean;
+    isRemovingPanel: boolean;
+    isUpdatingLayout: boolean;
+    isSavingLayout: boolean;
+    isUpdateDashboardError: boolean;
+    isAddPanelError: boolean;
+    isRemovePanelError: boolean;
+    isUpdateLayoutError: boolean;
+    isSaveLayoutError: boolean;
+    hasUnsavedChanges: boolean;
+    localLayout: Layouts;
+  };
+}
+
+export const SeedarDashboardContext = createContext<SeedarDashboardContextValue | null>(null);
+
+export const useSeedarDashboardContext = () => {
+  const context = useContext(SeedarDashboardContext);
+  if (!context) {
+    throw new Error('useSeedarDashboardContext must be used within SeedarDashboard');
+  }
+  return context;
+};
