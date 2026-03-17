@@ -11,8 +11,8 @@ interface DefaultAddPanelDialogProps {
   onClose: () => void;
 }
 
-const MIN_W = 3;
-const MIN_H = 3;
+const DEFAULT_W = 6;
+const DEFAULT_H = 4;
 
 export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
   onClose,
@@ -25,7 +25,7 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
 
   const handlePanelSelect = useCallback(() => {
     if (!selectedPanelId) return;
-    actions.addPanel(selectedPanelId, { w: MIN_W, h: MIN_H });
+    actions.addPanel(selectedPanelId, { w: DEFAULT_W, h: DEFAULT_H });
     onClose();
   }, [actions, selectedPanelId, onClose]);
 

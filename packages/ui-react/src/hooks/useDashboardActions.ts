@@ -12,6 +12,7 @@ import type {
   Layouts,
   LayoutItem,
 } from '#pkg/seedar/types';
+import { min } from '@visactor/vchart/esm/util';
 
 interface UseDashboardActionsReturn {
   data: DashboardResponse | undefined;
@@ -91,7 +92,9 @@ export const useDashboardActions = (
         { id: dashboardId, layout },
         {
           onSuccess: (data) => {
-            console.log('updateLayout success', layout);
+            console.log('localLayout', localLayout);
+            console.log('data.layout', data.layout);
+            console.log('paramsLayout', layout);
             setLocalLayout(data.layout);
           },
         }
@@ -120,13 +123,16 @@ export const useDashboardActions = (
     setIsAddPanelDialogOpen(false);
   };
 
-  const handleAddPanel = (panelId: string, min?: { w: number; h: number }) => {
+  const handleAddPanel = (
+    panelId: string,
+    defaultSize?: { w: number; h: number }
+  ) => {
     addPanel.mutate(
       { id: dashboardId, panelId },
       {
         onSuccess: () => {
-          const defaultWidth = min?.w || 6;
-          const defaultHeight = min?.h || 4;
+          const defaultWidth = defaultSize?.w || 6;
+          const defaultHeight = defaultSize?.h || 4;
 
           const newLayoutItem = {
             i: panelId,
@@ -134,6 +140,8 @@ export const useDashboardActions = (
             y: 0,
             w: defaultWidth,
             h: defaultHeight,
+            minW: 3,
+            minH: 3,
           };
 
           const updatedLayout: Layouts = {};
@@ -175,11 +183,7 @@ export const useDashboardActions = (
             );
           });
 
-          if (autoUpdate) {
-            updateLayout.mutate({ id: dashboardId, layout: updatedLayout });
-          } else {
-            setLocalLayout(updatedLayout);
-          }
+          handleUpdateLayout(updatedLayout);
         },
       }
     );

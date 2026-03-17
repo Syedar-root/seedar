@@ -5,7 +5,7 @@ import {
   useContainerWidth,
 } from 'react-grid-layout';
 import type { Layout } from 'react-grid-layout';
-import type { Layouts } from '#pkg/seedar/types';
+import type { LayoutItem, Layouts } from '#pkg/seedar/types';
 import { useRef, useEffect } from 'react';
 
 const COLS_RATE = 2;
@@ -30,11 +30,6 @@ export const GridContainer: React.FC<GridContainerProps> = ({
   children,
 }) => {
   const { width, containerRef, mounted } = useContainerWidth();
-  const layoutsRef = useRef(layouts);
-
-  useEffect(() => {
-    layoutsRef.current = layouts;
-  }, [layouts]);
 
   const currentCols =
     width >= 1200
@@ -53,15 +48,25 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     preventCollision: true,
   };
 
-  const handleDragStop = () => {
+  const handleDragStop = (layout: Layout) => {
     if (onLayoutChange) {
-      onLayoutChange(layoutsRef.current);
+      const newLayouts = { ...layouts };
+      const currentBreakpoint = Object.keys(COLS).find(
+        (key) => COLS[key as keyof typeof COLS] === currentCols
+      );
+      newLayouts[currentBreakpoint!] = layout as LayoutItem[];
+      onLayoutChange(newLayouts);
     }
   };
 
-  const handleResizeStop = () => {
+  const handleResizeStop = (layout: Layout) => {
     if (onLayoutChange) {
-      onLayoutChange(layoutsRef.current);
+      const newLayouts = { ...layouts };
+      const currentBreakpoint = Object.keys(COLS).find(
+        (key) => COLS[key as keyof typeof COLS] === currentCols
+      );
+      newLayouts[currentBreakpoint!] = layout as LayoutItem[];
+      onLayoutChange(newLayouts);
     }
   };
 
@@ -79,7 +84,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
             margin={[MARGIN, MARGIN]}
             rowHeight={rowHeight}
             width={width}
-            compactor={myCompactor}
+            // compactor={myCompactor}
             onDragStop={handleDragStop}
             onResizeStop={handleResizeStop}
           >
