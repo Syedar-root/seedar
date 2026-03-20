@@ -1,0 +1,40 @@
+.container {
+  position: relative;
+  margin: 0;
+  height: auto;
+
+  h2 {
+    margin-bottom: 1.5rem;
+    color: #333;
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .addPanel {
+    padding: 0.5rem;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background: #0056b3;
+    }
+  }
+}
+
+.panelHeaderExtra {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panelHeaderExtra * {
+  cursor: pointer;
+}

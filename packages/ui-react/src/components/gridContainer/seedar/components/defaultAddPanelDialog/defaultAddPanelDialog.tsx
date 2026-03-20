@@ -17,17 +17,17 @@ const DEFAULT_H = 4;
 export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
   onClose,
 }) => {
-  const { actions } = useSeedarDashboardContext();
+  const { actions, state } = useSeedarDashboardContext();
   const { data: panels, isLoading } = usePanels();
-  const [selectedPanelId, setSelectedPanelId] = React.useState<string>(
-    panels?.[0]?.id || ''
-  );
+  const [selectedPanelId, setSelectedPanelId] = React.useState<string>('');
 
   const handlePanelSelect = useCallback(() => {
     if (!selectedPanelId) return;
     actions.addPanel(selectedPanelId, { w: DEFAULT_W, h: DEFAULT_H });
     onClose();
   }, [actions, selectedPanelId, onClose]);
+
+  console.log('hcs', selectedPanelId);
 
   const id = React.useId();
 
@@ -38,9 +38,13 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
     return panels.map((panel) => (
       <div key={panel.id} className={styles.panelItem}>
         <div className={styles.panelItemHeader}>
-          <Radio.Root value={panel.id} className={styles.Radio}>
-            <Radio.Indicator className={styles.Indicator} />
-          </Radio.Root>
+          {state.localLayout?.lg?.some((item) => item.i === panel.id) ? (
+            <span className={styles.addedText}>已添加</span>
+          ) : (
+            <Radio.Root value={panel.id} className={styles.Radio}>
+              <Radio.Indicator className={styles.Indicator} />
+            </Radio.Root>
+          )}
           {panel.title}
         </div>
         <div style={{ flex: 1 }}>
@@ -56,7 +60,7 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
         </div>
       </div>
     ));
-  }, [isLoading, panels]);
+  }, [isLoading, panels, state.localLayout]);
 
   return (
     <Dialog.Portal>
@@ -79,6 +83,7 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
             <button
               onClick={handlePanelSelect}
               className={clsx(styles.actionsButton, styles.addButton)}
+              disabled={!selectedPanelId}
             >
               添加
             </button>

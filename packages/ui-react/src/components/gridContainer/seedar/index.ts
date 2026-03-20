@@ -8,3 +8,4 @@ export {
   DefaultAddPanelDialog,
 } from './seedarDashboardTriggers';
 export { useSeedarDashboardContext } from './seedarDashboardContext';
+export { SeedarPanel } from './seedarPanel';

@@ -47,7 +47,7 @@ interface UseDashboardActionsReturn {
 
 export const useDashboardActions = (
   dashboardId: string,
-  autoUpdate: boolean = false
+  autoUpdate: boolean = false,
 ): UseDashboardActionsReturn => {
   const { data, isPending, isError } = useDashboard(dashboardId);
   const updateDashboard = useUpdateDashboard();
@@ -92,12 +92,9 @@ export const useDashboardActions = (
         { id: dashboardId, layout },
         {
           onSuccess: (data) => {
-            console.log('localLayout', localLayout);
-            console.log('data.layout', data.layout);
-            console.log('paramsLayout', layout);
             setLocalLayout(data.layout);
           },
-        }
+        },
       );
     } else {
       setLocalLayout(layout);
@@ -125,7 +122,7 @@ export const useDashboardActions = (
 
   const handleAddPanel = (
     panelId: string,
-    defaultSize?: { w: number; h: number }
+    defaultSize?: { w: number; h: number },
   ) => {
     addPanel.mutate(
       { id: dashboardId, panelId },
@@ -164,7 +161,7 @@ export const useDashboardActions = (
 
           handleUpdateLayout(updatedLayout);
         },
-      }
+      },
     );
   };
 
@@ -179,13 +176,13 @@ export const useDashboardActions = (
           breakpoints.forEach((breakpoint) => {
             const currentItems = localLayout[breakpoint] || [];
             updatedLayout[breakpoint] = currentItems.filter(
-              (item) => item.i !== panelId
+              (item) => item.i !== panelId,
             );
           });
 
           handleUpdateLayout(updatedLayout);
         },
-      }
+      },
     );
   };
 

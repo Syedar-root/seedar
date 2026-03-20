@@ -1,6 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppLayout from '@/layouts/AppLayout';
 import UserPage from '@/modules/user/pages/UserPage';
+import { DashboardPage } from '@/modules/dashboard';
+import { PanelPage } from '@/modules/panel';
 
 export const router = createBrowserRouter([
   {
@@ -9,11 +11,19 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to="/user" replace />,
+        element: <Navigate to="/dashboard" replace />,
       },
       {
         path: 'user',
         element: <UserPage />,
+      },
+      {
+        path: 'dashboard',
+        element: <DashboardPage />,
+      },
+      {
+        path: 'panel/:panelId',
+        element: <PanelPage />,
       },
     ],
   },

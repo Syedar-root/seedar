@@ -144,6 +144,11 @@
   background-color: #312331;
 }
 
+.actionsButton:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
 .closeButton {
   color: #333;
 }
@@ -201,4 +206,9 @@
     height: 0.5rem;
     background-color: var(--color-gray-50);
   }
+}
+
+.addedText {
+  color: #666888;
+  font-size: 12px;
 }

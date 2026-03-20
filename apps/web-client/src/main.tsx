@@ -5,6 +5,8 @@ import './styles/global.scss';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiClient } from '#pkg/seedar/ui-core';
 import type { ApiConfig } from '#pkg/seedar/types';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 // 初始化 API 客户端
 const apiConfig: ApiConfig = {
@@ -43,8 +45,10 @@ if (!root) {
 
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </React.StrictMode>
+    <DndProvider backend={HTML5Backend}>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </DndProvider>
+  </React.StrictMode>,
 );

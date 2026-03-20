@@ -4,7 +4,7 @@ import {
   CreateDatasetRequest,
   UpdateDatasetRequest,
   RequestOptions,
-} from '@seedar/types';
+} from '#pkg/seedar/types';
 
 /**
  * 数据集 API 类
@@ -26,7 +26,10 @@ export class DatasetApi {
    * @param options - 请求选项，包含查询参数和错误处理回调
    * @returns 数据集详情
    */
-  static async findOne(id: number, options?: RequestOptions): Promise<DatasetResponse> {
+  static async findOne(
+    id: number,
+    options?: RequestOptions,
+  ): Promise<DatasetResponse> {
     return ApiClient.get<DatasetResponse>(`/dataset/${id}`, options);
   }
 
@@ -38,7 +41,7 @@ export class DatasetApi {
    */
   static async create(
     data: CreateDatasetRequest,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<DatasetResponse> {
     return ApiClient.post<DatasetResponse>('/dataset', data, options);
   }
@@ -51,7 +54,7 @@ export class DatasetApi {
    */
   static async update(
     data: UpdateDatasetRequest,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<DatasetResponse> {
     return ApiClient.patch<DatasetResponse>('/dataset', data, options);
   }
