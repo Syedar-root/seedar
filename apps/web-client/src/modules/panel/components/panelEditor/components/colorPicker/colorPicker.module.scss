@@ -1,0 +1,42 @@
+.colorPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.preview {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.colorBlock {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  border: 1px solid #e8e8e8;
+}
+
+.input {
+  padding: 6px 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 12px;
+  width: 100%;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: #1890ff;
+  }
+
+  &::placeholder {
+    color: #bfbfbf;
+  }
+}

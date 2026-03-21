@@ -10,6 +10,14 @@
   background: #f5f5f5;
 }
 
+.editor {
+  width: 280px;
+  height: 100%;
+  background: #fafafa;
+  border-left: 1px solid #e8e8e8;
+  overflow-y: auto;
+}
+
 @mixin button-style($bg-color) {
   padding: 8px 16px;
   border-radius: 4px;

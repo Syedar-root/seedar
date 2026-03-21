@@ -1,0 +1,177 @@
+[1mdiff --git a/apps/web-client/src/modules/panel/components/panelEditor/index.ts b/apps/web-client/src/modules/panel/components/panelEditor/index.ts[m
+[1mindex e69de29..853e9e7 100644[m
+[1m--- a/apps/web-client/src/modules/panel/components/panelEditor/index.ts[m
+[1m+++ b/apps/web-client/src/modules/panel/components/panelEditor/index.ts[m
+[36m@@ -0,0 +1,2 @@[m
+[32m+[m[32mexport { PanelEditor } from "./panelEditor";[m
+[32m+[m[32mexport * from "./types";[m
+[1mdiff --git a/apps/web-client/src/modules/panel/components/panelEditor/panelEditor.tsx b/apps/web-client/src/modules/panel/components/panelEditor/panelEditor.tsx[m
+[1mindex e69de29..3d0f1bd 100644[m
+[1m--- a/apps/web-client/src/modules/panel/components/panelEditor/panelEditor.tsx[m
+[1m+++ b/apps/web-client/src/modules/panel/components/panelEditor/panelEditor.tsx[m
+[36m@@ -0,0 +1,117 @@[m
+[32m+[m[32mimport { useState, useEffect, useMemo } from "react";[m
+[32m+[m[32mimport {[m
+[32m+[m[32m  DisplayPanelType,[m
+[32m+[m[32m  PanelEditorConfig,[m
+[32m+[m[32m  ChartType,[m
+[32m+[m[32m  CHART_FIELD_CONFIGS,[m
+[32m+[m[32m  DEFAULT_COLORS,[m
+[32m+[m[32m} from "./types";[m
+[32m+[m[32mimport { TypeSelector } from "./components/typeSelector/typeSelector";[m
+[32m+[m[32mimport { FieldMapper } from "./components/fieldMapper/fieldMapper";[m
+[32m+[m[32mimport { ColorPicker } from "./components/colorPicker/colorPicker";[m
+[32m+[m[32mimport styles from "./panelEditor.module.scss";[m
+[32m+[m[32mimport type { DragItem } from "../dndHelper/dragZone/dragZone";[m
+[32m+[m
+[32m+[m[32minterface PanelEditorProps {[m
+[32m+[m[32m  fields: DragItem[];[m
+[32m+[m[32m  metrics: DragItem[];[m
+[32m+[m[32m  config?: PanelEditorConfig;[m
+[32m+[m[32m  displayType?: DisplayPanelType;[m
+[32m+[m[32m  onChange: (displayType: DisplayPanelType, config: PanelEditorConfig) => void;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mexport const PanelEditor: React.FC<PanelEditorProps> = ({[m
+[32m+[m[32m  fields,[m
+[32m+[m[32m  metrics,[m
+[32m+[m[32m  config,[m
+[32m+[m[32m  displayType = "table",[m
+[32m+[m[32m  onChange,[m
+[32m+[m[32m}) => {[m
+[32m+[m[32m  const [currentType, setCurrentType] = useState<DisplayPanelType>(displayType);[m
+[32m+[m[32m  const [currentConfig, setCurrentConfig] = useState<PanelEditorConfig>([m
+[32m+[m[32m    config || { colors: DEFAULT_COLORS },[m
+[32m+[m[32m  );[m
+[32m+[m
+[32m+[m[32m  useEffect(() => {[m
+[32m+[m[32m    setCurrentType(displayType);[m
+[32m+[m[32m    setCurrentConfig(config || { colors: DEFAULT_COLORS });[m
+[32m+[m[32m  }, [displayType, config]);[m
+[32m+[m
+[32m+[m[32m  const handleTypeChange = (type: DisplayPanelType) => {[m
+[32m+[m[32m    setCurrentType(type);[m
+[32m+[m[32m    const newConfig = resetConfigForType(type, currentConfig);[m
+[32m+[m[32m    setCurrentConfig(newConfig);[m
+[32m+[m[32m    onChange(type, newConfig);[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleConfigChange = (partialConfig: Partial<PanelEditorConfig>) => {[m
+[32m+[m[32m    const newConfig = { ...currentConfig, ...partialConfig };[m
+[32m+[m[32m    setCurrentConfig(newConfig);[m
+[32m+[m[32m    onChange(currentType, newConfig);[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const fieldConfig = useMemo(() => {[m
+[32m+[m[32m    if (currentType === "table" || currentType === "card") return null;[m
+[32m+[m[32m    return CHART_FIELD_CONFIGS[currentType as ChartType] || null;[m
+[32m+[m[32m  }, [currentType]);[m
+[32m+[m
+[32m+[m[32m  return ([m
+[32m+[m[32m    <div className={styles.editor}>[m
+[32m+[m[32m      <TypeSelector value={currentType} onChange={handleTypeChange} />[m
+[32m+[m
+[32m+[m[32m      {fieldConfig && ([m
+[32m+[m[32m        <FieldMapper[m
+[32m+[m[32m          fields={fields}[m
+[32m+[m[32m          metrics={metrics}[m
+[32m+[m[32m          config={currentConfig}[m
+[32m+[m[32m          fieldConfig={fieldConfig}[m
+[32m+[m[32m          onChange={handleConfigChange}[m
+[32m+[m[32m        />[m
+[32m+[m[32m      )}[m
+[32m+[m
+[32m+[m[32m      {currentType !== "table" && currentType !== "card" && ([m
+[32m+[m[32m        <ColorPicker[m
+[32m+[m[32m          colors={currentConfig.colors || DEFAULT_COLORS}[m
+[32m+[m[32m          onChange={(colors) => handleConfigChange({ colors })}[m
+[32m+[m[32m        />[m
+[32m+[m[32m      )}[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m  );[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32mfunction resetConfigForType([m
+[32m+[m[32m  type: DisplayPanelType,[m
+[32m+[m[32m  prevConfig: PanelEditorConfig,[m
+[32m+[m[32m): PanelEditorConfig {[m
+[32m+[m[32m  const baseConfig: PanelEditorConfig = {[m
+[32m+[m[32m    colors: prevConfig.colors || DEFAULT_COLORS,[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  if (type === "table" || type === "card") {[m
+[32m+[m[32m    return baseConfig;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  const fieldConfig = CHART_FIELD_CONFIGS[type as ChartType];[m
+[32m+[m[32m  if (!fieldConfig) return baseConfig;[m
+[32m+[m
+[32m+[m[32m  const newConfig: PanelEditorConfig = {[m
+[32m+[m[32m    ...baseConfig,[m
+[32m+[m[32m    chartType: type as ChartType,[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  fieldConfig.required.forEach((field) => {[m
+[32m+[m[32m    const key = field as keyof PanelEditorConfig;[m
+[32m+[m[32m    if (prevConfig[key]) {[m
+[32m+[m[32m      (newConfig as any)[field] = prevConfig[key];[m
+[32m+[m[32m    }[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  fieldConfig.optional.forEach((field) => {[m
+[32m+[m[32m    const key = field as keyof PanelEditorConfig;[m
+[32m+[m[32m    if (prevConfig[key]) {[m
+[32m+[m[32m      (newConfig as any)[field] = prevConfig[key];[m
+[32m+[m[32m    }[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  return newConfig;[m
+[32m+[m[32m}[m
+[1mdiff --git a/apps/web-client/src/modules/panel/pages/panelPage.tsx b/apps/web-client/src/modules/panel/pages/panelPage.tsx[m
+[1mindex 5be25dc..63908aa 100644[m
+[1m--- a/apps/web-client/src/modules/panel/pages/panelPage.tsx[m
+[1m+++ b/apps/web-client/src/modules/panel/pages/panelPage.tsx[m
+[36m@@ -4,17 +4,20 @@[m [mimport {[m
+   useExecuteTempQuery,[m
+   useQuery,[m
+   useUpdateQuery,[m
+[32m+[m[32m  useUpdatePanel,[m
+ } from "#pkg/seedar/ui-react";[m
+ import { useParams } from "react-router-dom";[m
+ import styles from "./styles/panel.module.scss";[m
+ import { usePanel } from "#pkg/seedar/ui-react";[m
+[31m-import {[m
+[31m-  ExecuteQueryResponse,[m
+[31m-  PanelResponse,[m
+[31m-  QueryResponse,[m
+[31m-} from "#pkg/seedar/types";[m
+[32m+[m[32mimport { ExecuteQueryResponse, PanelResponse } from "#pkg/seedar/types";[m
+ import { Aside } from "../components/aside";[m
+ import { QueryZone } from "../components/queryZone";[m
+[32m+[m[32mimport {[m
+[32m+[m[32m  PanelEditor,[m
+[32m+[m[32m  DisplayPanelType,[m
+[32m+[m[32m  PanelEditorConfig,[m
+[32m+[m[32m  DEFAULT_COLORS,[m
+[32m+[m[32m} from "../components/panelEditor";[m
+ import { useCallback, useEffect, useMemo, useState } from "react";[m
+ import { DragItem } from "../components/dndHelper/dragZone/dragZone";[m
+ import { toast } from "sonner";[m
+[36m@@ -22,22 +25,22 @@[m [mimport { toast } from "sonner";[m
+ export const PanelPage = () => {[m
+   const { panelId } = useParams();[m
+   if (!panelId) {[m
+[31m-    //TODO: 处理 panelId 不存在的情况[m
+     return null;[m
+   }[m
+ [m
+   const [dropFields, setDropFields] = useState<DragItem[]>([]);[m
+   const [dropMetrics, setDropMetrics] = useState<DragItem[]>([]);[m
+[32m+[m[32m  const [displayType, setDisplayType] = useState<DisplayPanelType>("table");[m
+[32m+[m[32m  const [editorConfig, setEditorConfig] = useState<PanelEditorConfig>({[m
+[32m+[m[32m    colors: DEFAULT_COLORS,[m
+[32m+[m[32m  });[m
+ [m
+   const { data: panelData } = usePanel(panelId);[m
+[31m-[m
+   const { data: queryData } = useQuery((panelData as PanelResponse)?.query
