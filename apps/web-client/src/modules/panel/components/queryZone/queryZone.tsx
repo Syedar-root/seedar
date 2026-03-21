@@ -25,32 +25,38 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
 }) => {
   return (
     <div className={styles.queryZone}>
-      <DragZone
-        className={styles.dragZone}
-        onDrop={onDropField}
-        itemType="fieldItem"
-        overColor="#e6f7ff"
-      >
-        {dropFields.map((item) => (
-          <div className={styles.field} key={item.id}>
-            {item.businessName || item.name}
-            <X size={12} onClick={() => onRemoveField(item)} />
-          </div>
-        ))}
-      </DragZone>
-      <DragZone
-        className={styles.dragZone}
-        onDrop={onDropMetric}
-        itemType="metricItem"
-        overColor="#e6f7ff"
-      >
-        {dropMetrics.map((item) => (
-          <div className={styles.metric} key={item.id}>
-            {item.businessName || item.name}
-            <X size={12} onClick={() => onRemoveMetric(item)} />
-          </div>
-        ))}
-      </DragZone>
+      <div className={styles.zone}>
+        <div className={styles.title}>维度</div>
+        <DragZone
+          className={styles.dragZone}
+          onDrop={onDropField}
+          itemType="fieldItem"
+          overColor="#e6f7ff"
+        >
+          {dropFields.map((item) => (
+            <div className={styles.field} key={item.id}>
+              {item.businessName || item.name}
+              <X size={12} onClick={() => onRemoveField(item)} />
+            </div>
+          ))}
+        </DragZone>
+      </div>
+      <div className={styles.zone}>
+        <div className={styles.title}>指标</div>
+        <DragZone
+          className={styles.dragZone}
+          onDrop={onDropMetric}
+          itemType="metricItem"
+          overColor="#e6f7ff"
+        >
+          {dropMetrics.map((item) => (
+            <div className={styles.metric} key={item.id}>
+              {item.businessName || item.name}
+              <X size={12} onClick={() => onRemoveMetric(item)} />
+            </div>
+          ))}
+        </DragZone>
+      </div>
     </div>
   );
 };

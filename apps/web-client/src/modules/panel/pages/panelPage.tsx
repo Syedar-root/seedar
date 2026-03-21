@@ -3,6 +3,7 @@ import {
   useDataset,
   useExecuteTempQuery,
   useQuery,
+  useUpdateQuery,
 } from "#pkg/seedar/ui-react";
 import { useParams } from "react-router-dom";
 import styles from "./styles/panel.module.scss";
@@ -16,6 +17,7 @@ import { Aside } from "../components/aside";
 import { QueryZone } from "../components/queryZone";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DragItem } from "../components/dndHelper/dragZone/dragZone";
+import { toast } from "sonner";
 
 export const PanelPage = () => {
   const { panelId } = useParams();
@@ -85,6 +87,11 @@ export const PanelPage = () => {
   const { mutate: executeTempQuery } = useExecuteTempQuery();
   const [tempData, setTempData] = useState<ExecuteQueryResponse>();
   const handleRun = useCallback(() => {
+    if (!queryData) return;
+    if (!dropFields.length && !dropMetrics.length) {
+      toast.error("请添加维度或指标");
+      return;
+    }
     executeTempQuery(
       {
         ...queryData?.dsl,
@@ -98,6 +105,29 @@ export const PanelPage = () => {
       },
     );
   }, [dropFields, dropMetrics, executeTempQuery]);
+
+  const { mutate: updateQuery } = useUpdateQuery();
+  const handleSave = useCallback(() => {
+    if (!panelData) return;
+    updateQuery(
+      {
+        id: panelData?.queryId!,
+        data: {
+          dsl: {
+            ...queryData?.dsl,
+            dimensions: dropFields.map((f) => f.id),
+            metrics: dropMetrics,
+          },
+        },
+      },
+      {
+        onSuccess: async (data) => {
+          handleRun();
+          toast.success("保存成功");
+        },
+      },
+    );
+  }, [dropFields, dropMetrics, panelData, updateQuery]);
 
   return (
     <div className={styles.container}>
@@ -119,7 +149,9 @@ export const PanelPage = () => {
           />
         </header>
         <div className={styles.operations}>
-          <button className={styles.save}>保存</button>
+          <button className={styles.save} onClick={handleSave}>
+            保存
+          </button>
           <button className={styles.run} onClick={handleRun}>
             运行
           </button>

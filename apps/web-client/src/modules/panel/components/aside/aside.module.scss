@@ -1,16 +1,22 @@
 .dragItem {
   padding: 8px 12px;
+  font-size: 14px;
+  user-select: none;
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
 .sidebarDesc {
   font-size: 14px;
   color: #999;
+}
+
+.sidebarSection {
+  border-bottom: 1px solid #ccc;
+  padding-block: 16px;
 }
 
 .sidebarSectionTitle {
