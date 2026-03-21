@@ -84,7 +84,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
             margin={[MARGIN, MARGIN]}
             rowHeight={rowHeight}
             width={width}
-            // compactor={myCompactor}
+            compactor={myCompactor}
             onDragStop={handleDragStop}
             onResizeStop={handleResizeStop}
           >

@@ -10,6 +10,7 @@ import type {
   UpdateQueryRequest,
   ExecuteQueryResponse,
   QueryStatus,
+  QueryDSL,
 } from '#pkg/seedar/types';
 
 /**
@@ -115,5 +116,17 @@ export const useExecuteQuery = () => {
 
   return useMutation({
     mutationFn: (queryId: string) => queryApi.execute(queryId),
+  });
+};
+
+/**
+ * 执行临时查询
+ * @returns 包含执行临时查询的 mutation 对象
+ */
+export const useExecuteTempQuery = () => {
+  const queryApi = useQueryApi();
+
+  return useMutation({
+    mutationFn: (dsl: QueryDSL) => queryApi.executeTemp(dsl),
   });
 };

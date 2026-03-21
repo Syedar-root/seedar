@@ -12,6 +12,7 @@ import { QueryService } from './query.service';
 import { CreateQueryRequest } from './dto/create-query.request';
 import { UpdateQueryRequest } from './dto/update-query.request';
 import { ExecuteQueryRequest } from './dto/execute-query.request';
+import { ExecuteTempQueryRequest } from './dto/execute-temp-query.request';
 import { QueryStatus } from './query-status.enum';
 
 @Controller('query')
@@ -44,6 +45,11 @@ export class QueryController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.queryService.remove(id);
+  }
+
+  @Post('temp')
+  executeTemp(@Body() executeTempQueryRequest: ExecuteTempQueryRequest) {
+    return this.queryService.executeTemp(executeTempQueryRequest.dsl);
   }
 
   @Post('execute')

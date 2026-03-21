@@ -7,7 +7,7 @@ import { CreateQueryRequest } from './dto/create-query.request';
 import { UpdateQueryRequest } from './dto/update-query.request';
 import { ExecuteQueryResponse } from './dto/execute-query.response';
 import { QueryStatus } from './query-status.enum';
-import { DSLTransformer } from './dsl-transformer';
+import { DSLTransformer, QueryDSL } from './dsl-transformer';
 import { KnexSQLGenerator, Table, Field } from '@metric-engine/core';
 import { Datasource } from '@/module/datasource/entities/datasource.entity';
 import { DatasetService } from '@/module/dataset/services/dataset.service';
@@ -75,15 +75,28 @@ export class QueryService {
   async execute(queryId: string): Promise<ExecuteQueryResponse> {
     const query = await this.findOne(queryId);
 
-    // 获取数据集
-    const dataset = await this.datasetService.findOne(query.datasetId);
+    if (!query.dsl) {
+      throw new Error('Query DSL is required for execution');
+    }
+
+    return this.executeDSL(query.dsl, query.datasetId);
+  }
+
+  async executeTemp(dsl: QueryDSL): Promise<ExecuteQueryResponse> {
+    return this.executeDSL(dsl, dsl.datasetId);
+  }
+
+  private async executeDSL(
+    dsl: QueryDSL,
+    datasetId: number,
+  ): Promise<ExecuteQueryResponse> {
+    const dataset = await this.datasetService.findOne(datasetId);
     if (!dataset || !dataset.datasource) {
       throw new NotFoundException(
-        `DataSource not found for Dataset ${query.datasetId}`,
+        `DataSource not found for Dataset ${datasetId}`,
       );
     }
 
-    // 从数据库获取原始的Datasource实体
     const datasourceEntity = await this.datasourceRepository.findOne({
       where: { id: dataset.datasource.id },
     });
@@ -94,29 +107,17 @@ export class QueryService {
       );
     }
 
-    // 解密配置
     datasourceEntity.config = configDecryption(
       datasourceEntity.config as MySqlConfig,
       this.configService,
     );
 
-    // 从数据集获取表结构信息
     const tables = this.getTablesFromDataset(dataset);
-
-    // 检查 DSL 是否存在
-    if (!query.dsl) {
-      throw new Error('Query DSL is required for execution');
-    }
-
-    // 转换DSL
-    const metricQuery = DSLTransformer.transform(query.dsl, dataset, tables);
-
-    // 创建动态数据库连接
+    const metricQuery = DSLTransformer.transform(dsl, dataset, tables);
     const knexConnection =
       this.knexConnectionFactory.createConnection(datasourceEntity);
 
     try {
-      // 初始化KnexSQLGenerator
       KnexSQLGenerator.initializeKnex({
         client:
           datasourceEntity.type === DataSourceType.MYSQL
@@ -125,36 +126,25 @@ export class QueryService {
         connection: datasourceEntity.config,
       });
 
-      // 生成SQL
       const startTime = Date.now();
       const sqlResult = KnexSQLGenerator.generateSQLWithBindings(metricQuery);
-
-      // 执行SQL
       const results = await knexConnection.raw<any[][]>(
         sqlResult.sql,
         sqlResult.bindings,
       );
-
       const executionTime = Date.now() - startTime;
 
-      // 处理执行结果
       let rawRows: any[] = [];
       if (Array.isArray(results)) {
-        // 对于返回数组的情况（如某些数据库驱动）
         rawRows = results;
       } else {
-        // 对于其他情况，尝试转换
         rawRows = [results];
       }
 
-      // 生成 header
       const columnMappings = sqlResult.columnMappings || [];
-
       const header = columnMappings.map(
         (mapping) => mapping.businessName || mapping.displayName,
       );
-
-      // 将对象数组转换为二维数组，顺序与 header 一致
       const columnAliases = columnMappings.map((mapping) => mapping.alias);
 
       const rows = Array.isArray(rawRows[0])
@@ -166,7 +156,6 @@ export class QueryService {
           })
         : [];
 
-      // 构建响应
       return {
         sql: sqlResult.sql,
         results: {
@@ -174,10 +163,8 @@ export class QueryService {
           rows,
         },
         executionTime,
-        // columnMappings: sqlResult.columnMappings || [],
       };
     } finally {
-      // 确保连接正确关闭
       await knexConnection.destroy();
     }
   }

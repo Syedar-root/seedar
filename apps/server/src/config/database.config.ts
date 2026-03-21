@@ -25,7 +25,7 @@ export const databaseConfig = (
 ): TypeOrmModuleOptions => ({
   type: 'mysql',
   host: configService.get<string>('DB_HOST', 'localhost'),
-  port: configService.get<number>('DB_PORT', 3306),
+  port: configService.get<number>('DB_PORT', 3305),
   username: configService.get<string>('DB_USERNAME', 'root'),
   password: configService.get<string>('DB_PASSWORD', '2586603nnj'),
   database: configService.get<string>('DB_DATABASE', 'seedar_db'),

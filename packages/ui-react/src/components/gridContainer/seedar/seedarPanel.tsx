@@ -3,7 +3,7 @@ import { GridPanel, GridPanelProps } from '../gridPanel/gridPanel';
 import { Chart } from '../../charts';
 import { ListTable } from '../../table';
 import { Title } from './components/title';
-import { PanelResponse } from '#pkg/seedar/types';
+import { ExecuteQueryResponse, PanelResponse } from '#pkg/seedar/types';
 import { usePanel } from '../../../hooks';
 import { ISpec } from '@visactor/vchart';
 
@@ -13,11 +13,12 @@ export interface SeedarPanelProps extends Omit<GridPanelProps, 'headerExtra'> {
   className?: string;
   style?: React.CSSProperties;
   headerExtra?: (panelId: string) => React.ReactNode;
+  data?: ExecuteQueryResponse;
 }
 
 export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
   (
-    { panelId, panel, className = '', style = {}, headerExtra, ...rest },
+    { panelId, panel, className = '', style = {}, headerExtra, data, ...rest },
     ref
   ) => {
     // 只有当 panel 为 undefined 时才发起请求
@@ -28,17 +29,18 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
 
     const content = useMemo(() => {
       if (!finalPanel) return null;
+      console.log('data', data);
       const { type: panelType, queryId, config } = finalPanel;
       if (panelType === 'chart') {
-        return <Chart spec={config as ISpec} queryId={queryId} />;
+        return <Chart spec={config as ISpec} queryId={queryId} data={data} />;
       }
       if (panelType === 'table') {
-        return <ListTable queryId={queryId} />;
+        return <ListTable queryId={queryId} data={data} />;
       }
       if (panelType === 'text') {
         return <div>{config?.content}</div>;
       }
-    }, [finalPanel]);
+    }, [finalPanel, data]);
 
     if (!finalPanel && isPending) {
       //TODO: 加载中状态展示

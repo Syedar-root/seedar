@@ -1,5 +1,5 @@
-import { clsx } from 'clsx';
-import { useDrag } from 'react-dnd';
+import { clsx } from "clsx";
+import { useDrag } from "react-dnd";
 
 interface DragItemProps {
   className?: string;
@@ -7,6 +7,7 @@ interface DragItemProps {
   dragId: string | number;
   dragingOpacity?: number;
   itemType: string;
+  dragingStyle?: React.CSSProperties;
 }
 
 export const DragItem: React.FC<DragItemProps> = ({
@@ -15,6 +16,7 @@ export const DragItem: React.FC<DragItemProps> = ({
   dragingOpacity = 0.5,
   itemType,
   className,
+  dragingStyle,
 }: DragItemProps) => {
   const [{ isDragging }, dragRef] = useDrag(() => ({
     // 拖拽类型（和放置区匹配）
@@ -28,9 +30,9 @@ export const DragItem: React.FC<DragItemProps> = ({
   }));
   return (
     <div
-      className={className}
+      className={clsx(className)}
       ref={dragRef}
-      style={{ opacity: isDragging ? dragingOpacity : 1 }}
+      style={isDragging ? dragingStyle : {}}
     >
       {children}
     </div>

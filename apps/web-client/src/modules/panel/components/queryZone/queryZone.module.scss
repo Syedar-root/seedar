@@ -11,4 +11,28 @@
   display: flex;
   border: 2px dashed #999;
   text-align: center;
+  gap: 16px;
+  align-items: center;
+  padding-inline: 16px;
+}
+
+@mixin drag-item-style($bg-color) {
+  padding: 4px 8px;
+  border-radius: 12px;
+  border: 1px solid $bg-color;
+  cursor: pointer;
+  background: $bg-color;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  user-select: none;
+}
+
+.field {
+  @include drag-item-style(#7fc2f8);
+}
+
+.metric {
+  @include drag-item-style(#a9fa8a);
 }

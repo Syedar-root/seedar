@@ -28,6 +28,13 @@ export interface ExecuteQueryRequest {
 }
 
 /**
+ * 执行临时查询请求接口
+ */
+export interface ExecuteTempQueryRequest {
+  dsl: QueryDSL;
+}
+
+/**
  * 执行查询响应接口
  */
 export interface ExecuteQueryResponse {

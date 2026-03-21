@@ -6,11 +6,12 @@ import { ExecuteQueryResponse } from '#pkg/seedar/types';
 export interface ListTableProps {
   vtableProps?: React.ComponentProps<typeof VListTable>;
   queryId?: string;
+  data?: ExecuteQueryResponse;
 }
 
 export const ListTable: React.FC<ListTableProps> = (props) => {
-  const { vtableProps = {}, queryId } = props;
-  const { mutate: executeQuery, data } = useExecuteQuery();
+  const { vtableProps = {}, queryId, data } = props;
+  const { mutate: executeQuery } = useExecuteQuery();
 
   // 🔥 修复1：修正ref类型 → 指向VListTable组件实例（不是div）
   const tableRef = useRef<any>(null);
@@ -25,6 +26,16 @@ export const ListTable: React.FC<ListTableProps> = (props) => {
 
   // 数据请求 + 配置更新
   useEffect(() => {
+
+    if (data) {
+      const transformed = transformData(data);
+      setTableOption((prev) => ({
+        ...prev,
+        ...transformed,
+      }));
+      return;
+    }
+
     if (!queryId) return;
 
     executeQuery(queryId, {
@@ -36,7 +47,7 @@ export const ListTable: React.FC<ListTableProps> = (props) => {
         }));
       },
     });
-  }, [queryId, vtableProps.option]);
+  }, [queryId, vtableProps.option, data]);
 
   useEffect(() => {
     const container = containerRef.current;

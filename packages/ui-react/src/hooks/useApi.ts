@@ -12,6 +12,7 @@ import type {
   UpdateQueryRequest,
   ExecuteQueryResponse,
   QueryStatus,
+  QueryDSL,
   DashboardResponse,
   CreateDashboardRequest,
   UpdateDashboardRequest,
@@ -140,6 +141,10 @@ export const useQueryApi = () => {
     return QueryApi.execute(queryId, options);
   }, []);
 
+  const executeTemp = useCallback((dsl: QueryDSL, options?: RequestOptions) => {
+    return QueryApi.executeTemp(dsl, options);
+  }, []);
+
   return {
     findAll,
     findOne,
@@ -147,6 +152,7 @@ export const useQueryApi = () => {
     update,
     remove,
     execute,
+    executeTemp,
   };
 };
 

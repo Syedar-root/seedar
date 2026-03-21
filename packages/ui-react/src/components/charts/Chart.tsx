@@ -8,10 +8,11 @@ export interface ChartProps {
   vchartProps?: React.ComponentProps<typeof VChart>;
   spec: ISpec;
   queryId?: string;
+  data?: ExecuteQueryResponse;
 }
 
 export const Chart: React.FC<ChartProps> = (props) => {
-  const { vchartProps = {}, spec = { type: 'bar' }, queryId } = props;
+  const { vchartProps = {}, spec = { type: 'bar' }, queryId, data } = props;
   const { mutate: executeQuery } = useExecuteQuery();
 
   const [rawData, setRawData] = useState<ExecuteQueryResponse>();
@@ -22,13 +23,17 @@ export const Chart: React.FC<ChartProps> = (props) => {
 
   // 仅在 queryId 变化时执行查询
   useEffect(() => {
+    if (data) {
+      setRawData(data);
+      return;
+    }
     if (!queryId) return;
     executeQuery(queryId, {
       onSuccess: (data) => {
         setRawData(data);
       },
     });
-  }, [queryId, executeQuery]);
+  }, [queryId, executeQuery, data]);
 
   // 仅在 rawData 或 spec 变化时转换数据
   useEffect(() => {

@@ -5,6 +5,7 @@ import {
   CreateQueryRequest,
   UpdateQueryRequest,
   ExecuteQueryResponse,
+  QueryDSL,
 } from '#pkg/seedar/types';
 
 /**
@@ -93,6 +94,23 @@ export class QueryApi {
     return ApiClient.post<ExecuteQueryResponse>(
       '/query/execute',
       { queryId },
+      options
+    );
+  }
+
+  /**
+   * 执行临时查询
+   * @param dsl - 查询 DSL
+   * @param options - 请求选项
+   * @returns 执行结果
+   */
+  static async executeTemp(
+    dsl: QueryDSL,
+    options?: RequestOptions
+  ): Promise<ExecuteQueryResponse> {
+    return ApiClient.post<ExecuteQueryResponse>(
+      '/query/temp',
+      { dsl },
       options
     );
   }
