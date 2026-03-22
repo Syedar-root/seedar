@@ -5,6 +5,7 @@ import { Aside } from "../components/aside";
 import { QueryZone } from "../components/queryZone";
 import { PanelEditor } from "../components/panelEditor";
 import { EditableTitle } from "../components/editableTitle";
+import { DatasetSelector } from "../components/datasetSelector";
 import { toast } from "sonner";
 import {
   usePanelEditorState,
@@ -127,29 +128,6 @@ export const PanelPage = () => {
       </main>
     </div>
   ) : (
-    <div className={styles.datasetSelector}>
-      <div className={styles.datasetSelectorContent}>
-        <h2 className={styles.datasetSelectorTitle}>选择数据集</h2>
-        <p className={styles.datasetSelectorDesc}>
-          请选择一个数据集来创建新的看板
-        </p>
-        <div className={styles.datasetList}>
-          {datasets?.map((dataset) => (
-            <button
-              key={dataset.id}
-              className={styles.datasetItem}
-              onClick={() => handleSelectDataset(dataset)}
-            >
-              <div className={styles.datasetItemName}>{dataset.name}</div>
-              {dataset.description && (
-                <div className={styles.datasetItemDesc}>
-                  {dataset.description}
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+    <DatasetSelector datasets={datasets || []} onSelect={handleSelectDataset} />
   );
 };
