@@ -7,9 +7,7 @@ import {
   DEFAULT_COLORS,
 } from "./types";
 import { TypeSelector } from "./components/typeSelector/typeSelector";
-import { FieldMapper } from "./components/fieldMapper/fieldMapper";
-import { ColorPicker } from "./components/colorPicker/colorPicker";
-import { LabelConfigurator } from "./components/labelConfigurator/labelConfigurator";
+import { getConfigComponents } from "./configRegistry";
 import styles from "./panelEditor.module.scss";
 import type { DragItem } from "../dndHelper/dragZone/dragZone";
 
@@ -47,42 +45,28 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 
   const handleConfigChange = (partialConfig: Partial<PanelEditorConfig>) => {
     const newConfig = { ...currentConfig, ...partialConfig };
-    console.log("newconfig", newConfig);
     setCurrentConfig(newConfig);
     onChange(currentType, newConfig);
   };
 
-  const fieldConfig = useMemo(() => {
-    if (currentType === "table" || currentType === "card") return null;
-    return CHART_FIELD_CONFIGS[currentType as ChartType] || null;
-  }, [currentType]);
+  const configComponents = useMemo(
+    () => getConfigComponents(currentType),
+    [currentType],
+  );
 
   return (
     <div className={styles.editor}>
       <TypeSelector value={currentType} onChange={handleTypeChange} />
 
-      {fieldConfig && (
-        <FieldMapper
+      {configComponents.map((Component, index) => (
+        <Component
+          key={index}
           fields={fields}
           metrics={metrics}
           config={currentConfig}
-          fieldConfig={fieldConfig}
           onChange={handleConfigChange}
         />
-      )}
-
-      {currentType !== "table" && currentType !== "card" && (
-        <>
-          <LabelConfigurator
-            config={currentConfig.label || { visible: false }}
-            onChange={(label) => handleConfigChange({ label })}
-          />
-          <ColorPicker
-            colors={currentConfig.color || DEFAULT_COLORS}
-            onChange={(colors) => handleConfigChange({ color: colors })}
-          />
-        </>
-      )}
+      ))}
     </div>
   );
 };

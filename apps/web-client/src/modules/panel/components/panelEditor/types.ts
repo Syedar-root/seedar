@@ -1,3 +1,5 @@
+import type { DragItem } from "../dndHelper/dragZone/dragZone";
+
 export type DisplayPanelType =
   | "table"
   | "card"
@@ -24,6 +26,13 @@ export interface PanelEditorConfig {
   sizeField?: string;
   color?: string[];
   label?: LabelConfig;
+}
+
+export interface ConfigPanelProps {
+  fields: DragItem[];
+  metrics: DragItem[];
+  config: PanelEditorConfig;
+  onChange: (config: Partial<PanelEditorConfig>) => void;
 }
 
 export interface ChartFieldConfig {
