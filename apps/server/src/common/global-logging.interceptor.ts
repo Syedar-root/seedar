@@ -30,7 +30,7 @@ export class GlobalLoggingInterceptor implements NestInterceptor {
     if (body && Object.keys(body).length > 0) {
       const safeBody = this.filterSensitiveData(body);
 
-      console.log('safeBody', safeBody);
+      // console.log('safeBody', safeBody);
 
       this.logger.debug(
         `Request Body: ${JSON.stringify(safeBody)}`,

@@ -1,4 +1,36 @@
 /**
+ * 数据库类型
+ */
+export type DatabaseClient = 'mysql2' | 'pg' | 'postgres' | 'postgresql' | 'clickhouse' | 'sqlite3' | 'oracledb' | 'mssql';
+
+/**
+ * 数据库方言配置（静态全局配置）
+ */
+export class DatabaseDialect {
+  private static currentClient: DatabaseClient = 'mysql2';
+
+  static setClient(client: DatabaseClient): void {
+    this.currentClient = client;
+  }
+
+  static getClient(): DatabaseClient {
+    return this.currentClient;
+  }
+
+  static isPostgres(): boolean {
+    return this.currentClient === 'pg' || this.currentClient === 'postgres' || this.currentClient === 'postgresql';
+  }
+
+  static isMySQL(): boolean {
+    return this.currentClient === 'mysql2';
+  }
+
+  static isClickHouse(): boolean {
+    return this.currentClient === 'clickhouse';
+  }
+}
+
+/**
  * 字段数据类型枚举
  */
 export enum FieldType {

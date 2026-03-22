@@ -580,6 +580,20 @@ export class DSLTransformer {
           filter.value,
         );
       }
+      if (filter.op === 'recent_weeks' && typeof filter.value === 'number') {
+        return TimeFilter.createRecentFilter(
+          field,
+          TimeRange.RECENT_WEEKS,
+          filter.value,
+        );
+      }
+      if (filter.op === 'recent_months' && typeof filter.value === 'number') {
+        return TimeFilter.createRecentFilter(
+          field,
+          TimeRange.RECENT_MONTHS,
+          filter.value,
+        );
+      }
 
       // 处理原始SQL值
       let value = filter.value as unknown;
