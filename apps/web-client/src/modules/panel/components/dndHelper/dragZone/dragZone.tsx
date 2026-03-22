@@ -1,5 +1,5 @@
-import React from 'react';
-import { useDrop } from 'react-dnd';
+import React from "react";
+import { useDrop } from "react-dnd";
 
 export interface DragItem {
   id: string | number;
@@ -10,7 +10,7 @@ interface DragZoneProps {
   // 放置成功的回调函数（TS严格约束参数）
   onDrop: (item: DragItem) => void;
   children: React.ReactNode;
-  itemType: string;
+  itemType: string | string[];
   className?: string;
   style?: React.CSSProperties;
   overColor?: string;

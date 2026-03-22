@@ -7,6 +7,7 @@ import {
 import { PanelResponse, PanelType } from "#pkg/seedar/types";
 import { DisplayPanelType, PanelEditorConfig } from "../components/panelEditor";
 import { DragItem } from "../components/dndHelper/dragZone/dragZone";
+import { FilterItem } from "../components/queryZone/types";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { NavigateFunction } from "react-router-dom";
@@ -18,6 +19,7 @@ interface UsePanelActionsParams {
   datasetData?: any;
   dropFields: DragItem[];
   dropMetrics: DragItem[];
+  dropFilters: FilterItem[];
   displayType: DisplayPanelType;
   editorConfig: PanelEditorConfig;
   handleRun: () => void;
@@ -37,6 +39,7 @@ export const usePanelActions = ({
   datasetData,
   dropFields,
   dropMetrics,
+  dropFilters,
   displayType,
   editorConfig,
   handleRun,
@@ -69,9 +72,14 @@ export const usePanelActions = ({
         ...baseDsl,
         dimensions: dropFields.map((f) => f.id),
         metrics: dropMetrics,
+        filters: dropFilters.map((f) => ({
+          fieldId: f.fieldId,
+          op: f.op,
+          value: f.value,
+        })),
       };
     },
-    [datasetData, dropFields, dropMetrics],
+    [datasetData, dropFields, dropMetrics, dropFilters],
   );
 
   const handleSave = useCallback(() => {

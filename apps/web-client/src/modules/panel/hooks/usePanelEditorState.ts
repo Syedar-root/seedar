@@ -16,11 +16,13 @@ import {
   DEFAULT_COLORS,
   DEFAULT_LEGENDS_CONFIG,
 } from "../components/panelEditor";
+import { FilterItem } from "../components/queryZone/types";
 import { useCallback, useEffect, useState } from "react";
 
 interface UsePanelEditorStateReturn {
   dropFields: DragItem[];
   dropMetrics: DragItem[];
+  dropFilters: FilterItem[];
   displayType: DisplayPanelType;
   editorConfig: PanelEditorConfig;
   tempData: ExecuteQueryResponse | undefined;
@@ -31,7 +33,16 @@ interface UsePanelEditorStateReturn {
   handleRemoveField: (item: DragItem) => void;
   handleDropMetric: (item: DragItem) => void;
   handleRemoveMetric: (item: DragItem) => void;
-  handleEditorChange: (type: DisplayPanelType, config: PanelEditorConfig) => void;
+  handleDropFilter: (item: DragItem) => void;
+  handleRemoveFilter: (id: string | number) => void;
+  handleUpdateFilter: (
+    id: string | number,
+    updates: Partial<FilterItem>,
+  ) => void;
+  handleEditorChange: (
+    type: DisplayPanelType,
+    config: PanelEditorConfig,
+  ) => void;
   handleRun: () => void;
   title: string;
   handleTitleChange: (title: string) => void;
@@ -42,6 +53,7 @@ export const usePanelEditorState = (
 ): UsePanelEditorStateReturn => {
   const [dropFields, setDropFields] = useState<DragItem[]>([]);
   const [dropMetrics, setDropMetrics] = useState<DragItem[]>([]);
+  const [dropFilters, setDropFilters] = useState<FilterItem[]>([]);
   const [displayType, setDisplayType] = useState<DisplayPanelType>("table");
   const [editorConfig, setEditorConfig] = useState<PanelEditorConfig>({
     color: DEFAULT_COLORS,
@@ -70,6 +82,23 @@ export const usePanelEditorState = (
           }
         );
       }),
+    );
+    setDropFilters(
+      (queryData?.dsl?.filters || []).map(
+        (filter: { fieldId: number; op: string; value?: any }) => {
+          const field = datasetData?.fields?.find(
+            (f) => f.id === filter.fieldId,
+          );
+          return {
+            id: `filter_${filter.fieldId}_${Date.now()}`,
+            fieldId: filter.fieldId,
+            name: field?.businessName || field?.name || `字段${filter.fieldId}`,
+            fieldType: field?.type,
+            op: filter.op,
+            value: filter.value,
+          };
+        },
+      ),
     );
   }, [queryData, datasetData]);
 
@@ -128,6 +157,41 @@ export const usePanelEditorState = (
     setDropMetrics((prev) => prev.filter((i) => i.id !== item.id));
   }, []);
 
+  const handleDropFilter = useCallback(
+    (item: DragItem) => {
+      if (!datasetData) return;
+      const field = datasetData.fields?.find((f) => f.id === item.id);
+      if (!field) return;
+      setDropFilters((prev) => {
+        if (prev.some((f) => f.fieldId === item.id)) return prev;
+        return [
+          ...prev,
+          {
+            id: `filter_${item.id}_${Date.now()}`,
+            fieldId: field.id,
+            name: field.businessName || field.name,
+            fieldType: field.type,
+            op: "=",
+          },
+        ];
+      });
+    },
+    [datasetData],
+  );
+
+  const handleRemoveFilter = useCallback((id: string | number) => {
+    setDropFilters((prev) => prev.filter((f) => f.id !== id));
+  }, []);
+
+  const handleUpdateFilter = useCallback(
+    (id: string | number, updates: Partial<FilterItem>) => {
+      setDropFilters((prev) =>
+        prev.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+      );
+    },
+    [],
+  );
+
   const handleEditorChange = useCallback(
     (type: DisplayPanelType, config: PanelEditorConfig) => {
       setDisplayType(type);
@@ -153,6 +217,11 @@ export const usePanelEditorState = (
         ...queryData?.dsl,
         dimensions: dropFields.map((f) => f.id),
         metrics: dropMetrics,
+        filters: dropFilters.map((f) => ({
+          fieldId: f.fieldId,
+          op: f.op,
+          value: f.value,
+        })),
       },
       {
         onSuccess: (data) => {
@@ -160,11 +229,19 @@ export const usePanelEditorState = (
         },
       },
     );
-  }, [dropFields, dropMetrics, executeTempQuery, queryData, datasetData]);
+  }, [
+    dropFields,
+    dropMetrics,
+    dropFilters,
+    executeTempQuery,
+    queryData,
+    datasetData,
+  ]);
 
   return {
     dropFields,
     dropMetrics,
+    dropFilters,
     displayType,
     editorConfig,
     tempData,
@@ -175,6 +252,9 @@ export const usePanelEditorState = (
     handleRemoveField,
     handleDropMetric,
     handleRemoveMetric,
+    handleDropFilter,
+    handleRemoveFilter,
+    handleUpdateFilter,
     handleEditorChange,
     handleRun,
     title,

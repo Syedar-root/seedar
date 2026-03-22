@@ -3,25 +3,36 @@ import styles from "./queryZone.module.scss";
 import { DragZone } from "../dndHelper";
 import { DragItem } from "../dndHelper/dragZone/dragZone";
 import { X } from "lucide-react";
+import { FilterItem } from "./filterItem";
+import { FilterItem as FilterItemType } from "./types";
 
-// 🔥 定义组件Props类型
 interface QueryZoneProps {
-  // 放置成功的回调函数（TS严格约束参数）
   onDropField: (item: DragItem) => void;
   onDropMetric: (item: DragItem) => void;
+  onDropFilter: (item: DragItem) => void;
   onRemoveField: (item: DragItem) => void;
   onRemoveMetric: (item: DragItem) => void;
+  onRemoveFilter: (id: string | number) => void;
+  onUpdateFilter: (
+    id: string | number,
+    updates: Partial<FilterItemType>,
+  ) => void;
   dropFields: DragItem[];
   dropMetrics: DragItem[];
+  dropFilters: FilterItemType[];
 }
 
 export const QueryZone: React.FC<QueryZoneProps> = ({
   onDropField,
   onDropMetric,
+  onDropFilter,
   onRemoveField,
   onRemoveMetric,
+  onRemoveFilter,
+  onUpdateFilter,
   dropFields,
   dropMetrics,
+  dropFilters,
 }) => {
   return (
     <div className={styles.queryZone}>
@@ -54,6 +65,24 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
               {item.businessName || item.name}
               <X size={12} onClick={() => onRemoveMetric(item)} />
             </div>
+          ))}
+        </DragZone>
+      </div>
+      <div className={styles.zone}>
+        <div className={styles.title}>筛选</div>
+        <DragZone
+          className={styles.dragZone}
+          onDrop={onDropFilter}
+          itemType="fieldItem"
+          overColor="#e6f7ff"
+        >
+          {dropFilters.map((filter) => (
+            <FilterItem
+              key={filter.id}
+              filter={filter}
+              onUpdate={onUpdateFilter}
+              onRemove={onRemoveFilter}
+            />
           ))}
         </DragZone>
       </div>

@@ -127,8 +127,6 @@ export class DSLTransformer {
 
     // 创建连接
     const joins: Join[] = [];
-    console.log('hcs joinMap', joinMap);
-    console.log('hcs dsl.joins', dsl.joins);
 
     if (dsl.joins && dsl.joins.length > 0) {
       for (const j of dsl.joins) {
@@ -176,8 +174,6 @@ export class DSLTransformer {
         );
       }
     }
-
-    console.log('hcs joins', joins[0].conditions);
 
     // 解析字段引用
     function resolveField(fieldId: number): Field {

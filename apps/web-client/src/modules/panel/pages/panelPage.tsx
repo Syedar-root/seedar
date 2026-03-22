@@ -23,6 +23,7 @@ export const PanelPage = () => {
   const {
     dropFields,
     dropMetrics,
+    dropFilters,
     displayType,
     editorConfig,
     tempData,
@@ -33,6 +34,9 @@ export const PanelPage = () => {
     handleRemoveField,
     handleDropMetric,
     handleRemoveMetric,
+    handleDropFilter,
+    handleRemoveFilter,
+    handleUpdateFilter,
     handleEditorChange,
     handleRun,
     title,
@@ -46,6 +50,7 @@ export const PanelPage = () => {
     datasetData,
     dropFields,
     dropMetrics,
+    dropFilters,
     displayType,
     editorConfig,
     handleRun,
@@ -88,10 +93,14 @@ export const PanelPage = () => {
           <QueryZone
             onDropField={handleDropField}
             onDropMetric={handleDropMetric}
+            onDropFilter={handleDropFilter}
             onRemoveField={handleRemoveField}
             onRemoveMetric={handleRemoveMetric}
+            onRemoveFilter={handleRemoveFilter}
+            onUpdateFilter={handleUpdateFilter}
             dropFields={dropFields}
             dropMetrics={dropMetrics}
+            dropFilters={dropFilters}
           />
           <div className={styles.operations}>
             <button className={styles.save} onClick={handleSave}>
