@@ -131,6 +131,8 @@ export class QueryService {
 
       const startTime = Date.now();
       const sqlResult = KnexSQLGenerator.generateSQLWithBindings(metricQuery);
+
+      console.log(sqlResult);
       const results = await knexConnection.raw<any[][]>(
         sqlResult.sql,
         sqlResult.bindings,

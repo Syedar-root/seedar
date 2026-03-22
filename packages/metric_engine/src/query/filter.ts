@@ -1,15 +1,15 @@
-import { Field } from '../core/field';
-import { Operator, DatabaseDialect } from '../core/types';
-import { Metric } from '../metrics/metric-classes';
+import { Field } from "../core/field";
+import { Operator, DatabaseDialect } from "../core/types";
+import { Metric } from "../metrics/metric-classes";
 
 /**
  * 时间范围类型枚举
  */
 export enum TimeRange {
-  RECENT_DAYS = 'recent_days',
-  RECENT_WEEKS = 'recent_weeks',
-  RECENT_MONTHS = 'recent_months',
-  CUSTOM_DATE_RANGE = 'custom_date_range',
+  RECENT_DAYS = "recent_days",
+  RECENT_WEEKS = "recent_weeks",
+  RECENT_MONTHS = "recent_months",
+  CUSTOM_DATE_RANGE = "custom_date_range",
 }
 
 /**
@@ -49,47 +49,47 @@ export class Filter {
 
     // 标准化运算符，确保使用正确的SQL运算符
     let sqlOperator: string = this.operator;
-    if (typeof sqlOperator === 'string') {
+    if (typeof sqlOperator === "string") {
       // 处理字符串形式的运算符
       switch (sqlOperator.toLowerCase()) {
-        case 'greater_equal':
-        case 'gte':
-          sqlOperator = '>=';
+        case "greater_equal":
+        case "gte":
+          sqlOperator = ">=";
           break;
-        case 'less_equal':
-        case 'lte':
-          sqlOperator = '<=';
+        case "less_equal":
+        case "lte":
+          sqlOperator = "<=";
           break;
-        case 'not_equals':
-        case 'neq':
-          sqlOperator = '!=';
+        case "not_equals":
+        case "neq":
+          sqlOperator = "!=";
           break;
-        case 'equals':
-        case 'eq':
-          sqlOperator = '=';
+        case "equals":
+        case "eq":
+          sqlOperator = "=";
           break;
-        case 'greater_than':
-        case 'gt':
-          sqlOperator = '>';
+        case "greater_than":
+        case "gt":
+          sqlOperator = ">";
           break;
-        case 'less_than':
-        case 'lt':
-          sqlOperator = '<';
+        case "less_than":
+        case "lt":
+          sqlOperator = "<";
           break;
-        case 'like':
-          sqlOperator = 'LIKE';
+        case "like":
+          sqlOperator = "LIKE";
           break;
-        case 'in':
-          sqlOperator = 'IN';
+        case "in":
+          sqlOperator = "IN";
           break;
-        case 'not_in':
-          sqlOperator = 'NOT IN';
+        case "not_in":
+          sqlOperator = "NOT IN";
           break;
-        case 'is_null':
-          sqlOperator = 'IS NULL';
+        case "is_null":
+          sqlOperator = "IS NULL";
           break;
-        case 'is_not_null':
-          sqlOperator = 'IS NOT NULL';
+        case "is_not_null":
+          sqlOperator = "IS NOT NULL";
           break;
         default:
           // 如果是其他字符串，直接使用
@@ -97,14 +97,14 @@ export class Filter {
       }
     }
 
-    if (sqlOperator === 'IN' || sqlOperator === 'NOT IN') {
+    if (sqlOperator === "IN" || sqlOperator === "NOT IN") {
       // 处理IN操作符
       if (Array.isArray(this.value)) {
-        valueStr = `(${this.value.map((v) => this.formatValue(v)).join(', ')})`;
+        valueStr = `(${this.value.map((v) => this.formatValue(v)).join(", ")})`;
       } else {
         valueStr = `(${this.formatValue(this.value)})`;
       }
-    } else if (sqlOperator === 'IS NULL' || sqlOperator === 'IS NOT NULL') {
+    } else if (sqlOperator === "IS NULL" || sqlOperator === "IS NOT NULL") {
       // NULL相关的操作符不需要值
       return `${fieldExpr} ${sqlOperator}`;
     } else {
@@ -119,15 +119,15 @@ export class Filter {
    */
   private formatValue(value: any): string {
     // 支持原始SQL表达式
-    if (value && typeof value === 'object' && value.rawSql) {
+    if (value && typeof value === "object" && value.rawSql) {
       return value.rawSql;
     }
 
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       // 检测子查询：以(SELECT开头，以)结尾的字符串不加引号
       if (
-        value.trim().toUpperCase().startsWith('(SELECT') &&
-        value.trim().endsWith(')')
+        value.trim().toUpperCase().startsWith("(SELECT") &&
+        value.trim().endsWith(")")
       ) {
         return value;
       }
@@ -135,7 +135,7 @@ export class Filter {
     } else if (value instanceof Date) {
       return `'${value.toISOString()}'`;
     } else if (value === null) {
-      return 'NULL';
+      return "NULL";
     } else {
       return value.toString();
     }
@@ -172,7 +172,7 @@ export class TimeFilter extends Filter {
     timeRange?: TimeRange,
     timeValue?: number,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
   ) {
     // 调用父类构造函数，传递null值，因为我们会在toSQL中自定义处理
     super(field, Operator.EQUALS, null);
@@ -192,7 +192,7 @@ export class TimeFilter extends Filter {
       | TimeRange.RECENT_DAYS
       | TimeRange.RECENT_WEEKS
       | TimeRange.RECENT_MONTHS,
-    timeValue: number
+    timeValue: number,
   ): TimeFilter {
     return new TimeFilter(field, timeRange, timeValue);
   }
@@ -203,14 +203,14 @@ export class TimeFilter extends Filter {
   static createDateRangeFilter(
     field: Field,
     startDate: string,
-    endDate: string
+    endDate: string,
   ): TimeFilter {
     return new TimeFilter(
       field,
       TimeRange.CUSTOM_DATE_RANGE,
       undefined,
       startDate,
-      endDate
+      endDate,
     );
   }
 
@@ -259,7 +259,7 @@ export class TimeFilter extends Filter {
 
       case TimeRange.CUSTOM_DATE_RANGE:
         if (!this.startDate || !this.endDate) {
-          throw new Error('自定义日期范围需要同时指定startDate和endDate');
+          throw new Error("自定义日期范围需要同时指定startDate和endDate");
         }
         return `${fieldExpr} >= '${this.startDate}' AND ${fieldExpr} <= '${this.endDate}'`;
 
