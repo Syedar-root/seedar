@@ -1,4 +1,5 @@
 import type { DragItem } from "../dndHelper/dragZone/dragZone";
+import type { PanelType } from "#pkg/seedar/types";
 
 export type DisplayPanelType =
   | "table"
@@ -36,7 +37,7 @@ export interface PanelEditorConfig {
   sizeField?: string;
   color?: string[];
   label?: LabelConfig;
-  legend?: LegendConfig;
+  legends?: LegendConfig;
 }
 
 export interface ConfigPanelProps {
@@ -98,7 +99,7 @@ export const LEGEND_LAYOUT_OPTIONS: { value: LegendLayout; label: string }[] = [
   { value: "vertical", label: "垂直" },
 ];
 
-export const DEFAULT_LEGEND_CONFIG: LegendConfig = {
+export const DEFAULT_LEGENDS_CONFIG: LegendConfig = {
   visible: false,
   orient: "top",
   layout: "horizontal",

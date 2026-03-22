@@ -5,11 +5,17 @@ import {
   useQuery,
   useUpdateQuery,
   useUpdatePanel,
+  useCreateQuery,
+  useCreatePanel,
 } from "#pkg/seedar/ui-react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import styles from "./styles/panel.module.scss";
 import { usePanel } from "#pkg/seedar/ui-react";
-import { ExecuteQueryResponse, PanelResponse } from "#pkg/seedar/types";
+import {
+  ExecuteQueryResponse,
+  PanelResponse,
+  PanelType,
+} from "#pkg/seedar/types";
 import { Aside } from "../components/aside";
 import { QueryZone } from "../components/queryZone";
 import {
@@ -17,7 +23,7 @@ import {
   DisplayPanelType,
   PanelEditorConfig,
   DEFAULT_COLORS,
-  DEFAULT_LEGEND_CONFIG,
+  DEFAULT_LEGENDS_CONFIG,
   ChartType,
   CHART_FIELD_CONFIGS,
 } from "../components/panelEditor";
@@ -36,7 +42,7 @@ export const PanelPage = () => {
   const [displayType, setDisplayType] = useState<DisplayPanelType>("table");
   const [editorConfig, setEditorConfig] = useState<PanelEditorConfig>({
     color: DEFAULT_COLORS,
-    legend: DEFAULT_LEGEND_CONFIG,
+    legends: DEFAULT_LEGENDS_CONFIG,
   });
 
   const { data: panelData } = usePanel(panelId);
@@ -74,7 +80,7 @@ export const PanelPage = () => {
     setEditorConfig({
       ...config,
       color: config.color || DEFAULT_COLORS,
-      legend: config.legend || DEFAULT_LEGEND_CONFIG,
+      legends: config.legends || DEFAULT_LEGENDS_CONFIG,
     });
   }, [panelData]);
 
@@ -109,7 +115,12 @@ export const PanelPage = () => {
   }, []);
 
   const { mutate: executeTempQuery } = useExecuteTempQuery();
+  const { mutate: updateQuery } = useUpdateQuery();
+  const { mutate: updatePanel } = useUpdatePanel();
+  const { mutate: createQuery } = useCreateQuery();
+  const { mutate: createPanel } = useCreatePanel();
   const [tempData, setTempData] = useState<ExecuteQueryResponse>();
+  const navigate = useNavigate();
 
   const handleRun = useCallback(() => {
     if (!queryData) return;
@@ -130,9 +141,6 @@ export const PanelPage = () => {
       },
     );
   }, [dropFields, dropMetrics, executeTempQuery, queryData]);
-
-  const { mutate: updateQuery } = useUpdateQuery();
-  const { mutate: updatePanel } = useUpdatePanel();
 
   const handleSave = useCallback(() => {
     if (!panelData || !panelId) return;
@@ -189,6 +197,58 @@ export const PanelPage = () => {
     handleRun,
   ]);
 
+  const handleSaveAs = useCallback(() => {
+    if (!panelData || !panelId) return;
+    createQuery(
+      {
+        name: "未命名查询",
+        datasetId: datasetData?.id!,
+        dsl: {
+          ...queryData?.dsl,
+          dimensions: dropFields.map((f) => f.id),
+          metrics: dropMetrics,
+        },
+      },
+      {
+        onSuccess: (data) => {
+          const panelType =
+            displayType === "table" || displayType === "card"
+              ? displayType
+              : "chart";
+          createPanel(
+            {
+              title: "未命名面板",
+              queryId: data.id,
+              type: panelType as PanelType,
+              config: {
+                ...editorConfig,
+                type: displayType,
+              },
+            },
+            {
+              onSuccess: (data) => {
+                navigate(`/panel/${data.id}`);
+                toast.success("另存为成功");
+              },
+            },
+          );
+        },
+      },
+    );
+  }, [
+    panelData,
+    panelId,
+    datasetData,
+    dropFields,
+    dropMetrics,
+    displayType,
+    editorConfig,
+    createQuery,
+    createPanel,
+    queryData?.dsl,
+    navigate,
+  ]);
+
   const handleEditorChange = useCallback(
     (type: DisplayPanelType, config: PanelEditorConfig) => {
       setDisplayType(type);
@@ -212,21 +272,15 @@ export const PanelPage = () => {
       baseSpec.label = { visible: true };
     }
 
-    const legendConfig = editorConfig.legend || DEFAULT_LEGEND_CONFIG;
-    if (legendConfig.visible) {
+    if (editorConfig.legends?.visible) {
       baseSpec.legends = {
         visible: true,
-        orient: legendConfig.orient,
-        layout: legendConfig.layout,
+        orient: editorConfig.legends.orient,
+        layout: editorConfig.legends.layout,
+        ...(editorConfig.legends.title && {
+          title: { visible: true, text: editorConfig.legends.title },
+        }),
       };
-      if (legendConfig.title) {
-        baseSpec.legends.title = {
-          visible: true,
-          text: legendConfig.title,
-        };
-      }
-    } else {
-      baseSpec.legends = { visible: false };
     }
 
     const fieldConfig = CHART_FIELD_CONFIGS[displayType as ChartType];
@@ -276,6 +330,9 @@ export const PanelPage = () => {
         <div className={styles.operations}>
           <button className={styles.save} onClick={handleSave}>
             保存
+          </button>
+          <button className={styles.saveAs} onClick={handleSaveAs}>
+            另存为
           </button>
           <button className={styles.run} onClick={handleRun}>
             运行

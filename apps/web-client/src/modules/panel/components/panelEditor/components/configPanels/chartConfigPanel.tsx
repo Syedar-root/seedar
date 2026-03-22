@@ -5,7 +5,7 @@ import { ColorPicker } from "../colorPicker/colorPicker";
 import {
   CHART_FIELD_CONFIGS,
   DEFAULT_COLORS,
-  DEFAULT_LEGEND_CONFIG,
+  DEFAULT_LEGENDS_CONFIG,
   type ConfigPanelProps,
   type ChartType,
 } from "../../types";
@@ -35,8 +35,8 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
         onChange={(label) => onChange({ label })}
       />
       <LegendConfigurator
-        config={config.legend || DEFAULT_LEGEND_CONFIG}
-        onChange={(legend) => onChange({ legend })}
+        config={config.legends || DEFAULT_LEGENDS_CONFIG}
+        onChange={(legends) => onChange({ legends })}
       />
       <ColorPicker
         colors={config.color || DEFAULT_COLORS}

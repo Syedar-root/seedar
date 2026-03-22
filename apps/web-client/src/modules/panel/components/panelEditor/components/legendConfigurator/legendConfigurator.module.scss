@@ -25,22 +25,91 @@
 .checkbox {
   width: 16px;
   height: 16px;
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  background: #fff;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &[data-checked] {
+    background: #1890ff;
+    border-color: #1890ff;
+  }
 }
 
-.select {
+.checkboxIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   flex: 1;
   padding: 6px 8px;
   border: 1px solid #d9d9d9;
   border-radius: 4px;
   font-size: 13px;
-  color: #333;
   background: #fff;
   cursor: pointer;
-  outline: none;
+  min-height: 32px;
 
   &:focus {
+    outline: none;
     border-color: #1890ff;
+  }
+
+  &[data-popup-open] {
+    border-color: #1890ff;
+  }
+}
+
+.icon {
+  font-size: 10px;
+  color: #999;
+  margin-left: 8px;
+}
+
+.positioner {
+  z-index: 1000;
+  width: var(--anchor-width);
+}
+
+.popup {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  max-height: 256px;
+  overflow-y: auto;
+}
+
+.list {
+  padding: 4px 0;
+  margin: 0;
+}
+
+.item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+
+  &:hover,
+  &[data-highlighted] {
+    background-color: #f5f5f5;
+  }
+
+  &[data-selected] {
+    background-color: #e6f7ff;
+    color: #1890ff;
   }
 }
 
