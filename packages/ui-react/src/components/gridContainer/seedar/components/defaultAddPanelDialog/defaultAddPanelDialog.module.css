@@ -64,6 +64,7 @@
   overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  align-content: start;
   gap: 12px;
 }
 
@@ -200,7 +201,7 @@
   }
 
   &::before {
-    content: '';
+    content: "";
     border-radius: 100%;
     width: 0.5rem;
     height: 0.5rem;
