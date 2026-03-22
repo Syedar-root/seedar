@@ -720,7 +720,7 @@ export class DatasourceService {
       .join('pg_class as tco', 'tco.oid', 'con.conrelid')
       .where('tco.relname', tableName)
       .andWhere('con.contype', 'p')
-      .andWhere('att.attnum', 'con.conkey[1]');
+      .andWhereRaw('att.attnum = con.conkey[1]');
 
     const primaryKeyColumns = new Set(
       primaryKeysResult.map((row: PostgreSQLColumnRow) => row.column_name),
@@ -964,8 +964,8 @@ export class DatasourceService {
       .join('pg_attribute as fatt', 'fatt.attrelid', 'con.confrelid')
       .join('pg_class as ftco', 'ftco.oid', 'con.confrelid')
       .where('con.contype', 'f')
-      .andWhere('att.attnum', 'con.conkey[1]')
-      .andWhere('fatt.attnum', 'confkey[1]')
+      .andWhereRaw('att.attnum = con.conkey[1]')
+      .andWhereRaw('fatt.attnum = con.confkey[1]')
       .andWhere('tco.relname', '!=', 'datasource_tables')
       .andWhere('ftco.relname', '!=', 'datasource_tables')) as Array<{
       fk_name: string;

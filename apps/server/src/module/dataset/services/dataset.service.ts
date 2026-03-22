@@ -149,7 +149,7 @@ export class DatasetService {
         const datasetTables = selectedTables.map((table) => {
           return manager.create(DatasetTable, {
             datasetId: saved.id,
-            tableId: table!.id,
+            datasourceTableId: table!.id,
             datasetName: saved.name,
             tableName: table!.tableName,
           });
@@ -246,8 +246,7 @@ export class DatasetService {
             });
           });
           await manager.save(datasetJoins);
-        } else {
-          // 默认使用外键关系
+        } else if (selectedTables.length > 1) {
           const foreignKeys =
             await this.datasourceForeignKeyService.findByDataSourceId(
               datasource.id,

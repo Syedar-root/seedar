@@ -118,11 +118,14 @@ export class QueryService {
       this.knexConnectionFactory.createConnection(datasourceEntity);
 
     try {
+      const knexClientMap: Record<string, string> = {
+        [DataSourceType.MYSQL]: 'mysql2',
+        [DataSourceType.POSTGRES]: 'pg',
+        [DataSourceType.CLICKHOUSE]: 'clickhouse',
+      };
+
       KnexSQLGenerator.initializeKnex({
-        client:
-          datasourceEntity.type === DataSourceType.MYSQL
-            ? 'mysql2'
-            : datasourceEntity.type,
+        client: knexClientMap[datasourceEntity.type] || datasourceEntity.type,
         connection: datasourceEntity.config,
       });
 
@@ -136,9 +139,13 @@ export class QueryService {
 
       let rawRows: any[] = [];
       if (Array.isArray(results)) {
-        rawRows = results;
+        // MySQL: knex.raw() returns [rows, fields]
+        rawRows = Array.isArray(results[0]) ? results[0] : results;
+      } else if (results && typeof results === 'object' && 'rows' in results) {
+        // PostgreSQL: knex.raw() returns { command, rowCount, rows, ... }
+        rawRows = (results as unknown as any).rows;
       } else {
-        rawRows = [results];
+        rawRows = [];
       }
 
       const columnMappings = sqlResult.columnMappings || [];
@@ -147,14 +154,12 @@ export class QueryService {
       );
       const columnAliases = columnMappings.map((mapping) => mapping.alias);
 
-      const rows = Array.isArray(rawRows[0])
-        ? rawRows[0].map((row: Record<string, unknown>) => {
-            return columnAliases.map((alias: string) => {
-              const value = row[alias];
-              return typeof value === 'number' ? value : String(value);
-            });
-          })
-        : [];
+      const rows = rawRows.map((row: Record<string, unknown>) => {
+        return columnAliases.map((alias: string) => {
+          const value = row[alias];
+          return typeof value === 'number' ? value : String(value);
+        });
+      });
 
       return {
         sql: sqlResult.sql,
