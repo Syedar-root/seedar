@@ -17,6 +17,8 @@ import {
   DisplayPanelType,
   PanelEditorConfig,
   DEFAULT_COLORS,
+  ChartType,
+  CHART_FIELD_CONFIGS,
 } from "../components/panelEditor";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DragItem } from "../components/dndHelper/dragZone/dragZone";
@@ -32,7 +34,7 @@ export const PanelPage = () => {
   const [dropMetrics, setDropMetrics] = useState<DragItem[]>([]);
   const [displayType, setDisplayType] = useState<DisplayPanelType>("table");
   const [editorConfig, setEditorConfig] = useState<PanelEditorConfig>({
-    colors: DEFAULT_COLORS,
+    color: DEFAULT_COLORS,
   });
 
   const { data: panelData } = usePanel(panelId);
@@ -67,7 +69,7 @@ export const PanelPage = () => {
     } else if (type === "chart" && config.type) {
       setDisplayType(config.type as DisplayPanelType);
     }
-    setEditorConfig({ ...config, colors: config.colors || DEFAULT_COLORS });
+    setEditorConfig({ ...config, color: config.color || DEFAULT_COLORS });
   }, [panelData]);
 
   const handleDropField = useCallback(
@@ -196,48 +198,26 @@ export const PanelPage = () => {
       type: displayType,
     };
 
-    if (editorConfig.colors?.length) {
-      baseSpec.color = editorConfig.colors;
+    if (editorConfig.color?.length) {
+      baseSpec.color = editorConfig.color;
     }
 
     if (editorConfig.label?.visible) {
       baseSpec.label = { visible: true };
     }
 
-    switch (displayType) {
-      case "line":
-      case "bar":
-      case "area":
-        return {
-          ...baseSpec,
-          xField: editorConfig.xField,
-          yField: editorConfig.yField,
-          seriesField: editorConfig.seriesField,
-        };
-      case "pie":
-        return {
-          ...baseSpec,
-          categoryField: editorConfig.categoryField,
-          valueField: editorConfig.valueField,
-        };
-      case "scatter":
-        return {
-          ...baseSpec,
-          xField: editorConfig.xField,
-          yField: editorConfig.yField,
-          seriesField: editorConfig.seriesField,
-          sizeField: editorConfig.sizeField,
-        };
-      case "radar":
-        return {
-          ...baseSpec,
-          categoryField: editorConfig.categoryField,
-          valueField: editorConfig.valueField,
-          seriesField: editorConfig.seriesField,
-        };
-      default:
-        return baseSpec;
+    const fieldConfig = CHART_FIELD_CONFIGS[displayType as ChartType];
+    if (fieldConfig) {
+      const allFields = [...fieldConfig.required, ...fieldConfig.optional];
+      allFields.forEach((field) => {
+        const value = editorConfig[field as keyof PanelEditorConfig];
+        if (value !== undefined) {
+          baseSpec[field] = value;
+        }
+      });
     }
+
+    return baseSpec;
   }, [displayType, editorConfig]);
 
   console.log("previewSpec", previewSpec);

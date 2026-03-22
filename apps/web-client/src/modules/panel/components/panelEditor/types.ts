@@ -22,7 +22,7 @@ export interface PanelEditorConfig {
   categoryField?: string;
   valueField?: string;
   sizeField?: string;
-  colors?: string[];
+  color?: string[];
   label?: LabelConfig;
 }
 

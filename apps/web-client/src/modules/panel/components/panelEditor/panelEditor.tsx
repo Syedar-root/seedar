@@ -30,12 +30,12 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 }) => {
   const [currentType, setCurrentType] = useState<DisplayPanelType>(displayType);
   const [currentConfig, setCurrentConfig] = useState<PanelEditorConfig>(
-    config || { colors: DEFAULT_COLORS },
+    config || { color: DEFAULT_COLORS },
   );
 
   useEffect(() => {
     setCurrentType(displayType);
-    setCurrentConfig(config || { colors: DEFAULT_COLORS });
+    setCurrentConfig(config || { color: DEFAULT_COLORS });
   }, [displayType, config]);
 
   const handleTypeChange = (type: DisplayPanelType) => {
@@ -78,8 +78,8 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
             onChange={(label) => handleConfigChange({ label })}
           />
           <ColorPicker
-            colors={currentConfig.colors || DEFAULT_COLORS}
-            onChange={(colors) => handleConfigChange({ colors })}
+            colors={currentConfig.color || DEFAULT_COLORS}
+            onChange={(colors) => handleConfigChange({ color: colors })}
           />
         </>
       )}
@@ -92,7 +92,7 @@ function resetConfigForType(
   prevConfig: PanelEditorConfig,
 ): PanelEditorConfig {
   const baseConfig: PanelEditorConfig = {
-    colors: prevConfig.colors || DEFAULT_COLORS,
+    color: prevConfig.color || DEFAULT_COLORS,
   };
 
   if (type === "table" || type === "card") {
