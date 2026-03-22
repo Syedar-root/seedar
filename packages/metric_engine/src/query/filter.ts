@@ -1,5 +1,5 @@
 import { Field } from '../core/field';
-import { Operator } from '../core/types';
+import { Operator, DatabaseDialect } from '../core/types';
 import { Metric } from '../metrics/metric-classes';
 
 /**
@@ -225,15 +225,37 @@ export class TimeFilter extends Filter {
       fieldExpr = `(${this.field.toSQL()})`;
     }
 
+    const isPostgres = DatabaseDialect.isPostgres();
+    const isClickHouse = DatabaseDialect.isClickHouse();
+    const timeValue = this.timeValue;
+
     switch (this.timeRange) {
       case TimeRange.RECENT_DAYS:
-        return `${fieldExpr} >= DATE_SUB(CURDATE(), INTERVAL ${this.timeValue} DAY)`;
+        if (isClickHouse) {
+          return `${fieldExpr} >= today() - INTERVAL ${timeValue} DAY`;
+        }
+        if (isPostgres) {
+          return `${fieldExpr} >= CURRENT_DATE - INTERVAL '${timeValue} day'`;
+        }
+        return `${fieldExpr} >= DATE_SUB(CURDATE(), INTERVAL ${timeValue} DAY)`;
 
       case TimeRange.RECENT_WEEKS:
-        return `${fieldExpr} >= DATE_SUB(CURDATE(), INTERVAL ${this.timeValue} WEEK)`;
+        if (isClickHouse) {
+          return `${fieldExpr} >= today() - INTERVAL ${timeValue} WEEK`;
+        }
+        if (isPostgres) {
+          return `${fieldExpr} >= CURRENT_DATE - INTERVAL '${timeValue} week'`;
+        }
+        return `${fieldExpr} >= DATE_SUB(CURDATE(), INTERVAL ${timeValue} WEEK)`;
 
       case TimeRange.RECENT_MONTHS:
-        return `${fieldExpr} >= DATE_SUB(CURDATE(), INTERVAL ${this.timeValue} MONTH)`;
+        if (isClickHouse) {
+          return `${fieldExpr} >= today() - INTERVAL ${timeValue} MONTH`;
+        }
+        if (isPostgres) {
+          return `${fieldExpr} >= CURRENT_DATE - INTERVAL '${timeValue} month'`;
+        }
+        return `${fieldExpr} >= DATE_SUB(CURDATE(), INTERVAL ${timeValue} MONTH)`;
 
       case TimeRange.CUSTOM_DATE_RANGE:
         if (!this.startDate || !this.endDate) {

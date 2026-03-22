@@ -3,7 +3,7 @@ import { Query } from "./query-builder";
 import { Field } from "../core/field";
 import { Filter, TimeFilter } from "./filter";
 import { Join } from "../core/join";
-import { Operator } from "../core/types";
+import { Operator, DatabaseDialect } from "../core/types";
 import {
   Metric,
   AggregateMetric,
@@ -39,19 +39,23 @@ export class KnexSQLGenerator {
    * 初始化Knex实例（按客户端类型缓存）
    */
   static initializeKnex(config?: KnexType.Config): KnexType {
-    const client = typeof config?.client === 'string' ? config.client : 'mysql2';
+    const client =
+      typeof config?.client === "string" ? config.client : "mysql2";
+
+    // 设置数据库方言
+    DatabaseDialect.setClient(client as any);
 
     if (!this.knexInstances.has(client)) {
       this.knexInstances.set(
         client,
         knex(
           config || {
-            client: 'mysql2',
+            client: "mysql2",
             connection: {
-              host: 'localhost',
-              user: 'root',
-              password: '2586603nnj',
-              database: 'metric_test',
+              host: "localhost",
+              user: "root",
+              password: "2586603nnj",
+              database: "metric_test",
             },
           },
         ),
