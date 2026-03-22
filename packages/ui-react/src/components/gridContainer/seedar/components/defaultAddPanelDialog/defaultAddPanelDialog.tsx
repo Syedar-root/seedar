@@ -1,11 +1,11 @@
-import React, { useCallback, useMemo } from 'react';
-import { useSeedarDashboardContext } from '../../seedarDashboardContext';
-import { usePanels } from '../../../../../hooks';
-import { Dialog } from '@base-ui/react/dialog';
-import styles from './defaultAddPanelDialog.module.css';
-import { SeedarPanel } from '../../seedarPanel';
-import { Radio, RadioGroup } from '@base-ui/react';
-import clsx from 'clsx';
+import React, { useCallback, useMemo } from "react";
+import { useSeedarDashboardContext } from "../../seedarDashboardContext";
+import { usePanels } from "../../../../../hooks";
+import { Dialog } from "@base-ui/react/dialog";
+import styles from "./defaultAddPanelDialog.module.css";
+import { SeedarPanel } from "../../seedarPanel";
+import { Radio, RadioGroup } from "@base-ui/react";
+import clsx from "clsx";
 
 interface DefaultAddPanelDialogProps {
   onClose: () => void;
@@ -19,15 +19,13 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
 }) => {
   const { actions, state } = useSeedarDashboardContext();
   const { data: panels, isLoading } = usePanels();
-  const [selectedPanelId, setSelectedPanelId] = React.useState<string>('');
+  const [selectedPanelId, setSelectedPanelId] = React.useState<string>("");
 
   const handlePanelSelect = useCallback(() => {
     if (!selectedPanelId) return;
     actions.addPanel(selectedPanelId, { w: DEFAULT_W, h: DEFAULT_H });
     onClose();
   }, [actions, selectedPanelId, onClose]);
-
-  console.log('hcs', selectedPanelId);
 
   const id = React.useId();
 
@@ -51,8 +49,8 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
           <SeedarPanel
             style={{
               padding: 0,
-              backgroundColor: 'transparent',
-              border: 'none',
+              backgroundColor: "transparent",
+              border: "none",
             }}
             showHeader={false}
             panelId={panel.id}

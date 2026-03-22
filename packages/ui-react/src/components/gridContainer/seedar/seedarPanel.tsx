@@ -1,13 +1,13 @@
-import { forwardRef, useMemo } from 'react';
-import { GridPanel, GridPanelProps } from '../gridPanel/gridPanel';
-import { Chart } from '../../charts';
-import { ListTable } from '../../table';
-import { Title } from './components/title';
-import { ExecuteQueryResponse, PanelResponse } from '#pkg/seedar/types';
-import { usePanel } from '../../../hooks';
-import { ISpec } from '@visactor/vchart';
+import { forwardRef, useMemo } from "react";
+import { GridPanel, GridPanelProps } from "../gridPanel/gridPanel";
+import { Chart } from "../../charts";
+import { ListTable } from "../../table";
+import { Title } from "./components/title";
+import { ExecuteQueryResponse, PanelResponse } from "#pkg/seedar/types";
+import { usePanel } from "../../../hooks";
+import { ISpec } from "@visactor/vchart";
 
-export interface SeedarPanelProps extends Omit<GridPanelProps, 'headerExtra'> {
+export interface SeedarPanelProps extends Omit<GridPanelProps, "headerExtra"> {
   panelId: string;
   panel?: PanelResponse;
   className?: string;
@@ -18,8 +18,8 @@ export interface SeedarPanelProps extends Omit<GridPanelProps, 'headerExtra'> {
 
 export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
   (
-    { panelId, panel, className = '', style = {}, headerExtra, data, ...rest },
-    ref
+    { panelId, panel, className = "", style = {}, headerExtra, data, ...rest },
+    ref,
   ) => {
     // 只有当 panel 为 undefined 时才发起请求
     const { data: panelData, isPending, isError } = usePanel(panelId, !panel);
@@ -29,15 +29,14 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
 
     const content = useMemo(() => {
       if (!finalPanel) return null;
-      console.log('data', data);
       const { type: panelType, queryId, config } = finalPanel;
-      if (panelType === 'chart') {
+      if (panelType === "chart" && config) {
         return <Chart spec={config as ISpec} queryId={queryId} data={data} />;
       }
-      if (panelType === 'table') {
+      if (panelType === "table") {
         return <ListTable queryId={queryId} data={data} />;
       }
-      if (panelType === 'text') {
+      if (panelType === "text") {
         return <div>{config?.content}</div>;
       }
     }, [finalPanel, data]);
@@ -66,5 +65,5 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
         {...rest}
       />
     );
-  }
+  },
 );

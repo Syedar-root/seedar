@@ -1,7 +1,7 @@
 .colorPicker {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .title {
@@ -10,33 +10,88 @@
   color: #333;
 }
 
-.preview {
+.colorList {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.colorItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #fafafa;
+  border-radius: 4px;
+  border: 1px solid #e8e8e8;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #f0f0f0;
+  }
 }
 
 .colorBlock {
-  width: 20px;
-  height: 20px;
-  border-radius: 2px;
-  border: 1px solid #e8e8e8;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid #d9d9d9;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: scale(1.05);
+  }
 }
 
-.input {
-  padding: 6px 8px;
-  border: 1px solid #d9d9d9;
+.hiddenInput {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.colorValue {
+  flex: 1;
+  font-size: 13px;
+  color: #666;
+  // font-family: monospace;
+}
+
+.removeBtn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #999;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 4px;
-  font-size: 12px;
-  width: 100%;
-  box-sizing: border-box;
+  transition: all 0.2s;
 
-  &:focus {
-    outline: none;
-    border-color: #1890ff;
+  &:hover {
+    background: #ff4d4f;
+    color: #fff;
   }
+}
 
-  &::placeholder {
-    color: #bfbfbf;
+.addBtn {
+  padding: 8px 16px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 4px;
+  background: transparent;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #1890ff;
+    color: #1890ff;
   }
 }

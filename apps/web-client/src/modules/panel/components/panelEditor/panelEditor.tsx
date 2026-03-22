@@ -9,6 +9,7 @@ import {
 import { TypeSelector } from "./components/typeSelector/typeSelector";
 import { FieldMapper } from "./components/fieldMapper/fieldMapper";
 import { ColorPicker } from "./components/colorPicker/colorPicker";
+import { LabelConfigurator } from "./components/labelConfigurator/labelConfigurator";
 import styles from "./panelEditor.module.scss";
 import type { DragItem } from "../dndHelper/dragZone/dragZone";
 
@@ -46,6 +47,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 
   const handleConfigChange = (partialConfig: Partial<PanelEditorConfig>) => {
     const newConfig = { ...currentConfig, ...partialConfig };
+    console.log("newconfig", newConfig);
     setCurrentConfig(newConfig);
     onChange(currentType, newConfig);
   };
@@ -70,10 +72,16 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
       )}
 
       {currentType !== "table" && currentType !== "card" && (
-        <ColorPicker
-          colors={currentConfig.colors || DEFAULT_COLORS}
-          onChange={(colors) => handleConfigChange({ colors })}
-        />
+        <>
+          <LabelConfigurator
+            config={currentConfig.label || { visible: false }}
+            onChange={(label) => handleConfigChange({ label })}
+          />
+          <ColorPicker
+            colors={currentConfig.colors || DEFAULT_COLORS}
+            onChange={(colors) => handleConfigChange({ colors })}
+          />
+        </>
       )}
     </div>
   );
@@ -96,7 +104,7 @@ function resetConfigForType(
 
   const newConfig: PanelEditorConfig = {
     ...baseConfig,
-    chartType: type as ChartType,
+    type: type as ChartType,
   };
 
   fieldConfig.required.forEach((field) => {

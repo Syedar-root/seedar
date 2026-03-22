@@ -1,8 +1,8 @@
-import { ExecuteQueryResponse } from '#pkg/seedar/ui-core';
-import { ISpec, VChart } from '@visactor/react-vchart';
-import { useEffect, useState } from 'react';
-import { useExecuteQuery } from '../../hooks';
-import { transformData } from './transformer';
+import { ExecuteQueryResponse } from "#pkg/seedar/ui-core";
+import { ISpec, VChart } from "@visactor/react-vchart";
+import { useEffect, useState } from "react";
+import { useExecuteQuery } from "../../hooks";
+import { transformData } from "./transformer";
 
 export interface ChartProps {
   vchartProps?: React.ComponentProps<typeof VChart>;
@@ -12,7 +12,8 @@ export interface ChartProps {
 }
 
 export const Chart: React.FC<ChartProps> = (props) => {
-  const { vchartProps = {}, spec = { type: 'bar' }, queryId, data } = props;
+  const { vchartProps = {}, spec: propSpec, queryId, data } = props;
+  const spec = propSpec ?? { type: "bar" };
   const { mutate: executeQuery } = useExecuteQuery();
 
   const [rawData, setRawData] = useState<ExecuteQueryResponse>();
@@ -43,5 +44,6 @@ export const Chart: React.FC<ChartProps> = (props) => {
     setSpecOption(transformed);
   }, [rawData, spec]);
 
-  return <VChart spec={specOption} {...vchartProps} />;
+  if (!specOption.data) return null;
+  else return <VChart spec={specOption} {...vchartProps} />;
 };

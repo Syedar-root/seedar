@@ -1,4 +1,4 @@
-import { ExecuteQueryResponse } from '#pkg/seedar/types';
+import { ExecuteQueryResponse } from "#pkg/seedar/types";
 import {
   IChartSpec,
   IPieChartSpec,
@@ -11,21 +11,21 @@ import {
   IFunnelChartSpec,
   IGaugeChartSpec,
   ISpec,
-} from '@visactor/vchart';
+} from "@visactor/vchart";
 
 type ChartType =
-  | 'pie'
-  | 'bar'
-  | 'line'
-  | 'area'
-  | 'scatter'
-  | 'radar'
-  | 'rose'
-  | 'funnel';
+  | "pie"
+  | "bar"
+  | "line"
+  | "area"
+  | "scatter"
+  | "radar"
+  | "rose"
+  | "funnel";
 
 type TransformStrategy<T extends ISpec = ISpec> = (
   data: Record<string, any>[],
-  spec: T
+  spec: T,
 ) => T;
 
 const farmatField = (field: string | string[]) => {
@@ -36,7 +36,7 @@ const farmatField = (field: string | string[]) => {
 };
 
 const sqlResultToObjects = (
-  results: ExecuteQueryResponse['results']
+  results: ExecuteQueryResponse["results"],
 ): Record<string, any>[] => {
   if (!results?.header || !results?.rows) {
     return [];
@@ -54,27 +54,27 @@ const sqlResultToObjects = (
 
 const transformForPie = <T extends IPieChartSpec | IRoseChartSpec>(
   data: Record<string, any>[],
-  spec: T
+  spec: T,
 ): T => {
-  const categoryField = farmatField(spec.categoryField ?? 'category');
-  const valueField = farmatField(spec.valueField ?? 'value');
+  const categoryField = farmatField(spec.categoryField ?? "category");
+  const valueField = farmatField(spec.valueField ?? "value");
 
   const values = data.map((item) => ({
     [categoryField]: item[categoryField],
-    [valueField]: item[valueField],
+    [valueField]: Number(item[valueField]) || 0,
   }));
 
-  return { ...spec, data: [{ id: 'data', values }] };
+  return { ...spec, data: [{ id: "data", values }] };
 };
 
 const transformForCartesian = <
-  T extends IBarChartSpec | ILineChartSpec | IAreaChartSpec
+  T extends IBarChartSpec | ILineChartSpec | IAreaChartSpec,
 >(
   data: Record<string, any>[],
-  spec: T
+  spec: T,
 ): T => {
-  const xField = farmatField(spec.xField ?? 'x');
-  const yField = farmatField(spec.yField ?? 'y');
+  const xField = farmatField(spec.xField ?? "x");
+  const yField = farmatField(spec.yField ?? "y");
   const seriesField = spec.seriesField;
 
   const values = data.map((item) => {
@@ -88,21 +88,21 @@ const transformForCartesian = <
     return result;
   });
 
-  return { ...spec, data: [{ id: 'data', values }] };
+  return { ...spec, data: [{ id: "data", values }] };
 };
 
 const transformForRadar = <T extends IRadarChartSpec>(
   data: Record<string, any>[],
-  spec: T
+  spec: T,
 ): T => {
-  const categoryField = farmatField(spec.categoryField ?? 'category');
-  const valueField = farmatField(spec.valueField ?? 'value');
+  const categoryField = farmatField(spec.categoryField ?? "category");
+  const valueField = farmatField(spec.valueField ?? "value");
   const seriesField = spec.seriesField;
 
   const values = data.map((item) => {
     const result: Record<string, any> = {
       [categoryField]: item[categoryField],
-      [valueField]: item[valueField],
+      [valueField]: Number(item[valueField]) || 0,
     };
     if (seriesField && item[seriesField] !== undefined) {
       result[seriesField] = item[seriesField];
@@ -110,15 +110,15 @@ const transformForRadar = <T extends IRadarChartSpec>(
     return result;
   });
 
-  return { ...spec, data: [{ id: 'data', values }] };
+  return { ...spec, data: [{ id: "data", values }] };
 };
 
 const transformForScatter = <T extends IScatterChartSpec>(
   data: Record<string, any>[],
-  spec: T
+  spec: T,
 ): T => {
-  const xField = farmatField(spec.xField ?? 'x');
-  const yField = farmatField(spec.yField ?? 'y');
+  const xField = farmatField(spec.xField ?? "x");
+  const yField = farmatField(spec.yField ?? "y");
   const sizeField = spec.sizeField;
   const seriesField = spec.seriesField;
 
@@ -136,22 +136,22 @@ const transformForScatter = <T extends IScatterChartSpec>(
     return result;
   });
 
-  return { ...spec, data: [{ id: 'data', values }] };
+  return { ...spec, data: [{ id: "data", values }] };
 };
 
 const transformForFunnel = <T extends IFunnelChartSpec>(
   data: Record<string, any>[],
-  spec: T
+  spec: T,
 ): T => {
-  const categoryField = spec.categoryField ?? 'category';
-  const valueField = spec.valueField ?? 'value';
+  const categoryField = spec.categoryField ?? "category";
+  const valueField = spec.valueField ?? "value";
 
   const values = data.map((item) => ({
     [categoryField]: item[categoryField],
     [valueField]: item[valueField],
   }));
 
-  return { ...spec, data: [{ id: 'data', values }] };
+  return { ...spec, data: [{ id: "data", values }] };
 };
 
 const transformStrategies: Record<ChartType, TransformStrategy> = {
@@ -167,7 +167,7 @@ const transformStrategies: Record<ChartType, TransformStrategy> = {
 
 const transformData = <T extends ISpec>(
   data: ExecuteQueryResponse,
-  spec: T
+  spec: T,
 ): T | undefined => {
   if (!spec?.type) {
     return undefined;
@@ -179,7 +179,7 @@ const transformData = <T extends ISpec>(
   const strategy = transformStrategies[chartType];
   return strategy
     ? (strategy(rawData, spec) as T)
-    : { ...spec, data: [{ id: 'data', values: rawData }] };
+    : { ...spec, data: [{ id: "data", values: rawData }] };
 };
 
 export { transformData, sqlResultToObjects };

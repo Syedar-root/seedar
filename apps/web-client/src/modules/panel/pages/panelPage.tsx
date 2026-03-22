@@ -64,8 +64,8 @@ export const PanelPage = () => {
 
     if (type === "table" || type === "card") {
       setDisplayType(type);
-    } else if (type === "chart" && config.chartType) {
-      setDisplayType(config.chartType as DisplayPanelType);
+    } else if (type === "chart" && config.type) {
+      setDisplayType(config.type as DisplayPanelType);
     }
     setEditorConfig({ ...config, colors: config.colors || DEFAULT_COLORS });
   }, [panelData]);
@@ -135,7 +135,7 @@ export const PanelPage = () => {
     const config =
       displayType === "table" || displayType === "card"
         ? {}
-        : { ...editorConfig, chartType: displayType };
+        : { ...editorConfig, type: displayType };
 
     updatePanel(
       {
@@ -200,6 +200,10 @@ export const PanelPage = () => {
       baseSpec.color = editorConfig.colors;
     }
 
+    if (editorConfig.label?.visible) {
+      baseSpec.label = { visible: true };
+    }
+
     switch (displayType) {
       case "line":
       case "bar":
@@ -235,6 +239,8 @@ export const PanelPage = () => {
         return baseSpec;
     }
   }, [displayType, editorConfig]);
+
+  console.log("previewSpec", previewSpec);
 
   return (
     <div className={styles.container}>
