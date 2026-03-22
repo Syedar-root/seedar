@@ -317,21 +317,21 @@ export class DatasetService {
     const allMetrics = await this.datasetMetricRepository.find({
       where: { dataSetId: In(datasetIds) },
       relations: [
-        'field',
+        'dataSourceColumn',
         'leftOperandField',
         'rightOperandField',
         'sourceMetric',
         'leftMetric',
         'rightMetricOperandField',
         'baseMetric',
-        'timeField',
+        'timeDataSourceColumn',
       ],
       order: { id: 'ASC' },
     });
 
     // 5. 批量查询所有join信息
     const allJoins = await this.datasetJoinRepository.find({
-      where: datasetIds.map((id) => ({ dataset: { id } })),
+      where: { datasetId: In(datasetIds) },
       order: { id: 'ASC' },
     });
 

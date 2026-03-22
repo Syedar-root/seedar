@@ -17,6 +17,10 @@ export class DatasetJoin {
   @JoinColumn({ name: 'dataset_id' })
   dataset: Dataset;
 
+  /** 数据集ID */
+  @Column({ name: 'dataset_id', type: 'int' })
+  datasetId: number;
+
   /** 连接类型 */
   @Column({ type: 'enum', enum: JoinType, default: JoinType.INNER })
   joinType: JoinType;

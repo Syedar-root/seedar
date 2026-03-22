@@ -1,6 +1,7 @@
 import {
   SeedarPanel,
   useDataset,
+  useDatasets,
   useExecuteTempQuery,
   useQuery,
   useUpdateQuery,
@@ -15,6 +16,7 @@ import {
   ExecuteQueryResponse,
   PanelResponse,
   PanelType,
+  DatasetResponse,
 } from "#pkg/seedar/types";
 import { Aside } from "../components/aside";
 import { QueryZone } from "../components/queryZone";
@@ -33,9 +35,52 @@ import { toast } from "sonner";
 
 export const PanelPage = () => {
   const { panelId } = useParams();
-  if (!panelId) {
-    return null;
-  }
+  const navigate = useNavigate();
+  const { data: datasets } = useDatasets();
+  const { mutate: createQuery } = useCreateQuery();
+  const { mutate: createPanel } = useCreatePanel();
+
+  const [selectedDataset, setSelectedDataset] =
+    useState<DatasetResponse | null>(null);
+
+  const handleSelectDataset = useCallback(
+    (dataset: DatasetResponse) => {
+      setSelectedDataset(dataset);
+      console.log(dataset);
+      createQuery(
+        {
+          name: "未命名查询",
+          datasetId: dataset.id,
+          dsl: {
+            datasetId: dataset.id,
+            tableId: dataset.mainTableId!,
+            joins: dataset.joins || [],
+            dimensions: [],
+            metrics: [],
+          },
+        },
+        {
+          onSuccess: (queryData) => {
+            createPanel(
+              {
+                title: "未命名面板",
+                queryId: queryData.id,
+                type: "table" as PanelType,
+                config: {},
+              },
+              {
+                onSuccess: (panelData) => {
+                  navigate(`/panel/${panelData.id}`);
+                  toast.success("创建看板成功");
+                },
+              },
+            );
+          },
+        },
+      );
+    },
+    [createQuery, createPanel, navigate],
+  );
 
   const [dropFields, setDropFields] = useState<DragItem[]>([]);
   const [dropMetrics, setDropMetrics] = useState<DragItem[]>([]);
@@ -45,7 +90,7 @@ export const PanelPage = () => {
     legends: DEFAULT_LEGENDS_CONFIG,
   });
 
-  const { data: panelData } = usePanel(panelId);
+  const { data: panelData } = usePanel(panelId!);
   const { data: queryData } = useQuery((panelData as PanelResponse)?.queryId!);
   const { data: datasetData } = useDataset(queryData?.datasetId!);
 
@@ -117,10 +162,7 @@ export const PanelPage = () => {
   const { mutate: executeTempQuery } = useExecuteTempQuery();
   const { mutate: updateQuery } = useUpdateQuery();
   const { mutate: updatePanel } = useUpdatePanel();
-  const { mutate: createQuery } = useCreateQuery();
-  const { mutate: createPanel } = useCreatePanel();
   const [tempData, setTempData] = useState<ExecuteQueryResponse>();
-  const navigate = useNavigate();
 
   const handleRun = useCallback(() => {
     if (!queryData) return;
@@ -130,6 +172,9 @@ export const PanelPage = () => {
     }
     executeTempQuery(
       {
+        datasetId: datasetData?.id!,
+        tableId: datasetData?.mainTableId!,
+        joins: datasetData?.joins || [],
         ...queryData?.dsl,
         dimensions: dropFields.map((f) => f.id),
         metrics: dropMetrics,
@@ -168,6 +213,9 @@ export const PanelPage = () => {
               id: panelData?.queryId!,
               data: {
                 dsl: {
+                  datasetId: datasetData?.id!,
+                  tableId: datasetData?.mainTableId!,
+                  joins: datasetData?.joins || [],
                   ...queryData?.dsl,
                   dimensions: dropFields.map((f) => f.id),
                   metrics: dropMetrics,
@@ -297,9 +345,7 @@ export const PanelPage = () => {
     return baseSpec;
   }, [displayType, editorConfig]);
 
-  console.log("previewSpec", previewSpec);
-
-  return (
+  return panelId ? (
     <div className={styles.container}>
       <aside className={styles.sidebar}>
         <Aside
@@ -358,6 +404,31 @@ export const PanelPage = () => {
           />
         </main>
       </main>
+    </div>
+  ) : (
+    <div className={styles.datasetSelector}>
+      <div className={styles.datasetSelectorContent}>
+        <h2 className={styles.datasetSelectorTitle}>选择数据集</h2>
+        <p className={styles.datasetSelectorDesc}>
+          请选择一个数据集来创建新的看板
+        </p>
+        <div className={styles.datasetList}>
+          {datasets?.map((dataset) => (
+            <button
+              key={dataset.id}
+              className={styles.datasetItem}
+              onClick={() => handleSelectDataset(dataset)}
+            >
+              <div className={styles.datasetItemName}>{dataset.name}</div>
+              {dataset.description && (
+                <div className={styles.datasetItemDesc}>
+                  {dataset.description}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

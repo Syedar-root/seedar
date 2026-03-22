@@ -1,12 +1,12 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
-import AppLayout from '@/layouts/AppLayout';
-import UserPage from '@/modules/user/pages/UserPage';
-import { DashboardPage } from '@/modules/dashboard';
-import { PanelPage } from '@/modules/panel';
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import AppLayout from "@/layouts/AppLayout";
+import UserPage from "@/modules/user/pages/UserPage";
+import { DashboardPage } from "@/modules/dashboard";
+import { PanelPage } from "@/modules/panel";
 
 export const router = createBrowserRouter([
   {
-    path: '/',
+    path: "/",
     element: <AppLayout />,
     children: [
       {
@@ -14,15 +14,19 @@ export const router = createBrowserRouter([
         element: <Navigate to="/dashboard" replace />,
       },
       {
-        path: 'user',
+        path: "user",
         element: <UserPage />,
       },
       {
-        path: 'dashboard',
+        path: "dashboard",
         element: <DashboardPage />,
       },
       {
-        path: 'panel/:panelId',
+        path: "panel",
+        element: <PanelPage />,
+      },
+      {
+        path: "panel/:panelId",
         element: <PanelPage />,
       },
     ],
