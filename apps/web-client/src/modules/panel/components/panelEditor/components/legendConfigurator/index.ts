@@ -1,0 +1,1 @@
+export { LegendConfigurator } from './legendConfigurator';

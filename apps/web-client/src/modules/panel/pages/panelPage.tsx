@@ -17,6 +17,7 @@ import {
   DisplayPanelType,
   PanelEditorConfig,
   DEFAULT_COLORS,
+  DEFAULT_LEGEND_CONFIG,
   ChartType,
   CHART_FIELD_CONFIGS,
 } from "../components/panelEditor";
@@ -35,6 +36,7 @@ export const PanelPage = () => {
   const [displayType, setDisplayType] = useState<DisplayPanelType>("table");
   const [editorConfig, setEditorConfig] = useState<PanelEditorConfig>({
     color: DEFAULT_COLORS,
+    legend: DEFAULT_LEGEND_CONFIG,
   });
 
   const { data: panelData } = usePanel(panelId);
@@ -69,7 +71,11 @@ export const PanelPage = () => {
     } else if (type === "chart" && config.type) {
       setDisplayType(config.type as DisplayPanelType);
     }
-    setEditorConfig({ ...config, color: config.color || DEFAULT_COLORS });
+    setEditorConfig({
+      ...config,
+      color: config.color || DEFAULT_COLORS,
+      legend: config.legend || DEFAULT_LEGEND_CONFIG,
+    });
   }, [panelData]);
 
   const handleDropField = useCallback(
@@ -204,6 +210,23 @@ export const PanelPage = () => {
 
     if (editorConfig.label?.visible) {
       baseSpec.label = { visible: true };
+    }
+
+    const legendConfig = editorConfig.legend || DEFAULT_LEGEND_CONFIG;
+    if (legendConfig.visible) {
+      baseSpec.legends = {
+        visible: true,
+        orient: legendConfig.orient,
+        layout: legendConfig.layout,
+      };
+      if (legendConfig.title) {
+        baseSpec.legends.title = {
+          visible: true,
+          text: legendConfig.title,
+        };
+      }
+    } else {
+      baseSpec.legends = { visible: false };
     }
 
     const fieldConfig = CHART_FIELD_CONFIGS[displayType as ChartType];
