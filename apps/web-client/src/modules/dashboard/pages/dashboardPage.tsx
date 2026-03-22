@@ -1,20 +1,10 @@
-import { useCallback, useMemo } from 'react';
-import { SeedarDashboard } from '#pkg/seedar/ui-react';
-import styles from './styles/dashboard.module.scss';
-import { ExternalLink, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useMemo } from "react";
+import { SeedarDashboard } from "#pkg/seedar/ui-react";
+import styles from "./styles/dashboard.module.scss";
+import { ExternalLink, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export const DashboardPage = () => {
-  const header = useMemo(() => {
-    return (
-      <div className={styles.header}>
-        <SeedarDashboard.AddPanelTrigger>
-          <button className={styles.addPanel}>添加面板</button>
-        </SeedarDashboard.AddPanelTrigger>
-      </div>
-    );
-  }, []);
-
   const navigate = useNavigate();
   const handlePanelClick = useCallback(
     (panelId: string) => {
@@ -22,6 +12,23 @@ export const DashboardPage = () => {
     },
     [navigate],
   );
+
+  const handleCreatePanelClick = useCallback(() => {
+    navigate("/panel");
+  }, [navigate]);
+
+  const header = useMemo(() => {
+    return (
+      <div className={styles.header}>
+        <SeedarDashboard.AddPanelTrigger>
+          <button className={styles.addPanel}>添加已有面板</button>
+        </SeedarDashboard.AddPanelTrigger>
+        <button className={styles.createPanel} onClick={handleCreatePanelClick}>
+          新建面板
+        </button>
+      </div>
+    );
+  }, [handleCreatePanelClick]);
 
   const panelHeaderExtra = useCallback((panelId: string) => {
     return (

@@ -1,3 +1,5 @@
+@use "sass:color";
+
 .container {
   position: relative;
   margin: 0;
@@ -11,12 +13,14 @@
 
 .header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  gap: 12px;
 
-  .addPanel {
+  .createPanel {
+    $bg-color--create: #85c70c;
     padding: 0.5rem;
-    background: #007bff;
+    background: $bg-color--create;
     color: white;
     border: none;
     border-radius: 4px;
@@ -24,7 +28,22 @@
     transition: background-color 0.2s;
 
     &:hover {
-      background: #0056b3;
+      background: color.scale($bg-color--create, $lightness: 10%);
+    }
+  }
+
+  .addPanel {
+    $bg-color--add: #007bff;
+    padding: 0.5rem;
+    background: $bg-color--add;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background: color.scale($bg-color--add, $lightness: 10%);
     }
   }
 }
