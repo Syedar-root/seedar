@@ -1,0 +1,49 @@
+.editableTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.editIcon {
+  cursor: pointer;
+  transition:
+    opacity 0.2s,
+    color 0.2s;
+  color: #666;
+
+  &:hover {
+    color: #007bff;
+  }
+}
+
+.input {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  outline: none;
+  min-width: 200px;
+  color: #333;
+
+  &:focus {
+    border-color: #0056b3;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+  }
+}
+
+.actionIcon {
+  cursor: pointer;
+  transition: color 0.2s;
+  color: #666;
+
+  &:hover {
+    color: #007bff;
+  }
+}

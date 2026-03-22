@@ -22,6 +22,7 @@ interface UsePanelActionsParams {
   editorConfig: PanelEditorConfig;
   handleRun: () => void;
   navigate: NavigateFunction;
+  title: string;
 }
 
 interface UsePanelActionsReturn {
@@ -40,6 +41,7 @@ export const usePanelActions = ({
   editorConfig,
   handleRun,
   navigate,
+  title,
 }: UsePanelActionsParams): UsePanelActionsReturn => {
   const { mutate: updateQuery } = useUpdateQuery();
   const { mutate: updatePanel } = useUpdatePanel();
@@ -82,6 +84,7 @@ export const usePanelActions = ({
       {
         id: panelId,
         data: {
+          title,
           type: panelType as any,
           config,
         },
@@ -109,6 +112,7 @@ export const usePanelActions = ({
     panelData,
     panelId,
     queryData,
+    title,
     getPanelTypeAndConfig,
     getQueryDsl,
     updateQuery,
@@ -132,7 +136,7 @@ export const usePanelActions = ({
         onSuccess: (data) => {
           createPanel(
             {
-              title: "未命名面板",
+              title: title || "未命名面板",
               queryId: data.id,
               type: panelType as PanelType,
               config,
@@ -152,6 +156,7 @@ export const usePanelActions = ({
     panelId,
     datasetData,
     queryData,
+    title,
     getQueryDsl,
     getPanelTypeAndConfig,
     createQuery,

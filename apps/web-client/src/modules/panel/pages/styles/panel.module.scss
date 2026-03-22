@@ -129,11 +129,21 @@
   flex-direction: column;
   gap: 16px;
 
-  --mainHeaderHeight: 100px;
+  --mainHeaderHeight: "auto";
   .mainHeader {
     position: relative;
     height: var(--mainHeaderHeight);
     background: #f5f5f5;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .titleArea {
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+    }
   }
 
   .mainContent {

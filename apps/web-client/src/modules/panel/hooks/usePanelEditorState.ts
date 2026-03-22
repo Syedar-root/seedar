@@ -33,6 +33,8 @@ interface UsePanelEditorStateReturn {
   handleRemoveMetric: (item: DragItem) => void;
   handleEditorChange: (type: DisplayPanelType, config: PanelEditorConfig) => void;
   handleRun: () => void;
+  title: string;
+  handleTitleChange: (title: string) => void;
 }
 
 export const usePanelEditorState = (
@@ -46,6 +48,7 @@ export const usePanelEditorState = (
     legends: DEFAULT_LEGENDS_CONFIG,
   });
   const [tempData, setTempData] = useState<ExecuteQueryResponse>();
+  const [title, setTitle] = useState<string>("未命名面板");
 
   const { data: panelData } = usePanel(panelId!);
   const { data: queryData } = useQuery((panelData as PanelResponse)?.queryId!);
@@ -85,6 +88,12 @@ export const usePanelEditorState = (
       color: config.color || DEFAULT_COLORS,
       legends: config.legends || DEFAULT_LEGENDS_CONFIG,
     });
+  }, [panelData]);
+
+  useEffect(() => {
+    if (panelData?.title) {
+      setTitle(panelData.title);
+    }
   }, [panelData]);
 
   const handleDropField = useCallback(
@@ -127,6 +136,10 @@ export const usePanelEditorState = (
     [],
   );
 
+  const handleTitleChange = useCallback((newTitle: string) => {
+    setTitle(newTitle);
+  }, []);
+
   const handleRun = useCallback(() => {
     if (!queryData) return;
     if (!dropFields.length && !dropMetrics.length) {
@@ -164,5 +177,7 @@ export const usePanelEditorState = (
     handleRemoveMetric,
     handleEditorChange,
     handleRun,
+    title,
+    handleTitleChange,
   };
 };
