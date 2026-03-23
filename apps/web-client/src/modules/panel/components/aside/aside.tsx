@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import styles from "./aside.module.scss";
 import { DragItem } from "../dndHelper/drapItem";
 import clsx from "clsx";
+import { GripVertical } from "lucide-react";
 
 interface AsideProps {
   className?: string;
@@ -25,9 +26,10 @@ export const Aside: React.FC<AsideProps> = ({
           itemType="fieldItem"
           dragingStyle={{
             opacity: 0.5,
-            backgroundColor: "#7fc2f8",
+            backgroundColor: "var(--accent-1)",
           }}
         >
+          <GripVertical className={styles.dragHandle} />
           {field.businessName || field.name}
         </DragItem>
       )),
@@ -43,9 +45,10 @@ export const Aside: React.FC<AsideProps> = ({
           itemType="metricItem"
           dragingStyle={{
             opacity: 0.5,
-            backgroundColor: "#a9fa8a",
+            backgroundColor: "var(--accent-2)",
           }}
         >
+          <GripVertical className={styles.dragHandle} />
           {metric.businessName || metric.name}
         </DragItem>
       )),
@@ -56,6 +59,7 @@ export const Aside: React.FC<AsideProps> = ({
     <aside className={clsx(styles.sidebar, className)}>
       <div className={styles.sidebarHeader}>
         <span className={styles.sidebarDesc}>选择字段和指标，构建查询</span>
+        <span className={styles.sidebarHint}>拖拽到右侧区域使用</span>
       </div>
       <div className={styles.sidebarContent}>
         <div className={styles.sidebarSection}>

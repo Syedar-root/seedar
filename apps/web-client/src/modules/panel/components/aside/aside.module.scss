@@ -1,12 +1,14 @@
-.dragItem {
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-lg);
-  user-select: none;
-}
-
 .sidebar {
   display: flex;
   flex-direction: column;
+  padding: var(--spacing-lg);
+  gap: var(--spacing-md);
+}
+
+.sidebarHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
 }
 
 .sidebarDesc {
@@ -14,13 +16,65 @@
   color: var(--text-tertiary);
 }
 
+.sidebarHint {
+  font-size: var(--font-sm);
+  color: var(--text-disabled);
+}
+
+.sidebarContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
 .sidebarSection {
-  border-bottom: 1px solid var(--border-base);
-  padding-block: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
 
 .sidebarSectionTitle {
   font-size: var(--font-xl);
   font-weight: 500;
   color: var(--text-primary);
+}
+
+.sidebarList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.dragItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-base);
+  cursor: grab;
+  user-select: none;
+  font-size: var(--font-lg);
+  transition: background-color var(--transition-base),
+    box-shadow var(--transition-base);
+
+  &:hover {
+    background: var(--bg-hover);
+    box-shadow: var(--shadow-sm);
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.dragHandle {
+  color: var(--text-disabled);
+  transition: color var(--transition-fast);
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+
+  .dragItem:hover & {
+    color: var(--text-tertiary);
+  }
 }
