@@ -42,7 +42,7 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
           className={styles.dragZone}
           onDrop={onDropField}
           itemType="fieldItem"
-          overColor="#e6f7ff"
+          overColor="#d4dde5"
         >
           {dropFields.map((item) => (
             <div className={styles.field} key={item.id}>
@@ -58,7 +58,7 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
           className={styles.dragZone}
           onDrop={onDropMetric}
           itemType="metricItem"
-          overColor="#e6f7ff"
+          overColor="#d5ded8"
         >
           {dropMetrics.map((item) => (
             <div className={styles.metric} key={item.id}>
@@ -74,7 +74,7 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
           className={styles.dragZone}
           onDrop={onDropFilter}
           itemType="fieldItem"
-          overColor="#e6f7ff"
+          overColor="#e5d4d4"
         >
           {dropFilters.map((filter) => (
             <FilterItem

@@ -10,6 +10,7 @@
   },
   "scripts": {
     "dev": "pnpm -r --parallel dev",
+    "start:dev": "pnpm -r --parallel start:dev",
     "build": "pnpm -r build",
     "lint": "echo \"Add lint config\"",
     "dev:server": "pnpm --filter server run start:dev"

@@ -3,22 +3,25 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  border-bottom: 1px solid #999;
+  border-bottom: 1px solid #e5ddd3;
+  background: #faf6f0;
 
   .zone {
     flex: 1;
     display: flex;
     align-items: center;
     gap: 8px;
-    border-top: 1px solid #999;
+    border-top: 1px solid #e5ddd3;
 
     .title {
       width: 40px;
-      font-size: 16px;
-      font-weight: bold;
-      color: #333;
+      font-size: 14px;
+      font-weight: 600;
+      color: #5a4a3a;
       line-height: 40px;
       text-align: center;
+      background: #f5f0e8;
+      border-right: 1px solid #e5ddd3;
     }
   }
 }
@@ -28,28 +31,47 @@
   height: 100%;
   display: flex;
   text-align: center;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   padding-inline: 16px;
+  min-height: 48px;
+  transition: background-color 0.2s ease;
 }
 
-@mixin drag-item-style($bg-color) {
-  padding: 4px 8px;
-  border-radius: 12px;
-  border: 1px solid $bg-color;
+@mixin drag-item-style($bg-color, $border-color, $text-color) {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid $border-color;
   cursor: pointer;
   background: $bg-color;
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
   user-select: none;
+  color: $text-color;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  svg {
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+    flex-shrink: 0;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
 }
 
 .field {
-  @include drag-item-style(#7fc2f8);
+  @include drag-item-style(#d4dde5, #a8b8c8, #2c3e50);
 }
 
 .metric {
-  @include drag-item-style(#a9fa8a);
+  @include drag-item-style(#d5ded8, #a8c0af, #2d4a3e);
 }

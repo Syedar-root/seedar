@@ -1,7 +1,14 @@
 import React from "react";
-import { X } from "lucide-react";
-import { FilterItem as FilterItemType, OPERATORS_BY_TYPE, NO_VALUE_OPERATORS, TIME_RANGE_OPERATORS } from "./types";
+import { X, Check } from "lucide-react";
+import {
+  FilterItem as FilterItemType,
+  OPERATORS_BY_TYPE,
+  NO_VALUE_OPERATORS,
+  TIME_RANGE_OPERATORS,
+} from "./types";
 import { FieldType } from "#pkg/seedar/types";
+import { Select } from "@base-ui/react/select";
+import { Input } from "@base-ui/react/input";
 import styles from "./filterItem.module.scss";
 
 interface FilterItemProps {
@@ -15,7 +22,8 @@ export const FilterItem: React.FC<FilterItemProps> = ({
   onUpdate,
   onRemove,
 }) => {
-  const operators = OPERATORS_BY_TYPE[filter.fieldType] || OPERATORS_BY_TYPE[FieldType.STRING];
+  const operators =
+    OPERATORS_BY_TYPE[filter.fieldType] || OPERATORS_BY_TYPE[FieldType.STRING];
   const needsValue = !NO_VALUE_OPERATORS.includes(filter.op);
   const isTimeRange = TIME_RANGE_OPERATORS.includes(filter.op);
 
@@ -24,17 +32,22 @@ export const FilterItem: React.FC<FilterItemProps> = ({
     onUpdate(filter.id, { op: newOp, value: undefined });
   };
 
-  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleValueChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     let value: any = e.target.value;
-    
-    if (filter.fieldType === FieldType.NUMBER || filter.fieldType === FieldType.DECIMAL) {
+
+    if (
+      filter.fieldType === FieldType.NUMBER ||
+      filter.fieldType === FieldType.DECIMAL
+    ) {
       value = value === "" ? undefined : Number(value);
     }
-    
+
     if (isTimeRange) {
       value = value === "" ? undefined : Number(value);
     }
-    
+
     onUpdate(filter.id, { value });
   };
 
@@ -43,14 +56,17 @@ export const FilterItem: React.FC<FilterItemProps> = ({
 
     if (isTimeRange) {
       return (
-        <input
-          type="number"
-          className={styles.valueInput}
-          value={filter.value ?? ""}
-          onChange={handleValueChange}
-          placeholder="N"
-          min={1}
-        />
+        <>
+          <Input
+            type="number"
+            className={styles.valueInput}
+            value={filter.value ?? ""}
+            onChange={handleValueChange}
+            placeholder="N"
+            min={1}
+          />
+          天
+        </>
       );
     }
 
@@ -58,7 +74,7 @@ export const FilterItem: React.FC<FilterItemProps> = ({
       case FieldType.NUMBER:
       case FieldType.DECIMAL:
         return (
-          <input
+          <Input
             type="number"
             className={styles.valueInput}
             value={filter.value ?? ""}
@@ -69,20 +85,41 @@ export const FilterItem: React.FC<FilterItemProps> = ({
 
       case FieldType.BOOLEAN:
         return (
-          <select
-            className={styles.valueSelect}
-            value={filter.value ?? ""}
-            onChange={handleValueChange}
+          <Select.Root
+            value={filter.value ?? null}
+            onValueChange={(value) =>
+              onUpdate(filter.id, { value: value ?? undefined })
+            }
           >
-            <option value="">请选择</option>
-            <option value="true">是</option>
-            <option value="false">否</option>
-          </select>
+            <Select.Trigger className={styles.valueTrigger}>
+              <Select.Value placeholder="请选择" />
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Positioner className={styles.positioner}>
+                <Select.Popup className={styles.popup}>
+                  <Select.List className={styles.list}>
+                    <Select.Item className={styles.item} value="true">
+                      <Select.ItemIndicator className={styles.indicator}>
+                        <Check size={12} />
+                      </Select.ItemIndicator>
+                      <Select.ItemText>是</Select.ItemText>
+                    </Select.Item>
+                    <Select.Item className={styles.item} value="false">
+                      <Select.ItemIndicator className={styles.indicator}>
+                        <Check size={12} />
+                      </Select.ItemIndicator>
+                      <Select.ItemText>否</Select.ItemText>
+                    </Select.Item>
+                  </Select.List>
+                </Select.Popup>
+              </Select.Positioner>
+            </Select.Portal>
+          </Select.Root>
         );
 
       case FieldType.DATE:
         return (
-          <input
+          <Input
             type="date"
             className={styles.valueInput}
             value={filter.value ?? ""}
@@ -92,7 +129,7 @@ export const FilterItem: React.FC<FilterItemProps> = ({
 
       case FieldType.DATETIME:
         return (
-          <input
+          <Input
             type="datetime-local"
             className={styles.valueInput}
             value={filter.value ?? ""}
@@ -102,7 +139,7 @@ export const FilterItem: React.FC<FilterItemProps> = ({
 
       default:
         return (
-          <input
+          <Input
             type="text"
             className={styles.valueInput}
             value={filter.value ?? ""}
@@ -116,17 +153,38 @@ export const FilterItem: React.FC<FilterItemProps> = ({
   return (
     <div className={styles.filterItem}>
       <span className={styles.name}>{filter.name}</span>
-      <select
-        className={styles.operatorSelect}
+      <Select.Root
         value={filter.op}
-        onChange={handleOperatorChange}
+        onValueChange={(value) =>
+          onUpdate(filter.id, { op: value ?? undefined, value: undefined })
+        }
       >
-        {operators.map((op) => (
-          <option key={op.value} value={op.value}>
-            {op.label}
-          </option>
-        ))}
-      </select>
+        <Select.Trigger className={styles.operatorTrigger}>
+          <Select.Value>
+            {operators.find((op) => op.value === filter.op)?.label ?? filter.op}
+          </Select.Value>
+        </Select.Trigger>
+        <Select.Portal>
+          <Select.Positioner className={styles.positioner}>
+            <Select.Popup className={styles.popup}>
+              <Select.List className={styles.list}>
+                {operators.map((op) => (
+                  <Select.Item
+                    key={op.value}
+                    className={styles.item}
+                    value={op.value}
+                  >
+                    <Select.ItemIndicator className={styles.indicator}>
+                      <Check size={12} />
+                    </Select.ItemIndicator>
+                    <Select.ItemText>{op.label}</Select.ItemText>
+                  </Select.Item>
+                ))}
+              </Select.List>
+            </Select.Popup>
+          </Select.Positioner>
+        </Select.Portal>
+      </Select.Root>
       {renderValueInput()}
       <X
         size={12}
