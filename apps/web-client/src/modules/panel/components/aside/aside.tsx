@@ -4,7 +4,7 @@ import styles from "./aside.module.scss";
 import { DragItem } from "../dndHelper/drapItem";
 import clsx from "clsx";
 import { GripVertical, Plus } from "lucide-react";
-import { MetricEditorDialog } from "./metricEditorDialog";
+import { MetricEditorDialog } from "../metricEditor";
 
 interface AsideProps {
   className?: string;
