@@ -1,5 +1,4 @@
-export { useChartData } from './useChartData';
-export { useChartTheme } from './useChartTheme';
+export { useChartTheme } from "./useChartTheme";
 
 export {
   useDatasourceApi,
@@ -7,7 +6,7 @@ export {
   useQueryApi,
   useDashboardApi,
   usePanelApi,
-} from './useApi';
+} from "./useApi";
 
 export {
   useDatasources,
@@ -15,7 +14,7 @@ export {
   useCreateDatasource,
   useUpdateDatasource,
   useDeleteDatasource,
-} from './useDatasource';
+} from "./useDatasource";
 
 export {
   useDatasets,
@@ -23,7 +22,7 @@ export {
   useCreateDataset,
   useUpdateDataset,
   useDeleteDataset,
-} from './useDataset';
+} from "./useDataset";
 
 export {
   useQueries,
@@ -33,7 +32,7 @@ export {
   useDeleteQuery,
   useExecuteQuery,
   useExecuteTempQuery,
-} from './useQuery';
+} from "./useQuery";
 
 export {
   useDashboards,
@@ -44,9 +43,9 @@ export {
   useUpdateLayout,
   useAddPanel,
   useRemovePanel,
-} from './useDashboard';
+} from "./useDashboard";
 
-export { useDashboardActions } from './useDashboardActions';
+export { useDashboardActions } from "./useDashboardActions";
 
 export {
   usePanels,
@@ -54,4 +53,4 @@ export {
   useCreatePanel,
   useUpdatePanel,
   useDeletePanel,
-} from './usePanel';
+} from "./usePanel";

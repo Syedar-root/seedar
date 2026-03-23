@@ -1,21 +1,46 @@
 import { DatasetResponse } from "#pkg/seedar/types";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import styles from "./aside.module.scss";
 import { DragItem } from "../dndHelper/drapItem";
 import clsx from "clsx";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Plus } from "lucide-react";
+import { MetricEditorDialog } from "./metricEditorDialog";
 
 interface AsideProps {
   className?: string;
   fields: DatasetResponse["fields"];
   metrics: DatasetResponse["metrics"];
+  datasetId?: number;
+  onMetricCreated?: () => void;
 }
 
 export const Aside: React.FC<AsideProps> = ({
   className,
   fields,
   metrics,
-}: AsideProps) => {
+  datasetId,
+  onMetricCreated,
+}) => {
+  const [isMetricEditorOpen, setIsMetricEditorOpen] = useState(false);
+
+  const handleOpenMetricEditor = () => {
+    setIsMetricEditorOpen(true);
+  };
+
+  const handleCloseMetricEditor = () => {
+    setIsMetricEditorOpen(false);
+  };
+
+  const handleMetricCreated = () => {
+    setIsMetricEditorOpen(false);
+    onMetricCreated?.();
+  };
+
+  const numericFields = useMemo(
+    () => fields.filter((f) => f.type === "number" || f.type === "decimal"),
+    [fields],
+  );
+
   const fieldItems = useMemo(
     () =>
       fields.map((field) => (
@@ -67,10 +92,31 @@ export const Aside: React.FC<AsideProps> = ({
           <ul className={styles.sidebarList}>{fieldItems}</ul>
         </div>
         <div className={styles.sidebarSection}>
-          <h2 className={styles.sidebarSectionTitle}>指标</h2>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sidebarSectionTitle}>指标</h2>
+            {datasetId && (
+              <button
+                className={styles.addButton}
+                onClick={handleOpenMetricEditor}
+                title="添加指标"
+              >
+                <Plus size={14} />
+              </button>
+            )}
+          </div>
           <ul className={styles.sidebarList}>{metricItems}</ul>
         </div>
       </div>
+      {datasetId && isMetricEditorOpen && (
+        <MetricEditorDialog
+          datasetId={datasetId}
+          fields={fields}
+          metrics={metrics}
+          numericFields={numericFields}
+          onClose={handleCloseMetricEditor}
+          onSuccess={handleMetricCreated}
+        />
+      )}
     </aside>
   );
 };

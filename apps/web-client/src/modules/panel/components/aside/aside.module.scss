@@ -39,6 +39,32 @@
   color: var(--text-primary);
 }
 
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  font-size: 16px;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+}
+
 .sidebarList {
   display: flex;
   flex-direction: column;

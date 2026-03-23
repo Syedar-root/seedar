@@ -68,12 +68,18 @@ export const PanelPage = () => {
     handleRun();
   };
 
+  const handleMetricCreated = () => {
+    toast.success("指标创建成功");
+  };
+
   return panelId ? (
     <div className={styles.container}>
       <aside className={styles.sidebar}>
         <Aside
           fields={datasetData?.fields || []}
           metrics={datasetData?.metrics || []}
+          datasetId={datasetData?.id}
+          onMetricCreated={handleMetricCreated}
         />
       </aside>
       <aside className={styles.editor}>

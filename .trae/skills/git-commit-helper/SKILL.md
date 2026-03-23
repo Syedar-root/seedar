@@ -1,6 +1,6 @@
 ---
-name: 'git-commit-helper'
-description: '按照项目规范帮助用户进行Git提交，包括更新commit_msg.txt、使用正确的提交格式等。Invoke when user asks to commit code, or when preparing git commits.'
+name: "git-commit-helper"
+description: "按照项目规范帮助用户进行Git提交，包括更新commit_msg.txt、使用正确的提交格式等。Invoke when user asks to commit code, or when preparing git commits."
 ---
 
 # Git Commit Helper
@@ -10,7 +10,6 @@ description: '按照项目规范帮助用户进行Git提交，包括更新commit
 ## 使用步骤
 
 1. **更新 commit_msg.txt**
-
    - 编写极简中文内容
    - 内容需与当前变更契合
    - 格式：`feat/fix/chore/docs/refactor/init: 内容`
@@ -32,6 +31,7 @@ description: '按照项目规范帮助用户进行Git提交，包括更新commit
 - 禁止未更新文件直接提交
 - 推荐使用 Git Bash 终端操作
 - 无需推送到远程仓库
+- 尽可能一次只执行一个命令，避免 &&
 
 ## commit_msg.txt 示例
 
