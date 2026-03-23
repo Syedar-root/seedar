@@ -1,8 +1,8 @@
 .editor {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-xl);
   height: 100%;
   overflow-y: auto;
 }

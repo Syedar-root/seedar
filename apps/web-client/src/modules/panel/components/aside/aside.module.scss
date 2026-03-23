@@ -1,6 +1,6 @@
 .dragItem {
-  padding: 8px 12px;
-  font-size: 14px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-lg);
   user-select: none;
 }
 
@@ -10,17 +10,17 @@
 }
 
 .sidebarDesc {
-  font-size: 14px;
-  color: #999;
+  font-size: var(--font-lg);
+  color: var(--text-tertiary);
 }
 
 .sidebarSection {
-  border-bottom: 1px solid #ccc;
-  padding-block: 16px;
+  border-bottom: 1px solid var(--border-base);
+  padding-block: var(--spacing-xl);
 }
 
 .sidebarSectionTitle {
-  font-size: 16px;
+  font-size: var(--font-xl);
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }

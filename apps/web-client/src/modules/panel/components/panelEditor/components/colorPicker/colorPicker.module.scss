@@ -1,44 +1,44 @@
 .colorPicker {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md);
 }
 
 .title {
-  font-size: 14px;
+  font-size: var(--font-lg);
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .colorList {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .colorItem {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  background: #fafafa;
-  border-radius: 4px;
-  border: 1px solid #e8e8e8;
-  transition: all 0.2s;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-base);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-base);
+  transition: all var(--transition-slow);
 
   &:hover {
-    background: #f0f0f0;
+    background: var(--bg-hover);
   }
 }
 
 .colorBlock {
   width: 32px;
   height: 32px;
-  border-radius: 4px;
-  border: 1px solid #d9d9d9;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-base);
   cursor: pointer;
   flex-shrink: 0;
-  transition: transform 0.2s;
+  transition: transform var(--transition-slow);
 
   &:hover {
     transform: scale(1.05);
@@ -55,9 +55,8 @@
 
 .colorValue {
   flex: 1;
-  font-size: 13px;
-  color: #666;
-  // font-family: monospace;
+  font-size: var(--font-base);
+  color: var(--text-secondary);
 }
 
 .removeBtn {
@@ -65,33 +64,33 @@
   height: 24px;
   border: none;
   background: transparent;
-  color: #999;
+  color: var(--text-tertiary);
   font-size: 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-slow);
 
   &:hover {
-    background: #ff4d4f;
-    color: #fff;
+    background: var(--danger);
+    color: var(--text-inverse);
   }
 }
 
 .addBtn {
-  padding: 8px 16px;
-  border: 1px dashed #d9d9d9;
-  border-radius: 4px;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: 1px dashed var(--border-base);
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: #666;
-  font-size: 13px;
+  color: var(--text-secondary);
+  font-size: var(--font-base);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-slow);
 
   &:hover {
-    border-color: #1890ff;
-    color: #1890ff;
+    border-color: var(--primary);
+    color: var(--primary);
   }
 }

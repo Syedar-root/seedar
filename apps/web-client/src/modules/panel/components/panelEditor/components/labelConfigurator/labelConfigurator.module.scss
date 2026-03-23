@@ -1,24 +1,24 @@
 .labelConfigurator {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md);
 }
 
 .title {
-  font-size: 14px;
+  font-size: var(--font-lg);
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md);
 }
 
 .label {
-  font-size: 13px;
-  color: #666;
+  font-size: var(--font-base);
+  color: var(--text-secondary);
   min-width: 60px;
 }
 
@@ -30,16 +30,16 @@
 
 .select {
   flex: 1;
-  padding: 6px 8px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 13px;
-  color: #333;
-  background: #fff;
+  padding: 6px var(--spacing-sm);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  background: var(--bg-elevated);
   cursor: pointer;
   outline: none;
 
   &:focus {
-    border-color: #1890ff;
+    border-color: var(--primary);
   }
 }

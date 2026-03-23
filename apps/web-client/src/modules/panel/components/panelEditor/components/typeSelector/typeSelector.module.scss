@@ -1,42 +1,42 @@
 .typeSelector {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .title {
-  font-size: 14px;
+  font-size: var(--font-lg);
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .typeItem {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 8px;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
+  padding: 10px var(--spacing-sm);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  background: #fff;
-  font-size: 13px;
+  background: var(--bg-elevated);
+  font-size: var(--font-base);
 
   &:hover {
-    border-color: #1890ff;
+    border-color: var(--primary);
   }
 
   &.active {
-    border-color: #1890ff;
-    background: #e6f4ff;
+    border-color: var(--primary);
+    background: var(--primary-light);
   }
 }
 
 .label {
-  color: #333;
+  color: var(--text-primary);
 }

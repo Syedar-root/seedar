@@ -6,7 +6,7 @@
 
 .header {
   background-color: #1a1a1a;
-  color: white;
+  color: var(--text-inverse);
   padding: 1rem 2rem;
   h1 {
     margin: 0;
@@ -18,5 +18,5 @@
 .main {
   flex: 1;
   padding: 2rem;
-  background-color: #f5f5f5;
+  background-color: var(--bg-base);
 }

@@ -1,49 +1,49 @@
 .editableTitle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .title {
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .editIcon {
   cursor: pointer;
   transition:
-    opacity 0.2s,
-    color 0.2s;
-  color: #666;
+    opacity var(--transition-slow),
+    color var(--transition-slow);
+  color: var(--text-secondary);
 
   &:hover {
-    color: #007bff;
+    color: var(--primary);
   }
 }
 
 .input {
   font-size: 18px;
   font-weight: 600;
-  padding: 4px 8px;
-  border: 1px solid #007bff;
-  border-radius: 4px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
   outline: none;
   min-width: 200px;
-  color: #333;
+  color: var(--text-primary);
 
   &:focus {
-    border-color: #0056b3;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+    border-color: var(--primary-active);
+    box-shadow: 0 0 0 2px rgba(160, 82, 45, 0.2);
   }
 }
 
 .actionIcon {
   cursor: pointer;
-  transition: color 0.2s;
-  color: #666;
+  transition: color var(--transition-slow);
+  color: var(--text-secondary);
 
   &:hover {
-    color: #007bff;
+    color: var(--primary);
   }
 }
