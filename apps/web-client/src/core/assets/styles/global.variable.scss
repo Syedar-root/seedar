@@ -1,0 +1,155 @@
+// ============================================
+// Classic Vintage Theme - 经典暖棕主题
+// ============================================
+
+// --------------------------------------------
+// Mixin: 输出 CSS 变量
+// --------------------------------------------
+@mixin output-css-vars($map) {
+  @each $name, $value in $map {
+    --#{$name}: #{$value};
+  }
+}
+
+// --------------------------------------------
+// 主色系 Primary
+// --------------------------------------------
+$cv-primary: (
+  "primary": #a0522d,
+  "primary-hover": #b8633a,
+  "primary-active": #8b4513,
+  "primary-light": #faf6f0,
+);
+
+// --------------------------------------------
+// 文字色 Text
+// --------------------------------------------
+$cv-text: (
+  "text-primary": #5a4a3a,
+  "text-secondary": #8b4513,
+  "text-tertiary": #a0522d,
+  "text-disabled": #bfbfbf,
+  "text-inverse": #faf6f0,
+);
+
+// --------------------------------------------
+// 背景色 Background
+// --------------------------------------------
+$cv-bg: (
+  "bg-base": #faf6f0,
+  "bg-elevated": #ffffff,
+  "bg-hover": #f5f0e8,
+  "bg-selected": #e5ddd3,
+  "bg-container": #e5d4d4,
+  "bg-disabled": #f5f5f5,
+);
+
+// --------------------------------------------
+// 边框色 Border
+// --------------------------------------------
+$cv-border: (
+  "border-base": #d5c4b0,
+  "border-secondary": #c8a8a8,
+  "border-hover": #c0a080,
+  "border-focus": #a0522d,
+);
+
+// --------------------------------------------
+// 功能色 Semantic
+// --------------------------------------------
+$cv-semantic: (
+  "success": #6b8e4e,
+  "success-hover": #7da05e,
+  "success-active": #5a7a40,
+  "success-light": #f0f4eb,
+  "warning": #c4842a,
+  "warning-hover": #d4953d,
+  "warning-active": #a87020,
+  "warning-light": #faf5eb,
+  "info": #5d7a8c,
+  "info-hover": #6e8a9c,
+  "info-active": #4d6a7a,
+  "info-light": #f0f4f6,
+  "danger": #b85450,
+  "danger-hover": #c86560,
+  "danger-active": #a04440,
+  "danger-light": #faf2f1,
+);
+
+// --------------------------------------------
+// 辅助色 Accent
+// --------------------------------------------
+$cv-accent: (
+  "accent-1": #d4dde5,
+  "accent-1-border": #a8b8c8,
+  "accent-1-text": #2c3e50,
+  "accent-2": #d5ded8,
+  "accent-2-border": #a8c0af,
+  "accent-2-text": #2d4a3e,
+);
+
+// --------------------------------------------
+// 阴影 Shadow
+// --------------------------------------------
+$cv-shadow: (
+  "shadow-sm": 0 1px 2px rgba(0, 0, 0, 0.05),
+  "shadow-md": 0 2px 8px rgba(0, 0, 0, 0.1),
+  "shadow-lg": 0 4px 16px rgba(0, 0, 0, 0.12),
+);
+
+// --------------------------------------------
+// 圆角 Radius
+// --------------------------------------------
+$cv-radius: (
+  "radius-sm": 4px,
+  "radius-base": 6px,
+  "radius-lg": 8px,
+);
+
+// --------------------------------------------
+// 间距 Spacing
+// --------------------------------------------
+$cv-spacing: (
+  "spacing-xs": 4px,
+  "spacing-sm": 8px,
+  "spacing-md": 12px,
+  "spacing-lg": 16px,
+  "spacing-xl": 24px,
+);
+
+// --------------------------------------------
+// 字体 Font
+// --------------------------------------------
+$cv-font: (
+  "font-xs": 11px,
+  "font-sm": 12px,
+  "font-base": 13px,
+  "font-lg": 14px,
+  "font-xl": 16px,
+);
+
+// --------------------------------------------
+// 过渡 Transition
+// --------------------------------------------
+$cv-transition: (
+  "transition-fast": 0.1s ease,
+  "transition-base": 0.15s ease,
+  "transition-slow": 0.2s ease,
+);
+
+// ============================================
+// 输出 CSS 变量
+// ============================================
+:root {
+  @include output-css-vars($cv-primary);
+  @include output-css-vars($cv-text);
+  @include output-css-vars($cv-bg);
+  @include output-css-vars($cv-border);
+  @include output-css-vars($cv-semantic);
+  @include output-css-vars($cv-accent);
+  @include output-css-vars($cv-shadow);
+  @include output-css-vars($cv-radius);
+  @include output-css-vars($cv-spacing);
+  @include output-css-vars($cv-font);
+  @include output-css-vars($cv-transition);
+}

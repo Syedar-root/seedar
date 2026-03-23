@@ -1,4 +1,5 @@
 @use 'tailwindcss' as *;
+@use '../core/assets/styles/global.variable.scss';
 
 @theme {
   --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
