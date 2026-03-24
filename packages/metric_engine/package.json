@@ -45,7 +45,9 @@
       "optional": true
     }
   },
-  "dependencies": {},
+  "dependencies": {
+    "jsep": "^1.4.0"
+  },
   "devDependencies": {
     "@types/knex": "^0.16.1",
     "@types/node": "^25.0.9",
