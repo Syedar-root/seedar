@@ -525,6 +525,8 @@ export class DatasetService {
       timeDataSourceColumnName: metric.timeDataSourceColumn?.columnName,
       periodType: metric.periodType,
       calculationMode: metric.calculationMode,
+      // 表达式指标
+      expression: metric.expression,
     };
   }
 

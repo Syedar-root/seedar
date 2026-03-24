@@ -35,6 +35,7 @@ export type AddMetric = Pick<
   | 'timeDataSourceColumnId'
   | 'periodType'
   | 'calculationMode'
+  | 'expression'
 >;
 
 export type UpdateMetric = Pick<
@@ -59,6 +60,7 @@ export type UpdateMetric = Pick<
   | 'timeDataSourceColumnId'
   | 'periodType'
   | 'calculationMode'
+  | 'expression'
 >;
 
 export type AddJoin = Pick<

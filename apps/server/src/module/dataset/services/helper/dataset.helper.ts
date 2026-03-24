@@ -18,6 +18,37 @@ import { DatasourceColumn } from '@/module/datasource/entities/datasource-column
 import { ExceptionFactory } from '@/common/exceptions';
 
 /**
+ * 解析表达式中的 #F 和 #M 引用
+ * #F10,20,30 表示字段ID列表
+ * #M100,200 表示指标ID列表
+ * 返回需要验证的字段ID列表和指标ID列表
+ */
+function parseExpressionIds(expression: string): {
+  fieldIds: number[];
+  metricIds: number[];
+} {
+  const fieldIds: number[] = [];
+  const metricIds: number[] = [];
+
+  // 匹配字段: #F10,20,30 或 #F10
+  const fieldPattern = /#F([\d,]+)/g;
+  let match;
+  while ((match = fieldPattern.exec(expression)) !== null) {
+    const ids = match[1].split(',').map((id) => parseInt(id, 10));
+    fieldIds.push(...ids);
+  }
+
+  // 匹配指标: #M100,200 或 #M100
+  const metricPattern = /#M([\d,]+)/g;
+  while ((match = metricPattern.exec(expression)) !== null) {
+    const ids = match[1].split(',').map((id) => parseInt(id, 10));
+    metricIds.push(...ids);
+  }
+
+  return { fieldIds, metricIds };
+}
+
+/**
  * 实体操作动作
  */
 export interface EntityAction<T, S = T> {
@@ -223,6 +254,13 @@ export const metricManager: IEntityManager<AddMetric, UpdateMetric> = {
         }
         if (metric.baseMetricId) {
           validMetricIds.push(metric.baseMetricId);
+        }
+
+        // 解析 expression 中的 #ID 引用
+        if (metric.expression) {
+          const { fieldIds, metricIds } = parseExpressionIds(metric.expression);
+          validColIds.push(...fieldIds);
+          validMetricIds.push(...metricIds);
         }
       }
 

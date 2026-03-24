@@ -11,6 +11,7 @@ import {
   MetricRefExpr,
   ConditionalExpr,
   SelectExpr,
+  parseExpression,
 } from '@metric-engine/core';
 import {
   DatasetResponse,
@@ -197,6 +198,122 @@ export class DSLTransformerV2 {
       }
     });
 
+    /**
+     * 预处理表达式：将 #F 和 #M 替换为实际字段/指标名
+     * #F10,20,30 表示字段ID列表
+     * #M100,200 表示指标ID列表
+     */
+    const preprocessExpression = (expression: string): string => {
+      let result = expression;
+
+      // 先替换 #M 指标引用
+      result = result.replace(/#M([\d,]+)/g, (match, ids) => {
+        const idList = ids.split(',').map((id) => parseInt(id, 10));
+        return idList
+          .map((id) => {
+            const metricInfo = metricMap.get(id);
+            if (!metricInfo) {
+              throw new Error(`找不到指标: ${id}`);
+            }
+            return metricInfo.name;
+          })
+          .join(', ');
+      });
+
+      // 再替换 #F 字段引用
+      result = result.replace(/#F([\d,]+)/g, (match, ids) => {
+        const idList = ids.split(',').map((id) => parseInt(id, 10));
+        return idList
+          .map((id) => {
+            const fieldInfo = Array.from(fieldMap.values()).find(
+              (f) => f.id === id,
+            );
+            if (!fieldInfo) {
+              throw new Error(`找不到字段: ${id}`);
+            }
+            return fieldInfo.name;
+          })
+          .join(', ');
+      });
+
+      return result;
+    };
+
+    /**
+     * 从表达式构建 Expr AST
+     * 使用 V2 的 ExprParser 解析表达式字符串
+     */
+    const buildExprFromExpression = (metric: DatasetMetricResponse): Expr => {
+      if (!metric.expression) {
+        throw new Error('expression metric 需要 expression 字段');
+      }
+
+      const processedExpr = preprocessExpression(metric.expression);
+
+      const context = {
+        tables: new Map([
+          [
+            mainTableAlias,
+            { name: mainTableInfo.tableName, alias: mainTableAlias },
+          ],
+        ]),
+        fields: new Map(
+          Array.from(fieldMap.values()).map((f) => [
+            f.name,
+            {
+              name: f.name,
+              tableName: mainTableInfo.tableName,
+              tableAlias: mainTableAlias,
+            },
+          ]),
+        ),
+        metrics: new Map(
+          Array.from(metricMap.values()).map((m) => [
+            m.name,
+            buildMetricExpr(m.id, new Set()),
+          ]),
+        ),
+        defaultTable: mainTableAlias,
+      };
+
+      return parseExpression(processedExpr, context);
+    };
+
+    /**
+     * 递归构建指标表达式（用于 metrics 上下文的引用）
+     */
+    const buildMetricExpr = (metricId: number, visited: Set<number>): Expr => {
+      if (visited.has(metricId)) {
+        throw new Error(`检测到循环引用: 指标 ${metricId}`);
+      }
+      visited.add(metricId);
+
+      const metric = metricMap.get(metricId);
+      if (!metric) {
+        throw new Error(`找不到指标: ${metricId}`);
+      }
+
+      if (metric.expression) {
+        return buildExprFromExpression(metric);
+      }
+
+      switch (metric.metricType) {
+        case MetricType.AGGREGATE:
+          return buildAggregateExpr(metric);
+        case MetricType.ROW_LEVEL:
+          return buildRowLevelExpr(metric);
+        case MetricType.POST_AGGREGATE:
+          return buildPostAggregateExpr(metric, visited);
+        case MetricType.ARITHMETIC:
+          return buildArithmeticExpr(metric, visited);
+        default:
+          return new MetricRefExpr(metric.name, {
+            alias: metric.name,
+            businessName: metric.businessName,
+          });
+      }
+    };
+
     const resolveMetric = (
       metricId: number,
       visited: Set<number> = new Set(),
@@ -209,6 +326,11 @@ export class DSLTransformerV2 {
       const metric = metricMap.get(metricId);
       if (!metric) {
         throw new Error(`找不到指标: ${metricId}`);
+      }
+
+      // 如果有 expression 字段，优先使用表达式解析
+      if (metric.expression) {
+        return buildExprFromExpression(metric);
       }
 
       switch (metric.metricType) {
