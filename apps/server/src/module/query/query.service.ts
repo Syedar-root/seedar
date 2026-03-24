@@ -139,6 +139,9 @@ export class QueryService {
 
       const querySpec = QueryAdapter.toQuerySpec(metricQuery);
       const builder = new KnexQueryBuilder(knexConnection);
+
+      console.log('querySpec:', JSON.stringify(querySpec, null, 2));
+
       const sqlResult = builder.build(querySpec);
 
       console.log(sqlResult);

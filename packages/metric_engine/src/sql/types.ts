@@ -6,7 +6,7 @@
  * 连接类型
  * 用于指定表连接的方式
  */
-export type JoinType = 'left' | 'inner' | 'right';
+export type JoinType = "left" | "inner" | "right";
 
 /**
  * 连接规格接口
@@ -54,7 +54,7 @@ export interface OrderBySpec {
    * - 'asc': 升序排列（从小到大）
    * - 'desc': 降序排列（从大到小）
    */
-  dir: 'asc' | 'desc';
+  dir: "asc" | "desc";
 }
 
 /**
@@ -131,4 +131,15 @@ export interface SQLResult {
    * 用于防止 SQL 注入，提高安全性
    */
   bindings: readonly any[];
+
+  /**
+   * 列映射信息
+   * 包含查询结果中每列的别名、显示名、业务名等信息
+   */
+  columnMappings?: Array<{
+    alias: string;
+    type: "dimension" | "metric";
+    displayName: string;
+    businessName?: string;
+  }>;
 }

@@ -48,28 +48,62 @@ export class KnexQueryBuilder {
     // 使用 `${table} as ${alias}` 格式设置主表及其别名
     const qb = this.knex(`${spec.from.table} as ${spec.from.alias}`);
 
+    // 收集列映射信息
+    const columnMappings: Array<{
+      alias: string;
+      type: "dimension" | "metric";
+      displayName: string;
+      businessName?: string;
+    }> = [];
+
     // 添加 SELECT 列
     // 维度字段直接添加到选择列表
     if (spec.dimensions && spec.dimensions.length > 0) {
       spec.dimensions.forEach((dim) => {
-        // 如果维度有别名，使用 as 设置别名
+        // 确定 SQL 列名：优先使用 alias，其次用字段名
+        const sqlAlias = dim.meta?.alias || dim.getQualifiedName();
+        // 确定显示名：优先使用 businessName，其次用 alias
+        const displayName =
+          dim.meta?.businessName || dim.meta?.alias || dim.getQualifiedName();
+
         if (dim.meta?.alias) {
           qb.select(`${dim.getQualifiedName()} as ${dim.meta.alias}`);
         } else {
           qb.select(dim.getQualifiedName());
         }
+        columnMappings.push({
+          alias: sqlAlias,
+          type: "dimension",
+          displayName,
+          businessName: dim.meta?.businessName,
+        });
       });
     }
 
     // 指标字段添加到选择列表
     if (spec.metrics && spec.metrics.length > 0) {
       spec.metrics.forEach((metric) => {
-        // 如果指标有别名，使用 as 设置别名
+        // 确定 SQL 列名：优先使用 alias
+        const sqlAlias =
+          metric.meta?.alias || metric.name || this.buildExpr(metric);
+        // 确定显示名：优先使用 businessName，其次用 alias
+        const displayName =
+          metric.meta?.businessName ||
+          metric.meta?.alias ||
+          metric.name ||
+          this.buildExpr(metric);
+
         if (metric.meta?.alias) {
           qb.select(`${this.buildExpr(metric)} as ${metric.meta.alias}`);
         } else {
           qb.select(this.buildExpr(metric));
         }
+        columnMappings.push({
+          alias: sqlAlias,
+          type: "metric",
+          displayName,
+          businessName: metric.meta?.businessName,
+        });
       });
     }
 
@@ -133,6 +167,7 @@ export class KnexQueryBuilder {
     return {
       sql: sqlResult.sql,
       bindings: [...sqlResult.bindings],
+      columnMappings,
     };
   }
 
@@ -158,6 +193,14 @@ export class KnexQueryBuilder {
     let colIdx = 1;
     const columnAliasMap = new Map<string, string>();
     const fieldAliasSet = new Set<string>(); // 用于去重
+
+    // 收集列映射信息
+    const columnMappings: Array<{
+      alias: string;
+      type: "dimension" | "metric";
+      displayName: string;
+      businessName?: string;
+    }> = [];
 
     // 添加 JOIN 连接到 CTE
     if (spec.joins && spec.joins.length > 0) {
@@ -233,11 +276,23 @@ export class KnexQueryBuilder {
       spec.dimensions.forEach((dim) => {
         const qualifiedName = dim.getQualifiedName();
         const cteAlias = columnAliasMap.get(qualifiedName);
+        // 确定 SQL 列名：优先使用 alias
+        const sqlAlias = dim.meta?.alias || cteAlias;
+        // 确定显示名：优先使用 businessName
+        const displayName =
+          dim.meta?.businessName || dim.meta?.alias || cteAlias;
+
         if (dim.meta?.alias) {
           qb.select(`${cteAlias} as ${dim.meta.alias}`);
         } else {
           qb.select(cteAlias);
         }
+        columnMappings.push({
+          alias: sqlAlias,
+          type: "dimension",
+          displayName,
+          businessName: dim.meta?.businessName,
+        });
       });
     }
 
@@ -246,7 +301,17 @@ export class KnexQueryBuilder {
     if (spec.metrics && spec.metrics.length > 0) {
       spec.metrics.forEach((metric) => {
         const alias = metric.meta?.alias || metric.name;
+        // 确定显示名：优先使用 businessName
+        const displayName =
+          metric.meta?.businessName || metric.meta?.alias || metric.name;
+
         this.applyMetricSelect(qb, metric, alias, columnAliasMap);
+        columnMappings.push({
+          alias,
+          type: "metric",
+          displayName,
+          businessName: metric.meta?.businessName,
+        });
       });
     }
 
@@ -286,6 +351,7 @@ export class KnexQueryBuilder {
     return {
       sql: sqlResult.sql,
       bindings: [...sqlResult.bindings],
+      columnMappings,
     };
   }
 
