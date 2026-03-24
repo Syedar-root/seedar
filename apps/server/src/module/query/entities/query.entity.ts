@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { QueryStatus } from '../query-status.enum';
 import { Dataset } from '@/module/dataset/entities/dataset.entity';
-import type { QueryDSL } from '../dsl-transformer';
+import type { QueryDSL } from '../dsl-transformer/dsl-transformer';
 
 @Entity('query')
 export class Query {

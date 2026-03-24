@@ -7,7 +7,7 @@ import { CreateQueryRequest } from './dto/create-query.request';
 import { UpdateQueryRequest } from './dto/update-query.request';
 import { ExecuteQueryResponse } from './dto/execute-query.response';
 import { QueryStatus } from './query-status.enum';
-import { DSLTransformer, QueryDSL } from './dsl-transformer';
+import { DSLTransformer, QueryDSL } from './dsl-transformer/dsl-transformer';
 import {
   KnexQueryBuilder,
   QueryAdapter,
@@ -23,6 +23,7 @@ import { MySqlConfig } from '@/module/datasource/datasource.types';
 import { DataSourceType } from '@/module/datasource/datasource.types';
 import { DatasetResponse } from '@/module/dataset/dataset.types';
 import { LoggerService } from '@/logger/logger.service';
+import { DSLTransformerV2 } from './dsl-transformer/dsl-transformer.v2';
 
 @Injectable()
 export class QueryService {
@@ -119,7 +120,7 @@ export class QueryService {
     );
 
     const tables = this.getTablesFromDataset(dataset);
-    const metricQuery = DSLTransformer.transform(dsl, dataset, tables);
+
     const knexConnection =
       this.knexConnectionFactory.createConnection(datasourceEntity);
 
@@ -137,14 +138,16 @@ export class QueryService {
 
       const startTime = Date.now();
 
-      const querySpec = QueryAdapter.toQuerySpec(metricQuery);
-      const builder = new KnexQueryBuilder(knexConnection);
+      // v1 的使用方法
+      // const metricQuery = DSLTransformer.transform(dsl, dataset, tables);
+      // const querySpec = QueryAdapter.toQuerySpec(metricQuery);
 
-      console.log('querySpec:', JSON.stringify(querySpec, null, 2));
+      const querySpec = DSLTransformerV2.transform(dsl, dataset, tables);
+
+      const builder = new KnexQueryBuilder(knexConnection);
 
       const sqlResult = builder.build(querySpec);
 
-      console.log(sqlResult);
       const results = await knexConnection.raw<any[][]>(
         sqlResult.sql,
         sqlResult.bindings,
@@ -177,7 +180,7 @@ export class QueryService {
 
       const rows = rawRows.map((row: Record<string, unknown>) => {
         return columnAliases.map((alias: string) => {
-          const value = row[alias];
+          const value = row[alias.split('.').at(-1) || alias];
           return typeof value === 'number' ? value : String(value);
         });
       });
