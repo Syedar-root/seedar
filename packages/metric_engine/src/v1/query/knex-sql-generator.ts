@@ -1,9 +1,9 @@
 import knex, { Knex as KnexType } from "knex";
 import { Query } from "./query-builder";
-import { Field } from "../core/field";
+import { Field } from "../../core/field";
 import { Filter, TimeFilter } from "./filter";
-import { Join } from "../core/join";
-import { Operator, DatabaseDialect } from "../core/types";
+import { Join } from "../../core/join";
+import { Operator, DatabaseDialect } from "../../core/types";
 import {
   Metric,
   AggregateMetric,

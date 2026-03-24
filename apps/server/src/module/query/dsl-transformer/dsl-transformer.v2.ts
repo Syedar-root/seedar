@@ -7,6 +7,10 @@ import {
   AggFuncName,
   BinaryOperator,
   ComparisonOperator,
+  Expr,
+  MetricRefExpr,
+  ConditionalExpr,
+  SelectExpr,
 } from '@metric-engine/core';
 import {
   DatasetResponse,

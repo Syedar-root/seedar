@@ -2,6 +2,7 @@ import { Knex } from 'knex';
 import { QuerySpec, SQLResult } from './types';
 import { Expr, AggLevel, BinaryExpr, AggExpr, FieldRefExpr, LiteralExpr } from '../expr';
 import { ExprAnalyzer } from '../expr/analyzer';
+import { DatabaseDialect } from "../../core/types";
 
 /**
  * CTE（Common Table Expression，公共表表达式）构建器

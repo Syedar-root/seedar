@@ -1,5 +1,5 @@
 import { SchemaInspector } from '../database/schema-inspector';
-import { Query, Dimension } from '../query/query-builder';
+import { Query, Dimension } from '../v1/query/query-builder';
 import { Table } from '../core/table';
 import {
   AggregateMetric,
@@ -8,11 +8,11 @@ import {
   ArithmeticMetric,
   MetricExpression,
   SubQueryMetric,
-} from '../metrics/metric-classes';
-import { Filter, TimeFilter, TimeRange } from '../query/filter';
+} from '../v1/metrics/metric-classes';
+import { Filter, TimeFilter, TimeRange } from '../v1/query/filter';
 import { AggregateFunction, Operator } from '../core/types';
 import { Join, JoinCondition } from '../core/join';
-import { QueryBuilder } from '../query/query-builder';
+import { QueryBuilder } from '../v1/query/query-builder';
 
 export type MinimalMetric = {
   name?: string;

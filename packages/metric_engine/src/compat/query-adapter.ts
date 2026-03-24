@@ -1,7 +1,7 @@
-import { Query, Dimension } from "../query/query-builder";
-import { Filter, TimeFilter } from "../query/filter";
+import { Query, Dimension } from "../v1/query/query-builder";
+import { Filter, TimeFilter } from "../v1/query/filter";
 import { Join, JoinCondition } from "../core/join";
-import { QuerySpec, JoinSpec, OrderBySpec } from "../sql/types";
+import { QuerySpec, JoinSpec, OrderBySpec } from "../v2/sql/types";
 import {
   Expr,
   FieldRefExpr,
@@ -12,10 +12,10 @@ import {
   CallExpr,
   BinaryOperator,
   ComparisonOperator,
-} from "../expr";
+} from "../v2/expr";
 import { MetricAdapter } from "./metric-adapter";
 import { Field } from "../core/field";
-import { Metric } from "../metrics/metric-classes";
+import { Metric } from "../v1/metrics/metric-classes";
 import { Operator, DatabaseDialect } from "../core/types";
 
 /**

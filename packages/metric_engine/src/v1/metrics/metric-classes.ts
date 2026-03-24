@@ -4,8 +4,8 @@ import {
   PeriodOverPeriodType,
   PeriodCalculationMode,
   DatabaseDialect,
-} from "../core/types";
-import { Field } from "../core/field";
+} from "../../core/types";
+import { Field } from "../../core/field";
 
 /**
  * 指标基类选项

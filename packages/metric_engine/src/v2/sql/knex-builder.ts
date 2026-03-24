@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 import { QuerySpec, SQLResult, JoinSpec } from "./types";
 import { Expr, AggLevel } from "../expr";
-import { DatabaseDialect } from "../core/types";
+import { DatabaseDialect } from "../../core/types";
 
 /**
  * Knex 查询构建器类

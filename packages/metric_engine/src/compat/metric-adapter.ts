@@ -5,7 +5,7 @@ import {
   ArithmeticMetric,
   PostAggregateMetric,
   MetricExpression,
-} from '../metrics/metric-classes';
+} from '../v1/metrics/metric-classes';
 import { Field } from '../core/field';
 import { Operator, AggregateFunction as OldAggregateFunction } from '../core/types';
 import {
@@ -17,7 +17,7 @@ import {
   AggLevel,
   AggFuncName,
   BinaryOperator,
-} from '../expr';
+} from '../v2/expr';
 
 /**
  * 指标适配器类

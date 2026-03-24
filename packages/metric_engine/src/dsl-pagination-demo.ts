@@ -1,5 +1,5 @@
 import { parseMinimalDslToQuery, MinimalDSL } from './dsl/parse-dsl';
-import { KnexSQLGenerator } from './query/knex-sql-generator';
+import { KnexSQLGenerator } from './v1/query/knex-sql-generator';
 import { Table, Field, FieldType } from './index';
 
 async function dslPaginationDemo() {

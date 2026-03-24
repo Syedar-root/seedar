@@ -1,7 +1,7 @@
-import { Field } from '../core/field';
+import { Field } from '../../core/field';
 import { Metric, PeriodOverPeriodMetric } from '../metrics/metric-classes';
-import { Table } from '../core/table';
-import { Join } from '../core/join';
+import { Table } from '../../core/table';
+import { Join } from '../../core/join';
 import { Filter, TimeFilter, TimeRange } from './filter';
 import { AliasRegistry } from './alias-registry';
 
