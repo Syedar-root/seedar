@@ -145,10 +145,10 @@ export class DSLTransformerV2 {
       }
     }
 
-    function resolveField(
+    const resolveField = (
       fieldId: number,
       defaultTableAlias?: string,
-    ): FieldRefExpr {
+    ): FieldRefExpr => {
       const fieldInfo = fieldMap.get(fieldId);
       if (!fieldInfo) {
         throw new Error(`找不到字段: ${fieldId}`);
@@ -184,7 +184,7 @@ export class DSLTransformerV2 {
           description: fieldInfo.description,
         },
       );
-    }
+    };
 
     const dimensions = (dsl.dimensions || []).map((dim) => {
       if (typeof dim === 'number') {
@@ -197,86 +197,218 @@ export class DSLTransformerV2 {
       }
     });
 
+    const resolveMetric = (
+      metricId: number,
+      visited: Set<number> = new Set(),
+    ): Expr => {
+      if (visited.has(metricId)) {
+        throw new Error(`检测到循环引用: 指标 ${metricId}`);
+      }
+      visited.add(metricId);
+
+      const metric = metricMap.get(metricId);
+      if (!metric) {
+        throw new Error(`找不到指标: ${metricId}`);
+      }
+
+      switch (metric.metricType) {
+        case MetricType.AGGREGATE:
+          return buildAggregateExpr(metric);
+        case MetricType.ROW_LEVEL:
+          return buildRowLevelExpr(metric);
+        case MetricType.POST_AGGREGATE:
+          return buildPostAggregateExpr(metric, visited);
+        case MetricType.ARITHMETIC:
+          return buildArithmeticExpr(metric, visited);
+        default:
+          return new MetricRefExpr(metric.name, {
+            alias: metric.name,
+            businessName: metric.businessName,
+          });
+      }
+    };
+
+    const buildAggregateExpr = (metric: DatasetMetricResponse): AggExpr => {
+      const funcMap: Record<string, AggFuncName> = {
+        count: 'COUNT' as AggFuncName,
+        sum: 'SUM' as AggFuncName,
+        avg: 'AVG' as AggFuncName,
+        max: 'MAX' as AggFuncName,
+        min: 'MIN' as AggFuncName,
+        distinct_count: 'COUNT' as AggFuncName,
+      };
+
+      const funcName =
+        funcMap[metric.aggregateFunction || 'sum'] || ('SUM' as AggFuncName);
+
+      const isDistinct =
+        metric.distinct ||
+        metric.aggregateFunction === MetricAggregateFunction.DISTINCT_COUNT;
+
+      let baseFieldExpr: FieldRefExpr;
+      if (metric.dataSourceColumnId) {
+        const fieldInfo = Array.from(fieldMap.values()).find(
+          (f) => f.datasourceColumnId === metric.dataSourceColumnId,
+        );
+        if (!fieldInfo) {
+          throw new Error(`找不到指标字段: ${metric.dataSourceColumnId}`);
+        }
+        baseFieldExpr = resolveField(fieldInfo.id);
+      } else {
+        baseFieldExpr = new FieldRefExpr('id', undefined, mainTableAlias);
+      }
+
+      let fieldExpr: Expr = baseFieldExpr;
+      const aggCondition = metric.aggregateCondition;
+
+      if (aggCondition?.caseCondition) {
+        const caseWhenExpr = this.parseCaseCondition(
+          aggCondition.caseCondition,
+          baseFieldExpr,
+          fieldMap,
+          mainTableAlias,
+        );
+        fieldExpr = caseWhenExpr;
+      }
+
+      return new AggExpr(funcName, fieldExpr, isDistinct, {
+        alias: metric.name,
+        businessName: metric.businessName,
+      });
+    };
+
+    const buildRowLevelExpr = (metric: DatasetMetricResponse): BinaryExpr => {
+      if (
+        !metric.leftOperand ||
+        !metric.rowOperator ||
+        metric.rightOperand === undefined
+      ) {
+        throw new Error(
+          'row_level metric需要leftOperand/rowOperator/rightOperand字段',
+        );
+      }
+
+      const leftField = resolveField(metric.leftOperand);
+      const rightField = resolveField(metric.rightOperand);
+
+      const opMap: Record<string, BinaryOperator> = {
+        '+': '+',
+        '-': '-',
+        '*': '*',
+        '/': '/',
+      };
+
+      return new BinaryExpr(
+        opMap[metric.rowOperator] || '+',
+        leftField,
+        rightField,
+        {
+          alias: metric.name,
+          businessName: metric.businessName,
+        },
+      );
+    };
+
+    const buildPostAggregateExpr = (
+      metric: DatasetMetricResponse,
+      visited: Set<number>,
+    ): AggExpr => {
+      if (!metric.sourceMetricId) {
+        throw new Error('post_aggregate metric需要sourceMetricId字段');
+      }
+
+      const sourceExpr = resolveMetric(metric.sourceMetricId, visited);
+
+      const funcMap: Record<string, AggFuncName> = {
+        count: 'COUNT',
+        sum: 'SUM',
+        avg: 'AVG',
+        max: 'MAX',
+        min: 'MIN',
+        distinct_count: 'COUNT',
+      };
+
+      const funcName = funcMap[metric.aggregateFunction || 'sum'] || 'SUM';
+      const isDistinct =
+        metric.distinct ||
+        metric.aggregateFunction === MetricAggregateFunction.DISTINCT_COUNT;
+
+      return new AggExpr(funcName, sourceExpr, isDistinct, {
+        alias: metric.name,
+        businessName: metric.businessName,
+      });
+    };
+
+    const buildArithmeticExpr = (
+      metric: DatasetMetricResponse,
+      visited: Set<number>,
+    ): BinaryExpr => {
+      if (!metric.leftMetricId || !metric.arithmeticOperator) {
+        throw new Error(
+          'arithmetic metric需要leftMetricId和arithmeticOperator字段',
+        );
+      }
+
+      const leftExpr = resolveMetric(metric.leftMetricId, visited);
+
+      let rightExpr: Expr;
+
+      if (
+        metric.rightMetricOperand !== undefined &&
+        metric.rightMetricOperand !== null
+      ) {
+        if (metric.rightMetricOperandFieldName) {
+          rightExpr = resolveMetric(metric.rightMetricOperand, visited);
+        } else {
+          rightExpr = new LiteralExpr(Number(metric.rightMetricOperand));
+        }
+      } else {
+        throw new Error('arithmetic metric需要rightMetricOperand');
+      }
+
+      const opMap: Record<string, BinaryOperator> = {
+        '+': '+',
+        '-': '-',
+        '*': '*',
+        '/': '/',
+      };
+
+      return new BinaryExpr(
+        opMap[metric.arithmeticOperator] || '+',
+        leftExpr,
+        rightExpr,
+        {
+          alias: metric.name,
+          businessName: metric.businessName,
+        },
+      );
+    };
+
     const metrics = (dsl.metrics || []).map((metricItem) => {
       const metricInfo = metricMap.get(metricItem.id);
       if (!metricInfo) {
         throw new Error(`找不到指标: ${metricItem.id}`);
       }
 
-      const alias = metricItem.alias || metricInfo.name;
+      const expr = resolveMetric(metricItem.id);
 
-      switch (metricInfo.metricType) {
-        case MetricType.AGGREGATE: {
-          const funcMap: Record<string, AggFuncName> = {
-            count: 'COUNT' as AggFuncName,
-            sum: 'SUM' as AggFuncName,
-            avg: 'AVG' as AggFuncName,
-            max: 'MAX' as AggFuncName,
-            min: 'MIN' as AggFuncName,
-            distinct_count: 'COUNT' as AggFuncName,
-          };
-
-          const funcName =
-            funcMap[metricInfo.aggregateFunction || 'sum'] ||
-            ('SUM' as AggFuncName);
-          const isDistinct =
-            metricInfo.aggregateFunction ===
-            MetricAggregateFunction.DISTINCT_COUNT;
-
-          let fieldExpr: FieldRefExpr;
-          if (metricInfo.dataSourceColumnId) {
-            const fieldInfo = Array.from(fieldMap.values()).find(
-              (f) => f.datasourceColumnId === metricInfo.dataSourceColumnId,
-            );
-            if (!fieldInfo) {
-              throw new Error(
-                `找不到指标字段: ${metricInfo.dataSourceColumnId}`,
-              );
-            }
-            fieldExpr = resolveField(fieldInfo.id);
-          } else {
-            fieldExpr = new FieldRefExpr('id', undefined, mainTableAlias);
+      if (metricItem.alias || metricInfo.businessName) {
+        if (expr instanceof AggExpr) {
+          expr.meta = expr.meta || {};
+          expr.meta.alias = metricItem.alias || metricInfo.name;
+          if (metricInfo.businessName) {
+            expr.meta.businessName = metricInfo.businessName;
           }
-
-          return new AggExpr(funcName, fieldExpr, isDistinct, {
-            alias,
-            businessName: metricInfo.businessName,
-          });
-        }
-        case MetricType.ROW_LEVEL: {
-          if (
-            !metricInfo.leftOperand ||
-            !metricInfo.rowOperator ||
-            metricInfo.rightOperand === undefined
-          ) {
-            throw new Error(
-              'row_level metric需要leftOperand/rowOperator/rightOperand字段',
-            );
+        } else if (expr instanceof BinaryExpr) {
+          expr.meta = expr.meta || {};
+          expr.meta.alias = metricItem.alias || metricInfo.name;
+          if (metricInfo.businessName) {
+            expr.meta.businessName = metricInfo.businessName;
           }
-
-          const leftField = resolveField(metricInfo.leftOperand);
-          const rightField = resolveField(metricInfo.rightOperand);
-
-          const opMap: Record<string, Operator> = {
-            '+': Operator.PLUS,
-            '-': Operator.MINUS,
-            '*': Operator.MULTIPLY,
-            '/': Operator.DIVIDE,
-          };
-
-          return new BinaryExpr(
-            (opMap[metricInfo.rowOperator] || Operator.PLUS) as BinaryOperator,
-            leftField,
-            rightField,
-            {
-              alias,
-              businessName: metricInfo.businessName,
-            },
-          );
         }
-        default:
-          throw new Error(`不支持的指标类型: ${metricInfo.metricType}`);
       }
+
+      return expr;
     });
 
     const filters = (dsl.filters || []).map((filter) => {
@@ -343,5 +475,103 @@ export class DSLTransformerV2 {
       limit: dsl.limit,
       offset: dsl.offset,
     };
+  }
+
+  private static parseCaseCondition(
+    caseCondition: string,
+    defaultExpr: FieldRefExpr,
+    fieldMap: Map<number, DatasetFieldResponse>,
+    defaultTableAlias: string,
+  ): ConditionalExpr {
+    const eqMatch = caseCondition.match(/^(\w+)\s*=\s*'([^']+)'$/);
+    const neqMatch = caseCondition.match(/^(\w+)\s*!=\s*'([^']+)'$/);
+    const gtMatch = caseCondition.match(/^(\w+)\s*>\s*(\d+)$/);
+    const gteMatch = caseCondition.match(/^(\w+)\s*>=\s*(\d+)$/);
+    const ltMatch = caseCondition.match(/^(\w+)\s*<\s*(\d+)$/);
+    const lteMatch = caseCondition.match(/^(\w+)\s*<=\s*(\d+)$/);
+
+    let conditionExpr: ComparisonExpr;
+
+    if (eqMatch) {
+      const [, fieldName, value] = eqMatch;
+      const fieldExpr = new FieldRefExpr(
+        fieldName,
+        undefined,
+        defaultTableAlias,
+      );
+      conditionExpr = new ComparisonExpr(
+        '=',
+        fieldExpr,
+        new LiteralExpr(value),
+      );
+    } else if (neqMatch) {
+      const [, fieldName, value] = neqMatch;
+      const fieldExpr = new FieldRefExpr(
+        fieldName,
+        undefined,
+        defaultTableAlias,
+      );
+      conditionExpr = new ComparisonExpr(
+        '!=',
+        fieldExpr,
+        new LiteralExpr(value),
+      );
+    } else if (gtMatch) {
+      const [, fieldName, value] = gtMatch;
+      const fieldExpr = new FieldRefExpr(
+        fieldName,
+        undefined,
+        defaultTableAlias,
+      );
+      conditionExpr = new ComparisonExpr(
+        '>',
+        fieldExpr,
+        new LiteralExpr(Number(value)),
+      );
+    } else if (gteMatch) {
+      const [, fieldName, value] = gteMatch;
+      const fieldExpr = new FieldRefExpr(
+        fieldName,
+        undefined,
+        defaultTableAlias,
+      );
+      conditionExpr = new ComparisonExpr(
+        '>=',
+        fieldExpr,
+        new LiteralExpr(Number(value)),
+      );
+    } else if (ltMatch) {
+      const [, fieldName, value] = ltMatch;
+      const fieldExpr = new FieldRefExpr(
+        fieldName,
+        undefined,
+        defaultTableAlias,
+      );
+      conditionExpr = new ComparisonExpr(
+        '<',
+        fieldExpr,
+        new LiteralExpr(Number(value)),
+      );
+    } else if (lteMatch) {
+      const [, fieldName, value] = lteMatch;
+      const fieldExpr = new FieldRefExpr(
+        fieldName,
+        undefined,
+        defaultTableAlias,
+      );
+      conditionExpr = new ComparisonExpr(
+        '<=',
+        fieldExpr,
+        new LiteralExpr(Number(value)),
+      );
+    } else {
+      conditionExpr = new ComparisonExpr(
+        '=',
+        new LiteralExpr(1),
+        new LiteralExpr(1),
+      );
+    }
+
+    return new ConditionalExpr(conditionExpr, defaultExpr, new LiteralExpr(0));
   }
 }
