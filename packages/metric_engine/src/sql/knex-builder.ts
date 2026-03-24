@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 import { QuerySpec, SQLResult, JoinSpec } from "./types";
 import { Expr, AggLevel } from "../expr";
+import { DatabaseDialect } from "../core/types";
 
 /**
  * Knex 查询构建器类
@@ -522,6 +523,11 @@ export class KnexQueryBuilder {
     // 处理普通函数调用 (CallExpr)
     // CallExpr 有 functionName 和 args（复数）
     if (expr.functionName && expr.args) {
+      // 兼容V1：特殊处理 TIME_FILTER 函数
+      if (expr.functionName === "TIME_FILTER") {
+        return this.buildTimeFilterSQL(expr.args);
+      }
+
       const argsStr = expr.args
         .map((arg: any) => this.buildExpr(arg))
         .join(", ");
@@ -623,5 +629,66 @@ export class KnexQueryBuilder {
     }
 
     return false;
+  }
+
+  /**
+   * 构建 TIME_FILTER 函数的 SQL
+   * 根据不同数据库方言生成正确的时间过滤 SQL
+   * @param args TIME_FILTER 函数的参数 [field, timeRange, timeValue, startDate, endDate]
+   * @returns 生成的 SQL 字符串
+   */
+  private buildTimeFilterSQL(args: any[]): string {
+    if (args.length < 3) {
+      throw new Error(
+        "TIME_FILTER 需要至少3个参数: field, timeRange, timeValue",
+      );
+    }
+
+    const fieldExpr = this.buildExpr(args[0]);
+    const timeRange = args[1]?.value || args[1];
+    const timeValue = args[2]?.value ?? args[2];
+    const startDate = args[3]?.value ?? args[3];
+    const endDate = args[4]?.value ?? args[4];
+
+    const isPostgres = DatabaseDialect.isPostgres();
+    const isClickHouse = DatabaseDialect.isClickHouse();
+
+    switch (timeRange) {
+      case "recent_days":
+        if (isClickHouse) {
+          return `${fieldExpr} >= today() - INTERVAL ${timeValue} DAY`;
+        }
+        if (isPostgres) {
+          return `${fieldExpr} >= CURRENT_DATE - INTERVAL '${timeValue} day'`;
+        }
+        return `${fieldExpr} >= DATE_SUB(CURDATE(), INTERVAL ${timeValue} DAY)`;
+
+      case "recent_weeks":
+        if (isClickHouse) {
+          return `${fieldExpr} >= today() - INTERVAL ${timeValue} WEEK`;
+        }
+        if (isPostgres) {
+          return `${fieldExpr} >= CURRENT_DATE - INTERVAL '${timeValue} week'`;
+        }
+        return `${fieldExpr} >= DATE_SUB(CURDATE(), INTERVAL ${timeValue} WEEK)`;
+
+      case "recent_months":
+        if (isClickHouse) {
+          return `${fieldExpr} >= today() - INTERVAL ${timeValue} MONTH`;
+        }
+        if (isPostgres) {
+          return `${fieldExpr} >= CURRENT_DATE - INTERVAL '${timeValue} month'`;
+        }
+        return `${fieldExpr} >= DATE_SUB(CURDATE(), INTERVAL ${timeValue} MONTH)`;
+
+      case "CUSTOM_DATE_RANGE":
+        if (!startDate || !endDate) {
+          throw new Error("CUSTOM_DATE_RANGE 需要指定 startDate 和 endDate");
+        }
+        return `${fieldExpr} >= '${startDate}' AND ${fieldExpr} <= '${endDate}'`;
+
+      default:
+        throw new Error(`不支持的时间范围类型: ${timeRange}`);
+    }
   }
 }

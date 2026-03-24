@@ -16,7 +16,7 @@ import {
 import { MetricAdapter } from "./metric-adapter";
 import { Field } from "../core/field";
 import { Metric } from "../metrics/metric-classes";
-import { Operator } from "../core/types";
+import { Operator, DatabaseDialect } from "../core/types";
 
 /**
  * 查询适配器类
@@ -138,7 +138,10 @@ export class QueryAdapter {
 
     // 如果有多个条件，使用 AND 连接
     // 注意：AND 连接使用 BinaryExpr，因为它是逻辑运算而非比较运算
-    let result: Expr = QueryAdapter.convertSingleJoinCondition(conditions[0], join);
+    let result: Expr = QueryAdapter.convertSingleJoinCondition(
+      conditions[0],
+      join,
+    );
 
     // 遍历剩余条件，逐个用 AND 连接
     for (let i = 1; i < conditions.length; i++) {
