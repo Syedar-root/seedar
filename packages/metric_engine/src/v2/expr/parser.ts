@@ -1,5 +1,5 @@
 import * as jsep from 'jsep';
-import { ExprKind, AggFuncName, BinaryOperator } from './types';
+import { ExprKind, AggFuncName, BinaryOperator, ComparisonOperator } from './types';
 import {
   Expr,
   LiteralExpr,
@@ -7,7 +7,8 @@ import {
   MetricRefExpr,
   BinaryExpr,
   CallExpr,
-  AggExpr
+  AggExpr,
+  ComparisonExpr
 } from './ast';
 
 /**
@@ -142,24 +143,26 @@ export class ExprParser {
   /**
    * 转换二元表达式节点
    * @param node jsep 二元表达式节点
-   * @returns 转换后的 BinaryExpr
+   * @returns 转换后的 BinaryExpr 或 ComparisonExpr
    * @throws 当运算符不支持时抛出错误
    */
-  private transformBinary(node: jsep.BinaryExpression): BinaryExpr {
-    // 递归转换左右操作数
+  private transformBinary(node: jsep.BinaryExpression): BinaryExpr | ComparisonExpr {
     const left = this.transform(node.left);
     const right = this.transform(node.right);
+    const operator = node.operator;
 
-    // 获取运算符，jsep 的 operator 是字符串
-    const operator = node.operator as BinaryOperator;
+    const arithmeticOperators = ['+', '-', '*', '/'];
+    const comparisonOperators = ['=', '==', '!=', '<>', '>', '<', '>=', '<='];
 
-    // 验证运算符是否支持
-    const supportedOperators = ['+', '-', '*', '/'];
-    if (!supportedOperators.includes(operator)) {
-      throw new Error(`不支持的二元运算符: ${operator}`);
+    if (arithmeticOperators.includes(operator)) {
+      return new BinaryExpr(operator as BinaryOperator, left, right);
     }
 
-    return new BinaryExpr(operator, left, right);
+    if (comparisonOperators.includes(operator)) {
+      return new ComparisonExpr(operator as ComparisonOperator, left, right);
+    }
+
+    throw new Error(`不支持的二元运算符: ${operator}`);
   }
 
   /**

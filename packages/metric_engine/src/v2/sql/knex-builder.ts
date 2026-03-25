@@ -410,6 +410,16 @@ export class KnexQueryBuilder {
     if (expr.operator && expr.operand) {
       this.collectFieldsFromExpr(expr.operand, fields);
     }
+
+    // 处理条件表达式
+    if (expr.condition !== undefined && expr.consequent !== undefined) {
+      this.collectFieldsFromExpr(expr.condition, fields);
+      this.collectFieldsFromExpr(expr.consequent, fields);
+      if (expr.alternate !== undefined) {
+        this.collectFieldsFromExpr(expr.alternate, fields);
+      }
+      return;
+    }
   }
 
   /**
@@ -457,14 +467,34 @@ export class KnexQueryBuilder {
     if (expr.operator && expr.left && expr.right) {
       const leftStr = this.buildExprWithAlias(expr.left, aliasMap);
       const rightStr = this.buildExprWithAlias(expr.right, aliasMap);
+
+      // 转换运算符：== -> =, <> -> !=
+      let sqlOperator = expr.operator;
+      if (sqlOperator === '==') {
+        sqlOperator = '=';
+      }
+
       // 给二元运算添加括号，避免 SQL 解析问题
-      return `(${leftStr}) ${expr.operator} (${rightStr})`;
+      return `(${leftStr}) ${sqlOperator} (${rightStr})`;
     }
 
     // 处理一元运算表达式
     if (expr.operator && expr.operand) {
       const operandStr = this.buildExprWithAlias(expr.operand, aliasMap);
       return `${expr.operator}${operandStr}`;
+    }
+
+    // 处理条件表达式 (ConditionalExpr)
+    if (expr.condition !== undefined && expr.consequent !== undefined && expr.alternate !== undefined) {
+      const condStr = this.buildExprWithAlias(expr.condition, aliasMap);
+      const consStr = this.buildExprWithAlias(expr.consequent, aliasMap);
+      const altStr = this.buildExprWithAlias(expr.alternate, aliasMap);
+
+      // 如果 alternate 是 null 字面量，生成不带 ELSE 的 CASE WHEN
+      if (expr.alternate.value !== undefined && expr.alternate.value === null) {
+        return `CASE WHEN ${condStr} THEN ${consStr} END`;
+      }
+      return `CASE WHEN ${condStr} THEN ${consStr} ELSE ${altStr} END`;
     }
 
     // 如果是字符串，直接返回
@@ -643,13 +673,32 @@ export class KnexQueryBuilder {
         ? `(${this.buildExpr(expr.right)})`
         : this.buildExpr(expr.right);
 
-      return `${leftStr} ${expr.operator} ${rightStr}`;
+      // 转换运算符：== -> =, <> -> !=
+      let sqlOperator = expr.operator;
+      if (sqlOperator === '==') {
+        sqlOperator = '=';
+      }
+
+      return `${leftStr} ${sqlOperator} ${rightStr}`;
     }
 
     // 处理一元运算表达式 (UnaryExpr)
     if (expr.operator && expr.operand) {
       const operandStr = this.buildExpr(expr.operand);
       return `${expr.operator}${operandStr}`;
+    }
+
+    // 处理条件表达式 (ConditionalExpr)
+    if (expr.condition !== undefined && expr.consequent !== undefined && expr.alternate !== undefined) {
+      const condStr = this.buildExpr(expr.condition);
+      const consStr = this.buildExpr(expr.consequent);
+      const altStr = this.buildExpr(expr.alternate);
+
+      // 如果 alternate 是 null 字面量，生成不带 ELSE 的 CASE WHEN
+      if (expr.alternate.value !== undefined && expr.alternate.value === null) {
+        return `CASE WHEN ${condStr} THEN ${consStr} END`;
+      }
+      return `CASE WHEN ${condStr} THEN ${consStr} ELSE ${altStr} END`;
     }
 
     // 如果是字符串，直接返回

@@ -1,7 +1,16 @@
-import { Knex } from 'knex';
-import { QuerySpec, SQLResult } from './types';
-import { Expr, AggLevel, BinaryExpr, AggExpr, FieldRefExpr, LiteralExpr } from '../expr';
-import { ExprAnalyzer } from '../expr/analyzer';
+import { Knex } from "knex";
+import { QuerySpec, SQLResult } from "./types";
+import {
+  Expr,
+  AggLevel,
+  BinaryExpr,
+  AggExpr,
+  FieldRefExpr,
+  LiteralExpr,
+  ConditionalExpr,
+  ComparisonExpr,
+} from "../expr";
+import { ExprAnalyzer } from "../expr/analyzer";
 import { DatabaseDialect } from "../../core/types";
 
 /**
@@ -43,7 +52,7 @@ export class CTEBuilder {
    */
   buildWithCTE(spec: QuerySpec): SQLResult {
     // CTE 名称，用于在 outer 查询中引用
-    const cteName = 'inner_metrics';
+    const cteName = "inner_metrics";
 
     // 存储所有 inner 层的聚合表达式
     const allInnerAggs: AggExpr[] = [];
@@ -99,7 +108,7 @@ export class CTEBuilder {
 
     return {
       sql: fullSQL,
-      bindings: []
+      bindings: [],
     };
   }
 
@@ -150,7 +159,12 @@ export class CTEBuilder {
         const newLeft = process(currentExpr.left);
         const newRight = process(currentExpr.right);
         // 创建新的二元表达式，保持原有运算符和元数据
-        return new BinaryExpr(currentExpr.operator, newLeft, newRight, currentExpr.meta);
+        return new BinaryExpr(
+          currentExpr.operator,
+          newLeft,
+          newRight,
+          currentExpr.meta,
+        );
       }
 
       // 字面量表达式：无需处理，直接返回
@@ -161,6 +175,19 @@ export class CTEBuilder {
       // 字段引用表达式：无需处理，直接返回
       if (currentExpr instanceof FieldRefExpr) {
         return currentExpr;
+      }
+
+      // 条件表达式：递归处理条件、结果和替代值
+      if (currentExpr instanceof ConditionalExpr) {
+        const newCondition = process(currentExpr.condition);
+        const newConsequent = process(currentExpr.consequent);
+        const newAlternate = process(currentExpr.alternate);
+        return new ConditionalExpr(
+          newCondition,
+          newConsequent,
+          newAlternate,
+          currentExpr.meta,
+        );
       }
 
       // 其他类型的表达式：默认直接返回
@@ -220,14 +247,23 @@ export class CTEBuilder {
     for (const join of spec.joins) {
       const joinOnSQL = this.exprToSQL(join.on as Expr);
       switch (join.type) {
-        case 'left':
-          query.leftJoin(`${join.table} as ${join.alias}`, this.knex.raw(joinOnSQL));
+        case "left":
+          query.leftJoin(
+            `${join.table} as ${join.alias}`,
+            this.knex.raw(joinOnSQL),
+          );
           break;
-        case 'inner':
-          query.innerJoin(`${join.table} as ${join.alias}`, this.knex.raw(joinOnSQL));
+        case "inner":
+          query.innerJoin(
+            `${join.table} as ${join.alias}`,
+            this.knex.raw(joinOnSQL),
+          );
           break;
-        case 'right':
-          query.rightJoin(`${join.table} as ${join.alias}`, this.knex.raw(joinOnSQL));
+        case "right":
+          query.rightJoin(
+            `${join.table} as ${join.alias}`,
+            this.knex.raw(joinOnSQL),
+          );
           break;
       }
     }
@@ -240,11 +276,14 @@ export class CTEBuilder {
 
     // 构建完整的 SELECT 子句
     // 注意：Knex 的 select 方法不支持直接设置别名，所以使用 raw 方式
-    const selectClause = allSelects.join(',\n  ');
+    const selectClause = allSelects.join(",\n  ");
 
     // 构建 GROUP BY 子句
     const groupByColumns = dimensionSelects.map((_, i) => `column_${i + 1}`);
-    const groupByClause = groupByColumns.length > 0 ? `\nGROUP BY ${groupByColumns.join(', ')}` : '';
+    const groupByClause =
+      groupByColumns.length > 0
+        ? `\nGROUP BY ${groupByColumns.join(", ")}`
+        : "";
 
     // 组装完整的 inner CTE SQL
     const innerSQL = `SELECT\n  ${selectClause}\nFROM ${spec.from.table} ${spec.from.alias}${groupByClause}`;
@@ -265,7 +304,11 @@ export class CTEBuilder {
    * @param cteName - CTE 名称，用于引用
    * @returns outer 查询的 SQL 语句字符串
    */
-  private buildOuterQuery(spec: QuerySpec, outerMetrics: Expr[], cteName: string): string {
+  private buildOuterQuery(
+    spec: QuerySpec,
+    outerMetrics: Expr[],
+    cteName: string,
+  ): string {
     // 使用 Knex 构建查询
     const query = this.knex.queryBuilder();
 
@@ -275,7 +318,8 @@ export class CTEBuilder {
       const dim = spec.dimensions[i];
       // 获取维度的业务名称或别名
       const dimExpr = dim as Expr;
-      const alias = dimExpr.meta?.alias || dimExpr.meta?.businessName || `column_${i + 1}`;
+      const alias =
+        dimExpr.meta?.alias || dimExpr.meta?.businessName || `column_${i + 1}`;
       // 引用 CTE 中的维度列
       dimensionSelects.push(`column_${i + 1} as ${alias}`);
     }
@@ -286,7 +330,10 @@ export class CTEBuilder {
       const metricExpr = outerMetrics[i];
       // 获取指标的业务名称或别名
       const originalMetric = spec.metrics[i] as Expr;
-      const alias = originalMetric.meta?.alias || originalMetric.meta?.businessName || `metric_${i + 1}`;
+      const alias =
+        originalMetric.meta?.alias ||
+        originalMetric.meta?.businessName ||
+        `metric_${i + 1}`;
       // 将 outer 表达式转换为 SQL
       const metricSQL = this.exprToSQL(metricExpr);
       metricSelects.push(`${metricSQL} as ${alias}`);
@@ -299,20 +346,20 @@ export class CTEBuilder {
     query.from(cteName);
 
     // 构建完整的 SELECT 子句
-    const selectClause = allSelects.join(',\n  ');
+    const selectClause = allSelects.join(",\n  ");
 
     // 添加排序条件
-    let orderByClause = '';
+    let orderByClause = "";
     if (spec.orderBy && spec.orderBy.length > 0) {
-      const orderParts = spec.orderBy.map(order => {
+      const orderParts = spec.orderBy.map((order) => {
         const orderExpr = this.exprToSQL(order.expr as Expr);
         return `${orderExpr} ${order.dir.toUpperCase()}`;
       });
-      orderByClause = `\nORDER BY ${orderParts.join(', ')}`;
+      orderByClause = `\nORDER BY ${orderParts.join(", ")}`;
     }
 
     // 添加分页限制
-    let limitClause = '';
+    let limitClause = "";
     if (spec.limit !== undefined) {
       limitClause = `\nLIMIT ${spec.limit}`;
       if (spec.offset !== undefined) {
@@ -339,9 +386,9 @@ export class CTEBuilder {
     // 字面量表达式：根据值类型生成 SQL
     if (expr instanceof LiteralExpr) {
       if (expr.value === null) {
-        return 'NULL';
+        return "NULL";
       }
-      if (typeof expr.value === 'string') {
+      if (typeof expr.value === "string") {
         // 字符串值需要用单引号包裹，并转义内部单引号
         return `'${expr.value.replace(/'/g, "''")}'`;
       }
@@ -362,14 +409,44 @@ export class CTEBuilder {
       return `(${leftSQL} ${expr.operator} ${rightSQL})`;
     }
 
+    // 比较运算表达式：处理比较运算符并转换 == 为 =
+    if (expr instanceof ComparisonExpr) {
+      const leftSQL = this.exprToSQL(expr.left);
+      const rightSQL = this.exprToSQL(expr.right);
+
+      // 转换运算符：== -> =, <> -> !=
+      let sqlOperator = expr.operator;
+      if (sqlOperator === "==") {
+        sqlOperator = "=";
+      }
+
+      return `${leftSQL} ${sqlOperator} ${rightSQL}`;
+    }
+
     // 聚合表达式：生成聚合函数调用
     if (expr instanceof AggExpr) {
       return this.aggExprToSQL(expr);
     }
 
+    // 条件表达式：生成 CASE WHEN
+    if (expr instanceof ConditionalExpr) {
+      const condSQL = this.exprToSQL(expr.condition);
+      const consSQL = this.exprToSQL(expr.consequent);
+      const altSQL = this.exprToSQL(expr.alternate);
+
+      // 如果 alternate 是 null 字面量，生成不带 ELSE 的 CASE WHEN
+      if (
+        expr.alternate instanceof LiteralExpr &&
+        expr.alternate.value === null
+      ) {
+        return `CASE WHEN ${condSQL} THEN ${consSQL} END`;
+      }
+      return `CASE WHEN ${condSQL} THEN ${consSQL} ELSE ${altSQL} END`;
+    }
+
     // 默认情况：返回空字符串
     // 注意：如果遇到未知表达式类型，可能需要扩展此方法
-    return '';
+    return "";
   }
 
   /**
@@ -389,7 +466,7 @@ export class CTEBuilder {
     const funcName = aggExpr.functionName.toUpperCase();
 
     // 处理 DISTINCT_COUNT 特殊情况
-    if (funcName === 'DISTINCT_COUNT') {
+    if (funcName === "DISTINCT_COUNT") {
       return `COUNT(DISTINCT ${argSQL})`;
     }
 
