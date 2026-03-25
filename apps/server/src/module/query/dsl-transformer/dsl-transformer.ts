@@ -53,11 +53,6 @@ export interface QueryDSL {
     value?: any;
     raw?: boolean;
   }>;
-  /** 连接 - 使用表ID引用 */
-  joins?: Array<{
-    id: number;
-    type?: 'left' | 'inner' | 'right' | 'full';
-  }>;
   /** 限制返回的记录数（可选） */
   limit?: number;
   /** 偏移量（用于分页，可选） */
@@ -125,55 +120,75 @@ export class DSLTransformer {
       throw new Error(`找不到主表: ${mainTableInfo.tableName}`);
     }
 
-    // 创建连接
-    const joins: Join[] = [];
+    const requiredTableIds = new Set<number>();
+    requiredTableIds.add(dsl.tableId);
 
-    if (dsl.joins && dsl.joins.length > 0) {
-      for (const j of dsl.joins) {
-        const joinInfo = joinMap.get(j.id);
-        if (!joinInfo) {
-          throw new Error(`找不到连接: ${j.id}`);
+    const buildJoinGraph = (): Map<
+      number,
+      Set<{ joinId: number; targetTableId: number }>
+    > => {
+      const graph = new Map<
+        number,
+        Set<{ joinId: number; targetTableId: number }>
+      >();
+
+      joinMap.forEach((join, joinId) => {
+        if (!graph.has(join.leftTableId)) {
+          graph.set(join.leftTableId, new Set());
+        }
+        graph
+          .get(join.leftTableId)!
+          .add({ joinId, targetTableId: join.rightTableId });
+
+        if (!graph.has(join.rightTableId)) {
+          graph.set(join.rightTableId, new Set());
+        }
+        graph
+          .get(join.rightTableId)!
+          .add({ joinId, targetTableId: join.leftTableId });
+      });
+
+      return graph;
+    };
+
+    const findJoinPath = (
+      startTableId: number,
+      targetTableIds: Set<number>,
+    ): number[] => {
+      const joinGraph = buildJoinGraph();
+      const visited = new Set<number>();
+      const queue: Array<{ tableId: number; path: number[] }> = [
+        { tableId: startTableId, path: [] },
+      ];
+      const requiredJoins = new Set<number>();
+
+      while (queue.length > 0) {
+        const { tableId, path } = queue.shift()!;
+
+        if (visited.has(tableId)) {
+          continue;
+        }
+        visited.add(tableId);
+
+        if (targetTableIds.has(tableId)) {
+          path.forEach((joinId) => requiredJoins.add(joinId));
         }
 
-        const rightTableInfo = tableMap.get(joinInfo.rightTableId);
-        if (!rightTableInfo) {
-          throw new Error(`找不到右表: ${joinInfo.rightTableId}`);
+        const neighbors = joinGraph.get(tableId) || new Set();
+        for (const neighbor of neighbors) {
+          if (!visited.has(neighbor.targetTableId)) {
+            queue.push({
+              tableId: neighbor.targetTableId,
+              path: [...path, neighbor.joinId],
+            });
+          }
         }
-
-        const rightTable = tables.find(
-          (t) => t.name === rightTableInfo.tableName,
-        );
-        if (!rightTable) {
-          throw new Error(`找不到JOIN表: ${rightTableInfo.tableName}`);
-        }
-
-        // 设置表别名
-        // 停用表别名，因为metric-engine不支持
-        // if (rightTableInfo.alias) {
-        //   rightTable.alias = rightTableInfo.alias;
-        // }
-
-        // 创建连接条件
-        const conditions = [
-          new JoinCondition({
-            leftField:
-              fieldMapWithDCId.get(Number(joinInfo.leftField))?.name || '',
-            rightField:
-              fieldMapWithDCId.get(Number(joinInfo.rightField))?.name || '',
-          }),
-        ];
-
-        // 添加连接
-        joins.push(
-          new Join({
-            type: (j.type || joinInfo.joinType) as JoinType,
-            leftTable: mainTable,
-            rightTable,
-            conditions,
-          }),
-        );
       }
-    }
+
+      return Array.from(requiredJoins);
+    };
+
+    const joins: Join[] = [];
 
     // 解析字段引用
     function resolveField(fieldId: number): Field {
@@ -186,6 +201,8 @@ export class DSLTransformer {
       if (!tableInfo) {
         throw new Error(`找不到字段所属表: ${fieldInfo.tableId}`);
       }
+
+      requiredTableIds.add(tableInfo.id);
 
       const fieldRef = `${tableInfo.tableName}.${fieldInfo.name}`;
 
@@ -619,6 +636,45 @@ export class DSLTransformer {
       const op = opMap[filter.op] || filter.op;
       return new Filter(field, op, value);
     });
+
+    const requiredJoinIds = findJoinPath(dsl.tableId, requiredTableIds);
+
+    for (const joinId of requiredJoinIds) {
+      const joinInfo = joinMap.get(joinId);
+      if (!joinInfo) {
+        throw new Error(`找不到连接: ${joinId}`);
+      }
+
+      const rightTableInfo = tableMap.get(joinInfo.rightTableId);
+      if (!rightTableInfo) {
+        throw new Error(`找不到右表: ${joinInfo.rightTableId}`);
+      }
+
+      const rightTable = tables.find(
+        (t) => t.name === rightTableInfo.tableName,
+      );
+      if (!rightTable) {
+        throw new Error(`找不到JOIN表: ${rightTableInfo.tableName}`);
+      }
+
+      const conditions = [
+        new JoinCondition({
+          leftField:
+            fieldMapWithDCId.get(Number(joinInfo.leftField))?.name || '',
+          rightField:
+            fieldMapWithDCId.get(Number(joinInfo.rightField))?.name || '',
+        }),
+      ];
+
+      joins.push(
+        new Join({
+          type: joinInfo.joinType as JoinType,
+          leftTable: mainTable,
+          rightTable,
+          conditions,
+        }),
+      );
+    }
 
     // 创建并返回Query对象
     const metricQuery = new MetricQuery(
