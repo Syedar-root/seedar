@@ -92,6 +92,8 @@ export class DSLTransformerV2 {
       throw new Error(`找不到主表: ${mainTableInfo.tableName}`);
     }
 
+    console.log('表map:', tableMap);
+
     const mainTableAlias = 't1';
 
     const joins: JoinSpec[] = [];
@@ -206,6 +208,8 @@ export class DSLTransformerV2 {
     const preprocessExpression = (expression: string): string => {
       let result = expression;
 
+      console.log('原始表达式:', expression);
+
       // 先替换 #M 指标引用
       result = result.replace(/#M([\d,]+)/g, (match, ids) => {
         const idList = ids.split(',').map((id) => parseInt(id, 10));
@@ -236,6 +240,7 @@ export class DSLTransformerV2 {
           .join(', ');
       });
 
+      console.log('hcs result', result);
       return result;
     };
 
@@ -243,10 +248,15 @@ export class DSLTransformerV2 {
      * 从表达式构建 Expr AST
      * 使用 V2 的 ExprParser 解析表达式字符串
      */
-    const buildExprFromExpression = (metric: DatasetMetricResponse): Expr => {
+    const buildExprFromExpression = (
+      metric: DatasetMetricResponse,
+      visited: Set<number>,
+    ): Expr => {
       if (!metric.expression) {
         throw new Error('expression metric 需要 expression 字段');
       }
+
+      visited.add(metric.id);
 
       const processedExpr = preprocessExpression(metric.expression);
 
@@ -258,19 +268,40 @@ export class DSLTransformerV2 {
           ],
         ]),
         fields: new Map(
-          Array.from(fieldMap.values()).map((f) => [
-            f.name,
-            {
-              name: f.name,
-              tableName: mainTableInfo.tableName,
-              tableAlias: mainTableAlias,
-            },
-          ]),
+          Array.from(fieldMap.values()).map((f) => {
+            const fieldTableInfo = tableMap.get(f.tableId);
+            let fieldTableAlias = mainTableAlias;
+            if (fieldTableInfo) {
+              if (fieldTableInfo.id === dsl.tableId) {
+                fieldTableAlias = mainTableAlias;
+              } else {
+                const joinInfo = Array.from(joinMap.values()).find(
+                  (j) => j.rightTableId === fieldTableInfo.id,
+                );
+                if (joinInfo) {
+                  const joinIdx = dsl.joins?.findIndex(
+                    (dj) => dj.id === joinInfo.id,
+                  );
+                  fieldTableAlias = `t${(joinIdx || 0) + 2}`;
+                }
+              }
+            }
+            return [
+              f.name,
+              {
+                name: f.name,
+                tableName: fieldTableInfo?.tableName || '',
+                tableAlias: fieldTableAlias,
+              },
+            ];
+          }),
         ),
         metrics: new Map(
           Array.from(metricMap.values()).map((m) => [
             m.name,
-            buildMetricExpr(m.id, new Set()),
+            visited.has(m.id)
+              ? new MetricRefExpr(m.name, { alias: m.name })
+              : buildMetricExpr(m.id, visited),
           ]),
         ),
         defaultTable: mainTableAlias,
@@ -294,7 +325,7 @@ export class DSLTransformerV2 {
       }
 
       if (metric.expression) {
-        return buildExprFromExpression(metric);
+        return buildExprFromExpression(metric, visited);
       }
 
       switch (metric.metricType) {
@@ -330,7 +361,7 @@ export class DSLTransformerV2 {
 
       // 如果有 expression 字段，优先使用表达式解析
       if (metric.expression) {
-        return buildExprFromExpression(metric);
+        return buildExprFromExpression(metric, visited);
       }
 
       switch (metric.metricType) {

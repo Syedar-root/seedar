@@ -226,6 +226,9 @@ export const metricManager: IEntityManager<AddMetric, UpdateMetric> = {
       const warnings: string[] = [];
       const validColIds: number[] = [];
       const validMetricIds: number[] = [];
+      const validFieldIds: number[] = [];
+
+      console.log('指标参数:', metrics);
 
       // 第一步：验证传入指标的参数
       for (const metric of metrics) {
@@ -256,15 +259,22 @@ export const metricManager: IEntityManager<AddMetric, UpdateMetric> = {
           validMetricIds.push(metric.baseMetricId);
         }
 
-        // 解析 expression 中的 #ID 引用
+        // 解析 expression 中的 #F 和 #M 引用
+        // #F 引用的字段ID 记录到 validFieldIds，用于验证 DatasetField
         if (metric.expression) {
           const { fieldIds, metricIds } = parseExpressionIds(metric.expression);
-          validColIds.push(...fieldIds);
+          validFieldIds.push(...fieldIds);
           validMetricIds.push(...metricIds);
+          console.log('expression 中引用的字段ID:', fieldIds);
+          console.log('expression 中引用的指标ID:', metricIds);
         }
       }
 
-      if (validColIds.length === 0 && validMetricIds.length === 0) {
+      if (
+        validColIds.length === 0 &&
+        validMetricIds.length === 0 &&
+        validFieldIds.length === 0
+      ) {
         if (warnings.length > 0) {
           console.warn('添加指标警告:', warnings);
         }
@@ -294,11 +304,22 @@ export const metricManager: IEntityManager<AddMetric, UpdateMetric> = {
           },
         });
 
-        // 将 columns 转成 Map，方便快速查找
         columnMap = new Map<number, DatasourceColumn>();
         for (const column of columns) {
           columnMap.set(column.id, column);
         }
+      }
+
+      // 第三步（续）：查询 DatasetField（用于 expression 中的 #F 引用）
+      let fieldMap = new Map<number, DatasetField>();
+      if (validFieldIds.length > 0) {
+        const fields = await manager.find(DatasetField, {
+          where: {
+            id: In(validFieldIds),
+            dataSetId,
+          },
+        });
+        fieldMap = new Map<number, DatasetField>(fields.map((f) => [f.id, f]));
       }
 
       // 第四步：查询相关指标
@@ -369,6 +390,18 @@ export const metricManager: IEntityManager<AddMetric, UpdateMetric> = {
           warnings.push(
             `指标使用的基础指标 ${metric.baseMetricId} 不存在或不属于当前数据集`,
           );
+        }
+
+        // 验证 expression 中引用的 DatasetField（#F 引用）
+        if (metric.expression) {
+          const { fieldIds } = parseExpressionIds(metric.expression);
+          for (const fieldId of fieldIds) {
+            if (!fieldMap.has(fieldId)) {
+              warnings.push(
+                `expression 中引用的字段 ${fieldId} 不存在或不属于当前数据集`,
+              );
+            }
+          }
         }
 
         // 创建 DatasetMetric

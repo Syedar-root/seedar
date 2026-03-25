@@ -229,18 +229,23 @@ export class DatasetService {
         if (request.joins && request.joins.length > 0) {
           const datasetJoins = request.joins.map((join) => {
             // 根据 tableId 找到对应的 datasetTableId
-            // const leftDatasetTableId = tableIdToDatasetTableId.get(
-            //   join.leftTableId,
-            // );
-            // const rightDatasetTableId = tableIdToDatasetTableId.get(
-            //   join.rightTableId,
-            // );
+            const leftDatasetTableId = tableIdToDatasetTableId.get(
+              join.leftTableId,
+            );
+            const rightDatasetTableId = tableIdToDatasetTableId.get(
+              join.rightTableId,
+            );
+            if (!leftDatasetTableId || !rightDatasetTableId) {
+              throw new Error(
+                `找不到表 ${join.leftTableId} 或 ${join.rightTableId} 的数据集表`,
+              );
+            }
 
             return manager.create(DatasetJoin, {
               dataset: { id: saved.id } as Dataset,
-              leftTableId: join.leftTableId,
+              leftTableId: leftDatasetTableId,
               leftField: join.leftColumnId.toString(),
-              rightTableId: join.rightTableId,
+              rightTableId: rightDatasetTableId,
               rightField: join.rightColumnId.toString(),
               joinType: join.joinType || JoinType.INNER,
             });
@@ -555,6 +560,8 @@ export class DatasetService {
     if (Object.keys(updateData).length > 0) {
       await this.datasetRepository.update(dataSetId, updateData);
     }
+
+    console.log('更新数据集:', metrics);
 
     // 3. 使用事务处理所有更新操作
     await this.datasetRepository.manager.transaction(async (manager) => {
