@@ -313,12 +313,18 @@ export class DSLTransformerV2 {
           }),
         ),
         metrics: new Map(
-          Array.from(metricMap.values()).map((m) => [
-            m.name,
-            visited.has(m.id)
-              ? new MetricRefExpr(m.name, { alias: m.name })
-              : buildMetricExpr(m.id, visited),
-          ]),
+          (dsl.metrics || []).map((m) => {
+            const metricInfo = metricMap.get(m.id);
+            if (!metricInfo) {
+              throw new Error(`找不到指标: ${m.id}`);
+            }
+            return [
+              metricInfo.name,
+              visited.has(m.id)
+                ? new MetricRefExpr(metricInfo.name, { alias: metricInfo.name })
+                : buildMetricExpr(m.id, visited),
+            ];
+          }),
         ),
         defaultTable: mainTableAlias,
       };
