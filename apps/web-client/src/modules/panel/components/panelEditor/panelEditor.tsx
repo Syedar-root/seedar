@@ -8,8 +8,9 @@ import {
 } from "./types";
 import { TypeSelector } from "./components/typeSelector/typeSelector";
 import { getConfigComponents } from "./configRegistry";
-import styles from "./panelEditor.module.scss";
+import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import type { DragItem } from "../dndHelper/dragZone/dragZone";
+import styles from "./panelEditor.module.scss";
 
 interface PanelEditorProps {
   fields: DragItem[];
@@ -55,7 +56,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
   );
 
   return (
-    <div className={styles.editor}>
+    <ScrollArea className={styles.editor}>
       <TypeSelector value={currentType} onChange={handleTypeChange} />
 
       {configComponents.map((Component, index) => (
@@ -67,7 +68,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
           onChange={handleConfigChange}
         />
       ))}
-    </div>
+    </ScrollArea>
   );
 };
 

@@ -5,6 +5,7 @@ import { DragItem } from "../dndHelper/drapItem";
 import clsx from "clsx";
 import { GripVertical, Plus } from "lucide-react";
 import { MetricEditorDialog } from "../metricEditor";
+import { ScrollArea } from "@/core/components/ui/ScrollArea";
 
 interface AsideProps {
   className?: string;
@@ -89,7 +90,9 @@ export const Aside: React.FC<AsideProps> = ({
       <div className={styles.sidebarContent}>
         <div className={styles.sidebarSection}>
           <h2 className={styles.sidebarSectionTitle}>字段</h2>
-          <ul className={styles.sidebarList}>{fieldItems}</ul>
+          <ScrollArea className={styles.fieldList}>
+            <ul className={styles.sidebarList}>{fieldItems}</ul>
+          </ScrollArea>
         </div>
         <div className={styles.sidebarSection}>
           <div className={styles.sectionHeader}>
@@ -104,7 +107,9 @@ export const Aside: React.FC<AsideProps> = ({
               </button>
             )}
           </div>
-          <ul className={styles.sidebarList}>{metricItems}</ul>
+          <ScrollArea className={styles.fieldList}>
+            <ul className={styles.sidebarList}>{metricItems}</ul>
+          </ScrollArea>
         </div>
       </div>
       {datasetId && isMetricEditorOpen && (

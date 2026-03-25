@@ -71,6 +71,10 @@
   gap: var(--spacing-xs);
 }
 
+.fieldList {
+  max-height: 350px;
+}
+
 .dragItem {
   display: flex;
   align-items: center;
@@ -80,7 +84,8 @@
   cursor: grab;
   user-select: none;
   font-size: var(--font-lg);
-  transition: background-color var(--transition-base),
+  transition:
+    background-color var(--transition-base),
     box-shadow var(--transition-base);
 
   &:hover {
