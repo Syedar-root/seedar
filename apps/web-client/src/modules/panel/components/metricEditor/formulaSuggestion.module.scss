@@ -1,6 +1,7 @@
-.command {
+.command,
+.popup {
   position: fixed;
-  z-index: 9999;
+  z-index: 99999;
   background: var(--bg-elevated);
   border: 1px solid var(--border-base);
   border-radius: var(--radius-base);

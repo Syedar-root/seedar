@@ -1,6 +1,4 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import katex from "katex";
-import "katex/dist/katex.min.css";
 import { DatasetFieldResponse, DatasetMetricResponse } from "#pkg/seedar/types";
 import {
   useFormulaParser,
@@ -50,9 +48,17 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
       const storageValue = toStorage(inputValue);
       onChange(storageValue);
 
-      const lastWord = inputValue.split(/[\s+\-*/()]+/).pop() || "";
+      const cursorPos = e.target.selectionStart;
+      const textBeforeCursor = inputValue.slice(0, cursorPos);
+      const lastWord = textBeforeCursor.split(/[\s+\-*/()]+/).pop() || "";
       const suggestionType = detectSuggestionType(lastWord);
       const filter = getSuggestionFilter(lastWord);
+
+      if (!lastWord) {
+        setSuggestions([]);
+        setShowSuggestion(false);
+        return;
+      }
 
       if (lastWord.startsWith("#F")) {
         setSuggestionFilter(filter);
@@ -93,6 +99,7 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
         setShowSuggestion(true);
       } else {
         setShowSuggestion(false);
+        setSuggestions([]);
       }
     },
     [
@@ -141,15 +148,15 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
         cursorOffset = insertText.length;
       }
 
-      const newTextBefore =
-        textBefore.slice(0, textBefore.length - lastWord.length) + insertText;
+      const insertPosition = textBefore.length - lastWord.length;
+      const newTextBefore = textBefore.slice(0, insertPosition) + insertText;
       const newText = newTextBefore + textAfter;
 
       onChange(toStorage(newText));
       setShowSuggestion(false);
 
       setTimeout(() => {
-        const newCursorPos = newTextBefore.length + cursorOffset;
+        const newCursorPos = insertPosition + cursorOffset;
         inputEl.setSelectionRange(newCursorPos, newCursorPos);
         inputEl.focus();
       }, 0);
@@ -164,71 +171,9 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
     [handleSuggestionSelect],
   );
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(e.target as Node)
-      ) {
-        setShowSuggestion(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const renderKaTeX = (expr: string) => {
-    try {
-      const latex = convertToLatex(expr);
-      if (!latex) return <span className={styles.placeholder}>预览区域</span>;
-
-      return (
-        <div
-          dangerouslySetInnerHTML={{
-            __html: katex.renderToString(latex, {
-              throwOnError: false,
-              displayMode: true,
-            }),
-          }}
-        />
-      );
-    } catch {
-      return <span className={styles.previewText}>{expr}</span>;
-    }
-  };
-
-  const convertToLatex = (expr: string): string => {
-    let latex = expr;
-
-    latex = latex.replace(/#F(\d+)/g, (_, id) => {
-      const field = fields.find((f) => f.id === parseInt(id));
-      return field?.businessName || field?.name || `F${id}`;
-    });
-
-    latex = latex.replace(/#M(\d+)/g, (_, id) => {
-      const metric = metrics.find((m) => m.id === parseInt(id));
-      return metric?.businessName || metric?.name || `M${id}`;
-    });
-
-    latex = latex.replace(/\*/g, " \\times ");
-    latex = latex.replace(/\//g, " \\div ");
-
-    return latex;
-  };
-
   return (
     <div className={styles.container}>
       <div className={styles.editorSection}>
-        <div className={styles.previewSection}>
-          <div className={styles.preview}>
-            <div className={styles.previewLabel}>预览</div>
-            <div className={styles.previewContent}>
-              {renderKaTeX(displayValue)}
-            </div>
-          </div>
-        </div>
-
         <div className={styles.editorWrapper} ref={wrapperRef}>
           <textarea
             ref={inputRef}
@@ -269,15 +214,14 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
               }
             }}
           />
-          <FormulaSuggestion
-            items={suggestions}
-            onSelect={handleSuggestionSelect}
-            filter={suggestionFilter}
-            onFilterChange={setSuggestionFilter}
-            visible={showSuggestion}
-            onVisibleChange={setShowSuggestion}
-            anchorRef={inputRef}
-          />
+          {showSuggestion && (
+            <FormulaSuggestion
+              items={suggestions}
+              onSelect={handleSuggestionSelect}
+              anchorRef={inputRef}
+              onClose={() => setShowSuggestion(false)}
+            />
+          )}
         </div>
       </div>
 

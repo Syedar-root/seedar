@@ -10,11 +10,6 @@
   gap: 12px;
 }
 
-.previewSection {
-  display: flex;
-  flex-direction: column;
-}
-
 .editorWrapper {
   position: relative;
 }
@@ -25,7 +20,7 @@
   border: 1px solid var(--border-base);
   border-radius: var(--radius-base);
   font-family: "SF Mono", "Monaco", "Inconsolata", "Fira Code", monospace;
-  font-size: var(--font-base);
+  font-size: 16px;
   line-height: 1.5;
   resize: vertical;
   transition:
@@ -43,44 +38,6 @@
   &::placeholder {
     color: var(--text-tertiary);
   }
-}
-
-.previewSection {
-  display: flex;
-  flex-direction: column;
-}
-
-.preview {
-  padding: 16px;
-  background: var(--bg-base);
-  border-radius: var(--radius-base);
-  border: 1px solid var(--border-base);
-  min-height: 100px;
-}
-
-.previewLabel {
-  font-size: var(--font-xs);
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.previewContent {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  overflow-x: auto;
-  min-height: 60px;
-}
-
-.placeholder {
-  color: var(--text-tertiary);
-  font-style: italic;
-}
-
-.previewText {
-  color: var(--text-primary);
 }
 
 .sidebar {
@@ -196,10 +153,6 @@
 @media (max-width: 768px) {
   .container {
     grid-template-columns: 1fr;
-  }
-
-  .previewSection {
-    order: -1;
   }
 
   .referencePanel {
