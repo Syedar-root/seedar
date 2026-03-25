@@ -98,6 +98,20 @@ export class DSLTransformerV2 {
 
     const joins: JoinSpec[] = [];
 
+    const getTableAlias = (tableId: number): string => {
+      if (tableId === dsl.tableId) {
+        return mainTableAlias;
+      }
+      const joinInfo = Array.from(joinMap.values()).find(
+        (j) => j.rightTableId === tableId,
+      );
+      if (joinInfo) {
+        const joinIdx = dsl.joins?.findIndex((dj) => dj.id === joinInfo.id);
+        return `t${(joinIdx || 0) + 2}`;
+      }
+      throw new Error(`找不到表 ${tableId} 对应的别名`);
+    };
+
     if (dsl.joins && dsl.joins.length > 0) {
       let joinAliasIdx = 2;
       for (const j of dsl.joins) {
@@ -125,12 +139,14 @@ export class DSLTransformerV2 {
           Number(joinInfo.rightField),
         );
 
+        const leftTableAlias = getTableAlias(joinInfo.leftTableId);
+
         const onExpr = new ComparisonExpr(
           Operator.EQUALS,
           new FieldRefExpr(
             leftFieldInfo?.name || '',
             undefined,
-            mainTableAlias,
+            leftTableAlias,
           ),
           new FieldRefExpr(
             rightFieldInfo?.name || '',

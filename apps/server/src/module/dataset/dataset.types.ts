@@ -236,6 +236,7 @@ export interface DatasetMetricResponse {
  */
 export interface DatasetJoinResponse {
   id: number;
+  leftTableId: number;
   rightTableId: number;
   leftField: string;
   rightField: string;
