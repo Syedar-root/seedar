@@ -245,13 +245,12 @@ export class DSLTransformerV2 {
         const idList = ids.split(',').map((id) => parseInt(id, 10));
         return idList
           .map((id) => {
-            const fieldInfo = Array.from(fieldMap.values()).find(
-              (f) => f.id === id,
-            );
+            const fieldInfo = fieldMap.get(id);
             if (!fieldInfo) {
               throw new Error(`找不到字段: ${id}`);
             }
-            return fieldInfo.name;
+            const tableAlias = getTableAlias(fieldInfo.tableId);
+            return `${tableAlias}.${fieldInfo.name}`;
           })
           .join(', ');
       });
