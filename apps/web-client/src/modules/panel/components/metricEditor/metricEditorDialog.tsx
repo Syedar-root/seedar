@@ -25,11 +25,14 @@ export const MetricEditorDialog: React.FC<MetricEditorDialogProps> = ({
   const [businessName, setBusinessName] = useState("");
   const [description, setDescription] = useState("");
   const [expression, setExpression] = useState("");
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
-  const { toStorage } = useFormulaParser({ fields: fields as any, metrics: metrics as any });
+  const { toStorage } = useFormulaParser({
+    fields: fields as any,
+    metrics: metrics as any,
+  });
 
   const { mutate: updateDataset } = useUpdateDataset();
 
@@ -49,7 +52,7 @@ export const MetricEditorDialog: React.FC<MetricEditorDialogProps> = ({
 
   const handleSubmit = () => {
     setError(undefined);
-    
+
     if (!validateForm()) {
       return;
     }
@@ -81,7 +84,7 @@ export const MetricEditorDialog: React.FC<MetricEditorDialogProps> = ({
           setIsSubmitting(false);
           setError(err.message || "创建指标失败");
         },
-      }
+      },
     );
   };
 
@@ -97,55 +100,55 @@ export const MetricEditorDialog: React.FC<MetricEditorDialogProps> = ({
             </Dialog.Description>
 
             <div className={styles.form}>
-              <div className={styles.formSection}>
-                <h3 className={styles.sectionTitle}>基础信息</h3>
-                
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>
-                    指标名称 <span className={styles.required}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="请输入指标名称"
-                  />
-                </div>
+              <div className={styles.mainContent}>
+                <div className={styles.formSection}>
+                  <h3 className={styles.sectionTitle}>基础信息</h3>
 
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>业务名称</label>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    placeholder="请输入业务名称（可选）"
-                  />
-                </div>
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>
+                        指标名称 <span className={styles.required}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className={styles.input}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="请输入指标名称"
+                      />
+                    </div>
 
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>描述</label>
-                  <textarea
-                    className={styles.textarea}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="请输入描述（可选）"
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>业务名称</label>
+                      <input
+                        type="text"
+                        className={styles.input}
+                        value={businessName}
+                        onChange={(e) => setBusinessName(e.target.value)}
+                        placeholder="请输入业务名称（可选）"
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>描述</label>
+                    <textarea
+                      className={styles.textarea}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="请输入描述（可选）"
+                    />
+                  </div>
+                </div>
+                <div className={styles.formulaSection}>
+                  <FormulaEditor
+                    fields={fields as any}
+                    metrics={metrics as any}
+                    value={expression}
+                    onChange={setExpression}
                   />
                 </div>
               </div>
-
-              <div className={styles.formSection}>
-                <h3 className={styles.sectionTitle}>公式编辑</h3>
-                
-                <FormulaEditor
-                  fields={fields as any}
-                  metrics={metrics as any}
-                  value={expression}
-                  onChange={setExpression}
-                />
-              </div>
-
               {error && <div className={styles.errorText}>{error}</div>}
 
               <div className={styles.actions}>
