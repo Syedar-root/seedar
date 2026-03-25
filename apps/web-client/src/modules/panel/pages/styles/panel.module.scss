@@ -11,14 +11,13 @@
 }
 
 .editor {
-  width: 280px;
+  width: 300px;
   height: 100%;
   border-left: 1px solid var(--border-base);
-  overflow-y: auto;
 }
 
 @mixin button-style($bg-color, $bg-hover-color) {
-  padding: var(--spacing-sm) var(--spacing-xl);
+  padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-base);
   cursor: pointer;
@@ -35,7 +34,7 @@
 
 .operations {
   display: flex;
-  gap: var(--spacing-xl);
+  gap: var(--spacing-sm);
 
   button {
     @include button-style(var(--bg-base), var(--bg-hover));
@@ -58,14 +57,14 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xl);
+  gap: var(--spacing-lg);
 
   --mainHeaderHeight: "auto";
   .mainHeader {
     position: relative;
     height: var(--mainHeaderHeight);
     background: var(--bg-base);
-    padding: var(--spacing-xl);
+    padding-inline: var(--spacing-xl);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
@@ -80,5 +79,6 @@
   .mainContent {
     position: relative;
     flex: 1;
+    padding-inline: var(--spacing-xl);
   }
 }
