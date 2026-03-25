@@ -1,0 +1,180 @@
+.container {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 16px;
+}
+
+.editorSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editorWrapper {
+  position: relative;
+}
+
+.textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-base);
+  font-family: "SF Mono", "Monaco", "Inconsolata", "Fira Code", monospace;
+  font-size: var(--font-base);
+  line-height: 1.5;
+  resize: vertical;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+
+  &:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(160, 82, 45, 0.1);
+  }
+
+  &::placeholder {
+    color: var(--text-tertiary);
+  }
+}
+
+.previewSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.preview {
+  padding: 12px;
+  background: var(--bg-base);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--border-base);
+  height: 100%;
+  min-height: 88px;
+}
+
+.previewLabel {
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.previewContent {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  overflow-x: auto;
+}
+
+.placeholder {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.previewText {
+  color: var(--text-primary);
+}
+
+.referencePanel {
+  display: flex;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-base);
+}
+
+.referenceSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.referenceTitle {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.referenceList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.referenceItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-base);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-xs);
+  color: var(--text-primary);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+  }
+}
+
+.functionBadge,
+.fieldBadge,
+.metricBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  font-size: 8px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.functionBadge {
+  background-color: var(--warning-light);
+  color: var(--warning);
+}
+
+.fieldBadge {
+  background-color: var(--info-light);
+  color: var(--info);
+}
+
+.metricBadge {
+  background-color: var(--success-light);
+  color: var(--success);
+}
+
+@media (max-width: 768px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+
+  .previewSection {
+    order: -1;
+  }
+
+  .referencePanel {
+    flex-wrap: wrap;
+  }
+
+  .referenceSection {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 120px;
+  }
+}

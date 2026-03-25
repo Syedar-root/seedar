@@ -109,6 +109,7 @@ export type AddMetric = {
   alias?: string;
   description?: string;
   businessName?: string;
+  expression?: string;
   dataSourceColumnId?: number;
   leftOperand?: number;
   rowOperator?: string;

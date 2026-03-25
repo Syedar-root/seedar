@@ -1,0 +1,90 @@
+.command {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow-md);
+  max-height: 240px;
+  overflow: hidden;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 232px;
+  overflow-y: auto;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  color: var(--text-primary);
+
+  &:hover,
+  &.selected {
+    background-color: var(--bg-hover);
+  }
+}
+
+.empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: var(--font-base);
+}
+
+.functionBadge,
+.fieldBadge,
+.metricBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.functionBadge {
+  background-color: var(--warning-light);
+  color: var(--warning);
+}
+
+.fieldBadge {
+  background-color: var(--info-light);
+  color: var(--info);
+}
+
+.metricBadge {
+  background-color: var(--success-light);
+  color: var(--success);
+}
+
+.itemName {
+  flex: 1;
+  font-size: var(--font-base);
+  font-weight: 500;
+}
+
+.itemDesc {
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+}
+
+.itemId {
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+  font-family: monospace;
+}
