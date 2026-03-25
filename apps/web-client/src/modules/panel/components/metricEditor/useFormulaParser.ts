@@ -1,38 +1,35 @@
-import { useCallback } from 'react';
-import {
-  DatasetFieldResponse,
-  DatasetMetricResponse,
-} from '#pkg/seedar/types';
+import { useCallback } from "react";
+import { DatasetFieldResponse, DatasetMetricResponse } from "#pkg/seedar/types";
 
 export interface FieldItem {
   id: number;
   name: string;
   businessName?: string;
-  type: 'field';
+  type: "field";
 }
 
 export interface MetricItem {
   id: number;
   name: string;
   businessName?: string;
-  type: 'metric';
+  type: "metric";
 }
 
 export interface FunctionItem {
   name: string;
   description: string;
-  type: 'function';
+  type: "function";
 }
 
 export type SuggestionItem = FieldItem | MetricItem | FunctionItem;
 
 export const AGGREGATE_FUNCTIONS: FunctionItem[] = [
-  { name: 'SUM', description: '求和', type: 'function' },
-  { name: 'COUNT', description: '计数', type: 'function' },
-  { name: 'AVG', description: '平均值', type: 'function' },
-  { name: 'MAX', description: '最大值', type: 'function' },
-  { name: 'MIN', description: '最小值', type: 'function' },
-  { name: 'DISTINCT_COUNT', description: '去重计数', type: 'function' },
+  { name: "SUM", description: "求和", type: "function" },
+  { name: "COUNT", description: "计数", type: "function" },
+  { name: "AVG", description: "平均值", type: "function" },
+  { name: "MAX", description: "最大值", type: "function" },
+  { name: "MIN", description: "最小值", type: "function" },
+  { name: "DISTINCT_COUNT", description: "去重计数", type: "function" },
 ];
 
 interface UseFormulaParserProps {
@@ -52,7 +49,7 @@ export function useFormulaParser({ fields, metrics }: UseFormulaParserProps) {
       const field = fieldMap.get(id);
       return field?.businessName || field?.name || `field_${id}`;
     },
-    [fieldMap]
+    [fieldMap],
   );
 
   const getMetricName = useCallback(
@@ -60,41 +57,59 @@ export function useFormulaParser({ fields, metrics }: UseFormulaParserProps) {
       const metric = metricMap.get(id);
       return metric?.businessName || metric?.name || `metric_${id}`;
     },
-    [metricMap]
+    [metricMap],
   );
 
   const toDisplay = useCallback(
     (expression: string): string => {
-      return expression.replace(/#M(\d+)/g, (_, id) => {
-        const numId = parseInt(id, 10);
-        return getMetricName(numId);
-      }).replace(/#F(\d+)/g, (_, id) => {
-        const numId = parseInt(id, 10);
-        return getFieldName(numId);
-      });
+      return expression
+        .replace(/#M(\d+)/g, (_, id) => {
+          const numId = parseInt(id, 10);
+          return getMetricName(numId);
+        })
+        .replace(/#F(\d+)/g, (_, id) => {
+          const numId = parseInt(id, 10);
+          return getFieldName(numId);
+        });
     },
-    [getFieldName, getMetricName]
+    [getFieldName, getMetricName],
   );
 
   const toStorage = useCallback(
     (expression: string): string => {
       let result = expression;
 
-      fields.forEach((field) => {
-        const names = [field.businessName, field.name].filter(Boolean);
+      const sortedFields = [...fields].sort((a, b) => {
+        const aLen = (a.businessName || a.name || "").length;
+        const bLen = (b.businessName || b.name || "").length;
+        return bLen - aLen;
+      });
+
+      const sortedMetrics = [...metrics].sort((a, b) => {
+        const aLen = (a.businessName || a.name || "").length;
+        const bLen = (b.businessName || b.name || "").length;
+        return bLen - aLen;
+      });
+
+      sortedFields.forEach((field) => {
+        const names = [field.businessName, field.name].filter(
+          Boolean,
+        ) as string[];
         names.forEach((name) => {
           if (name && result.includes(name)) {
-            const regex = new RegExp(`\\b${escapeRegex(name)}\\b`, 'g');
+            const regex = new RegExp(escapeRegex(name), "g");
             result = result.replace(regex, `#F${field.id}`);
           }
         });
       });
 
-      metrics.forEach((metric) => {
-        const names = [metric.businessName, metric.name].filter(Boolean);
+      sortedMetrics.forEach((metric) => {
+        const names = [metric.businessName, metric.name].filter(
+          Boolean,
+        ) as string[];
         names.forEach((name) => {
           if (name && result.includes(name)) {
-            const regex = new RegExp(`\\b${escapeRegex(name)}\\b`, 'g');
+            const regex = new RegExp(escapeRegex(name), "g");
             result = result.replace(regex, `#M${metric.id}`);
           }
         });
@@ -102,7 +117,7 @@ export function useFormulaParser({ fields, metrics }: UseFormulaParserProps) {
 
       return result;
     },
-    [fields, metrics]
+    [fields, metrics],
   );
 
   const getSuggestions = useCallback(
@@ -123,7 +138,7 @@ export function useFormulaParser({ fields, metrics }: UseFormulaParserProps) {
             id: field.id,
             name,
             businessName: field.businessName,
-            type: 'field',
+            type: "field",
           });
         }
       });
@@ -135,47 +150,51 @@ export function useFormulaParser({ fields, metrics }: UseFormulaParserProps) {
             id: metric.id,
             name,
             businessName: metric.businessName,
-            type: 'metric',
+            type: "metric",
           });
         }
       });
 
       return items;
     },
-    [fields, metrics]
+    [fields, metrics],
   );
 
   const detectSuggestionType = useCallback(
-    (text: string): 'function' | 'field' | 'metric' | null => {
-      const lastWord = text.split(/[\s+\-*/()]+/).pop() || '';
-      
-      if (lastWord.startsWith('#F')) {
-        return 'field';
+    (text: string): "function" | "field" | "metric" | null => {
+      const lastWord = text.split(/[\s+\-*/()]+/).pop() || "";
+
+      if (lastWord.startsWith("#F")) {
+        return "field";
       }
-      if (lastWord.startsWith('#M')) {
-        return 'metric';
+      if (lastWord.startsWith("#M")) {
+        return "metric";
       }
-      
+
       const funcNames = AGGREGATE_FUNCTIONS.map((f) => f.name);
-      if (funcNames.some((fn) => fn.toLowerCase().startsWith(lastWord.toLowerCase()))) {
-        return 'function';
+      if (
+        funcNames.some((fn) =>
+          fn.toLowerCase().startsWith(lastWord.toLowerCase()),
+        )
+      ) {
+        return "function";
       }
-      
+
       return null;
     },
-    []
+    [],
   );
 
   const getSuggestionFilter = useCallback((text: string): string => {
-    const lastWord = text.split(/[\s+\-*/()]+/).pop() || '';
-    
-    if (lastWord.startsWith('#F')) {
+    const lastWord = text.split(/[\s+\-*/()]+/).pop() || "";
+
+    if (lastWord.startsWith("#F")) {
       return lastWord.slice(2);
     }
-    if (lastWord.startsWith('#M')) {
+    if (lastWord.startsWith("#M")) {
       return lastWord.slice(2);
     }
-    
+
     return lastWord;
   }, []);
 
@@ -189,5 +208,5 @@ export function useFormulaParser({ fields, metrics }: UseFormulaParserProps) {
 }
 
 function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
