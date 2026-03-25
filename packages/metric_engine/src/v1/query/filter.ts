@@ -1,5 +1,5 @@
-import { Field } from "../core/field";
-import { Operator, DatabaseDialect } from "../core/types";
+import { Field } from "../../core/field";
+import { Operator, DatabaseDialect } from "../../core/types";
 import { Metric } from "../metrics/metric-classes";
 
 /**

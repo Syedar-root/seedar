@@ -190,6 +190,12 @@ export class DatasetMetric {
   })
   calculationMode: PeriodCalculationMode;
 
+  // ==================== 表达式指标配置 ====================
+
+  /** 表达式指标 - 公式字符串 */
+  @Column({ name: 'expression', type: 'varchar', length: 1000, nullable: true })
+  expression: string;
+
   /** 创建时间 */
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

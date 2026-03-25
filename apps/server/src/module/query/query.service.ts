@@ -7,8 +7,14 @@ import { CreateQueryRequest } from './dto/create-query.request';
 import { UpdateQueryRequest } from './dto/update-query.request';
 import { ExecuteQueryResponse } from './dto/execute-query.response';
 import { QueryStatus } from './query-status.enum';
-import { DSLTransformer, QueryDSL } from './dsl-transformer';
-import { KnexSQLGenerator, Table, Field } from '@metric-engine/core';
+import { DSLTransformer, QueryDSL } from './dsl-transformer/dsl-transformer';
+import {
+  KnexQueryBuilder,
+  QueryAdapter,
+  Table,
+  Field,
+  DatabaseDialect,
+} from '@metric-engine/core';
 import { Datasource } from '@/module/datasource/entities/datasource.entity';
 import { DatasetService } from '@/module/dataset/services/dataset.service';
 import { KnexConnectionFactory } from '@/module/datasource/knex-connection.factory';
@@ -17,6 +23,7 @@ import { MySqlConfig } from '@/module/datasource/datasource.types';
 import { DataSourceType } from '@/module/datasource/datasource.types';
 import { DatasetResponse } from '@/module/dataset/dataset.types';
 import { LoggerService } from '@/logger/logger.service';
+import { DSLTransformerV2 } from './dsl-transformer/dsl-transformer.v2';
 
 @Injectable()
 export class QueryService {
@@ -113,7 +120,7 @@ export class QueryService {
     );
 
     const tables = this.getTablesFromDataset(dataset);
-    const metricQuery = DSLTransformer.transform(dsl, dataset, tables);
+
     const knexConnection =
       this.knexConnectionFactory.createConnection(datasourceEntity);
 
@@ -124,15 +131,23 @@ export class QueryService {
         [DataSourceType.CLICKHOUSE]: 'clickhouse',
       };
 
-      KnexSQLGenerator.initializeKnex({
-        client: knexClientMap[datasourceEntity.type] || datasourceEntity.type,
-        connection: datasourceEntity.config,
-      });
+      const clientType =
+        knexClientMap[datasourceEntity.type] || datasourceEntity.type;
+
+      DatabaseDialect.setClient(clientType as any);
 
       const startTime = Date.now();
-      const sqlResult = KnexSQLGenerator.generateSQLWithBindings(metricQuery);
 
-      console.log(sqlResult);
+      // v1 的使用方法
+      // const metricQuery = DSLTransformer.transform(dsl, dataset, tables);
+      // const querySpec = QueryAdapter.toQuerySpec(metricQuery);
+
+      const querySpec = DSLTransformerV2.transform(dsl, dataset, tables);
+
+      const builder = new KnexQueryBuilder(knexConnection);
+
+      const sqlResult = builder.build(querySpec);
+
       const results = await knexConnection.raw<any[][]>(
         sqlResult.sql,
         sqlResult.bindings,
@@ -141,24 +156,31 @@ export class QueryService {
 
       let rawRows: any[] = [];
       if (Array.isArray(results)) {
-        // MySQL: knex.raw() returns [rows, fields]
         rawRows = Array.isArray(results[0]) ? results[0] : results;
       } else if (results && typeof results === 'object' && 'rows' in results) {
-        // PostgreSQL: knex.raw() returns { command, rowCount, rows, ... }
         rawRows = (results as unknown as any).rows;
       } else {
         rawRows = [];
       }
 
-      const columnMappings = sqlResult.columnMappings || [];
-      const header = columnMappings.map(
-        (mapping) => mapping.businessName || mapping.displayName,
-      );
-      const columnAliases = columnMappings.map((mapping) => mapping.alias);
+      const columnMappings = (sqlResult as any).columnMappings || [];
+
+      let header: string[];
+      let columnAliases: string[];
+
+      if (columnMappings.length > 0) {
+        header = columnMappings.map(
+          (mapping: any) => mapping.businessName || mapping.displayName,
+        );
+        columnAliases = columnMappings.map((mapping: any) => mapping.alias);
+      } else {
+        header = Object.keys(rawRows[0] || {});
+        columnAliases = header;
+      }
 
       const rows = rawRows.map((row: Record<string, unknown>) => {
         return columnAliases.map((alias: string) => {
-          const value = row[alias];
+          const value = row[alias.split('.').at(-1) || alias];
           return typeof value === 'number' ? value : String(value);
         });
       });

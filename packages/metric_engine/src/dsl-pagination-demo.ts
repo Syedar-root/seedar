@@ -1,5 +1,5 @@
 import { parseMinimalDslToQuery, MinimalDSL } from './dsl/parse-dsl';
-import { SQLGenerator } from './query/sql-generator';
+import { KnexSQLGenerator } from './v1/query/knex-sql-generator';
 import { Table, Field, FieldType } from './index';
 
 async function dslPaginationDemo() {
@@ -44,10 +44,10 @@ async function dslPaginationDemo() {
   };
 
   const query1 = await parseMinimalDslToQuery(dsl1, tables);
-  const result1 = SQLGenerator.generate(query1);
+  const result1 = KnexSQLGenerator.generateSQLString(query1);
   console.log('DSL:', JSON.stringify(dsl1, null, 2));
   console.log('\n生成的 SQL:');
-  console.log(result1.sql);
+  console.log(result1);
   console.log();
 
   console.log('场景2: 带有 LIMIT 的 DSL');
@@ -64,10 +64,10 @@ async function dslPaginationDemo() {
   };
 
   const query2 = await parseMinimalDslToQuery(dsl2, tables);
-  const result2 = SQLGenerator.generate(query2);
+  const result2 = KnexSQLGenerator.generateSQLString(query2);
   console.log('DSL:', JSON.stringify(dsl2, null, 2));
   console.log('\n生成的 SQL:');
-  console.log(result2.sql);
+  console.log(result2);
   console.log();
 
   console.log('场景3: 第 2 页，每页 2 条记录 (LIMIT 2 OFFSET 2)');
@@ -85,10 +85,10 @@ async function dslPaginationDemo() {
   };
 
   const query3 = await parseMinimalDslToQuery(dsl3, tables);
-  const result3 = SQLGenerator.generate(query3);
+  const result3 = KnexSQLGenerator.generateSQLString(query3);
   console.log('DSL:', JSON.stringify(dsl3, null, 2));
   console.log('\n生成的 SQL:');
-  console.log(result3.sql);
+  console.log(result3);
   console.log();
 
   console.log('场景4: 带有 JOIN 和分页的复杂 DSL');
@@ -114,10 +114,10 @@ async function dslPaginationDemo() {
   };
 
   const query4 = await parseMinimalDslToQuery(dsl4, tables);
-  const result4 = SQLGenerator.generate(query4);
+  const result4 = KnexSQLGenerator.generateSQLString(query4);
   console.log('DSL:', JSON.stringify(dsl4, null, 2));
   console.log('\n生成的 SQL:');
-  console.log(result4.sql);
+  console.log(result4);
   console.log();
 
   console.log('=== DSL 分页功能演示完成 ===');

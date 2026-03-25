@@ -1,6 +1,6 @@
 import { IsString, IsNumber, IsObject, IsOptional } from 'class-validator';
 import { QueryStatus } from '../query-status.enum';
-import type { QueryDSL } from '../dsl-transformer';
+import type { QueryDSL } from '../dsl-transformer/dsl-transformer';
 
 export class CreateQueryRequest {
   @IsString()

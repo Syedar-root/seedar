@@ -2,7 +2,7 @@ import { initializeDatabase, getDatabaseManager } from './database';
 import { DatabaseSetup } from './setup-database';
 import {
   Table, Field, Join, JoinCondition, Query, Dimension, Filter,
-  RowLevelMetric, AggregateMetric, SQLGenerator,
+  RowLevelMetric, AggregateMetric, KnexSQLGenerator,
   FieldType, AggregateFunction, Operator, JoinType
 } from '../index';
 
@@ -376,21 +376,17 @@ class DatabaseTester {
   private async executeMetricQuery(dbManager: any, query: Query): Promise<void> {
     try {
       // 生成SQL
-      const result = SQLGenerator.generate(query);
-
-      if (result.errors.length > 0) {
-        console.log('❌ SQL生成错误:');
-        result.errors.forEach((error: string) => console.log('  -', error));
-        return;
-      }
+      const result = KnexSQLGenerator.generateSQLWithBindings(query);
 
       console.log('📝 生成的SQL:');
       console.log(result.sql);
+      console.log('📝 参数绑定:');
+      console.log(result.bindings);
       console.log();
 
       // 执行查询
       console.log('⚡ 执行查询结果:');
-      const queryResult = await dbManager.query(result.sql);
+      const queryResult = await dbManager.query(result.sql, result.bindings);
       console.log(JSON.stringify(queryResult, null, 2));
       console.log();
 
