@@ -94,7 +94,12 @@ export class KnexQueryBuilder {
           this.buildExpr(metric);
 
         if (metric.meta?.alias) {
-          qb.select(`${this.buildExpr(metric)} as ${metric.meta.alias}`);
+          // 使用 raw 避免 Knex 给带括号的表达式添加反引号
+          qb.select(
+            this.knex.raw(`${this.buildExpr(metric)} as ??`, [
+              metric.meta.alias,
+            ]),
+          );
         } else {
           qb.select(this.buildExpr(metric));
         }
@@ -430,6 +435,10 @@ export class KnexQueryBuilder {
     // 处理聚合函数表达式
     if (expr.functionName && expr.arg !== undefined && !expr.args) {
       const argStr = this.buildExprWithAlias(expr.arg, aliasMap);
+      // DISTINCT_COUNT 已经是去重计数语义，转换为 COUNT(DISTINCT ...)
+      if (expr.functionName === "DISTINCT_COUNT") {
+        return `COUNT(DISTINCT ${argStr})`;
+      }
       if (expr.distinct) {
         return `${expr.functionName}(DISTINCT ${argStr})`;
       }
@@ -448,7 +457,8 @@ export class KnexQueryBuilder {
     if (expr.operator && expr.left && expr.right) {
       const leftStr = this.buildExprWithAlias(expr.left, aliasMap);
       const rightStr = this.buildExprWithAlias(expr.right, aliasMap);
-      return `${leftStr} ${expr.operator} ${rightStr}`;
+      // 给二元运算添加括号，避免 SQL 解析问题
+      return `(${leftStr}) ${expr.operator} (${rightStr})`;
     }
 
     // 处理一元运算表达式
@@ -496,6 +506,10 @@ export class KnexQueryBuilder {
             qb.select(this.knex.raw(`COUNT(??) as ??`, [argStr, alias]));
           }
           break;
+        case "DISTINCT_COUNT":
+          // DISTINCT_COUNT 已经是去重计数语义，直接转换为 COUNT(DISTINCT ...)
+          qb.select(this.knex.raw(`COUNT(DISTINCT ??) as ??`, [argStr, alias]));
+          break;
         case "SUM":
           qb.select(this.knex.raw(`SUM(??) as ??`, [argStr, alias]));
           break;
@@ -519,6 +533,7 @@ export class KnexQueryBuilder {
 
     // 处理非聚合函数的指标（如算术表达式）
     const metricSQL = this.buildExprWithAlias(metric, aliasMap);
+    // 使用 raw 避免 Knex 给带括号的表达式添加反引号
     qb.select(this.knex.raw(`${metricSQL} as ??`, [alias]));
   }
 
@@ -580,6 +595,12 @@ export class KnexQueryBuilder {
     // AggExpr 有 functionName 和 arg（单数），以及 distinct 属性
     if (expr.functionName && expr.arg !== undefined && !expr.args) {
       const argStr = this.buildExpr(expr.arg);
+
+      // DISTINCT_COUNT 已经是"去重计数"语义，直接转换为 COUNT(DISTINCT ...)
+      if (expr.functionName === "DISTINCT_COUNT") {
+        return `COUNT(DISTINCT ${argStr})`;
+      }
+
       if (expr.distinct) {
         return `${expr.functionName}(DISTINCT ${argStr})`;
       }
@@ -653,6 +674,11 @@ export class KnexQueryBuilder {
     parentOp: string,
     position: "left" | "right",
   ): boolean {
+    // 如果是聚合函数，需要括号（聚合函数作为二元运算的操作数时）
+    if (expr.functionName && expr.arg !== undefined) {
+      return true;
+    }
+
     // 如果不是二元表达式，不需要括号
     if (!expr.operator || !expr.left || !expr.right) {
       return false;
