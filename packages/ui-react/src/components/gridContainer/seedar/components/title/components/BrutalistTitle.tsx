@@ -1,0 +1,28 @@
+import React from "react";
+import { BrutalistTitleProps } from "../types";
+import styles from "../title.module.css";
+
+export const BrutalistTitle: React.FC<BrutalistTitleProps> = ({
+  content,
+  flagColor = "#008ffa",
+  subtitle,
+  maxTitleWidth = "100%",
+}) => {
+  return (
+    <div
+      className={styles.brutalistContainer}
+      style={
+        {
+          "--max-title-width": maxTitleWidth,
+          "--accent-color": flagColor,
+        } as React.CSSProperties
+      }
+    >
+      <div className={styles.brutalistHeader}>
+        <span className={styles.brutalistNumber} />
+        <h3 className={styles.brutalistTitle}>{content}</h3>
+      </div>
+      {subtitle && <p className={styles.brutalistSubtitle}>{subtitle}</p>}
+    </div>
+  );
+};

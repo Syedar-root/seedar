@@ -1,60 +1,45 @@
-import { Tooltip } from "@base-ui/react/tooltip";
-import styles from "./title.module.css";
+import React from "react";
+import { TitleProps, TitleType } from "./types";
+import { useTitleTooltip } from "./hooks";
+import {
+  PlainTitle,
+  FlagTitle,
+  EditorialTitle,
+  BrutalistTitle,
+} from "./components";
 
-interface TitleProps {
-  content?: string;
-  type?: "plain" | "flag";
-  flagColor?: string;
-  enableTooltip?: boolean;
-  maxTitleWidth?: string;
-}
+const titleRenderers: Record<TitleType, (props: any) => React.ReactNode> = {
+  plain: PlainTitle,
+  flag: FlagTitle,
+  editorial: EditorialTitle,
+  brutalist: BrutalistTitle,
+};
 
 export const Title: React.FC<TitleProps> = ({
   content,
-  type = "flag",
-  flagColor = "#008ffa",
+  type = "plain",
   enableTooltip = true,
   maxTitleWidth = "100%",
+  ...props
 }: TitleProps) => {
-  if (type === "plain") {
-    return <h3 className={styles.plain}>{content}</h3>;
-  }
-  if (type === "flag") {
-    const flagContent = (
-      <div
-        className={styles.flagContainer}
-        style={
-          {
-            "--flag-color": flagColor,
-            "--max-title-width": maxTitleWidth,
-          } as React.CSSProperties
-        }
-      >
-        <div className={styles.flagMarker}></div>
-        <div className={styles.flagContent}>{content}</div>
-      </div>
-    );
+  const TitleComponent = titleRenderers[type];
+  const titleElement = (
+    <TitleComponent
+      content={content}
+      maxTitleWidth={maxTitleWidth}
+      {...props}
+    />
+  );
 
-    if (enableTooltip && content) {
-      return (
-        <Tooltip.Provider>
-          <Tooltip.Root>
-            <Tooltip.Trigger style={{ maxWidth: maxTitleWidth }}>
-              {flagContent}
-            </Tooltip.Trigger>
-            <Tooltip.Portal>
-              <Tooltip.Positioner sideOffset={8}>
-                <Tooltip.Popup className={styles.tooltip}>
-                  {content}
-                </Tooltip.Popup>
-              </Tooltip.Positioner>
-            </Tooltip.Portal>
-          </Tooltip.Root>
-        </Tooltip.Provider>
-      );
-    }
-
-    return flagContent;
-  }
-  return null;
+  return useTitleTooltip(content, enableTooltip, maxTitleWidth, titleElement);
 };
+
+export type {
+  TitleType,
+  TitleProps,
+  BaseTitleProps,
+  PlainTitleProps,
+  FlagTitleProps,
+  EditorialTitleProps,
+  BrutalistTitleProps,
+} from "./types";
