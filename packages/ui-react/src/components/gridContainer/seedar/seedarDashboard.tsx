@@ -1,6 +1,6 @@
-import { GridContainer } from '../gridContainter';
-import { SeedarPanel } from './seedarPanel';
-import { SeedarDashboardContext } from './seedarDashboardContext';
+import { GridContainer } from "../gridContainter";
+import { SeedarPanel } from "./seedarPanel";
+import { SeedarDashboardContext } from "./seedarDashboardContext";
 import {
   Triggers,
   SaveTrigger,
@@ -8,9 +8,10 @@ import {
   AddPanelTrigger,
   RemovePanelTrigger,
   DefaultAddPanelDialog,
-} from './seedarDashboardTriggers';
-import { useDashboardActions } from '../../../hooks';
-import type { Layouts } from '#pkg/seedar/types';
+} from "./seedarDashboardTriggers";
+import { useDashboardActions } from "../../../hooks";
+import type { Layouts } from "#pkg/seedar/types";
+import { useEffect } from "react";
 
 interface SeedarDashboardProps {
   dashboardId: string;
@@ -38,6 +39,10 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
 }) => {
   const { data, actions, state } = useDashboardActions(dashboardId, autoUpdate);
 
+  useEffect(() => {
+    console.log("data?.layout", data?.layout);
+  }, [data?.layout]);
+
   if (state.isLoading || state.isError || !data) {
     return null;
   }
@@ -53,6 +58,7 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
       {header}
       {children}
       <GridContainer
+        key={dashboardId}
         layouts={state.localLayout}
         onLayoutChange={handleLayoutChange}
       >

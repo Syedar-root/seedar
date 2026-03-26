@@ -1,6 +1,6 @@
-import React, { forwardRef } from 'react';
-import { clsx } from 'clsx';
-import styles from './gridPanel.module.css';
+import React, { forwardRef } from "react";
+import { clsx } from "clsx";
+import styles from "./gridPanel.module.css";
 
 export interface GridPanelProps {
   panelId: string | number;
@@ -30,29 +30,29 @@ export const GridPanel = forwardRef<HTMLDivElement, GridPanelProps>(
       title,
       showHeader = true,
       headerExtra,
-      className = '',
+      className = "",
       style = {},
       ...rest
     },
-    ref
+    ref,
   ) => {
     return (
       <div
         ref={ref}
         key={key}
-        className={clsx(styles['grid-panel'], className)}
+        className={clsx(styles["grid-panel"], className)}
         style={style}
         {...rest}
       >
         {showHeader && (
-          <div className={styles['grid-panel-header']}>
-            {title}
-            {headerExtra}
+          <div className={styles["grid-panel-header"]}>
+            <div className={styles.title}>{title}</div>
+            <div className={styles.headerExtra}>{headerExtra}</div>
           </div>
         )}
         {content && (
           <div
-            className={styles['grid-panel-content']}
+            className={styles["grid-panel-content"]}
             onMouseDown={handleMouseEvents}
             onMouseMove={handleMouseEvents}
             onMouseUp={handleMouseEvents}
@@ -62,8 +62,8 @@ export const GridPanel = forwardRef<HTMLDivElement, GridPanelProps>(
             {content}
           </div>
         )}
-        <div className={styles['grid-panel-footer']}>{children}</div>
+        <div className={styles["grid-panel-footer"]}>{children}</div>
       </div>
     );
-  }
+  },
 );

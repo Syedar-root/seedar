@@ -4,28 +4,50 @@
 }
 
 .flagContainer {
-  --flag-color: #008748;
+  /* 移除 position: relative */
   height: 100%;
-  padding-right: 8px;
+  min-height: 32px; /* 添加最小高度 */
+  padding-inline: 8px;
   display: flex;
   align-items: center;
   background-color: color-mix(in srgb, var(--flag-color), transparent 88%);
+  max-width: var(--max-title-width); /* 添加最大宽度 */
 }
 
 .flagMarker {
+  /* 移除 position: relative */
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 8px;
   height: 100%;
   margin-right: 4px;
   background-color: var(--flag-color);
+  flex-shrink: 0; /* 防止被压缩 */
 }
 
 .flagContent {
   height: 100%;
   padding-block: 4px;
-  margin-right: 4px;
-  line-height: 100%;
+  margin-inline: 4px;
+  line-height: 1.5; /* 修改 line-height */
   font-size: 18px;
   font-weight: 600;
-  display: flex;
-  align-items: center;
+  /* 移除 display: flex */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1; /* 占据剩余空间 */
+  min-width: 0; /* 关键修复：允许文本截断 */
+  text-align: left;
+}
+
+.tooltip {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }

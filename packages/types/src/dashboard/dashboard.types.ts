@@ -1,8 +1,8 @@
 export enum PanelType {
-  CHART = 'chart',
-  TABLE = 'table',
-  TEXT = 'text',
-  CARD = 'card',
+  CHART = "chart",
+  TABLE = "table",
+  TEXT = "text",
+  CARD = "card",
 }
 
 export interface LayoutItem {
@@ -44,7 +44,7 @@ export interface PanelResponse {
 export interface DashboardResponse {
   id: string;
   name: string;
-  layout: Layouts;
+  layout: Layouts | null;
   panels: PanelResponse[];
   createdAt: Date;
   updatedAt: Date;

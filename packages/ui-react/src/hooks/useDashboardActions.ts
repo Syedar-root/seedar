@@ -1,18 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   useDashboard,
   useUpdateDashboard,
   useAddPanel,
   useRemovePanel,
   useUpdateLayout,
-} from './useDashboard';
+} from "./useDashboard";
 import type {
   DashboardResponse,
   UpdateDashboardRequest,
   Layouts,
   LayoutItem,
-} from '#pkg/seedar/types';
-import { min } from '@visactor/vchart/esm/util';
+} from "#pkg/seedar/types";
 
 interface UseDashboardActionsReturn {
   data: DashboardResponse | undefined;
@@ -64,7 +63,11 @@ export const useDashboardActions = (
       setLocalLayout(data.layout);
       setHasUnsavedChanges(false);
     }
-  }, [data?.layout]);
+    return () => {
+      setLocalLayout({});
+      setHasUnsavedChanges(false);
+    };
+  }, [data?.layout, dashboardId]);
 
   useEffect(() => {
     if (data?.layout) {
@@ -76,7 +79,7 @@ export const useDashboardActions = (
 
   const handleUpdateLayout = (layout: Layouts) => {
     // 验证是否有重复的 i
-    const breakpoints = ['lg', 'md', 'sm', 'xs', 'xxs'] as const;
+    const breakpoints = ["lg", "md", "sm", "xs", "xxs"] as const;
     breakpoints.forEach((b) => {
       if (layout[b]) {
         const seen = new Map<string, LayoutItem>();
@@ -92,7 +95,7 @@ export const useDashboardActions = (
         { id: dashboardId, layout },
         {
           onSuccess: (data) => {
-            setLocalLayout(data.layout);
+            setLocalLayout(data.layout || {});
           },
         },
       );
@@ -142,7 +145,7 @@ export const useDashboardActions = (
           };
 
           const updatedLayout: Layouts = {};
-          const breakpoints = ['lg', 'md', 'sm', 'xs', 'xxs'] as const;
+          const breakpoints = ["lg", "md", "sm", "xs", "xxs"] as const;
 
           breakpoints.forEach((breakpoint) => {
             const currentItems = localLayout[breakpoint] || [];
@@ -171,7 +174,7 @@ export const useDashboardActions = (
       {
         onSuccess: () => {
           const updatedLayout: Layouts = {};
-          const breakpoints = ['lg', 'md', 'sm', 'xs', 'xxs'] as const;
+          const breakpoints = ["lg", "md", "sm", "xs", "xxs"] as const;
 
           breakpoints.forEach((breakpoint) => {
             const currentItems = localLayout[breakpoint] || [];
