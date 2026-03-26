@@ -9,7 +9,7 @@
     "pnpm": ">=8"
   },
   "scripts": {
-    "dev": "pnpm -r --parallel dev",
+    "dev": "pnpm -r --parallel start:dev",
     "start:dev": "pnpm -r --parallel start:dev",
     "build": "pnpm -r build",
     "lint": "echo \"Add lint config\"",

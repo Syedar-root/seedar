@@ -23,6 +23,7 @@
   grid-template-columns: 1fr auto;
   align-items: center;
   overflow: hidden;
+  gap: 8px;
 
   .title {
     overflow: hidden;

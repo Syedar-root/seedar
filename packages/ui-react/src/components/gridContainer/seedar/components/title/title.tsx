@@ -14,7 +14,7 @@ export const Title: React.FC<TitleProps> = ({
   type = "flag",
   flagColor = "#008ffa",
   enableTooltip = true,
-  maxTitleWidth = "300px",
+  maxTitleWidth = "100%",
 }: TitleProps) => {
   if (type === "plain") {
     return <h3 className={styles.plain}>{content}</h3>;
