@@ -1,8 +1,8 @@
 .aside {
   width: 200px;
   height: 100%;
-  background: var(--bg-color);
-  border-right: 1px solid var(--border-color);
+  background: var(--bg-base);
+  border-right: 1px solid var(--border-base);
   display: flex;
   flex-direction: column;
 }
@@ -12,13 +12,13 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-md);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-base);
 }
 
 .title {
   font-weight: 600;
-  font-size: 14px;
-  color: var(--text-color);
+  font-size: var(--font-lg);
+  color: var(--text-primary);
 }
 
 .addButton {
@@ -29,16 +29,16 @@
   height: 28px;
   padding: 0;
   background: transparent;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-base);
   border-radius: 4px;
   cursor: pointer;
-  color: var(--text-color);
+  color: var(--text-primary);
   transition: all 0.2s;
 
   &:hover {
-    background: var(--hover-bg-color);
-    border-color: var(--primary-color);
-    color: var(--primary-color);
+    background: var(--bg-hover);
+    border-color: var(--primary);
+    color: var(--primary);
   }
 }
 
@@ -53,18 +53,19 @@
   gap: 8px;
   padding: 10px var(--spacing-md);
   cursor: pointer;
-  color: var(--text-color-secondary);
+  color: var(--text-primary);
   transition: all 0.2s;
 
   &:hover {
-    background: var(--hover-bg-color);
-    color: var(--text-color);
+    background: var(--bg-hover);
+    color: var(--text-secondary);
   }
 
   &.active {
-    background: var(--primary-color-light);
-    color: var(--primary-color);
-    border-right: 2px solid var(--primary-color);
+    background: var(--primary);
+    color: var(--text-inverse);
+    font-weight: 600;
+    padding-left: calc(var(--spacing-md) + 4px);
   }
 }
 
@@ -83,6 +84,6 @@
 .empty {
   padding: var(--spacing-lg);
   text-align: center;
-  color: var(--text-color-tertiary);
+  color: var(--text-tertiary);
   font-size: 13px;
 }
