@@ -1,6 +1,6 @@
 export const COLS_RATE = 10;
-export const DEFAULT_W = 6;
-export const DEFAULT_H = 4;
+export const DEFAULT_W = 6 * COLS_RATE;
+export const DEFAULT_H = 4 * COLS_RATE;
 export const COLS = {
   lg: 12 * COLS_RATE,
   md: 10 * COLS_RATE,
