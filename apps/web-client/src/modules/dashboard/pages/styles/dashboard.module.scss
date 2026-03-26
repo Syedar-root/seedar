@@ -3,12 +3,20 @@
 .container {
   position: relative;
   margin: 0;
-  height: auto;
+  height: 100%;
+  display: flex;
 
   h2 {
     margin-bottom: 1.5rem;
     color: #333;
   }
+}
+
+main {
+  flex: 1;
+  height: 100%;
+  background: var(--bg-color);
+  padding: var(--spacing-md);
 }
 
 .header {

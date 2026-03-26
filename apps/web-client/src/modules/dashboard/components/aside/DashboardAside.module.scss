@@ -1,0 +1,88 @@
+.aside {
+  width: 200px;
+  height: 100%;
+  background: var(--bg-color);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-color);
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-color);
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--hover-bg-color);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+}
+
+.list {
+  flex: 1;
+  overflow: hidden;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px var(--spacing-md);
+  cursor: pointer;
+  color: var(--text-color-secondary);
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--hover-bg-color);
+    color: var(--text-color);
+  }
+
+  &.active {
+    background: var(--primary-color-light);
+    color: var(--primary-color);
+    border-right: 2px solid var(--primary-color);
+  }
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.empty {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--text-color-tertiary);
+  font-size: 13px;
+}

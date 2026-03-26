@@ -2,7 +2,9 @@ import { useCallback, useMemo } from "react";
 import { SeedarDashboard } from "#pkg/seedar/ui-react";
 import styles from "./styles/dashboard.module.scss";
 import { ExternalLink, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { Empty } from "@/core/components/ui/Empty";
+import { DashboardAside } from "../components/aside";
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
@@ -40,14 +42,24 @@ export const DashboardPage = () => {
       </div>
     );
   }, []);
+
+  const { dashboardId } = useParams();
+
   return (
     <div className={styles.container}>
-      <SeedarDashboard
-        autoUpdate={true}
-        dashboardId="c6a83ac6-06ea-405d-a67e-d10a89450e3f"
-        header={header}
-        panelHeaderExtra={panelHeaderExtra}
-      ></SeedarDashboard>
+      <DashboardAside />
+      <main>
+        {dashboardId ? (
+          <SeedarDashboard
+            autoUpdate={true}
+            dashboardId={dashboardId}
+            header={header}
+            panelHeaderExtra={panelHeaderExtra}
+          ></SeedarDashboard>
+        ) : (
+          <Empty size="fill" description="请选择一个看板" />
+        )}
+      </main>
     </div>
   );
 };

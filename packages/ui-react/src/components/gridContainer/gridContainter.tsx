@@ -3,20 +3,12 @@ import {
   noCompactor,
   Responsive,
   useContainerWidth,
-} from 'react-grid-layout';
-import type { Layout } from 'react-grid-layout';
-import type { LayoutItem, Layouts } from '#pkg/seedar/types';
-import { useRef, useEffect } from 'react';
+} from "react-grid-layout";
+import type { Layout } from "react-grid-layout";
+import type { LayoutItem, Layouts } from "#pkg/seedar/types";
+import { useRef, useEffect } from "react";
 
-const COLS_RATE = 2;
-const COLS = {
-  lg: 12 * COLS_RATE,
-  md: 10 * COLS_RATE,
-  sm: 6 * COLS_RATE,
-  xs: 4 * COLS_RATE,
-  xxs: 2 * COLS_RATE,
-};
-const MARGIN = 10;
+import { MARGIN, COLS } from "./seedar/const";
 
 interface GridContainerProps {
   layouts: Layouts;
@@ -35,12 +27,12 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     width >= 1200
       ? COLS.lg
       : width >= 996
-      ? COLS.md
-      : width >= 768
-      ? COLS.sm
-      : width >= 480
-      ? COLS.xs
-      : COLS.xxs;
+        ? COLS.md
+        : width >= 768
+          ? COLS.sm
+          : width >= 480
+            ? COLS.xs
+            : COLS.xxs;
   const rowHeight = (width - MARGIN * (currentCols - 1)) / currentCols;
 
   const myCompactor = {
@@ -52,7 +44,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     if (onLayoutChange) {
       const newLayouts = { ...layouts };
       const currentBreakpoint = Object.keys(COLS).find(
-        (key) => COLS[key as keyof typeof COLS] === currentCols
+        (key) => COLS[key as keyof typeof COLS] === currentCols,
       );
       newLayouts[currentBreakpoint!] = layout as LayoutItem[];
       onLayoutChange(newLayouts);
@@ -63,7 +55,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     if (onLayoutChange) {
       const newLayouts = { ...layouts };
       const currentBreakpoint = Object.keys(COLS).find(
-        (key) => COLS[key as keyof typeof COLS] === currentCols
+        (key) => COLS[key as keyof typeof COLS] === currentCols,
       );
       newLayouts[currentBreakpoint!] = layout as LayoutItem[];
       onLayoutChange(newLayouts);
@@ -73,7 +65,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
   return (
     containerRef && (
       <div
-        style={{ overflow: 'hidden' }}
+        style={{ overflow: "hidden" }}
         ref={containerRef as React.RefObject<HTMLDivElement>}
       >
         {mounted && (

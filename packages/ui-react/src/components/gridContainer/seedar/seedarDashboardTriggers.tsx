@@ -1,7 +1,7 @@
-import React from 'react';
-import { useSeedarDashboardContext } from './seedarDashboardContext';
-import { DefaultAddPanelDialog } from './components/defaultAddPanelDialog';
-import { Dialog } from '@base-ui/react/dialog';
+import React from "react";
+import { useSeedarDashboardContext } from "./seedarDashboardContext";
+import { DefaultAddPanelDialog } from "./components/defaultAddPanelDialog";
+import { Dialog } from "@base-ui/react/dialog";
 
 export { DefaultAddPanelDialog };
 
@@ -42,13 +42,13 @@ export const SaveTrigger: React.FC<SaveTriggerProps> = ({ children }) => {
     hasUnsavedChanges: state.hasUnsavedChanges,
   };
 
-  if (typeof children === 'function') {
+  if (typeof children === "function") {
     return <>{children(renderProps)}</>;
   }
 
   return (
     <button onClick={handleClick} disabled={renderProps.disabled}>
-      {children || '保存布局'}
+      {children || "保存布局"}
     </button>
   );
 };
@@ -80,13 +80,13 @@ export const CancelTrigger: React.FC<CancelTriggerProps> = ({ children }) => {
     hasUnsavedChanges: state.hasUnsavedChanges,
   };
 
-  if (typeof children === 'function') {
+  if (typeof children === "function") {
     return <>{children(renderProps)}</>;
   }
 
   return (
     <button onClick={handleClick} disabled={renderProps.disabled}>
-      {children || '取消'}
+      {children || "取消"}
     </button>
   );
 };
@@ -122,13 +122,13 @@ export const RemovePanelTrigger: React.FC<RemovePanelTriggerProps> = ({
     isRemoving: state.isRemovingPanel,
   };
 
-  if (typeof children === 'function') {
+  if (typeof children === "function") {
     return <>{children(renderProps)}</>;
   }
 
   return (
     <button onClick={handleClick} disabled={renderProps.disabled}>
-      {children || '移除 Panel'}
+      {children || "移除 Panel"}
     </button>
   );
 };
@@ -160,10 +160,10 @@ export const AddPanelTrigger: React.FC<AddPanelTriggerProps> = ({
 
   return (
     <>
-      {typeof children === 'function' ? (
+      {typeof children === "function" ? (
         children(renderProps)
       ) : (
-        <button onClick={handleClick}>{children || '添加 Panel'}</button>
+        <div onClick={handleClick}>{children || "添加 Panel"}</div>
       )}
       <Dialog.Root
         open={state.isAddPanelDialogOpen}

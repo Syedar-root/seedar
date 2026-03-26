@@ -6,13 +6,11 @@ import styles from "./defaultAddPanelDialog.module.css";
 import { SeedarPanel } from "../../seedarPanel";
 import { Radio, RadioGroup } from "@base-ui/react";
 import clsx from "clsx";
+import { DEFAULT_W, DEFAULT_H } from "../../const";
 
 interface DefaultAddPanelDialogProps {
   onClose: () => void;
 }
-
-const DEFAULT_W = 6;
-const DEFAULT_H = 4;
 
 export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
   onClose,

@@ -18,7 +18,7 @@ export const router = createBrowserRouter([
         element: <UserPage />,
       },
       {
-        path: "dashboard",
+        path: "dashboard/:dashboardId?",
         element: <DashboardPage />,
       },
       {
