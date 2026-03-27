@@ -35,6 +35,7 @@ export interface PanelResponse {
   type: PanelType;
   queryId?: string;
   config?: Record<string, any>;
+  titleConfig?: Record<string, any>;
   width?: number;
   height?: number;
   createdAt: Date;

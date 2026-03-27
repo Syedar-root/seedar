@@ -20,6 +20,9 @@ export class Panel {
   @Column({ name: 'title', length: 255, nullable: true })
   title?: string;
 
+  @Column({ name: 'title_config', type: 'json', nullable: true })
+  titleConfig?: Record<string, any>;
+
   @Column({
     name: 'type',
     type: 'enum',
