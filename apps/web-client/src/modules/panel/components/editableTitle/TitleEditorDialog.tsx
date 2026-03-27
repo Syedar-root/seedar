@@ -33,6 +33,10 @@ const shouldKeepSubtitle = (type: TitleConfig["type"]): boolean => {
   return type === "editorial" || type === "brutalist";
 };
 
+const shouldKeepNumber = (type: TitleConfig["type"]): boolean => {
+  return type === "brutalist";
+};
+
 export const TitleEditorDialog: React.FC<TitleEditorDialogProps> = ({
   isOpen,
   onClose,
@@ -59,6 +63,7 @@ export const TitleEditorDialog: React.FC<TitleEditorDialogProps> = ({
       flagColor: shouldKeepFlagColor(newType) ? prev.flagColor : undefined,
       subtitle: shouldKeepSubtitle(newType) ? prev.subtitle : undefined,
       accentText: newType === "editorial" ? prev.accentText : undefined,
+      number: shouldKeepNumber(newType) ? prev.number : undefined,
     }));
   };
 
@@ -117,6 +122,7 @@ export const TitleEditorDialog: React.FC<TitleEditorDialogProps> = ({
                 flagColor={config.flagColor}
                 subtitle={config.subtitle}
                 accentText={config.accentText}
+                number={config.number}
                 enableTooltip={false}
               />
             </div>
@@ -143,7 +149,9 @@ export const TitleEditorDialog: React.FC<TitleEditorDialogProps> = ({
                     type="color"
                     className={styles.colorInput}
                     value={config.flagColor || "#008ffa"}
-                    onChange={(e) => handleFieldChange("flagColor", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("flagColor", e.target.value)
+                    }
                   />
                 </div>
               )}
@@ -155,8 +163,26 @@ export const TitleEditorDialog: React.FC<TitleEditorDialogProps> = ({
                     type="text"
                     className={styles.input}
                     value={config.subtitle || ""}
-                    onChange={(e) => handleFieldChange("subtitle", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("subtitle", e.target.value)
+                    }
                     placeholder="请输入副标题（可选）"
+                    onKeyDown={handleKeyDown}
+                  />
+                </div>
+              )}
+
+              {shouldKeepNumber(config.type) && (
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>序号</label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={config.number || ""}
+                    onChange={(e) =>
+                      handleFieldChange("number", e.target.value || undefined)
+                    }
+                    placeholder="请输入序号（可选）"
                     onKeyDown={handleKeyDown}
                   />
                 </div>

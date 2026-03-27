@@ -11,6 +11,7 @@ export interface TitleProps extends BaseTitleProps {
   flagColor?: string;
   subtitle?: string;
   accentText?: string;
+  number?: string;
 }
 
 export interface PlainTitleProps extends BaseTitleProps {}
@@ -27,4 +28,5 @@ export interface EditorialTitleProps extends BaseTitleProps {
 export interface BrutalistTitleProps extends BaseTitleProps {
   flagColor?: string;
   subtitle?: string;
+  number?: string;
 }

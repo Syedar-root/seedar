@@ -6,6 +6,7 @@ export interface TitleConfig {
   flagColor?: string;
   subtitle?: string;
   accentText?: string;
+  number?: string;
   enableTooltip?: boolean;
   maxTitleWidth?: string;
 }

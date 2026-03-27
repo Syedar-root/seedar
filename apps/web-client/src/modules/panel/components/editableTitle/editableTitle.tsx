@@ -46,6 +46,7 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
           flagColor={currentConfig.flagColor}
           subtitle={currentConfig.subtitle}
           accentText={currentConfig.accentText}
+          number={currentConfig.number}
           enableTooltip={currentConfig.enableTooltip}
           maxTitleWidth={currentConfig.maxTitleWidth}
         />
