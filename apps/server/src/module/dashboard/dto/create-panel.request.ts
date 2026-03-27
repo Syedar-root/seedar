@@ -13,6 +13,10 @@ export class CreatePanelRequest {
   @IsString()
   title?: string;
 
+  @IsOptional()
+  @IsObject()
+  titleConfig?: Record<string, any>;
+
   @IsEnum(PanelType)
   type: PanelType;
 

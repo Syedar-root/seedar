@@ -20,9 +20,11 @@ describe('Dynamic Join Selection', () => {
       const table = {
         name,
         alias: name,
-        fields: fieldNames.map(fname => ({ name: fname, type: 'string' })),
+        fields: fieldNames.map((fname) => ({ name: fname, type: 'string' })),
         getField: jest.fn((fname: string) => {
-          const field = fieldNames.includes(fname) ? { name: fname, type: 'string' } : null;
+          const field = fieldNames.includes(fname)
+            ? { name: fname, type: 'string' }
+            : null;
           return field;
         }),
         withAlias: jest.fn((alias: string) => {
@@ -62,18 +64,84 @@ describe('Dynamic Join Selection', () => {
       },
       tables: [
         { id: 1, tableName: 'orders', datasetName: 'Orders', description: '' },
-        { id: 2, tableName: 'customers', datasetName: 'Customers', description: '' },
-        { id: 3, tableName: 'products', datasetName: 'Products', description: '' },
+        {
+          id: 2,
+          tableName: 'customers',
+          datasetName: 'Customers',
+          description: '',
+        },
+        {
+          id: 3,
+          tableName: 'products',
+          datasetName: 'Products',
+          description: '',
+        },
       ] as DatasetTableResponse[],
       fields: [
-        { id: 1, tableId: 1, name: 'id', businessName: 'Order ID', type: 'number' as any, datasourceColumnId: 1 },
-        { id: 2, tableId: 1, name: 'customer_id', businessName: 'Customer ID', type: 'number' as any, datasourceColumnId: 2 },
-        { id: 3, tableId: 1, name: 'product_id', businessName: 'Product ID', type: 'number' as any, datasourceColumnId: 3 },
-        { id: 4, tableId: 1, name: 'amount', businessName: 'Amount', type: 'number' as any, datasourceColumnId: 4 },
-        { id: 5, tableId: 2, name: 'id', businessName: 'Customer ID', type: 'number' as any, datasourceColumnId: 5 },
-        { id: 6, tableId: 2, name: 'name', businessName: 'Customer Name', type: 'string' as any, datasourceColumnId: 6 },
-        { id: 7, tableId: 3, name: 'id', businessName: 'Product ID', type: 'number' as any, datasourceColumnId: 7 },
-        { id: 8, tableId: 3, name: 'name', businessName: 'Product Name', type: 'string' as any, datasourceColumnId: 8 },
+        {
+          id: 1,
+          tableId: 1,
+          name: 'id',
+          businessName: 'Order ID',
+          type: 'number' as any,
+          datasourceColumnId: 1,
+        },
+        {
+          id: 2,
+          tableId: 1,
+          name: 'customer_id',
+          businessName: 'Customer ID',
+          type: 'number' as any,
+          datasourceColumnId: 2,
+        },
+        {
+          id: 3,
+          tableId: 1,
+          name: 'product_id',
+          businessName: 'Product ID',
+          type: 'number' as any,
+          datasourceColumnId: 3,
+        },
+        {
+          id: 4,
+          tableId: 1,
+          name: 'amount',
+          businessName: 'Amount',
+          type: 'number' as any,
+          datasourceColumnId: 4,
+        },
+        {
+          id: 5,
+          tableId: 2,
+          name: 'id',
+          businessName: 'Customer ID',
+          type: 'number' as any,
+          datasourceColumnId: 5,
+        },
+        {
+          id: 6,
+          tableId: 2,
+          name: 'name',
+          businessName: 'Customer Name',
+          type: 'string' as any,
+          datasourceColumnId: 6,
+        },
+        {
+          id: 7,
+          tableId: 3,
+          name: 'id',
+          businessName: 'Product ID',
+          type: 'number' as any,
+          datasourceColumnId: 7,
+        },
+        {
+          id: 8,
+          tableId: 3,
+          name: 'name',
+          businessName: 'Product Name',
+          type: 'string' as any,
+          datasourceColumnId: 8,
+        },
       ] as DatasetFieldResponse[],
       metrics: [
         {
@@ -125,7 +193,11 @@ describe('Dynamic Join Selection', () => {
         metrics: [{ id: 1 }],
       };
 
-      const result = DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables);
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
 
       expect(result.joins).toBeDefined();
       expect(result.joins.length).toBe(0);
@@ -139,7 +211,11 @@ describe('Dynamic Join Selection', () => {
         metrics: [{ id: 1 }],
       };
 
-      const result = DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables);
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
 
       expect(result.joins).toBeDefined();
       expect(result.joins.length).toBe(1);
@@ -154,7 +230,11 @@ describe('Dynamic Join Selection', () => {
         metrics: [{ id: 2 }],
       };
 
-      const result = DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables);
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
 
       expect(result.joins).toBeDefined();
       expect(result.joins.length).toBe(1);
@@ -169,12 +249,16 @@ describe('Dynamic Join Selection', () => {
         metrics: [{ id: 1 }],
       };
 
-      const result = DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables);
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
 
       expect(result.joins).toBeDefined();
       expect(result.joins.length).toBe(2);
-      expect(result.joins.map(j => j.table)).toContain('customers');
-      expect(result.joins.map(j => j.table)).toContain('products');
+      expect(result.joins.map((j) => j.table)).toContain('customers');
+      expect(result.joins.map((j) => j.table)).toContain('products');
     });
 
     it('should generate joins for filters', () => {
@@ -186,7 +270,11 @@ describe('Dynamic Join Selection', () => {
         filters: [{ fieldId: 6, op: '=', value: 'John' }],
       };
 
-      const result = DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables);
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
 
       expect(result.joins).toBeDefined();
       expect(result.joins.length).toBe(1);
@@ -251,8 +339,8 @@ describe('Dynamic Join Selection', () => {
 
       expect(result.joins).toBeDefined();
       expect(result.joins.length).toBe(2);
-      expect(result.joins.map(j => j.rightTable.name)).toContain('customers');
-      expect(result.joins.map(j => j.rightTable.name)).toContain('products');
+      expect(result.joins.map((j) => j.rightTable.name)).toContain('customers');
+      expect(result.joins.map((j) => j.rightTable.name)).toContain('products');
     });
 
     it('should generate joins for filters', () => {

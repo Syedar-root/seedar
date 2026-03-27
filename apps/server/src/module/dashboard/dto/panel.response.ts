@@ -3,6 +3,7 @@ import { Panel } from '../entities/panel.entity';
 export class PanelResponse {
   id: string;
   title?: string;
+  titleConfig?: Record<string, any>;
   type: string;
   queryId?: string;
   config?: Record<string, any>;
@@ -15,6 +16,7 @@ export class PanelResponse {
     const response = new PanelResponse();
     response.id = panel.id;
     response.title = panel.title;
+    response.titleConfig = panel.titleConfig;
     response.type = panel.type;
     response.queryId = panel.queryId;
     response.config = panel.config;
