@@ -12,6 +12,7 @@ import {
 import { useDashboardActions } from "../../../hooks";
 import type { Layouts } from "#pkg/seedar/types";
 import { useEffect } from "react";
+import { ScrollArea } from "../../common/ScrollArea";
 
 interface SeedarDashboardProps {
   dashboardId: string;
@@ -55,21 +56,23 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
     >
       {header}
       {children}
-      <GridContainer
-        key={dashboardId}
-        layouts={state.localLayout}
-        onLayoutChange={handleLayoutChange}
-        mode={mode}
-      >
-        {data.panels.map((panel) => (
-          <SeedarPanel
-            key={panel.id}
-            panelId={panel.id}
-            panel={panel}
-            headerExtra={panelHeaderExtra}
-          />
-        ))}
-      </GridContainer>
+      <ScrollArea>
+        <GridContainer
+          key={dashboardId}
+          layouts={state.localLayout}
+          onLayoutChange={handleLayoutChange}
+          mode={mode}
+        >
+          {data.panels.map((panel) => (
+            <SeedarPanel
+              key={panel.id}
+              panelId={panel.id}
+              panel={panel}
+              headerExtra={panelHeaderExtra}
+            />
+          ))}
+        </GridContainer>
+      </ScrollArea>
       {footer}
     </SeedarDashboardContext.Provider>
   );
