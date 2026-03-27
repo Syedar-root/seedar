@@ -37,7 +37,7 @@ export const DashboardPage = () => {
           <span>{mode === "edit" ? "浏览模式" : "编辑模式"}</span>
         </button>
         {mode === "edit" && (
-          <>
+          <div className={styles.headerActions}>
             <SeedarDashboard.AddPanelTrigger>
               <button className={styles.addPanel}>添加已有面板</button>
             </SeedarDashboard.AddPanelTrigger>
@@ -47,7 +47,7 @@ export const DashboardPage = () => {
             >
               新建面板
             </button>
-          </>
+          </div>
         )}
       </div>
     );
