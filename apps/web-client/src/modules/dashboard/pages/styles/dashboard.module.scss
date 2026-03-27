@@ -25,6 +25,25 @@ main {
   align-items: center;
   gap: 12px;
 
+  .modeToggle {
+    $bg-color--toggle: #6c757d;
+    padding: 0.5rem 1rem;
+    background: $bg-color--toggle;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+
+    &:hover {
+      background: color.scale($bg-color--toggle, $lightness: 10%);
+    }
+  }
+
   .createPanel {
     $bg-color--create: #85c70c;
     padding: 0.5rem;

@@ -47,6 +47,8 @@ export {
 
 export { useDashboardActions } from "./useDashboardActions";
 
+export { useSeedarDashboardContext } from "../components/gridContainer/seedar/seedarDashboardContext";
+
 export {
   usePanels,
   usePanel,

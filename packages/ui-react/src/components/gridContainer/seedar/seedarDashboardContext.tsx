@@ -4,6 +4,7 @@ import type { DashboardResponse, Layouts } from '#pkg/seedar/types';
 interface SeedarDashboardContextValue {
   dashboardId: string;
   data: DashboardResponse | undefined;
+  mode: 'edit' | 'view';
   actions: {
     updateDashboard: (data: any) => void;
     addPanel: (panelId: string, min?: { w: number; h: number }) => void;

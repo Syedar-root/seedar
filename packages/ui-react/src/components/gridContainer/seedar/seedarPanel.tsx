@@ -4,7 +4,7 @@ import { Chart } from "../../charts";
 import { ListTable } from "../../table";
 import { Title } from "./components/title";
 import { ExecuteQueryResponse, PanelResponse } from "#pkg/seedar/types";
-import { usePanel } from "../../../hooks";
+import { usePanel, useSeedarDashboardContext } from "../../../hooks";
 import { ISpec } from "@visactor/vchart";
 
 export interface SeedarPanelProps extends Omit<GridPanelProps, "headerExtra"> {
@@ -21,6 +21,8 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
     { panelId, panel, className = "", style = {}, headerExtra, data, ...rest },
     ref,
   ) => {
+    const { mode } = useSeedarDashboardContext();
+    
     // 只有当 panel 为 undefined 时才发起请求
     const { data: panelData, isPending, isError } = usePanel(panelId, !panel);
 
@@ -61,7 +63,7 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
         content={content}
         className={className}
         style={style}
-        headerExtra={headerExtra?.(panelId)}
+        headerExtra={mode === 'edit' ? headerExtra?.(panelId) : null}
         {...rest}
       />
     );

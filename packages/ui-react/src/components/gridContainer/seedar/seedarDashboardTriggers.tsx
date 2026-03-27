@@ -27,7 +27,11 @@ interface SaveTriggerProps {
 }
 
 export const SaveTrigger: React.FC<SaveTriggerProps> = ({ children }) => {
-  const { actions, state } = useSeedarDashboardContext();
+  const { actions, state, mode } = useSeedarDashboardContext();
+
+  if (mode === 'view') {
+    return null;
+  }
 
   const handleClick = () => {
     if (!state.isSavingLayout && state.hasUnsavedChanges) {
@@ -66,7 +70,11 @@ interface CancelTriggerProps {
 }
 
 export const CancelTrigger: React.FC<CancelTriggerProps> = ({ children }) => {
-  const { actions, state } = useSeedarDashboardContext();
+  const { actions, state, mode } = useSeedarDashboardContext();
+
+  if (mode === 'view') {
+    return null;
+  }
 
   const handleClick = () => {
     if (state.hasUnsavedChanges) {
@@ -108,7 +116,11 @@ export const RemovePanelTrigger: React.FC<RemovePanelTriggerProps> = ({
   panelId,
   children,
 }) => {
-  const { actions, state } = useSeedarDashboardContext();
+  const { actions, state, mode } = useSeedarDashboardContext();
+
+  if (mode === 'view') {
+    return null;
+  }
 
   const handleClick = () => {
     if (!state.isRemovingPanel) {
@@ -148,7 +160,11 @@ export const AddPanelTrigger: React.FC<AddPanelTriggerProps> = ({
   children,
   panelsDialog,
 }) => {
-  const { actions, state } = useSeedarDashboardContext();
+  const { actions, state, mode } = useSeedarDashboardContext();
+
+  if (mode === 'view') {
+    return null;
+  }
 
   const handleClick = () => {
     actions.openAddPanelDialog();

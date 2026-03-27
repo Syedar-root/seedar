@@ -15,6 +15,7 @@ import { useEffect } from "react";
 
 interface SeedarDashboardProps {
   dashboardId: string;
+  mode?: "edit" | "view";
   autoUpdate?: boolean;
   header?: React.ReactNode;
   children?: React.ReactNode;
@@ -31,6 +32,7 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
   DefaultAddPanelDialog: typeof DefaultAddPanelDialog;
 } = ({
   dashboardId,
+  mode = "edit",
   autoUpdate = false,
   header,
   children,
@@ -38,10 +40,6 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
   panelHeaderExtra,
 }) => {
   const { data, actions, state } = useDashboardActions(dashboardId, autoUpdate);
-
-  useEffect(() => {
-    console.log("data?.layout", data?.layout);
-  }, [data?.layout]);
 
   if (state.isLoading || state.isError || !data) {
     return null;
@@ -53,7 +51,7 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
 
   return (
     <SeedarDashboardContext.Provider
-      value={{ dashboardId, data, actions, state }}
+      value={{ dashboardId, data, actions, state, mode }}
     >
       {header}
       {children}
@@ -61,6 +59,7 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
         key={dashboardId}
         layouts={state.localLayout}
         onLayoutChange={handleLayoutChange}
+        mode={mode}
       >
         {data.panels.map((panel) => (
           <SeedarPanel
