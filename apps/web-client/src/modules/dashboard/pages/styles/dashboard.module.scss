@@ -51,6 +51,7 @@ main {
   justify-content: space-between;
   align-items: center;
   gap: var(--spacing-xl);
+  padding: var(--spacing-md);
 
   .headerActions {
     display: flex;

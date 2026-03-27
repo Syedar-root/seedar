@@ -15,7 +15,7 @@ export const ScrollArea: React.FC<ScrollAreaProps> = ({
 }) => {
   return (
     <BaseScrollArea.Root className={`${styles.root} ${className || ''}`} style={style}>
-      <BaseScrollArea.Viewport className={styles.viewport}>
+      <BaseScrollArea.Viewport className={styles.viewport} data-scroll-area-viewport>
         <BaseScrollArea.Content className={styles.content}>
           {children}
         </BaseScrollArea.Content>

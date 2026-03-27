@@ -56,3 +56,7 @@ export {
   useUpdatePanel,
   useDeletePanel,
 } from "./usePanel";
+
+export { usePreventTextSelection } from "./usePreventTextSelection";
+
+export { useAutoScroll } from "./useAutoScroll";
