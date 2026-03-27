@@ -139,6 +139,19 @@ export class DatasourceService {
     return new DatasourceResponse(savedDatasource);
   }
 
+  async findAll(): Promise<DatasourceResponse[]> {
+    this.logger.log('开始查询所有数据源', 'FindAllDatasourcesStart');
+
+    const datasources = await this.datasourceRepository.find();
+
+    this.logger.log(
+      `数据源列表查询成功,共 ${datasources.length} 个数据源`,
+      'FindAllDatasourcesSuccess',
+    );
+
+    return datasources.map((datasource) => new DatasourceResponse(datasource));
+  }
+
   async findOne(id: number): Promise<DatasourceResponse> {
     this.logger.log(`开始查询数据源: ID ${id}`, 'FindOneDatasourceStart');
 

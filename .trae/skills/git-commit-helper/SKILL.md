@@ -32,6 +32,7 @@ description: "按照项目规范帮助用户进行Git提交，包括更新commit
 - 推荐使用 Git Bash 终端操作
 - 无需推送到远程仓库
 - 尽可能一次只执行一个命令，避免 &&
+- 当你进行diff的时候，记得使用:q!退出diff模式
 
 ## commit_msg.txt 示例
 

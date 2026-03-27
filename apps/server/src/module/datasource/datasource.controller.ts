@@ -27,6 +27,12 @@ export class DatasourceController {
     return this.datasourceService.create(createDatasourceRequest);
   }
 
+  @Get()
+  @SuccessMessage('数据源列表查询成功')
+  findAll(): Promise<DatasourceResponse[]> {
+    return this.datasourceService.findAll();
+  }
+
   @Get(':id')
   @SuccessMessage('数据源查询成功')
   findOne(@Param('id') id: string): Promise<DatasourceResponse> {
