@@ -3,6 +3,8 @@ import AppLayout from "@/layouts/AppLayout";
 import UserPage from "@/modules/user/pages/UserPage";
 import { DashboardPage } from "@/modules/dashboard";
 import { PanelPage } from "@/modules/panel";
+import { DatasourcePage } from "@/modules/datasource";
+import { DatasourceDetailPage } from "@/modules/datasource";
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +30,14 @@ export const router = createBrowserRouter([
       {
         path: "panel/:panelId",
         element: <PanelPage />,
+      },
+      {
+        path: "datasource",
+        element: <DatasourcePage />,
+      },
+      {
+        path: "datasource/:id",
+        element: <DatasourceDetailPage />,
       },
     ],
   },

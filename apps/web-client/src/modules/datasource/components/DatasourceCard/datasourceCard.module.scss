@@ -1,0 +1,138 @@
+.card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  transition: all var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+
+  &:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.titleSection {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-width: 0;
+}
+
+.icon {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.name {
+  margin: 0;
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &.status-active {
+    background: var(--success-light);
+    color: var(--success);
+  }
+
+  &.status-invalid {
+    background: var(--warning-light);
+    color: var(--warning);
+  }
+
+  &.status-deleted {
+    background: var(--danger-light);
+    color: var(--danger);
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.infoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.label {
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.value {
+  font-size: var(--font-sm);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.footer {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--border-secondary);
+}
+
+.actionButton {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: 8px var(--spacing-md);
+  background: transparent;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-base);
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  &:active {
+    background: var(--bg-selected);
+    transform: scale(0.98);
+  }
+
+  &:last-child:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: var(--danger-light);
+  }
+}
