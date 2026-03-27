@@ -8,7 +8,7 @@ import { DashboardAside } from "../components/aside";
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"edit" | "view">("edit");
+  const [mode, setMode] = useState<"edit" | "view">("view");
 
   const handlePanelClick = useCallback(
     (panelId: string) => {
