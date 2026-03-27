@@ -1,12 +1,12 @@
 import { Tooltip } from "@base-ui/react/tooltip";
 import React from "react";
-import styles from "../title.module.css";
+import styles from "../Tooltip.module.css";
 
 export function useTitleTooltip(
   content: string | undefined,
   enableTooltip: boolean,
   maxTitleWidth: string,
-  children: React.ReactNode
+  children: React.ReactNode,
 ) {
   if (!enableTooltip || !content) {
     return children;

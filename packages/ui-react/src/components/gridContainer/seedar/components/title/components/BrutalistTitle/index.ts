@@ -1,0 +1,1 @@
+export { BrutalistTitle } from "./BrutalistTitle";

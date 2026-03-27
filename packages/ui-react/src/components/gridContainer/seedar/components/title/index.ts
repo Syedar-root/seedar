@@ -1,13 +1,16 @@
-export {
-  Title,
-  type TitleType,
-  type TitleProps,
-  type BaseTitleProps,
-  type PlainTitleProps,
-  type FlagTitleProps,
-  type EditorialTitleProps,
-  type BrutalistTitleProps,
-} from './title';
+export type {
+  TitleType,
+  TitleProps,
+  BaseTitleProps,
+  PlainTitleProps,
+  FlagTitleProps,
+  EditorialTitleProps,
+  BrutalistTitleProps,
+} from "./types";
 
-export { PlainTitle, FlagTitle, EditorialTitle, BrutalistTitle } from './components';
-export { useTitleTooltip } from './hooks';
+export { PlainTitle } from "./components/PlainTitle";
+export { FlagTitle } from "./components/FlagTitle";
+export { EditorialTitle } from "./components/EditorialTitle";
+export { BrutalistTitle } from "./components/BrutalistTitle";
+export { useTitleTooltip } from "./components/Tooltip/hooks/useTitleTooltip";
+export { Title } from "./title";

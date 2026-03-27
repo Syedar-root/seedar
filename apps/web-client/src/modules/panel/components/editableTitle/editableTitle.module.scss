@@ -21,29 +21,3 @@
     color: var(--primary);
   }
 }
-
-.input {
-  font-size: 18px;
-  font-weight: 600;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--primary);
-  border-radius: var(--radius-sm);
-  outline: none;
-  min-width: 200px;
-  color: var(--text-primary);
-
-  &:focus {
-    border-color: var(--primary-active);
-    box-shadow: 0 0 0 2px rgba(160, 82, 45, 0.2);
-  }
-}
-
-.actionIcon {
-  cursor: pointer;
-  transition: color var(--transition-slow);
-  color: var(--text-secondary);
-
-  &:hover {
-    color: var(--primary);
-  }
-}

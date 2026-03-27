@@ -18,6 +18,7 @@ import {
 } from "../components/panelEditor";
 import { FilterItem } from "../components/queryZone/types";
 import { useCallback, useEffect, useState } from "react";
+import type { TitleConfig } from "../components/editableTitle";
 
 interface UsePanelEditorStateReturn {
   dropFields: DragItem[];
@@ -45,7 +46,8 @@ interface UsePanelEditorStateReturn {
   ) => void;
   handleRun: () => void;
   title: string;
-  handleTitleChange: (title: string) => void;
+  titleConfig?: TitleConfig;
+  handleTitleChange: (title: string, titleConfig?: TitleConfig) => void;
 }
 
 export const usePanelEditorState = (
@@ -61,6 +63,7 @@ export const usePanelEditorState = (
   });
   const [tempData, setTempData] = useState<ExecuteQueryResponse>();
   const [title, setTitle] = useState<string>("未命名面板");
+  const [titleConfig, setTitleConfig] = useState<TitleConfig | undefined>();
 
   const { data: panelData } = usePanel(panelId!);
   const { data: queryData } = useQuery((panelData as PanelResponse)?.queryId!);
@@ -122,6 +125,9 @@ export const usePanelEditorState = (
   useEffect(() => {
     if (panelData?.title) {
       setTitle(panelData.title);
+    }
+    if (panelData?.titleConfig) {
+      setTitleConfig(panelData.titleConfig as TitleConfig);
     }
   }, [panelData]);
 
@@ -200,8 +206,11 @@ export const usePanelEditorState = (
     [],
   );
 
-  const handleTitleChange = useCallback((newTitle: string) => {
+  const handleTitleChange = useCallback((newTitle: string, newTitleConfig?: TitleConfig) => {
     setTitle(newTitle);
+    if (newTitleConfig) {
+      setTitleConfig(newTitleConfig);
+    }
   }, []);
 
   const handleRun = useCallback(() => {
@@ -258,6 +267,7 @@ export const usePanelEditorState = (
     handleEditorChange,
     handleRun,
     title,
+    titleConfig,
     handleTitleChange,
   };
 };

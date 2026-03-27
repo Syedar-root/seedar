@@ -1,6 +1,6 @@
 import React from "react";
-import { BrutalistTitleProps } from "../types";
-import styles from "../title.module.css";
+import { BrutalistTitleProps } from "../../types";
+import styles from "./BrutalistTitle.module.css";
 
 export const BrutalistTitle: React.FC<BrutalistTitleProps> = ({
   content,

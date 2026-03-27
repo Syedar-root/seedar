@@ -1,6 +1,6 @@
 import React from "react";
-import { FlagTitleProps } from "../types";
-import styles from "../title.module.css";
+import { FlagTitleProps } from "../../types";
+import styles from "./FlagTitle.module.css";
 
 export const FlagTitle: React.FC<FlagTitleProps> = ({
   content,
@@ -17,7 +17,6 @@ export const FlagTitle: React.FC<FlagTitleProps> = ({
         } as React.CSSProperties
       }
     >
-      <div className={styles.flagMarker}></div>
       <div className={styles.flagContent}>{content}</div>
     </div>
   );

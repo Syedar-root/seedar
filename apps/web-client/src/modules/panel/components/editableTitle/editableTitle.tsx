@@ -1,80 +1,68 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Pencil, Check, X } from "lucide-react";
+import React, { useState } from "react";
+import { Pencil } from "lucide-react";
+import { SeedarTitle as Title } from "#pkg/seedar/ui-react";
+import { TitleEditorDialog } from "./TitleEditorDialog";
+import { EditableTitleProps, TitleConfig } from "./types";
 import styles from "./editableTitle.module.scss";
-
-interface EditableTitleProps {
-  title: string;
-  onTitleChange: (title: string) => void;
-}
 
 export const EditableTitle: React.FC<EditableTitleProps> = ({
   title,
+  titleConfig,
   onTitleChange,
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(title);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  useEffect(() => {
-    setEditValue(title);
-  }, [title]);
-
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+  const getCurrentConfig = (): TitleConfig => {
+    if (titleConfig) {
+      return titleConfig;
     }
-  }, [isEditing]);
-
-  const handleStartEdit = () => {
-    setIsEditing(true);
-    setEditValue(title);
+    return {
+      type: "plain",
+      content: title,
+    };
   };
 
-  const handleSave = () => {
-    onTitleChange(editValue);
-    setIsEditing(false);
+  const currentConfig = getCurrentConfig();
+
+  const handleEdit = () => {
+    setIsDialogOpen(true);
   };
 
-  const handleCancel = () => {
-    setEditValue(title);
-    setIsEditing(false);
+  const handleSave = (newTitle: string, newTitleConfig: TitleConfig) => {
+    onTitleChange(newTitle, newTitleConfig);
+    setIsDialogOpen(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSave();
-    } else if (e.key === "Escape") {
-      handleCancel();
-    }
+  const handleClose = () => {
+    setIsDialogOpen(false);
   };
-
-  const handleBlur = () => {
-    handleSave();
-  };
-
-  if (isEditing) {
-    return (
-      <div className={styles.editableTitle}>
-        <input
-          ref={inputRef}
-          type="text"
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
-          className={styles.input}
-        />
-        <Check size={16} className={styles.actionIcon} onClick={handleSave} />
-        <X size={16} className={styles.actionIcon} onClick={handleCancel} />
-      </div>
-    );
-  }
 
   return (
-    <div className={styles.editableTitle}>
-      <span className={styles.title}>{title}</span>
-      <Pencil size={14} className={styles.editIcon} onClick={handleStartEdit} />
-    </div>
+    <>
+      <div className={styles.editableTitle}>
+        <Title
+          type={currentConfig.type}
+          content={currentConfig.content}
+          flagColor={currentConfig.flagColor}
+          subtitle={currentConfig.subtitle}
+          accentText={currentConfig.accentText}
+          enableTooltip={currentConfig.enableTooltip}
+          maxTitleWidth={currentConfig.maxTitleWidth}
+        />
+        <Pencil
+          size={14}
+          className={styles.editIcon}
+          onClick={handleEdit}
+        />
+      </div>
+
+      <TitleEditorDialog
+        isOpen={isDialogOpen}
+        onClose={handleClose}
+        onSave={handleSave}
+        initialTitle={title}
+        initialTitleConfig={titleConfig}
+      />
+    </>
   );
 };

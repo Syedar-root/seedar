@@ -40,6 +40,7 @@ export const PanelPage = () => {
     handleEditorChange,
     handleRun,
     title,
+    titleConfig,
     handleTitleChange,
   } = usePanelEditorState(panelId);
 
@@ -56,6 +57,7 @@ export const PanelPage = () => {
     handleRun,
     navigate,
     title,
+    titleConfig,
   });
 
   const previewSpec = usePreviewSpec(displayType, editorConfig);
@@ -94,7 +96,11 @@ export const PanelPage = () => {
       <main className={styles.main}>
         <header className={styles.mainHeader}>
           <div className={styles.titleArea}>
-            <EditableTitle title={title} onTitleChange={handleTitleChange} />
+            <EditableTitle
+              title={title}
+              titleConfig={titleConfig}
+              onTitleChange={handleTitleChange}
+            />
           </div>
           <QueryZone
             onDropField={handleDropField}

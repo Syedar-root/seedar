@@ -1,4 +1,4 @@
-import { Layouts, PanelType } from './dashboard.types';
+import { Layouts, PanelType } from "./dashboard.types";
 
 export interface CreateDashboardRequest {
   name: string;
@@ -15,6 +15,7 @@ export interface CreatePanelRequest {
   type: PanelType;
   queryId?: string;
   config?: Record<string, any>;
+  titleConfig?: Record<string, any>;
   width?: number;
   height?: number;
 }
@@ -24,6 +25,7 @@ export interface UpdatePanelRequest {
   type?: PanelType;
   queryId?: string;
   config?: Record<string, any>;
+  titleConfig?: Record<string, any>;
   width?: number;
   height?: number;
 }

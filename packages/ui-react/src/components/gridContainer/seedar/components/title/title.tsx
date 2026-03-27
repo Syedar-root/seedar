@@ -1,12 +1,7 @@
 import React from "react";
 import { TitleProps, TitleType } from "./types";
-import { useTitleTooltip } from "./hooks";
-import {
-  PlainTitle,
-  FlagTitle,
-  EditorialTitle,
-  BrutalistTitle,
-} from "./components";
+import { useTitleTooltip } from "./components/Tooltip/hooks/useTitleTooltip";
+import { PlainTitle, FlagTitle, EditorialTitle, BrutalistTitle } from "./index";
 
 const titleRenderers: Record<TitleType, (props: any) => React.ReactNode> = {
   plain: PlainTitle,

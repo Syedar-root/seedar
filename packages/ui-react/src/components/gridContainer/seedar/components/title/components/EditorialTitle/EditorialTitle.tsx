@@ -1,6 +1,6 @@
 import React from "react";
-import { EditorialTitleProps } from "../types";
-import styles from "../title.module.css";
+import { EditorialTitleProps } from "../../types";
+import styles from "./EditorialTitle.module.css";
 
 export const EditorialTitle: React.FC<EditorialTitleProps> = ({
   content,

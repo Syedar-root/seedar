@@ -1,16 +1,20 @@
+import { useCallback } from "react";
 import {
   useUpdateQuery,
   useUpdatePanel,
   useCreateQuery,
   useCreatePanel,
 } from "#pkg/seedar/ui-react";
-import { PanelResponse, PanelType } from "#pkg/seedar/types";
-import { DisplayPanelType, PanelEditorConfig } from "../components/panelEditor";
-import { DragItem } from "../components/dndHelper/dragZone/dragZone";
-import { FilterItem } from "../components/queryZone/types";
-import { useCallback } from "react";
 import { toast } from "sonner";
-import { NavigateFunction } from "react-router-dom";
+import type { PanelType, PanelResponse } from "#pkg/seedar/types";
+import type { NavigateFunction } from "react-router-dom";
+import type { DragItem } from "../components/dndHelper/dragZone/dragZone";
+import type { FilterItem } from "../components/queryZone/types";
+import type {
+  DisplayPanelType,
+  PanelEditorConfig,
+} from "../components/panelEditor/types";
+import type { TitleConfig } from "../components/editableTitle";
 
 interface UsePanelActionsParams {
   panelId?: string;
@@ -25,6 +29,7 @@ interface UsePanelActionsParams {
   handleRun: () => void;
   navigate: NavigateFunction;
   title: string;
+  titleConfig?: TitleConfig;
 }
 
 interface UsePanelActionsReturn {
@@ -45,6 +50,7 @@ export const usePanelActions = ({
   handleRun,
   navigate,
   title,
+  titleConfig,
 }: UsePanelActionsParams): UsePanelActionsReturn => {
   const { mutate: updateQuery } = useUpdateQuery();
   const { mutate: updatePanel } = useUpdatePanel();
@@ -93,6 +99,7 @@ export const usePanelActions = ({
         id: panelId,
         data: {
           title,
+          titleConfig,
           type: panelType as any,
           config,
         },
@@ -121,6 +128,7 @@ export const usePanelActions = ({
     panelId,
     queryData,
     title,
+    titleConfig,
     getPanelTypeAndConfig,
     getQueryDsl,
     updateQuery,
@@ -145,6 +153,7 @@ export const usePanelActions = ({
           createPanel(
             {
               title: title || "未命名面板",
+              titleConfig,
               queryId: data.id,
               type: panelType as PanelType,
               config,
@@ -165,6 +174,7 @@ export const usePanelActions = ({
     datasetData,
     queryData,
     title,
+    titleConfig,
     getQueryDsl,
     getPanelTypeAndConfig,
     createQuery,

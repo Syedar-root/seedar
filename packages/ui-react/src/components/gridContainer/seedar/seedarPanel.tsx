@@ -51,12 +51,12 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
       //TODO: 空状态展示
       return null;
     }
-    const { title } = finalPanel;
+    const { title, titleConfig } = finalPanel;
 
     return (
       <GridPanel
         panelId={panelId}
-        title={<Title content={title} />}
+        title={<Title {...titleConfig} content={title} />}
         ref={ref}
         content={content}
         className={className}
