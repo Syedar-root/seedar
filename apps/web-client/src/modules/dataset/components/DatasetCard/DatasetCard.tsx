@@ -1,6 +1,16 @@
-import { Database, Trash2, Eye } from "lucide-react";
-import { DatasetResponse, DatasetType, DatasetStatus } from "#pkg/seedar/types";
+import {
+  Database,
+  Trash2,
+  BarChart3,
+  Pencil,
+  Layers,
+  GitMerge,
+  ScrollText,
+} from "lucide-react";
+import { Tooltip } from "@base-ui/react/tooltip";
+import { DatasetResponse, DatasetStatus } from "#pkg/seedar/types";
 import styles from "./DatasetCard.module.scss";
+import tooltipStyles from "./tooltip.module.scss";
 
 interface DatasetCardProps {
   dataset: DatasetResponse;
@@ -15,32 +25,34 @@ export const DatasetCard = ({
   onEdit,
   onDelete,
 }: DatasetCardProps) => {
-  const getTypeText = (type: DatasetType) => {
-    return type === DatasetType.SEMANTIC ? "语义型" : "宽表型";
-  };
-
   const getStatusText = (status: DatasetStatus) => {
     return status === DatasetStatus.ACTIVE ? "启用" : "禁用";
-  };
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
   };
 
   return (
     <div className={styles.card}>
       <div className={styles.header}>
-        <div className={styles.titleSection}>
-          <Database size={20} className={styles.icon} />
-          <h3 className={styles.name}>{dataset.name}</h3>
-        </div>
+        <Tooltip.Provider>
+          <Tooltip.Root>
+            <Tooltip.Trigger className={styles.titleTrigger}>
+              <div className={styles.titleSection}>
+                <Database size={20} className={styles.icon} />
+                <h3 className={styles.name}>{dataset.name}</h3>
+              </div>
+            </Tooltip.Trigger>
+            <Tooltip.Portal>
+              <Tooltip.Positioner sideOffset={8}>
+                <Tooltip.Popup className={tooltipStyles.tooltip}>
+                  {dataset.name}
+                </Tooltip.Popup>
+              </Tooltip.Positioner>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+        </Tooltip.Provider>
         <div
           className={`${styles.status} ${styles[`status-${dataset.status}`]}`}
         >
+          <span className={styles.statusDot} />
           {getStatusText(dataset.status)}
         </div>
       </div>
@@ -49,47 +61,52 @@ export const DatasetCard = ({
         {dataset.description && (
           <p className={styles.description}>{dataset.description}</p>
         )}
-        <div className={styles.infoRow}>
-          <span className={styles.label}>类型</span>
-          <span className={styles.value}>{getTypeText(dataset.type)}</span>
-        </div>
-        <div className={styles.infoRow}>
-          <span className={styles.label}>数据源</span>
-          <span className={styles.value}>
-            {dataset.datasource?.name || "-"}
+
+        <div className={styles.metaRow}>
+          <span className={styles.metaItem}>
+            <Layers size={13} />
+            <span>{dataset.tables?.length || 0} 表</span>
           </span>
-        </div>
-        <div className={styles.infoRow}>
-          <span className={styles.label}>字段 / 指标</span>
-          <span className={styles.value}>
-            {dataset.fields?.length || 0} / {dataset.metrics?.length || 0}
+          <span className={styles.separator}>·</span>
+          <span className={styles.metaItem}>
+            <ScrollText size={13} />
+            <span>{dataset.fields?.length || 0} 字段</span>
+          </span>
+          <span className={styles.separator}>·</span>
+          <span className={styles.metaItem}>
+            <BarChart3 size={13} />
+            <span>{dataset.metrics?.length || 0} 指标</span>
+          </span>
+          <span className={styles.separator}>·</span>
+          <span className={styles.metaItem}>
+            <GitMerge size={13} />
+            <span>{dataset.joins?.length || 0} 关联</span>
           </span>
         </div>
       </div>
 
       <div className={styles.footer}>
         <button
-          className={styles.actionButton}
+          className={styles.primaryAction}
           onClick={() => onViewDetails?.(dataset.id)}
-          title="查看详情"
+          title="进入模型"
         >
-          <Eye size={16} />
-          查看
+          <BarChart3 size={14} />
+          进入模型
         </button>
         <button
-          className={styles.actionButton}
+          className={styles.secondaryAction}
           onClick={() => onEdit?.(dataset.id)}
           title="编辑"
         >
-          编辑
+          <Pencil size={14} />
         </button>
         <button
-          className={`${styles.actionButton} ${styles.deleteButton}`}
+          className={styles.dangerAction}
           onClick={() => onDelete?.(dataset.id)}
           title="删除"
         >
-          <Trash2 size={16} />
-          删除
+          <Trash2 size={14} />
         </button>
       </div>
     </div>
