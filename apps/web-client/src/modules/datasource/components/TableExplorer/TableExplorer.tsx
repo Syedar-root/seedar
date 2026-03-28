@@ -1,4 +1,5 @@
-import { Table2, Key } from "lucide-react";
+import { useState } from "react";
+import { Table2 } from "lucide-react";
 import styles from "./TableExplorer.module.scss";
 
 interface Column {
@@ -18,17 +19,47 @@ interface TableExplorerProps {
   tables?: Table[];
 }
 
-export const TableExplorer = ({ tables }: TableExplorerProps) => {
-  const getNormalizedTypeText = (type: string) => {
-    const typeMap: Record<string, string> = {
-      string: "字符串",
-      number: "数字",
-      date: "日期",
-      boolean: "布尔",
-    };
-    return typeMap[type] || type;
-  };
+const typeMap: Record<string, string> = {
+  string: "字符串",
+  number: "数字",
+  date: "日期",
+  boolean: "布尔",
+};
 
+const FieldRow = ({ column }: { column: Column }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div
+      className={`${styles.fieldRow} ${expanded ? styles.expanded : ""}`}
+      onClick={() => setExpanded(!expanded)}
+    >
+      <div className={styles.fieldMain}>
+        <div className={styles.fieldNameWrapper}>
+          {column.isPrimaryKey && (
+            <div className={styles.primaryKeyIndicator} />
+          )}
+          <span
+            className={`${styles.fieldName} ${column.isPrimaryKey ? styles.isPrimary : ""}`}
+          >
+            {column.columnName}
+          </span>
+        </div>
+        <div className={styles.fieldTechDetails}>
+          <code className={styles.rawType}>{column.rawDataType}</code>
+          <span className={styles.nullableTag}>
+            {column.nullable ? "nullable" : "not null"}
+          </span>
+        </div>
+      </div>
+      <span className={styles.typeTag}>
+        {typeMap[column.normalizedType] || column.normalizedType}
+      </span>
+    </div>
+  );
+};
+
+export const TableExplorer = ({ tables }: TableExplorerProps) => {
   if (!tables || tables.length === 0) {
     return (
       <div className={styles.emptyState}>
@@ -54,9 +85,7 @@ export const TableExplorer = ({ tables }: TableExplorerProps) => {
             <div className={styles.tableNodeIcon}>
               <Table2 size={14} />
             </div>
-            <h3 className={styles.tableNodeName}>
-              {table.tableName}
-            </h3>
+            <h3 className={styles.tableNodeName}>{table.tableName}</h3>
             <span className={styles.tableNodeCount}>
               {table.columns.length} 字段
             </span>
@@ -64,27 +93,7 @@ export const TableExplorer = ({ tables }: TableExplorerProps) => {
 
           <div className={styles.tableNodeContent}>
             {table.columns.map((column, colIndex) => (
-              <div key={colIndex} className={styles.fieldRow}>
-                <div className={styles.fieldName}>
-                  {column.isPrimaryKey && (
-                    <Key size={10} className={styles.primaryKey} />
-                  )}
-                  <span>{column.columnName}</span>
-                </div>
-                <div className={styles.fieldType}>
-                  <code>{column.rawDataType}</code>
-                </div>
-                <div className={styles.fieldMeta}>
-                  <span className={styles.normalizedType}>
-                    {getNormalizedTypeText(column.normalizedType)}
-                  </span>
-                  {column.nullable && (
-                    <span className={styles.nullableTag}>
-                      nullable
-                    </span>
-                  )}
-                </div>
-              </div>
+              <FieldRow key={colIndex} column={column} />
             ))}
           </div>
         </div>
