@@ -1,3 +1,4 @@
+import { Link2 } from "lucide-react";
 import { ForeignKeyResponse } from "#pkg/seedar/types";
 import styles from "./RelationshipTimeline.module.scss";
 
@@ -5,7 +6,9 @@ interface RelationshipTimelineProps {
   foreignKeys?: ForeignKeyResponse[];
 }
 
-export const RelationshipTimeline = ({ foreignKeys }: RelationshipTimelineProps) => {
+export const RelationshipTimeline = ({
+  foreignKeys,
+}: RelationshipTimelineProps) => {
   if (!foreignKeys || foreignKeys.length === 0) {
     return null;
   }
@@ -22,38 +25,38 @@ export const RelationshipTimeline = ({ foreignKeys }: RelationshipTimelineProps)
             } as React.CSSProperties
           }
         >
-          <div className={styles.relationshipContent}>
-            <div className={styles.relationshipHeader}>
-              <code className={styles.relationshipName}>
-                {fk.fkName}
-              </code>
+          <div className={styles.relationshipHeader}>
+            <div className={styles.relationshipIcon}>
+              <Link2 size={14} />
             </div>
+            <h3 className={styles.relationshipName}>{fk.fkName}</h3>
+          </div>
+          <div className={styles.relationshipBody}>
             <div className={styles.relationshipFlow}>
               <div className={styles.flowEndpoint}>
-                <span className={styles.flowTable}>
-                  {fk.sourceTableName}
-                </span>
-                <span className={styles.flowColumn}>
-                  {fk.sourceColumnName}
-                </span>
+                <span className={styles.flowColumn}>{fk.sourceColumnName}</span>
+                <span className={styles.flowTable}>{fk.sourceTableName}</span>
               </div>
-              <div className={styles.flowArrow}>
-                <svg width="20" height="10" viewBox="0 0 32 16">
+
+              <div className={styles.flowDivider}>
+                <svg
+                  width="24"
+                  height="12"
+                  viewBox="0 0 32 16"
+                  fill="none"
+                  className={styles.flowArrow}
+                >
                   <path
                     d="M0 8h24M20 4l4 4-4 4"
                     stroke="currentColor"
                     strokeWidth="2"
-                    fill="none"
                   />
                 </svg>
               </div>
-              <div className={styles.flowEndpoint}>
-                <span className={styles.flowTable}>
-                  {fk.targetTableName}
-                </span>
-                <span className={styles.flowColumn}>
-                  {fk.targetColumnName}
-                </span>
+
+              <div className={`${styles.flowEndpoint} ${styles.isTarget}`}>
+                <span className={styles.flowColumn}>{fk.targetColumnName}</span>
+                <span className={styles.flowTable}>{fk.targetTableName}</span>
               </div>
             </div>
           </div>

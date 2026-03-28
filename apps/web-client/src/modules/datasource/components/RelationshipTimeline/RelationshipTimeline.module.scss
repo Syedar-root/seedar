@@ -12,68 +12,107 @@
 .relationshipTimeline {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-lg);
 }
 
 .relationshipNode {
-  animation: fadeIn 0.4s ease-out var(--delay) both;
-}
-
-.relationshipContent {
   background: transparent;
   border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-sm);
-  padding: 6px var(--spacing-sm);
-  transition: border-color 0.15s ease;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: fadeIn 0.4s ease-out var(--delay) both;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
     border-color: var(--border-base);
+    box-shadow: var(--shadow-sm);
   }
 }
 
 .relationshipHeader {
-  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: linear-gradient(
+    to bottom,
+    var(--bg-elevated) 0%,
+    color-mix(in srgb, var(--bg-elevated) 95%, var(--warning-light) 5%) 100%
+  );
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.relationshipIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  width: 16px;
+  height: 16px;
 }
 
 .relationshipName {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-tertiary);
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+  flex: 1;
   font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
 }
 
+.relationshipBody {
+  padding: var(--spacing-lg) var(--spacing-xl);
+}
+
 .relationshipFlow {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  justify-content: center;
+  gap: var(--spacing-lg);
 }
 
 .flowEndpoint {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.flowTable {
-  font-size: var(--font-sm);
-  font-weight: 600;
-  color: var(--text-primary);
+  align-items: center;
+  text-align: center;
+  min-width: 100px;
 }
 
 .flowColumn {
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.flowEndpoint.isTarget .flowColumn {
+  color: var(--warning-active);
+}
+
+.flowTable {
   font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--spacing-xs);
+}
+
+.flowEndpoint.isTarget .flowTable {
   color: var(--text-secondary);
-  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+}
+
+.flowDivider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
 }
 
 .flowArrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: var(--text-tertiary);
-  flex-shrink: 0;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -88,12 +127,15 @@
 
 @media (max-width: 768px) {
   .relationshipFlow {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-xs);
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+
+  .flowDivider {
+    transform: rotate(90deg);
   }
 
   .flowArrow {
     transform: rotate(90deg);
-    margin: var(--spacing-xs) 0;
   }
 }
