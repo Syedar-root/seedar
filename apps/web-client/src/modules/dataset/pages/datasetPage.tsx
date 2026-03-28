@@ -4,6 +4,7 @@ import { useDatasets } from "#pkg/seedar/ui-react";
 import { Plus, AlertCircle, Loader2, Database } from "lucide-react";
 import { DatasetCard } from "../components/DatasetCard";
 import styles from "./styles/datasetPage.module.scss";
+import { Select } from "@/core/components/ui/Select";
 
 export const DatasetPage = () => {
   const navigate = useNavigate();
@@ -80,24 +81,24 @@ export const DatasetPage = () => {
             handleSearchCompositionEnd((e.target as HTMLInputElement).value);
           }}
         />
-        <select
-          className={styles.filterSelect}
+        <Select
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-        >
-          <option value="">全部类型</option>
-          <option value="semantic">语义型</option>
-          <option value="wide">宽表型</option>
-        </select>
-        <select
-          className={styles.filterSelect}
+          onChange={(val) => setTypeFilter(val ?? "")}
+          placeholder="全部类型"
+          options={[
+            { label: "语义型", value: "semantic" },
+            { label: "宽表型", value: "wide" },
+          ]}
+        />
+        <Select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="">全部状态</option>
-          <option value="active">启用</option>
-          <option value="disabled">禁用</option>
-        </select>
+          onChange={(val) => setStatusFilter(val ?? "")}
+          placeholder="全部状态"
+          options={[
+            { label: "启用", value: "active" },
+            { label: "禁用", value: "disabled" },
+          ]}
+        />
       </div>
 
       <main className={styles.content}>
