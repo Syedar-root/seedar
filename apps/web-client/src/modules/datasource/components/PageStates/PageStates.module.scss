@@ -1,0 +1,79 @@
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  gap: var(--spacing-md);
+}
+
+.loadingSpinner {
+  animation: spin 1s linear infinite;
+  color: var(--primary);
+}
+
+.loadingText {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  gap: var(--spacing-md);
+}
+
+.errorIcon {
+  color: var(--danger);
+}
+
+.errorText {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  gap: var(--spacing-md);
+  color: var(--text-tertiary);
+}
+
+.emptyIcon {
+  /* No specific styles yet, but keep class for consistency */
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: var(--font-lg);
+  font-weight: 600;
+}
+
+.emptyDesc {
+  margin: 0;
+  font-size: var(--font-base);
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loadingSpinner {
+    animation-duration: 0.01ms !important;
+  }
+}
