@@ -9,19 +9,24 @@
 
 .heroSection {
   position: relative;
-  padding: clamp(2rem, 5vw, 3rem) clamp(1.5rem, 4vw, 3rem);
+  padding: clamp(1.25rem, 3vw, 1.75rem) 0;
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border-secondary);
   animation: fadeIn 0.5s ease-out;
 }
 
 .heroContent {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--spacing-md);
+  display: flex;
   align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: 0 clamp(1rem, 3vw, 1.75rem);
+}
+
+.heroInfo {
+  flex: 1;
+  min-width: 0;
 }
 
 .backButton {
@@ -48,12 +53,44 @@
   }
 }
 
-.heroMeta {
+.heroTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+  animation: fadeIn 0.5s ease-out 0.1s both;
+}
+
+.heroMetaLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.metaTextGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.heroMetaRight {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+}
+
+.metaLabel {
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.connectionInfo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin-bottom: var(--spacing-md);
-  animation: fadeIn 0.5s ease-out 0.1s both;
+  animation: fadeIn 0.5s ease-out 0.18s both;
 }
 
 @keyframes fadeIn {
@@ -80,8 +117,22 @@
 
 .typeLabel {
   font-size: var(--font-sm);
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.databaseName {
+  font-size: var(--font-sm);
   color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+}
+
+.hostInfo {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
 }
 
 .statusBadge {
@@ -111,10 +162,10 @@
 }
 
 .heroTitle {
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 var(--spacing-lg) 0;
+  margin: 0 0 var(--spacing-md) 0;
   letter-spacing: -0.01em;
   line-height: 1.25;
   animation: fadeIn 0.5s ease-out 0.15s both;
@@ -123,8 +174,8 @@
 .heroStats {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-sm) var(--spacing-md);
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
   background: var(--bg-base);
   border-radius: var(--radius-base);
   border: 1px solid var(--border-secondary);
@@ -138,7 +189,7 @@
 }
 
 .statValue {
-  font-size: var(--font-xl);
+  font-size: var(--font-lg);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1;
@@ -553,7 +604,7 @@
 
 @media (max-width: 768px) {
   .heroSection {
-    padding: 1.5rem 1rem;
+    padding: 1rem 0.875rem;
     gap: var(--spacing-sm);
   }
 
