@@ -133,185 +133,192 @@ export const DatasourceDetailPage = () => {
         </div>
       </div>
 
-      <main className={styles.mainContent}>
-        <div className={styles.metadataBar}>
-          <div className={styles.metaItem}>
-            <span className={styles.metaLabel}>创建于</span>
-            <span className={styles.metaValue}>
-              {new Date(datasource.createdAt).toLocaleDateString("zh-CN", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </span>
-          </div>
-          <div className={styles.metaDivider} />
-          <div className={styles.metaItem}>
-            <span className={styles.metaLabel}>最后更新</span>
-            <span className={styles.metaValue}>
-              {new Date(datasource.updatedAt).toLocaleDateString("zh-CN", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </span>
-          </div>
-          {datasource.lastValidateAt && (
-            <>
-              <div className={styles.metaDivider} />
-              <div className={styles.metaItem}>
-                <span className={styles.metaLabel}>最后验证</span>
-                <span className={styles.metaValue}>
-                  {new Date(datasource.lastValidateAt).toLocaleDateString(
-                    "zh-CN",
-                    {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    },
-                  )}
-                </span>
-              </div>
-            </>
-          )}
-        </div>
 
-        <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <Table2 size={20} className={styles.sectionIcon} />
-            <h2 className={styles.sectionTitle}>表结构</h2>
-            <span className={styles.sectionBadge}>
-              {datasource.tables?.length || 0} 张表
-            </span>
-          </div>
-
-          <ScrollArea className={styles.scrollArea}>
-            {datasource.tables && datasource.tables.length > 0 ? (
-              <div className={styles.tableExplorer}>
-                {datasource.tables.map((table, index) => (
-                  <div
-                    key={index}
-                    className={styles.tableNode}
-                    style={
-                      {
-                        "--delay": `${index * 0.05}s`,
-                      } as React.CSSProperties
-                    }
-                  >
-                    <div className={styles.tableNodeHeader}>
-                      <div className={styles.tableNodeIcon}>
-                        <Table2 size={16} />
-                      </div>
-                      <h3 className={styles.tableNodeName}>
-                        {table.tableName}
-                      </h3>
-                      <span className={styles.tableNodeCount}>
-                        {table.columns.length} 字段
-                      </span>
-                    </div>
-
-                    <div className={styles.tableNodeContent}>
-                      {table.columns.map((column, colIndex) => (
-                        <div key={colIndex} className={styles.fieldRow}>
-                          <div className={styles.fieldName}>
-                            {column.isPrimaryKey && (
-                              <Key size={12} className={styles.primaryKey} />
-                            )}
-                            <span>{column.columnName}</span>
-                          </div>
-                          <div className={styles.fieldType}>
-                            <code>{column.rawDataType}</code>
-                          </div>
-                          <div className={styles.fieldMeta}>
-                            <span className={styles.normalizedType}>
-                              {getNormalizedTypeText(column.normalizedType)}
-                            </span>
-                            {column.nullable && (
-                              <span className={styles.nullableTag}>
-                                nullable
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.emptyState}>
-                <Table2 size={48} strokeWidth={1.5} />
-                <p>暂无表结构</p>
-              </div>
-            )}
-          </ScrollArea>
-        </section>
-
-        {datasource.foreignKeys && datasource.foreignKeys.length > 0 && (
-          <section className={styles.section}>
-            <div className={styles.sectionHeader}>
-              <Link2 size={20} className={styles.sectionIcon} />
-              <h2 className={styles.sectionTitle}>外键关系</h2>
-              <span className={styles.sectionBadge}>
-                {datasource.foreignKeys.length} 个关系
+        <main className={styles.mainContent}>
+          <div className={styles.metadataBar}>
+            <div className={styles.metaItem}>
+              <span className={styles.metaLabel}>创建于</span>
+              <span className={styles.metaValue}>
+                {new Date(datasource.createdAt).toLocaleDateString("zh-CN", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
               </span>
             </div>
-
-            <ScrollArea className={styles.scrollArea}>
-              <div className={styles.relationshipTimeline}>
-                {datasource.foreignKeys.map((fk, index) => (
-                  <div
-                    key={index}
-                    className={styles.relationshipNode}
-                    style={
+            <div className={styles.metaDivider} />
+            <div className={styles.metaItem}>
+              <span className={styles.metaLabel}>最后更新</span>
+              <span className={styles.metaValue}>
+                {new Date(datasource.updatedAt).toLocaleDateString("zh-CN", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+            {datasource.lastValidateAt && (
+              <>
+                <div className={styles.metaDivider} />
+                <div className={styles.metaItem}>
+                  <span className={styles.metaLabel}>最后验证</span>
+                  <span className={styles.metaValue}>
+                    {new Date(datasource.lastValidateAt).toLocaleDateString(
+                      "zh-CN",
                       {
-                        "--delay": `${index * 0.05}s`,
-                      } as React.CSSProperties
-                    }
-                  >
-                    <div className={styles.relationshipDot} />
-                    <div className={styles.relationshipContent}>
-                      <div className={styles.relationshipHeader}>
-                        <code className={styles.relationshipName}>
-                          {fk.fkName}
-                        </code>
-                      </div>
-                      <div className={styles.relationshipFlow}>
-                        <div className={styles.flowEndpoint}>
-                          <span className={styles.flowTable}>
-                            {fk.sourceTableName}
-                          </span>
-                          <span className={styles.flowColumn}>
-                            {fk.sourceColumnName}
-                          </span>
-                        </div>
-                        <div className={styles.flowArrow}>
-                          <svg width="32" height="16" viewBox="0 0 32 16">
-                            <path
-                              d="M0 8h24M20 4l4 4-4 4"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              fill="none"
-                            />
-                          </svg>
-                        </div>
-                        <div className={styles.flowEndpoint}>
-                          <span className={styles.flowTable}>
-                            {fk.targetTableName}
-                          </span>
-                          <span className={styles.flowColumn}>
-                            {fk.targetColumnName}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      },
+                    )}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+          <div
+            className={`${styles.contentGrid} ${!datasource.foreignKeys || datasource.foreignKeys.length === 0 ? styles.fullWidth : ""}`}
+          >
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <Table2 size={16} className={styles.sectionIcon} />
+                <h2 className={styles.sectionTitle}>表结构</h2>
+                <span className={styles.sectionBadge}>
+                  {datasource.tables?.length || 0} 张表
+                </span>
               </div>
-            </ScrollArea>
-          </section>
-        )}
-      </main>
+
+              <ScrollArea className={styles.scrollArea}>
+                {datasource.tables && datasource.tables.length > 0 ? (
+                  <div className={styles.tableExplorer}>
+                    {datasource.tables.map((table, index) => (
+                      <div
+                        key={index}
+                        className={styles.tableNode}
+                        style={
+                          {
+                            "--delay": `${index * 0.05}s`,
+                          } as React.CSSProperties
+                        }
+                      >
+                        <div className={styles.tableNodeHeader}>
+                          <div className={styles.tableNodeIcon}>
+                            <Table2 size={14} />
+                          </div>
+                          <h3 className={styles.tableNodeName}>
+                            {table.tableName}
+                          </h3>
+                          <span className={styles.tableNodeCount}>
+                            {table.columns.length} 字段
+                          </span>
+                        </div>
+
+                        <div className={styles.tableNodeContent}>
+                          {table.columns.map((column, colIndex) => (
+                            <div key={colIndex} className={styles.fieldRow}>
+                              <div className={styles.fieldName}>
+                                {column.isPrimaryKey && (
+                                  <Key
+                                    size={10}
+                                    className={styles.primaryKey}
+                                  />
+                                )}
+                                <span>{column.columnName}</span>
+                              </div>
+                              <div className={styles.fieldType}>
+                                <code>{column.rawDataType}</code>
+                              </div>
+                              <div className={styles.fieldMeta}>
+                                <span className={styles.normalizedType}>
+                                  {getNormalizedTypeText(column.normalizedType)}
+                                </span>
+                                {column.nullable && (
+                                  <span className={styles.nullableTag}>
+                                    nullable
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.emptyState}>
+                    <Table2 size={32} strokeWidth={1.5} />
+                    <p>暂无表结构</p>
+                  </div>
+                )}
+              </ScrollArea>
+            </section>
+
+            {datasource.foreignKeys && datasource.foreignKeys.length > 0 && (
+              <section className={styles.section}>
+                <div className={styles.sectionHeader}>
+                  <Link2 size={16} className={styles.sectionIcon} />
+                  <h2 className={styles.sectionTitle}>外键关系</h2>
+                  <span className={styles.sectionBadge}>
+                    {datasource.foreignKeys.length} 个关系
+                  </span>
+                </div>
+
+                <ScrollArea className={styles.scrollArea}>
+                  <div className={styles.relationshipTimeline}>
+                    {datasource.foreignKeys.map((fk, index) => (
+                      <div
+                        key={index}
+                        className={styles.relationshipNode}
+                        style={
+                          {
+                            "--delay": `${index * 0.05}s`,
+                          } as React.CSSProperties
+                        }
+                      >
+                        <div className={styles.relationshipContent}>
+                          <div className={styles.relationshipHeader}>
+                            <code className={styles.relationshipName}>
+                              {fk.fkName}
+                            </code>
+                          </div>
+                          <div className={styles.relationshipFlow}>
+                            <div className={styles.flowEndpoint}>
+                              <span className={styles.flowTable}>
+                                {fk.sourceTableName}
+                              </span>
+                              <span className={styles.flowColumn}>
+                                {fk.sourceColumnName}
+                              </span>
+                            </div>
+                            <div className={styles.flowArrow}>
+                              <svg width="20" height="10" viewBox="0 0 32 16">
+                                <path
+                                  d="M0 8h24M20 4l4 4-4 4"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  fill="none"
+                                />
+                              </svg>
+                            </div>
+                            <div className={styles.flowEndpoint}>
+                              <span className={styles.flowTable}>
+                                {fk.targetTableName}
+                              </span>
+                              <span className={styles.flowColumn}>
+                                {fk.targetColumnName}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </section>
+            )}
+          </div>
+        </main>
+
     </div>
   );
 };
