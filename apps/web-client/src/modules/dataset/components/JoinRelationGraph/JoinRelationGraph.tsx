@@ -7,30 +7,22 @@ import {
   useNodesState,
   useEdgesState,
   BackgroundVariant,
-  type Node,
-  type Edge,
   type NodeTypes,
   type EdgeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import { TableNode } from "./TableNode";
-import { JoinEdge } from "./JoinEdge";
-import {
-  useGraphData,
-  type TableNodeData,
-  type JoinEdgeData,
-} from "./useGraphData";
-import { getLayoutedElements } from "./graphLayout";
+import { TableNode } from "./components/TableNode";
+import { JoinEdge } from "./components/JoinEdge";
+import { useGraphData } from "./hooks/useGraphData";
+import { getLayoutedElements } from "./utils/graphLayout";
+import type { FlowNode, FlowEdge, TableNodeData, JoinEdgeData } from "./types";
 import type {
   DatasetJoinResponse,
   DatasetTableResponse,
   DatasetFieldResponse,
 } from "#pkg/seedar/types";
 import styles from "./JoinRelationGraph.module.scss";
-
-type FlowNode = Node<TableNodeData>;
-type FlowEdge = Edge<JoinEdgeData>;
 
 const nodeTypes: NodeTypes = {
   tableNode: TableNode,

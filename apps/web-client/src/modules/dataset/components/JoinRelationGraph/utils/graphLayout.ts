@@ -1,18 +1,6 @@
 import dagre from "dagre";
 import type { Node, Edge } from "@xyflow/react";
-
-interface LayoutNode {
-  id: string;
-  position: { x: number; y: number };
-}
-
-interface LayoutOptions {
-  direction?: "TB" | "LR" | "BT" | "RL";
-  nodeWidth?: number;
-  nodeHeight?: number;
-  nodeSeparation?: number;
-  rankSeparation?: number;
-}
+import type { LayoutOptions } from "../types";
 
 const DEFAULT_NODE_WIDTH = 180;
 const DEFAULT_NODE_HEIGHT = 60;

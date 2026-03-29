@@ -4,28 +4,9 @@ import {
   DatasetJoinResponse,
   DatasetTableResponse,
   DatasetFieldResponse,
-  JoinType,
 } from "#pkg/seedar/types";
-
-export interface TableNodeData {
-  [key: string]: unknown;
-  tableName: string;
-  datasetName?: string;
-  isMainTable: boolean;
-  tableId: number;
-}
-
-export interface JoinEdgeData {
-  [key: string]: unknown;
-  joinType: JoinType;
-  leftFieldName: string;
-  rightFieldName: string;
-  leftTableName: string;
-  rightTableName: string;
-  operator: string;
-  direction?: "TB" | "LR" | "BT" | "RL";
-  selected?: boolean;
-}
+import { getFieldNameByColumnId, getTableName } from "../utils/graphUtils";
+import type { TableNodeData, JoinEdgeData } from "../types";
 
 interface UseGraphDataParams {
   joins: DatasetJoinResponse[];
@@ -39,23 +20,6 @@ interface UseGraphDataReturn {
   nodes: Node<TableNodeData>[];
   edges: Edge<JoinEdgeData>[];
 }
-
-const getFieldNameByColumnId = (
-  columnId: string,
-  fields: DatasetFieldResponse[]
-): string => {
-  const numericId = parseInt(columnId, 10);
-  const field = fields.find((f) => f.datasourceColumnId === numericId);
-  return field?.businessName || field?.name || columnId;
-};
-
-const getTableName = (
-  tableId: number,
-  tables: DatasetTableResponse[]
-): string => {
-  const table = tables.find((t) => t.id === tableId);
-  return table?.datasetName || table?.tableName || `表${tableId}`;
-};
 
 export const useGraphData = ({
   joins,

@@ -1,8 +1,8 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Star } from "lucide-react";
-import type { TableNodeData } from "./useGraphData";
-import styles from "./JoinRelationGraph.module.scss";
+import type { TableNodeData } from "../../types";
+import styles from "./TableNode.module.scss";
 
 export const TableNode = memo(({ data }: NodeProps<Node<TableNodeData>>) => {
   const { tableName, isMainTable } = data;

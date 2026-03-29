@@ -1,0 +1,88 @@
+.joinEdge {
+  stroke-width: 2;
+  fill: none;
+  transition: stroke-width 0.2s ease;
+}
+
+.edgeInner {
+  stroke: var(--primary, #a0522d);
+}
+
+.edgeLeft {
+  stroke: var(--success, #6b8e4e);
+  stroke-dasharray: 5 5;
+}
+
+.edgeRight {
+  stroke: var(--warning, #c4842a);
+  stroke-dasharray: 2 2;
+}
+
+.edgeSelected {
+  stroke-width: 3;
+}
+
+.edgeLabel {
+  padding: 8px 12px;
+  background: var(--bg-elevated, #ffffff);
+  border-radius: var(--radius-base, 6px);
+  font-size: var(--font-xs, 11px);
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.edgeLabelHorizontal {
+  flex-direction: column;
+}
+
+.edgeLabelLeftField {
+  color: var(--text-primary, #5a4a3a);
+  font-weight: 600;
+  font-size: var(--font-sm, 12px);
+  align-self: flex-start;
+  letter-spacing: 0.2px;
+}
+
+.edgeLabelType {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  align-self: center;
+  margin: 4px 0;
+}
+
+.edgeLabelTypeIcon {
+  font-weight: 700;
+  font-size: var(--font-xs, 11px);
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  .edgeInner & {
+    color: var(--primary, #a0522d);
+    background: var(--primary-light, #faf6f0);
+  }
+
+  .edgeLeft & {
+    color: var(--success, #6b8e4e);
+    background: var(--success-light, #f0f4eb);
+  }
+
+  .edgeRight & {
+    color: var(--warning, #c4842a);
+    background: var(--warning-light, #faf5eb);
+  }
+}
+
+.edgeLabelRightField {
+  color: var(--text-primary, #5a4a3a);
+  font-weight: 600;
+  font-size: var(--font-sm, 12px);
+  align-self: flex-end;
+  letter-spacing: 0.2px;
+}

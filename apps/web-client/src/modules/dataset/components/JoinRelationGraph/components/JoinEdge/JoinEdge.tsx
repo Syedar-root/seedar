@@ -6,27 +6,9 @@ import {
   type EdgeProps,
   type Edge,
 } from "@xyflow/react";
-import { JoinType } from "#pkg/seedar/types";
-import type { JoinEdgeData } from "./useGraphData";
-import styles from "./JoinRelationGraph.module.scss";
-
-const getJoinTypeLabel = (type: JoinType): string => {
-  const typeMap: Record<JoinType, string> = {
-    [JoinType.INNER]: "INNER",
-    [JoinType.LEFT]: "LEFT",
-    [JoinType.RIGHT]: "RIGHT",
-  };
-  return typeMap[type] || type;
-};
-
-const getJoinTypeClass = (type: JoinType): string => {
-  const classMap: Record<JoinType, string> = {
-    [JoinType.INNER]: styles.edgeInner,
-    [JoinType.LEFT]: styles.edgeLeft,
-    [JoinType.RIGHT]: styles.edgeRight,
-  };
-  return classMap[type] || "";
-};
+import type { JoinEdgeData } from "../../types";
+import { getJoinTypeLabel, getJoinTypeClass } from "../../utils/graphUtils";
+import styles from "./JoinEdge.module.scss";
 
 export const JoinEdge = memo(
   ({
@@ -59,7 +41,7 @@ export const JoinEdge = memo(
       selected = false,
     } = data;
     const joinTypeLabel = getJoinTypeLabel(joinType);
-    const edgeClass = getJoinTypeClass(joinType);
+    const edgeClass = getJoinTypeClass(joinType, styles);
     const isHorizontal = direction === "LR" || direction === "RL";
 
     return (
