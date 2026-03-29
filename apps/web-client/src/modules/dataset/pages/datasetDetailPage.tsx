@@ -7,12 +7,13 @@ import {
   DatasetMetadataBar,
   FieldExplorer,
   MetricList,
-  JoinRelationList,
+  JoinRelationGraph,
   LoadingState,
   ErrorState,
   EmptyState,
 } from "../components";
 import styles from "./styles/datasetDetailPage.module.scss";
+import clsx from "clsx";
 
 export const DatasetDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -53,6 +54,25 @@ export const DatasetDetailPage = () => {
       <main className={styles.mainContent}>
         <DatasetMetadataBar dataset={dataset} />
 
+        {!isWideType && dataset.joins && dataset.joins.length > 0 && (
+          <section className={clsx(styles.fullWidthSection, styles.join)}>
+            <div className={styles.sectionHeader}>
+              <GitMerge size={16} className={styles.sectionIcon} />
+              <h2 className={styles.sectionTitle}>关联关系</h2>
+              <span className={styles.sectionBadge}>
+                {dataset.joins.length} 个关系
+              </span>
+            </div>
+
+            <JoinRelationGraph
+              joins={dataset.joins}
+              tables={dataset.tables || []}
+              fields={dataset.fields || []}
+              mainTableId={dataset.mainTableId}
+            />
+          </section>
+        )}
+
         <div
           className={`${styles.contentGrid} ${isWideType ? styles.fullWidth : ""}`}
         >
@@ -75,40 +95,22 @@ export const DatasetDetailPage = () => {
           </section>
 
           {!isWideType && (
-            <>
-              <section className={styles.section}>
-                <div className={styles.sectionHeader}>
-                  <BarChart3 size={16} className={styles.sectionIcon} />
-                  <h2 className={styles.sectionTitle}>指标列表</h2>
-                  <span className={styles.sectionBadge}>
-                    {dataset.metrics?.length || 0} 个指标
-                  </span>
-                </div>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <BarChart3 size={16} className={styles.sectionIcon} />
+                <h2 className={styles.sectionTitle}>指标列表</h2>
+                <span className={styles.sectionBadge}>
+                  {dataset.metrics?.length || 0} 个指标
+                </span>
+              </div>
 
-                <ScrollArea className={styles.scrollArea}>
-                  <MetricList metrics={dataset.metrics || []} fields={dataset.fields || []} />
-                </ScrollArea>
-              </section>
-
-              {dataset.joins && dataset.joins.length > 0 && (
-                <section className={styles.section}>
-                  <div className={styles.sectionHeader}>
-                    <GitMerge size={16} className={styles.sectionIcon} />
-                    <h2 className={styles.sectionTitle}>关联关系</h2>
-                    <span className={styles.sectionBadge}>
-                      {dataset.joins.length} 个关系
-                    </span>
-                  </div>
-
-                  <ScrollArea className={styles.scrollArea}>
-                    <JoinRelationList
-                      joins={dataset.joins}
-                      tables={dataset.tables || []}
-                    />
-                  </ScrollArea>
-                </section>
-              )}
-            </>
+              <ScrollArea className={styles.scrollArea}>
+                <MetricList
+                  metrics={dataset.metrics || []}
+                  fields={dataset.fields || []}
+                />
+              </ScrollArea>
+            </section>
           )}
         </div>
       </main>

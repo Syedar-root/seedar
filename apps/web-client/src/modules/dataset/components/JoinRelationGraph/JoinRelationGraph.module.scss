@@ -1,0 +1,169 @@
+.container {
+  width: 100%;
+  height: clamp(300px, 20vh, 400px);
+  background: var(--color-bg-secondary, #f8f9fa);
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.tableNode {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--color-bg-primary, #ffffff);
+  border: 2px solid var(--color-border, #e2e8f0);
+  min-width: 120px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  position: relative;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+}
+
+.mainTableStar {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
+.tableName {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text-primary, #1e293b);
+}
+
+.handle {
+  width: 8px;
+  height: 8px;
+  background: var(--color-primary, #3b82f6);
+  border: 2px solid white;
+}
+
+.joinEdge {
+  stroke-width: 2;
+  fill: none;
+  transition: stroke-width 0.2s ease;
+}
+
+.edgeInner {
+  stroke: var(--primary, #a0522d);
+}
+
+.edgeLeft {
+  stroke: var(--success, #6b8e4e);
+  stroke-dasharray: 5 5;
+}
+
+.edgeRight {
+  stroke: var(--warning, #c4842a);
+  stroke-dasharray: 2 2;
+}
+
+.edgeSelected {
+  stroke-width: 3;
+}
+
+.edgeLabel {
+  padding: 8px 12px;
+  background: var(--bg-elevated, #ffffff);
+  border-radius: var(--radius-base, 6px);
+  font-size: var(--font-xs, 11px);
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.edgeLabelHorizontal {
+  flex-direction: column;
+}
+
+.edgeLabelLeftField {
+  color: var(--text-primary, #5a4a3a);
+  font-weight: 600;
+  font-size: var(--font-sm, 12px);
+  align-self: flex-start;
+  letter-spacing: 0.2px;
+}
+
+.edgeLabelType {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  align-self: center;
+  margin: 4px 0;
+}
+
+.edgeLabelTypeIcon {
+  font-weight: 700;
+  font-size: var(--font-xs, 11px);
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  .edgeInner & {
+    color: var(--primary, #a0522d);
+    background: var(--primary-light, #faf6f0);
+  }
+
+  .edgeLeft & {
+    color: var(--success, #6b8e4e);
+    background: var(--success-light, #f0f4eb);
+  }
+
+  .edgeRight & {
+    color: var(--warning, #c4842a);
+    background: var(--warning-light, #faf5eb);
+  }
+}
+
+.edgeLabelRightField {
+  color: var(--text-primary, #5a4a3a);
+  font-weight: 600;
+  font-size: var(--font-sm, 12px);
+  align-self: flex-end;
+  letter-spacing: 0.2px;
+}
+
+.controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.controlButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--color-bg-primary, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--color-text-secondary, #64748b);
+
+  &:hover {
+    background: var(--color-bg-secondary, #f1f5f9);
+    color: var(--color-text-primary, #1e293b);
+  }
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-secondary, #64748b);
+  font-size: 14px;
+}

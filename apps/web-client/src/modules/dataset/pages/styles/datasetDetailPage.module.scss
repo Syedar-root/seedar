@@ -55,7 +55,20 @@
   animation: fadeIn 0.5s ease-out 0.3s both;
   display: flex;
   flex-direction: column;
+  max-height: 600px;
+}
+
+.fullWidthSection {
+  animation: fadeIn 0.5s ease-out 0.3s both;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
+  width: 100%;
+
+  &.join {
+    height: auto;
+    max-height: none;
+  }
 }
 
 @keyframes fadeIn {
