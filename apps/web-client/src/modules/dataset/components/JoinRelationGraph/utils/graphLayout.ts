@@ -4,8 +4,8 @@ import type { LayoutOptions } from "../types";
 
 const DEFAULT_NODE_WIDTH = 180;
 const DEFAULT_NODE_HEIGHT = 60;
-const DEFAULT_NODE_SEPARATION = 60;
-const DEFAULT_RANK_SEPARATION = 100;
+const DEFAULT_NODE_SEPARATION = 80;
+const DEFAULT_RANK_SEPARATION = 150;
 
 export const getLayoutedElements = <
   T extends Record<string, unknown>,
@@ -13,7 +13,7 @@ export const getLayoutedElements = <
 >(
   nodes: Node<T>[],
   edges: Edge<U>[],
-  options: LayoutOptions = {}
+  options: LayoutOptions = {},
 ): Node<T>[] => {
   const {
     direction = "LR",

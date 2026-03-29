@@ -65,11 +65,18 @@ export const JoinEdge = memo(
                 pointerEvents: "all",
               }}
             >
-              <div className={styles.edgeLabelLeftField}>{leftFieldName}</div>
-              <div className={styles.edgeLabelType}>
-                <span className={styles.edgeLabelTypeIcon}>{joinTypeLabel}</span>
+              <div className={styles.edgeLabelTopRow}>
+                <div className={styles.edgeLabelLeftField}>{leftFieldName}</div>
+                <div className={styles.edgeLabelArrow}></div>
+                <div className={styles.edgeLabelRightField}>
+                  {rightFieldName}
+                </div>
               </div>
-              <div className={styles.edgeLabelRightField}>{rightFieldName}</div>
+              <div className={styles.edgeLabelType}>
+                <span className={styles.edgeLabelTypeIcon}>
+                  {joinTypeLabel}
+                </span>
+              </div>
             </div>
           </EdgeLabelRenderer>
         )}

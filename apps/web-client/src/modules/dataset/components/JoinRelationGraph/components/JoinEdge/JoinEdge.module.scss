@@ -26,12 +26,11 @@
   padding: 8px 12px;
   background: var(--bg-elevated, #ffffff);
   border-radius: var(--radius-base, 6px);
-  font-size: var(--font-xs, 11px);
   white-space: nowrap;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  align-items: flex-start;
+  gap: 4px;
+  align-items: center;
   pointer-events: none;
 }
 
@@ -39,27 +38,58 @@
   flex-direction: column;
 }
 
+.edgeLabelTopRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
 .edgeLabelLeftField {
   color: var(--text-primary, #5a4a3a);
   font-weight: 600;
   font-size: var(--font-sm, 12px);
-  align-self: flex-start;
+  letter-spacing: 0.2px;
+}
+
+.edgeLabelArrow {
+  position: relative;
+  width: 24px;
+  height: 2px;
+  background: var(--text-secondary, #8b7355);
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 6px solid var(--text-secondary, #8b7355);
+  }
+}
+
+.edgeLabelRightField {
+  color: var(--text-primary, #5a4a3a);
+  font-weight: 600;
+  font-size: var(--font-sm, 12px);
   letter-spacing: 0.2px;
 }
 
 .edgeLabelType {
   display: flex;
   align-items: center;
-  gap: 4px;
-  align-self: center;
-  margin: 4px 0;
+  justify-content: center;
 }
 
 .edgeLabelTypeIcon {
   font-weight: 700;
-  font-size: var(--font-xs, 11px);
-  padding: 3px 8px;
-  border-radius: 6px;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 
@@ -77,12 +107,4 @@
     color: var(--warning, #c4842a);
     background: var(--warning-light, #faf5eb);
   }
-}
-
-.edgeLabelRightField {
-  color: var(--text-primary, #5a4a3a);
-  font-weight: 600;
-  font-size: var(--font-sm, 12px);
-  align-self: flex-end;
-  letter-spacing: 0.2px;
 }
