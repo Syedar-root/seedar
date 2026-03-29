@@ -16,6 +16,7 @@ export interface SelectProps {
   className?: string;
   style?: React.CSSProperties;
   clearable?: boolean;
+  label?: string;
 }
 
 export const Select = ({
@@ -26,6 +27,7 @@ export const Select = ({
   className,
   style,
   clearable = true,
+  label = "",
 }: SelectProps) => {
   const allOptions = clearable
     ? [{ label: placeholder, value: "__clear__" }, ...options]
@@ -49,6 +51,11 @@ export const Select = ({
         className={clsx(styles.Select, className)}
         style={style}
       >
+        {label && (
+          <BaseSelect.Label className={styles.Label}>
+            {label}:{" "}
+          </BaseSelect.Label>
+        )}
         <BaseSelect.Value className={styles.Value} placeholder={placeholder} />
         <BaseSelect.Icon className={styles.SelectIcon}>
           <ChevronsUpDown size={"16"} />

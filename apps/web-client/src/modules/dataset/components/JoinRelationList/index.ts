@@ -1,0 +1,1 @@
+export { JoinRelationList } from "./JoinRelationList";

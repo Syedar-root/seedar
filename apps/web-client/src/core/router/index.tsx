@@ -5,7 +5,7 @@ import { DashboardPage } from "@/modules/dashboard";
 import { PanelPage } from "@/modules/panel";
 import { DatasourcePage } from "@/modules/datasource";
 import { DatasourceDetailPage } from "@/modules/datasource";
-import { DatasetPage } from "@/modules/dataset/pages";
+import { DatasetPage, DatasetDetailPage } from "@/modules/dataset/pages";
 
 export const router = createBrowserRouter([
   {
@@ -23,6 +23,10 @@ export const router = createBrowserRouter([
       {
         path: "dataset",
         element: <DatasetPage />,
+      },
+      {
+        path: "dataset/:id",
+        element: <DatasetDetailPage />,
       },
       {
         path: "dashboard/:dashboardId?",

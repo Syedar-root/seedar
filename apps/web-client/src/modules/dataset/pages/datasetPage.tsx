@@ -38,7 +38,7 @@ export const DatasetPage = () => {
   };
 
   const handleViewDetails = (id: number) => {
-    console.log("View dataset:", id);
+    navigate(`/dataset/${id}`);
   };
 
   const handleEdit = (id: number) => {
@@ -84,6 +84,7 @@ export const DatasetPage = () => {
         <Select
           value={typeFilter}
           onChange={(val) => setTypeFilter(val ?? "")}
+          label="类型"
           placeholder="全部类型"
           options={[
             { label: "语义型", value: "semantic" },
@@ -93,6 +94,7 @@ export const DatasetPage = () => {
         <Select
           value={statusFilter}
           onChange={(val) => setStatusFilter(val ?? "")}
+          label="状态"
           placeholder="全部状态"
           options={[
             { label: "启用", value: "active" },
