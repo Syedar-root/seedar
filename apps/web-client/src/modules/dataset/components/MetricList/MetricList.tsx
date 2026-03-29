@@ -1,58 +1,69 @@
-import { DatasetMetricResponse, MetricType, MetricAggregateFunction } from "#pkg/seedar/types";
+import { useState, useMemo } from "react";
+import { DatasetMetricResponse, DatasetFieldResponse } from "#pkg/seedar/types";
 import styles from "./MetricList.module.scss";
 
 interface MetricListProps {
   metrics: DatasetMetricResponse[];
+  fields: DatasetFieldResponse[];
 }
 
-const getMetricTypeLabel = (type: MetricType): string => {
-  const typeMap: Record<MetricType, string> = {
-    [MetricType.ROW_LEVEL]: "行级指标",
-    [MetricType.AGGREGATE]: "聚合指标",
-    [MetricType.POST_AGGREGATE]: "后聚合指标",
-    [MetricType.ARITHMETIC]: "算术指标",
-    [MetricType.PERIOD_OVER_PERIOD]: "同环比指标",
-  };
-  return typeMap[type] || type;
+type DisplayMode = "business" | "original";
+
+const resolveExpression = (
+  expression: string,
+  fields: DatasetFieldResponse[],
+  metrics: DatasetMetricResponse[],
+  mode: DisplayMode,
+): string => {
+  const fieldMap = new Map<number, DatasetFieldResponse>();
+  fields.forEach((field) => {
+    fieldMap.set(field.id, field);
+  });
+
+  const metricMap = new Map<number, DatasetMetricResponse>();
+  metrics.forEach((metric) => {
+    metricMap.set(metric.id, metric);
+  });
+
+  let resolved = expression;
+
+  resolved = resolved.replace(/#F(\d+)/g, (match, idStr) => {
+    const id = parseInt(idStr, 10);
+    const field = fieldMap.get(id);
+    if (!field) return match;
+
+    if (mode === "business") {
+      return field.businessName || field.name;
+    }
+    return field.tableName ? `${field.tableName}.${field.name}` : field.name;
+  });
+
+  resolved = resolved.replace(/#M(\d+)/g, (match, idStr) => {
+    const id = parseInt(idStr, 10);
+    const metric = metricMap.get(id);
+    if (!metric) return match;
+
+    if (mode === "business") {
+      return metric.businessName || metric.alias || metric.name;
+    }
+    return metric.alias || metric.name;
+  });
+
+  return resolved;
 };
 
-const getAggregateLabel = (func: MetricAggregateFunction): string => {
-  const funcMap: Record<MetricAggregateFunction, string> = {
-    [MetricAggregateFunction.SUM]: "SUM",
-    [MetricAggregateFunction.COUNT]: "COUNT",
-    [MetricAggregateFunction.AVG]: "AVG",
-    [MetricAggregateFunction.MAX]: "MAX",
-    [MetricAggregateFunction.MIN]: "MIN",
-    [MetricAggregateFunction.DISTINCT_COUNT]: "COUNT(DISTINCT)",
-  };
-  return funcMap[func] || func;
-};
+export const MetricList = ({ metrics, fields }: MetricListProps) => {
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("business");
 
-const getMetricFormula = (metric: DatasetMetricResponse): string => {
-  if (metric.metricType === MetricType.AGGREGATE && metric.aggregateFunction) {
-    const distinct = metric.distinct ? "DISTINCT " : "";
-    const column = metric.dataSourceColumnName || "?";
-    return `${getAggregateLabel(metric.aggregateFunction)}(${distinct}${column})`;
-  }
+  const resolvedMetrics = useMemo(() => {
+    return metrics.map((metric) => ({
+      ...metric,
+      resolvedExpression: metric.expression
+        ? resolveExpression(metric.expression, fields, metrics, displayMode)
+        : null,
+    }));
+  }, [metrics, fields, displayMode]);
 
-  if (metric.metricType === MetricType.ARITHMETIC) {
-    const left = metric.leftMetricName || metric.leftOperandFieldName || "?";
-    const op = metric.arithmeticOperator || "?";
-    const right = metric.rightMetricOperandFieldName || "?";
-    return `${left} ${op} ${right}`;
-  }
-
-  if (metric.metricType === MetricType.ROW_LEVEL) {
-    const left = metric.leftOperandFieldName || "?";
-    const op = metric.rowOperator || "?";
-    const right = metric.rightOperandFieldName || metric.rightOperand?.toString() || "?";
-    return `${left} ${op} ${right}`;
-  }
-
-  return "-";
-};
-
-export const MetricList = ({ metrics }: MetricListProps) => {
   if (!metrics || metrics.length === 0) {
     return (
       <div className={styles.emptyState}>
@@ -63,18 +74,41 @@ export const MetricList = ({ metrics }: MetricListProps) => {
 
   return (
     <div className={styles.container}>
-      {metrics.map((metric) => (
-        <div key={metric.id} className={styles.metricItem}>
-          <div className={styles.metricHeader}>
-            <span className={styles.metricName}>{metric.businessName || metric.name}</span>
-            <span className={styles.metricType}>{getMetricTypeLabel(metric.metricType)}</span>
-          </div>
-          <div className={styles.metricFormula}>{getMetricFormula(metric)}</div>
-          {metric.description && (
-            <p className={styles.metricDesc}>{metric.description}</p>
-          )}
+      <div className={styles.header}>
+        <span className={styles.count}>共 {metrics.length} 个指标</span>
+        <div className={styles.toggle}>
+          <button
+            className={`${styles.toggleButton} ${displayMode === "business" ? styles.active : ""}`}
+            onClick={() => setDisplayMode("business")}
+          >
+            业务名称
+          </button>
+          <button
+            className={`${styles.toggleButton} ${displayMode === "original" ? styles.active : ""}`}
+            onClick={() => setDisplayMode("original")}
+          >
+            原始名称
+          </button>
         </div>
-      ))}
+      </div>
+
+      <div className={styles.list}>
+        {resolvedMetrics.map((metric) => (
+          <div key={metric.id} className={styles.metricItem}>
+            <div className={styles.metricHeader}>
+              <span className={styles.metricName}>
+                {metric.businessName || metric.name}
+              </span>
+            </div>
+            <div className={styles.expression}>
+              {metric.resolvedExpression || "-"}
+            </div>
+            {metric.description && (
+              <p className={styles.metricDesc}>{metric.description}</p>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

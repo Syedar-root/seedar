@@ -4,6 +4,53 @@
   gap: var(--spacing-sm);
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid var(--border-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.count {
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+}
+
+.toggle {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.toggleButton {
+  padding: 4px 10px;
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: var(--text-secondary);
+    border-color: var(--border-hover);
+  }
+
+  &.active {
+    color: var(--primary);
+    background: var(--primary-bg);
+    border-color: var(--primary);
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
 .emptyState {
   display: flex;
   align-items: center;
@@ -33,7 +80,6 @@
 .metricHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-xs);
 }
@@ -44,15 +90,7 @@
   color: var(--text-primary);
 }
 
-.metricType {
-  font-size: var(--font-xs);
-  color: var(--text-tertiary);
-  padding: 2px 8px;
-  background: var(--bg-base);
-  border-radius: var(--radius-sm);
-}
-
-.metricFormula {
+.expression {
   font-size: var(--font-sm);
   color: var(--text-secondary);
   font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
@@ -70,6 +108,12 @@
 }
 
 @media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+
   .metricItem {
     padding: var(--spacing-sm);
   }

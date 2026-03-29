@@ -228,6 +228,7 @@ export interface DatasetMetricResponse {
   timeDataSourceColumnName?: string;
   periodType?: PeriodOverPeriodType;
   calculationMode?: PeriodCalculationMode;
+  expression?: string;
 }
 
 /**

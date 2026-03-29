@@ -86,7 +86,7 @@ export const DatasetDetailPage = () => {
                 </div>
 
                 <ScrollArea className={styles.scrollArea}>
-                  <MetricList metrics={dataset.metrics || []} />
+                  <MetricList metrics={dataset.metrics || []} fields={dataset.fields || []} />
                 </ScrollArea>
               </section>
 
