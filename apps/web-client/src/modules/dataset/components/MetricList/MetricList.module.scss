@@ -18,32 +18,18 @@
   color: var(--text-tertiary);
 }
 
-.toggle {
+.switchContainer {
   display: flex;
+  align-items: center;
   gap: var(--spacing-xs);
 }
 
-.toggleButton {
-  padding: 4px 10px;
+.switchLabel {
   font-size: var(--font-xs);
-  color: var(--text-tertiary);
-  background: transparent;
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.15s ease;
-
-  &:hover {
-    color: var(--text-secondary);
-    border-color: var(--border-hover);
-  }
-
-  &.active {
-    color: var(--primary);
-    background: var(--primary-bg);
-    border-color: var(--primary);
-  }
+  color: var(--text-secondary);
 }
+
+
 
 .list {
   display: flex;

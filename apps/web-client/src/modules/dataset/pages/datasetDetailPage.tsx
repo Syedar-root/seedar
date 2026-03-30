@@ -52,7 +52,7 @@ export const DatasetDetailPage = () => {
       <DatasetHero dataset={dataset} onBack={() => navigate("/dataset")} />
 
       <main className={styles.mainContent}>
-        <DatasetMetadataBar dataset={dataset} />
+        {/* <DatasetMetadataBar dataset={dataset} /> */}
 
         {!isWideType && dataset.joins && dataset.joins.length > 0 && (
           <section className={clsx(styles.fullWidthSection, styles.join)}>

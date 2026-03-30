@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { DatasetMetricResponse, DatasetFieldResponse } from "#pkg/seedar/types";
+import { Switch } from "@/core/components/ui/Switch";
 import styles from "./MetricList.module.scss";
 
 interface MetricListProps {
@@ -76,19 +77,14 @@ export const MetricList = ({ metrics, fields }: MetricListProps) => {
     <div className={styles.container}>
       <div className={styles.header}>
         <span className={styles.count}>共 {metrics.length} 个指标</span>
-        <div className={styles.toggle}>
-          <button
-            className={`${styles.toggleButton} ${displayMode === "business" ? styles.active : ""}`}
-            onClick={() => setDisplayMode("business")}
-          >
-            业务名称
-          </button>
-          <button
-            className={`${styles.toggleButton} ${displayMode === "original" ? styles.active : ""}`}
-            onClick={() => setDisplayMode("original")}
-          >
-            原始名称
-          </button>
+        <div className={styles.switchContainer}>
+          <span className={styles.switchLabel}>业务名称</span>
+          <Switch
+            checked={displayMode === "business"}
+            onCheckedChange={(checked) =>
+              setDisplayMode(checked ? "business" : "original")
+            }
+          />
         </div>
       </div>
 
