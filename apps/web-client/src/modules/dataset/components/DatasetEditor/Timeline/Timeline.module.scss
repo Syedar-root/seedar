@@ -1,0 +1,141 @@
+.timeline {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-lg) 0;
+}
+
+.stepItem {
+  display: flex;
+  min-height: 56px;
+
+  &:last-child {
+    min-height: auto;
+  }
+}
+
+.stepIndicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.indicatorCircle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border-base);
+  background: var(--bg-secondary);
+  color: var(--text-inverse);
+  transition: all 0.2s ease;
+}
+
+.completed .indicatorCircle {
+  background: var(--primary-active);
+  border-color: var(--primary-active);
+  color: var(--text-inverse);
+}
+
+.active .indicatorCircle {
+  background: var(--primary-active);
+  border-color: var(--primary-active);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-active) 20%, transparent);
+}
+
+.pending .indicatorCircle {
+  background: var(--bg-secondary);
+  border-color: var(--border-base);
+}
+
+.error .indicatorCircle {
+  background: var(--error-light);
+  border-color: var(--error-active);
+}
+
+.activeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-inverse);
+}
+
+.pendingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.errorDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--error-active);
+}
+
+.connector {
+  width: 2px;
+  flex: 1;
+  min-height: 24px;
+  background: var(--border-base);
+  margin: 4px 0;
+}
+
+.completed .connector {
+  background: var(--primary-active);
+}
+
+.stepContent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: var(--spacing-md);
+  flex: 1;
+  cursor: default;
+}
+
+.completed .stepContent {
+  cursor: pointer;
+
+  &:hover .stepLabel {
+    color: var(--primary-active);
+  }
+}
+
+.stepLabel {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+}
+
+.active .stepLabel {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.completed .stepLabel {
+  color: var(--text-tertiary);
+}
+
+.error .stepLabel {
+  color: var(--error-active);
+}
+
+@media (max-width: 768px) {
+  .timeline {
+    padding: var(--spacing-md) 0;
+  }
+
+  .stepItem {
+    min-height: 48px;
+  }
+
+  .stepLabel {
+    font-size: var(--font-xs);
+  }
+}

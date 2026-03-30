@@ -42,7 +42,7 @@ export const DatasetPage = () => {
   };
 
   const handleEdit = (id: number) => {
-    console.log("Edit dataset:", id);
+    navigate(`/dataset/${id}/edit`);
   };
 
   const handleDelete = (id: number) => {

@@ -1,2 +1,7 @@
-export { DatasetPage, DatasetDetailPage } from "./pages";
+export {
+  DatasetPage,
+  DatasetDetailPage,
+  DatasetCreatePage,
+  DatasetEditPage,
+} from "./pages";
 export * from "./components";

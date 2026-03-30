@@ -5,7 +5,12 @@ import { DashboardPage } from "@/modules/dashboard";
 import { PanelPage } from "@/modules/panel";
 import { DatasourcePage } from "@/modules/datasource";
 import { DatasourceDetailPage } from "@/modules/datasource";
-import { DatasetPage, DatasetDetailPage } from "@/modules/dataset/pages";
+import {
+  DatasetPage,
+  DatasetDetailPage,
+  DatasetCreatePage,
+  DatasetEditPage,
+} from "@/modules/dataset/pages";
 
 export const router = createBrowserRouter([
   {
@@ -25,8 +30,16 @@ export const router = createBrowserRouter([
         element: <DatasetPage />,
       },
       {
+        path: "dataset/create",
+        element: <DatasetCreatePage />,
+      },
+      {
         path: "dataset/:id",
         element: <DatasetDetailPage />,
+      },
+      {
+        path: "dataset/:id/edit",
+        element: <DatasetEditPage />,
       },
       {
         path: "dashboard/:dashboardId?",
