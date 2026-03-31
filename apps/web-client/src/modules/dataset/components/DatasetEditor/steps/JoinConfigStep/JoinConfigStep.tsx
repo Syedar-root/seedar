@@ -1,5 +1,8 @@
 import { Plus, Trash2, AlertCircle } from "lucide-react";
-import type { DatasetFormData, JoinConfig } from "../../../types/editor.types";
+import type {
+  DatasetFormData,
+  JoinConfig,
+} from "../../../../types/editor.types";
 import styles from "./JoinConfigStep.module.scss";
 
 interface JoinConfigStepProps {

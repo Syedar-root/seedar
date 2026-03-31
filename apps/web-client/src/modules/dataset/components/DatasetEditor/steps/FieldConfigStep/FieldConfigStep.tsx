@@ -1,5 +1,5 @@
 import { AlertCircle, Lock } from "lucide-react";
-import type { DatasetFormData } from "../../../types/editor.types";
+import type { DatasetFormData } from "../../../../types/editor.types";
 import styles from "./FieldConfigStep.module.scss";
 
 interface FieldConfigStepProps {
@@ -45,7 +45,8 @@ export const FieldConfigStep = ({
           </p>
         </div>
         <div className={styles.stat}>
-          已选择 <span className={styles.statNumber}>{selectedCount}</span> 个字段
+          已选择 <span className={styles.statNumber}>{selectedCount}</span>{" "}
+          个字段
         </div>
       </div>
 
@@ -82,9 +83,7 @@ export const FieldConfigStep = ({
                       className={styles.checkbox}
                     />
                     <span className={styles.fieldName}>{field.name}</span>
-                    {isLocked && (
-                      <Lock size={12} className={styles.lockIcon} />
-                    )}
+                    {isLocked && <Lock size={12} className={styles.lockIcon} />}
                   </div>
                 );
               })}

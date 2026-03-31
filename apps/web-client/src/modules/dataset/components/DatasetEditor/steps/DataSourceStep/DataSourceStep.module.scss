@@ -148,39 +148,33 @@
   flex: 1;
 }
 
-.pkIcon {
-  color: var(--warning-active);
-  flex-shrink: 0;
+.primaryKey {
+  .fieldName {
+    color: var(--primary-active);
+    font-weight: 500;
+  }
 }
 
-.primaryKey .fieldName {
-  font-weight: 500;
+.pkIcon {
+  color: var(--primary-active);
+  flex-shrink: 0;
 }
 
 .moreFields {
   font-size: var(--font-xs);
   color: var(--text-tertiary);
-  padding-top: var(--spacing-xs);
-  border-top: 1px dashed var(--border-base);
-  margin-top: var(--spacing-xs);
+  padding: var(--spacing-xs) 0;
 }
 
 .noTables {
   font-size: var(--font-sm);
   color: var(--text-tertiary);
-  margin: 0;
-  padding: var(--spacing-md);
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
   text-align: center;
+  padding: var(--spacing-xl);
 }
 
 @media (max-width: 768px) {
-  .container {
-    gap: var(--spacing-lg);
-  }
-
   .tableGrid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: 1fr;
   }
 }

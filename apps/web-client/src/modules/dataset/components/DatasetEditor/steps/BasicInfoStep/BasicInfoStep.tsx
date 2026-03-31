@@ -1,4 +1,4 @@
-import type { DatasetFormData } from "../../../types/editor.types";
+import type { DatasetFormData } from "../../../../types/editor.types";
 import styles from "./BasicInfoStep.module.scss";
 
 interface BasicInfoStepProps {

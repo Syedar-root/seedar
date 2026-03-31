@@ -96,6 +96,14 @@
   }
 }
 
+.checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--primary-active);
+}
+
 .fieldName {
   font-size: var(--font-sm);
   color: var(--text-primary);

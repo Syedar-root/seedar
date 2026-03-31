@@ -3,7 +3,7 @@ import { Checkbox } from "@base-ui/react/checkbox";
 import { Check, Key } from "lucide-react";
 import { useDatasources } from "#pkg/seedar/ui-react";
 import { Select } from "@/core/components/ui/Select";
-import type { DatasetFormData } from "../../../types/editor.types";
+import type { DatasetFormData } from "../../../../types/editor.types";
 import styles from "./DataSourceStep.module.scss";
 
 interface DataSourceStepProps {

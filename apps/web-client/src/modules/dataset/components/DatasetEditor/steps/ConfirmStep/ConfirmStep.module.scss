@@ -66,14 +66,14 @@
   font-weight: 500;
 }
 
-.tableList {
+.tagList {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-sm);
   margin-top: var(--spacing-md);
 }
 
-.tableTag {
+.tag {
   display: inline-flex;
   align-items: center;
   padding: var(--spacing-xs) var(--spacing-sm);
@@ -145,11 +145,5 @@
 @media (max-width: 1024px) {
   .infoGrid {
     grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .infoGrid {
-    grid-template-columns: 1fr;
   }
 }

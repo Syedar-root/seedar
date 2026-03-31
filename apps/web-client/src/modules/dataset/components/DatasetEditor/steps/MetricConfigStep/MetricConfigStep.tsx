@@ -1,5 +1,8 @@
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import type { DatasetFormData, MetricConfig } from "../../../types/editor.types";
+import type {
+  DatasetFormData,
+  MetricConfig,
+} from "../../../../types/editor.types";
 import styles from "./MetricConfigStep.module.scss";
 
 interface MetricConfigStepProps {
@@ -21,9 +24,7 @@ export const MetricConfigStep = ({
     return (
       <div className={styles.container}>
         <div className={styles.emptyState}>
-          <p className={styles.emptyText}>
-            宽表型数据集不支持指标配置
-          </p>
+          <p className={styles.emptyText}>宽表型数据集不支持指标配置</p>
         </div>
       </div>
     );

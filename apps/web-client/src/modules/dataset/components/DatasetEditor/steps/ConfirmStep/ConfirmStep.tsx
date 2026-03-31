@@ -1,5 +1,5 @@
 import { ScrollText, GitMerge, List, BarChart3 } from "lucide-react";
-import type { DatasetFormData } from "../../../types/editor.types";
+import type { DatasetFormData } from "../../../../types/editor.types";
 import styles from "./ConfirmStep.module.scss";
 
 interface ConfirmStepProps {
@@ -56,9 +56,7 @@ export const ConfirmStep = ({ formData, isSubmitting }: ConfirmStepProps) => {
           </div>
           <div className={styles.infoItem}>
             <span className={styles.infoLabel}>表数量</span>
-            <span className={styles.infoValue}>
-              {formData.tables.length}
-            </span>
+            <span className={styles.infoValue}>{formData.tables.length}</span>
           </div>
           <div className={styles.infoItem}>
             <span className={styles.infoLabel}>主表</span>
