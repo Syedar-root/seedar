@@ -159,6 +159,10 @@ export const JoinConfigStep = ({
   }, [nodesState, edgesState, setNodes, fitView]);
 
   useEffect(() => {
+    setEdges(rawEdges);
+  }, [formData.joins, setEdges]);
+
+  useEffect(() => {
     applyLayout();
   }, []);
 

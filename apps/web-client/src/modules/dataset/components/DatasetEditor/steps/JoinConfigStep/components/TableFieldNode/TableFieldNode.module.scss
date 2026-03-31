@@ -63,7 +63,14 @@
   &:hover {
     background: #3b82f6;
     transform-origin: center center;
-    transform: scale(1.2) translate(50%, -50%);
+
+    &.leftHandle {
+      transform: scale(1.2) translate(-50%, -50%);
+    }
+
+    &.rightHandle {
+      transform: scale(1.2) translate(50%, -50%);
+    }
   }
 }
 

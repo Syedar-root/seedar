@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Star } from "lucide-react";
 import styles from "./TableFieldNode.module.scss";
+import clsx from "clsx";
 
 interface TableFieldNodeData {
   [key: string]: unknown;
@@ -51,11 +52,18 @@ export const TableFieldNode = memo(
                   id={leftHandleId}
                   type="target"
                   position={Position.Left}
-                  className={`${styles.handle} ${isLeftConnected ? styles.handleConnected : ""}`}
+                  className={clsx(
+                    styles.handle,
+                    styles.leftHandle,
+                    isLeftConnected && styles.handleConnected,
+                  )}
                   isConnectable={true}
                 />
                 <span
-                  className={`${styles.fieldName} ${col.isPrimaryKey ? styles.primaryKey : ""}`}
+                  className={clsx(
+                    styles.fieldName,
+                    col.isPrimaryKey && styles.primaryKey,
+                  )}
                 >
                   {col.columnName}
                 </span>
@@ -63,7 +71,11 @@ export const TableFieldNode = memo(
                   id={rightHandleId}
                   type="source"
                   position={Position.Right}
-                  className={`${styles.handle} ${isRightConnected ? styles.handleConnected : ""}`}
+                  className={clsx(
+                    styles.handle,
+                    styles.rightHandle,
+                    isRightConnected && styles.handleConnected,
+                  )}
                   isConnectable={true}
                 />
               </div>
