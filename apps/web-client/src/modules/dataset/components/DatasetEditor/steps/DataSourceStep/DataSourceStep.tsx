@@ -14,11 +14,8 @@ interface DataSourceStepProps {
 
 export const DataSourceStep = ({ formData, onUpdate }: DataSourceStepProps) => {
   const { data: datasources } = useDatasources();
-  const {
-    datasource: selectedDatasource,
-    datasourceId,
-    fetchDatasource,
-  } = useDatasetEditorStore();
+  const { datasource: selectedDatasource, fetchDatasource } =
+    useDatasetEditorStore();
   const [selectedDatasourceId, setSelectedDatasourceId] = useState<string>(
     formData.datasourceId,
   );
@@ -27,15 +24,15 @@ export const DataSourceStep = ({ formData, onUpdate }: DataSourceStepProps) => {
   );
 
   useEffect(() => {
-    if (selectedDatasourceId) {
+    if (
+      selectedDatasourceId &&
+      selectedDatasourceId !== formData.datasourceId
+    ) {
       onUpdate({
         datasourceId: selectedDatasourceId,
         tables: [],
         mainTable: "",
       });
-      setSelectedTableNames([]);
-    } else {
-      onUpdate({ datasourceId: "", tables: [], mainTable: "" });
       setSelectedTableNames([]);
     }
   }, [selectedDatasourceId]);

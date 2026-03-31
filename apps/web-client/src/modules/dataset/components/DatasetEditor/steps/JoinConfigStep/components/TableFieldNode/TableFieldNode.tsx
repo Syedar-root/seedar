@@ -18,7 +18,12 @@ interface TableFieldNodeData {
 
 export const TableFieldNode = memo(
   ({ data }: NodeProps<Node<TableFieldNodeData>>) => {
-    const { tableName, isMainTable, columns, connectedFields = new Set() } = data;
+    const {
+      tableName,
+      isMainTable,
+      columns,
+      connectedFields = new Set(),
+    } = data;
 
     return (
       <div className={styles.tableFieldNode}>
@@ -47,9 +52,11 @@ export const TableFieldNode = memo(
                   type="target"
                   position={Position.Left}
                   className={`${styles.handle} ${isLeftConnected ? styles.handleConnected : ""}`}
-                  isConnectable={!isLeftConnected}
+                  isConnectable={true}
                 />
-                <span className={`${styles.fieldName} ${col.isPrimaryKey ? styles.primaryKey : ""}`}>
+                <span
+                  className={`${styles.fieldName} ${col.isPrimaryKey ? styles.primaryKey : ""}`}
+                >
                   {col.columnName}
                 </span>
                 <Handle
@@ -57,7 +64,7 @@ export const TableFieldNode = memo(
                   type="source"
                   position={Position.Right}
                   className={`${styles.handle} ${isRightConnected ? styles.handleConnected : ""}`}
-                  isConnectable={!isRightConnected}
+                  isConnectable={true}
                 />
               </div>
             );
@@ -65,7 +72,7 @@ export const TableFieldNode = memo(
         </div>
       </div>
     );
-  }
+  },
 );
 
 TableFieldNode.displayName = "TableFieldNode";

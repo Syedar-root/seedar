@@ -1,11 +1,11 @@
-import dagre from "dagre";
+import dagre from "@dagrejs/dagre";
 import type { Node, Edge } from "@xyflow/react";
 
 const DEFAULT_NODE_WIDTH = 160;
 const DEFAULT_NODE_HEIGHT = 40;
 const DEFAULT_FIELD_ROW_HEIGHT = 28;
 const DEFAULT_NODE_SEPARATION = 120;
-const DEFAULT_RANK_SEPARATION = 200;
+const DEFAULT_RANK_SEPARATION = 100;
 
 interface LayoutOptions {
   direction?: "TB" | "LR" | "BT" | "RL";
@@ -37,8 +37,6 @@ export const getLayoutedElements = (
     rankdir: direction,
     nodesep: nodeSeparation,
     ranksep: rankSeparation,
-    marginx: 50,
-    marginy: 50,
   });
 
   nodes.forEach((node) => {
@@ -46,7 +44,7 @@ export const getLayoutedElements = (
     const height = nodeData?.columns?.length
       ? DEFAULT_NODE_HEIGHT + nodeData.columns.length * DEFAULT_FIELD_ROW_HEIGHT
       : DEFAULT_NODE_HEIGHT + DEFAULT_FIELD_ROW_HEIGHT * 3;
-    dagreGraph.setNode(node.id, { width: nodeWidth, height });
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: height });
   });
 
   edges.forEach((edge) => {
@@ -54,6 +52,8 @@ export const getLayoutedElements = (
   });
 
   dagre.layout(dagreGraph);
+
+  const isHorizontal = direction === "LR" || direction === "RL";
 
   const layoutedNodes = nodes.map((node) => {
     const nodeData = node.data as unknown as TableFieldNodeData;
@@ -70,10 +70,15 @@ export const getLayoutedElements = (
     }
     return {
       ...node,
-      position: {
-        x: nodeWithPosition.x - nodeWidth / 2,
-        y: nodeWithPosition.y - height / 2,
-      },
+      position: isHorizontal
+        ? {
+            x: nodeWithPosition.y - height / 2,
+            y: nodeWithPosition.x - nodeWidth / 2,
+          }
+        : {
+            x: nodeWithPosition.x - nodeWidth / 2,
+            y: nodeWithPosition.y - height / 2,
+          },
     };
   });
 

@@ -41,7 +41,7 @@ export const useDatasetForm = ({
   onSubmit,
 }: UseDatasetFormProps) => {
   const [formData, setFormData] = useState<DatasetFormData>(
-    initialData || createEmptyFormData()
+    initialData || createEmptyFormData(),
   );
   const [currentStep, setCurrentStep] = useState<EditorSteps>("basicInfo");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,7 +65,7 @@ export const useDatasetForm = ({
 
   const currentStepIndex = useMemo(
     () => STEPS.indexOf(currentStep),
-    [currentStep]
+    [currentStep],
   );
 
   const isFirstStep = currentStepIndex === 0;
@@ -76,7 +76,11 @@ export const useDatasetForm = ({
       case "basicInfo":
         return !!formData.name.trim();
       case "dataSource":
-        return !!formData.datasourceId && formData.tables.length > 0;
+        return (
+          !!formData.datasourceId &&
+          formData.tables.length > 0 &&
+          formData.mainTable
+        );
       case "joinConfig":
         return formData.tables.length <= 1 || formData.joins.length > 0;
       case "fieldConfig":
@@ -105,15 +109,12 @@ export const useDatasetForm = ({
         setCurrentStep(step);
       }
     },
-    [currentStepIndex]
+    [currentStepIndex],
   );
 
-  const updateFormData = useCallback(
-    (updates: Partial<DatasetFormData>) => {
-      setFormData((prev) => ({ ...prev, ...updates }));
-    },
-    []
-  );
+  const updateFormData = useCallback((updates: Partial<DatasetFormData>) => {
+    setFormData((prev) => ({ ...prev, ...updates }));
+  }, []);
 
   const getLockedFields = useCallback((): Set<string> => {
     const lockedFields = new Set<string>();
@@ -125,7 +126,7 @@ export const useDatasetForm = ({
 
     formData.metrics.forEach((metric) => {
       const fieldMatches = formData.fields.filter((field) =>
-        metric.expression.includes(field)
+        metric.expression.includes(field),
       );
       fieldMatches.forEach((field) => lockedFields.add(field));
     });
@@ -147,7 +148,7 @@ export const useDatasetForm = ({
           : [...prev.fields, fieldId],
       }));
     },
-    [getLockedFields]
+    [getLockedFields],
   );
 
   const addJoin = useCallback((join: JoinConfig) => {
@@ -157,24 +158,24 @@ export const useDatasetForm = ({
     }));
   }, []);
 
-  const removeJoin = useCallback(
-    (joinId: string) => {
-      setFormData((prev) => ({
-        ...prev,
-        joins: prev.joins.filter((j) => j.id !== joinId),
-      }));
-    },
-    []
-  );
-
-  const updateJoin = useCallback((joinId: string, updates: Partial<JoinConfig>) => {
+  const removeJoin = useCallback((joinId: string) => {
     setFormData((prev) => ({
       ...prev,
-      joins: prev.joins.map((j) =>
-        j.id === joinId ? { ...j, ...updates } : j
-      ),
+      joins: prev.joins.filter((j) => j.id !== joinId),
     }));
   }, []);
+
+  const updateJoin = useCallback(
+    (joinId: string, updates: Partial<JoinConfig>) => {
+      setFormData((prev) => ({
+        ...prev,
+        joins: prev.joins.map((j) =>
+          j.id === joinId ? { ...j, ...updates } : j,
+        ),
+      }));
+    },
+    [],
+  );
 
   const addMetric = useCallback((metric: MetricConfig) => {
     setFormData((prev) => ({
@@ -183,26 +184,23 @@ export const useDatasetForm = ({
     }));
   }, []);
 
-  const removeMetric = useCallback(
-    (metricId: string) => {
-      setFormData((prev) => ({
-        ...prev,
-        metrics: prev.metrics.filter((m) => m.id !== metricId),
-      }));
-    },
-    []
-  );
+  const removeMetric = useCallback((metricId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      metrics: prev.metrics.filter((m) => m.id !== metricId),
+    }));
+  }, []);
 
   const updateMetric = useCallback(
     (metricId: string, updates: Partial<MetricConfig>) => {
       setFormData((prev) => ({
         ...prev,
         metrics: prev.metrics.map((m) =>
-          m.id === metricId ? { ...m, ...updates } : m
+          m.id === metricId ? { ...m, ...updates } : m,
         ),
       }));
     },
-    []
+    [],
   );
 
   const handleSubmit = useCallback(async () => {
