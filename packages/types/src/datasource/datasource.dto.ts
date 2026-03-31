@@ -5,7 +5,7 @@ import {
   ExcelConfig,
   DataSourceConfig,
   DataSourceStatus,
-} from './datasource.types';
+} from "./datasource.types";
 
 /**
  * 创建数据源请求
@@ -52,6 +52,7 @@ export class DatasourceResponse {
   tables?: Array<{
     tableName: string;
     columns: Array<{
+      columnId?: number;
       columnName: string;
       rawDataType: string;
       normalizedType: any;

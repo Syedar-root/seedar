@@ -10,6 +10,7 @@ interface TableFieldNodeData {
   tableName: string;
   isMainTable: boolean;
   columns: Array<{
+    columnId?: number;
     columnName: string;
     isPrimaryKey?: boolean;
     type?: string;
@@ -41,8 +42,8 @@ export const TableFieldNode = memo(
         </div>
         <div className={styles.fieldList}>
           {columns.map((col) => {
-            const leftHandleId = `${data.tableId}:${col.columnName}:target`;
-            const rightHandleId = `${data.tableId}:${col.columnName}:source`;
+            const leftHandleId = `${data.tableId}:${col.columnId}:target:${col.columnName}`;
+            const rightHandleId = `${data.tableId}:${col.columnId}:source:${col.columnName}`;
             const isLeftConnected = connectedFields.has(leftHandleId);
             const isRightConnected = connectedFields.has(rightHandleId);
 

@@ -17,6 +17,7 @@ import type {
   JoinConfig,
   MetricConfig,
 } from "../../types/editor.types";
+import type { DatasourceResponse } from "#pkg/seedar/types";
 import styles from "./DatasetEditorPage.module.scss";
 
 const STEP_LABELS: Record<EditorSteps, string> = {
@@ -42,8 +43,8 @@ export interface DatasetEditorPageProps {
   goToPrevStep: () => void;
   goToStep: (step: EditorSteps) => void;
   updateFormData: (updates: Partial<DatasetFormData>) => void;
-  getLockedFields: () => Set<string>;
-  toggleField: (fieldId: string) => void;
+  getLockedFields: (selectedDatasource?: DatasourceResponse | null) => Set<string>;
+  toggleField: (fieldId: string, lockedFields: Set<string>) => void;
   addJoin: (join: JoinConfig) => void;
   removeJoin: (joinId: string) => void;
   updateJoin: (joinId: string, updates: Partial<JoinConfig>) => void;
@@ -135,8 +136,9 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
         return (
           <FieldConfigStep
             formData={formData}
-            lockedFields={getLockedFields()}
-            onToggleField={toggleField}
+            lockedFields={getLockedFields(datasource)}
+            onToggleField={(fieldId) => toggleField(fieldId, getLockedFields(datasource))}
+            selectedDatasource={datasource ?? undefined}
           />
         );
       case "metricConfig":

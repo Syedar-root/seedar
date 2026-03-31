@@ -9,7 +9,7 @@ interface UseAutoScrollOptions {
 
 export const useAutoScroll = (options: UseAutoScrollOptions = {}) => {
   const {
-    threshold = 100,
+    threshold = 150,
     maxScrollAmount = 20,
     minScrollAmount = 5,
     interval = 50,
@@ -38,7 +38,7 @@ export const useAutoScroll = (options: UseAutoScrollOptions = {}) => {
     const mouseY = mousePositionRef.current.y;
     const distanceToBottom = rect.bottom - mouseY;
 
-    if (distanceToBottom < threshold && distanceToBottom > -threshold) {
+    if (distanceToBottom < threshold && distanceToBottom > 0) {
       const scrollAmount = Math.max(
         minScrollAmount,
         maxScrollAmount * (1 - distanceToBottom / threshold),
@@ -71,9 +71,9 @@ export const useAutoScroll = (options: UseAutoScrollOptions = {}) => {
       mousePositionRef.current = { x: e.clientX, y: e.clientY };
     };
 
-    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mousemove", handleMouseMove, true);
     return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mousemove", handleMouseMove, true);
     };
   }, []);
 

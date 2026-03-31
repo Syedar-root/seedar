@@ -8,6 +8,7 @@ import type {
   EditorSteps,
   EditorMode,
 } from "../types/editor.types";
+import type { DatasourceResponse } from "#pkg/seedar/types";
 
 const STEPS: EditorSteps[] = [
   "basicInfo",
@@ -151,27 +152,44 @@ export const useDatasetForm = ({
     setFormData((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const getLockedFields = useCallback((): Set<string> => {
-    const lockedFields = new Set<string>();
+  const getLockedFields = useCallback(
+    (selectedDatasource?: DatasourceResponse | null): Set<string> => {
+      const lockedFields = new Set<string>();
 
-    formData.joins.forEach((join) => {
-      lockedFields.add(join.leftField);
-      lockedFields.add(join.rightField);
-    });
+      formData.joins.forEach((join) => {
+        lockedFields.add(join.leftField);
+        lockedFields.add(join.rightField);
+      });
 
-    formData.metrics.forEach((metric) => {
-      const fieldMatches = formData.fields.filter((field) =>
-        metric.expression.includes(field),
-      );
-      fieldMatches.forEach((field) => lockedFields.add(field));
-    });
+      formData.metrics.forEach((metric) => {
+        const fieldMatches = formData.fields.filter((field) =>
+          metric.expression.includes(field),
+        );
+        fieldMatches.forEach((field) => lockedFields.add(field));
+      });
 
-    return lockedFields;
-  }, [formData.joins, formData.metrics, formData.fields]);
+      if (selectedDatasource?.tables) {
+        formData.tables.forEach((table) => {
+          const datasourceTable = selectedDatasource.tables?.find(
+            (dt) => dt.tableName === table.tableName,
+          );
+          if (datasourceTable) {
+            datasourceTable.columns.forEach((column) => {
+              if (column.isPrimaryKey && column.columnId) {
+                lockedFields.add(column.columnId.toString());
+              }
+            });
+          }
+        });
+      }
+
+      return lockedFields;
+    },
+    [formData.joins, formData.metrics, formData.fields, formData.tables],
+  );
 
   const toggleField = useCallback(
-    (fieldId: string) => {
-      const lockedFields = getLockedFields();
+    (fieldId: string, lockedFields: Set<string>) => {
       if (lockedFields.has(fieldId)) {
         return;
       }
@@ -183,7 +201,7 @@ export const useDatasetForm = ({
           : [...prev.fields, fieldId],
       }));
     },
-    [getLockedFields],
+    [],
   );
 
   const addJoin = useCallback((join: JoinConfig) => {
@@ -250,6 +268,47 @@ export const useDatasetForm = ({
       setIsSubmitting(false);
     }
   }, [formData, canGoNext, onSubmit]);
+
+  useEffect(() => {
+    const lockedFields = new Set<string>();
+
+    formData.joins.forEach((join) => {
+      lockedFields.add(join.leftField);
+      lockedFields.add(join.rightField);
+    });
+
+    formData.metrics.forEach((metric) => {
+      const fieldMatches = formData.fields.filter((field) =>
+        metric.expression.includes(field),
+      );
+      fieldMatches.forEach((field) => lockedFields.add(field));
+    });
+
+    if (selectedDatasource?.tables) {
+      formData.tables.forEach((table) => {
+        const datasourceTable = selectedDatasource.tables?.find(
+          (dt) => dt.tableName === table.tableName,
+        );
+        if (datasourceTable) {
+          datasourceTable.columns.forEach((column) => {
+            if (column.isPrimaryKey && column.columnId) {
+              lockedFields.add(column.columnId.toString());
+            }
+          });
+        }
+      });
+    }
+
+    const missingLockedFields = [...lockedFields].filter(
+      (field) => !formData.fields.includes(field),
+    );
+    if (missingLockedFields.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        fields: [...prev.fields, ...missingLockedFields],
+      }));
+    }
+  }, [formData.tables, formData.joins, formData.metrics, selectedDatasource]);
 
   return {
     formData,

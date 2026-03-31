@@ -113,6 +113,11 @@
   white-space: nowrap;
 }
 
+.pkIcon {
+  color: var(--warning-active);
+  flex-shrink: 0;
+}
+
 .lockIcon {
   color: var(--text-tertiary);
   flex-shrink: 0;

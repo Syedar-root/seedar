@@ -33,7 +33,9 @@ export const isHandleConnected = (
     const sourceHandle = edge.sourceHandle;
     const targetHandle = edge.targetHandle;
     const expectedHandleId = `${tableId}:${columnName}:${handleType}`;
-    return sourceHandle === expectedHandleId || targetHandle === expectedHandleId;
+    return (
+      sourceHandle === expectedHandleId || targetHandle === expectedHandleId
+    );
   });
 };
 
@@ -53,7 +55,10 @@ export const getConnectedFieldsSet = (
   return connected;
 };
 
-export const createEdgeId = (sourceTableId: string, targetTableId: string): string => {
+export const createEdgeId = (
+  sourceTableId: string,
+  targetTableId: string,
+): string => {
   return `join-${sourceTableId}-${targetTableId}`;
 };
 
@@ -61,13 +66,16 @@ export interface ParsedHandleId {
   tableId: string;
   columnName: string;
   handleType: "source" | "target";
+  columnId: string;
 }
 
-export const parseHandleId = (handleId: string | null): ParsedHandleId | null => {
+export const parseHandleId = (
+  handleId: string | null,
+): ParsedHandleId | null => {
   if (!handleId) return null;
   const parts = handleId.split(":");
-  if (parts.length !== 3) return null;
-  const [tableId, columnName, handleType] = parts;
+  if (parts.length !== 4) return null;
+  const [tableId, columnId, handleType, columnName] = parts;
   if (handleType !== "source" && handleType !== "target") return null;
-  return { tableId, columnName, handleType };
+  return { tableId, columnName, handleType, columnId };
 };

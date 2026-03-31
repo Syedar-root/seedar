@@ -44,16 +44,20 @@ const edgeTypes: EdgeTypes = {
   joinEdge: JoinEdge,
 };
 
+interface ColumnData {
+  columnId: string;
+  columnName: string;
+  isPrimaryKey?: boolean;
+  type?: string;
+  [key: string]: unknown;
+}
+
 interface TableFieldNodeData {
   [key: string]: unknown;
   tableId: string;
   tableName: string;
   isMainTable: boolean;
-  columns: Array<{
-    columnName: string;
-    isPrimaryKey?: boolean;
-    type?: string;
-  }>;
+  columns: ColumnData[];
   connectedFields?: Set<string>;
 }
 
@@ -88,6 +92,30 @@ export const JoinConfigStep = ({
     [formData.tables, selectedDatasource],
   );
 
+  const getTableColumnsMap = useCallback(
+    (tableId: string) => {
+      const table = formData.tables.find((t) => t.tableId === tableId);
+      if (!table || !selectedDatasource?.tables) return {};
+      const datasourceTable = selectedDatasource.tables.find(
+        (t) => t.tableName === table.tableName,
+      );
+      if (!datasourceTable?.columns) return {};
+      return (
+        (datasourceTable?.columns).reduce(
+          (acc, col) => ({
+            ...acc,
+            [String(col.columnId)]: {
+              ...col,
+              columnId: String(col.columnId),
+            },
+          }),
+          {} as Record<string, ColumnData>,
+        ) || {}
+      );
+    },
+    [formData.tables, selectedDatasource],
+  );
+
   const rawNodes = useMemo((): TableNode[] => {
     return formData.tables.map((table) => {
       const columns = getTableColumns(table.tableId);
@@ -102,6 +130,7 @@ export const JoinConfigStep = ({
           tableName: table.tableName,
           isMainTable,
           columns: columns.map((col) => ({
+            columnId: String(col.columnId),
             columnName: col.columnName,
             isPrimaryKey: col.isPrimaryKey,
             type: col.normalizedType,
@@ -113,24 +142,31 @@ export const JoinConfigStep = ({
 
   const rawEdges = useMemo((): Edge[] => {
     return formData.joins.map((join) => {
+      const leftTableColumnsMap = getTableColumnsMap(join.leftTable);
+      const rightTableColumnsMap = getTableColumnsMap(join.rightTable);
+      const leftColumn = leftTableColumnsMap[join.leftField];
+      const rightColumn = rightTableColumnsMap[join.rightField];
+      const leftColumnName = leftColumn?.columnName || join.leftField;
+      const rightColumnName = rightColumn?.columnName || join.rightField;
+
       return {
         id: join.id,
         source: join.leftTable,
         target: join.rightTable,
-        sourceHandle: `${join.leftTable}:${join.leftField}:source`,
-        targetHandle: `${join.rightTable}:${join.rightField}:target`,
+        sourceHandle: `${join.leftTable}:${join.leftField}:source:${leftColumnName}`,
+        targetHandle: `${join.rightTable}:${join.rightField}:target:${rightColumnName}`,
         type: "joinEdge",
         data: {
           joinType: join.joinType,
-          leftFieldName: join.leftField,
-          rightFieldName: join.rightField,
+          leftFieldName: leftColumnName,
+          rightFieldName: rightColumnName,
           leftTableId: join.leftTable,
           rightTableId: join.rightTable,
           joinId: join.id,
         } as JoinEdgeData,
       };
     });
-  }, [formData.joins]);
+  }, [formData.joins, getTableColumns]);
 
   const [nodesState, setNodes, onNodesChange] = useNodesState(rawNodes);
   const [edgesState, setEdges, onEdgesChange] = useEdgesState(rawEdges);
@@ -182,7 +218,6 @@ export const JoinConfigStep = ({
   const handleConnect = useCallback(
     (connection: Connection) => {
       if (!isValidConnection(connection)) return;
-
       const sourceInfo = parseHandleId(connection.sourceHandle!);
       const targetInfo = parseHandleId(connection.targetHandle!);
 
@@ -202,10 +237,10 @@ export const JoinConfigStep = ({
       const newJoin: JoinConfig = {
         id: `join-${Date.now()}`,
         leftTable: sourceInfo.tableId,
-        leftField: sourceInfo.columnName,
+        leftField: sourceInfo.columnId,
         joinType: "inner",
         rightTable: targetInfo.tableId,
-        rightField: targetInfo.columnName,
+        rightField: targetInfo.columnId,
       };
 
       onAddJoin(newJoin);

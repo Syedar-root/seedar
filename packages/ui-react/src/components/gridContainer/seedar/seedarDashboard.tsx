@@ -56,7 +56,7 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
     >
       {header}
       {children}
-      <ScrollArea>
+      <ScrollArea style={{ paddingBottom: "2rem" }}>
         <GridContainer
           key={dashboardId}
           layouts={state.localLayout}

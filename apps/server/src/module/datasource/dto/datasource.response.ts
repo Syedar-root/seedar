@@ -37,6 +37,7 @@ export class DatasourceResponse {
   tables?: Array<{
     tableName: string;
     columns: Array<{
+      columnId?: number;
       columnName: string;
       rawDataType: string;
       normalizedType: FieldType;
@@ -56,6 +57,7 @@ export class DatasourceResponse {
         normalizedType: FieldType;
         nullable: boolean;
         isPrimaryKey: boolean;
+        columnId?: number;
       }>;
     }>,
     foreignKeys?: ForeignKeyResponse[],

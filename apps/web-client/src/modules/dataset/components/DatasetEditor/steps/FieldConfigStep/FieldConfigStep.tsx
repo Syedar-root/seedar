@@ -1,16 +1,19 @@
-import { AlertCircle, Lock } from "lucide-react";
+import { AlertCircle, Lock, Key } from "lucide-react";
 import type { DatasetFormData } from "../../../../types/editor.types";
+import type { DatasourceResponse } from "#pkg/seedar/types";
 import styles from "./FieldConfigStep.module.scss";
 
 interface FieldConfigStepProps {
   formData: DatasetFormData;
   lockedFields: Set<string>;
   onToggleField: (fieldId: string) => void;
+  selectedDatasource?: DatasourceResponse;
 }
 
 interface Field {
   id: string;
   name: string;
+  isPrimaryKey: boolean;
 }
 
 interface TableFields {
@@ -23,15 +26,26 @@ export const FieldConfigStep = ({
   formData,
   lockedFields,
   onToggleField,
+  selectedDatasource,
 }: FieldConfigStepProps) => {
-  const fieldsByTable: TableFields[] = formData.tables.map((table) => ({
-    tableId: table.tableId,
-    tableName: table.tableName,
-    fields: Array.from({ length: 5 }, (_, i) => ({
-      id: `${table.tableId}-field-${i}`,
-      name: `field_${i}`,
-    })),
-  }));
+  const fieldsByTable: TableFields[] = formData.tables.map((table) => {
+    const datasourceTable = selectedDatasource?.tables?.find(
+      (dt) => dt.tableName === table.tableName,
+    );
+    const fields = datasourceTable?.columns
+      ? datasourceTable.columns.map((column) => ({
+          id: column.columnId?.toString() || `${table.tableId}-${column.columnName}`,
+          name: column.columnName,
+          isPrimaryKey: column.isPrimaryKey,
+        }))
+      : [];
+
+    return {
+      tableId: table.tableId,
+      tableName: table.tableName,
+      fields,
+    };
+  });
 
   const selectedCount = formData.fields.length;
 
@@ -83,6 +97,9 @@ export const FieldConfigStep = ({
                       className={styles.checkbox}
                     />
                     <span className={styles.fieldName}>{field.name}</span>
+                    {field.isPrimaryKey && (
+                      <Key size={12} className={styles.pkIcon} />
+                    )}
                     {isLocked && <Lock size={12} className={styles.lockIcon} />}
                   </div>
                 );
