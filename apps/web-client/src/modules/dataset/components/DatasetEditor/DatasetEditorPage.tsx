@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { Timeline } from "./Timeline";
 import {
@@ -8,6 +9,7 @@ import {
   MetricConfigStep,
   ConfirmStep,
 } from "./steps";
+import { useDatasetEditorStore } from "../../store";
 import type {
   DatasetFormData,
   EditorSteps,
@@ -27,16 +29,6 @@ const STEP_LABELS: Record<EditorSteps, string> = {
 
 export interface DatasetEditorPageProps {
   formData: DatasetFormData;
-  selectedDatasource?: {
-    tables?: Array<{
-      tableName: string;
-      columns?: Array<{
-        columnName: string;
-        isPrimaryKey?: boolean;
-        type?: string;
-      }>;
-    }>;
-  };
   currentStep: EditorSteps;
   currentStepIndex: number;
   isFirstStep: boolean;
@@ -64,7 +56,6 @@ export interface DatasetEditorPageProps {
 export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
   const {
     formData,
-    selectedDatasource,
     currentStep,
     currentStepIndex,
     isFirstStep,
@@ -89,7 +80,22 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
     isLoading,
   } = props;
 
-  const timelineSteps: Array<{key: string; label: string; status: 'completed' | 'active' | 'pending' | 'error'}> = steps.map((step) => ({
+  const { datasource, setDatasourceId, fetchDatasource } =
+    useDatasetEditorStore();
+
+  useEffect(() => {
+    const id = parseInt(formData.datasourceId, 10);
+    if (id > 0) {
+      setDatasourceId(id);
+      fetchDatasource(id);
+    }
+  }, [formData.datasourceId]);
+
+  const timelineSteps: Array<{
+    key: string;
+    label: string;
+    status: "completed" | "active" | "pending" | "error";
+  }> = steps.map((step) => ({
     key: step,
     label: STEP_LABELS[step],
     status:
@@ -111,12 +117,12 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
       case "basicInfo":
         return <BasicInfoStep {...commonProps} />;
       case "dataSource":
-        return <DataSourceStep {...commonProps} selectedDatasource={selectedDatasource} />;
+        return <DataSourceStep {...commonProps} />;
       case "joinConfig":
         return (
           <JoinConfigStep
             formData={formData}
-            selectedDatasource={selectedDatasource}
+            selectedDatasource={datasource ?? undefined}
             onAddJoin={addJoin}
             onRemoveJoin={removeJoin}
             onUpdateJoin={updateJoin}
@@ -173,7 +179,8 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
             {isCreateMode ? "创建数据集" : "编辑数据集"}
           </h1>
           <p className={styles.stepIndicator}>
-            步骤 {currentStepIndex + 1} / {steps.length}：{STEP_LABELS[currentStep]}
+            步骤 {currentStepIndex + 1} / {steps.length}：
+            {STEP_LABELS[currentStep]}
           </p>
         </div>
 

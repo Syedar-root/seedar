@@ -1,22 +1,63 @@
-import { Plus, Trash2, AlertCircle } from "lucide-react";
+import { useMemo, useCallback, useEffect } from "react";
+import {
+  ReactFlow,
+  Controls,
+  Background,
+  useNodesState,
+  useEdgesState,
+  BackgroundVariant,
+  type NodeTypes,
+  type EdgeTypes,
+  type Connection,
+  type Node,
+  type Edge,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { AlertCircle } from "lucide-react";
+
+import { TableFieldNode } from "./components";
+import { JoinEdge } from "./components";
+import { JoinInfoPanel } from "./components";
+import { getLayoutedElements } from "./utils/graphLayout";
+import {
+  parseHandleId,
+  hasEdgeBetweenTables,
+  getConnectedFieldsSet,
+  type JoinEdgeData,
+} from "./utils";
 import type {
   DatasetFormData,
   JoinConfig,
 } from "../../../../types/editor.types";
+import type { DatasourceResponse } from "#pkg/seedar/types";
 import styles from "./JoinConfigStep.module.scss";
+
+const nodeTypes: NodeTypes = {
+  tableFieldNode: TableFieldNode,
+};
+
+const edgeTypes: EdgeTypes = {
+  joinEdge: JoinEdge,
+};
+
+interface TableFieldNodeData {
+  [key: string]: unknown;
+  tableId: string;
+  tableName: string;
+  isMainTable: boolean;
+  columns: Array<{
+    columnName: string;
+    isPrimaryKey?: boolean;
+    type?: string;
+  }>;
+  connectedFields?: Set<string>;
+}
+
+type TableNode = Node<TableFieldNodeData, "tableFieldNode">;
 
 interface JoinConfigStepProps {
   formData: DatasetFormData;
-  selectedDatasource?: {
-    tables?: Array<{
-      tableName: string;
-      columns?: Array<{
-        columnName: string;
-        isPrimaryKey?: boolean;
-        type?: string;
-      }>;
-    }>;
-  };
+  selectedDatasource?: DatasourceResponse;
   onAddJoin: (join: JoinConfig) => void;
   onRemoveJoin: (joinId: string) => void;
   onUpdateJoin: (joinId: string, updates: Partial<JoinConfig>) => void;
@@ -31,22 +72,126 @@ export const JoinConfigStep = ({
 }: JoinConfigStepProps) => {
   const isSingleTable = formData.tables.length <= 1;
 
-  const getTableColumns = (tableId: string) => {
-    const table = formData.tables.find((t) => t.tableId === tableId);
-    if (!table || !selectedDatasource?.tables) return [];
-    const datasourceTable = selectedDatasource.tables.find(
-      (t) => t.tableName === table.tableName,
-    );
-    return datasourceTable?.columns || [];
-  };
+  const getTableColumns = useCallback(
+    (tableId: string) => {
+      const table = formData.tables.find((t) => t.tableId === tableId);
+      if (!table || !selectedDatasource?.tables) return [];
+      const datasourceTable = selectedDatasource.tables.find(
+        (t) => t.tableName === table.tableName,
+      );
+      return datasourceTable?.columns || [];
+    },
+    [formData.tables, selectedDatasource],
+  );
 
-  const getFieldOptions = (tableId: string) => {
-    const columns = getTableColumns(tableId);
-    return columns.map((col) => ({
-      value: col.columnName,
-      label: col.columnName,
-    }));
-  };
+  const rawNodes = useMemo((): TableNode[] => {
+    return formData.tables.map((table) => {
+      const columns = getTableColumns(table.tableId);
+      const isMainTable = table.tableId === formData.mainTable;
+
+      return {
+        id: table.tableId,
+        type: "tableFieldNode" as const,
+        position: { x: 0, y: 0 },
+        data: {
+          tableId: table.tableId,
+          tableName: table.tableName,
+          isMainTable,
+          columns: columns.map((col) => ({
+            columnName: col.columnName,
+            isPrimaryKey: col.isPrimaryKey,
+            type: col.normalizedType,
+          })),
+        },
+      };
+    });
+  }, [formData.tables, formData.mainTable, getTableColumns]);
+
+  const rawEdges = useMemo((): Edge[] => {
+    return formData.joins.map((join) => {
+      return {
+        id: join.id,
+        source: join.leftTable,
+        target: join.rightTable,
+        sourceHandle: `${join.leftTable}:${join.leftField}:source`,
+        targetHandle: `${join.rightTable}:${join.rightField}:target`,
+        type: "joinEdge",
+        data: {
+          joinType: join.joinType,
+          leftFieldName: join.leftField,
+          rightFieldName: join.rightField,
+          leftTableId: join.leftTable,
+          rightTableId: join.rightTable,
+          joinId: join.id,
+        } as JoinEdgeData,
+      };
+    });
+  }, [formData.joins]);
+
+  const nodesWithLayout = useMemo(
+    () => getLayoutedElements(rawNodes, rawEdges, { direction: "LR" }),
+    [rawNodes, rawEdges],
+  );
+
+  const [nodesState, setNodes, onNodesChange] = useNodesState(nodesWithLayout);
+  const [edgesState, setEdges, onEdgesChange] = useEdgesState(rawEdges);
+
+  useEffect(() => {
+    const nodesWithConnectedFields = nodesWithLayout.map((node) => {
+      const connectedFields = getConnectedFieldsSet(rawEdges as Edge<JoinEdgeData>[], node.id);
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          connectedFields,
+        },
+      };
+    });
+    setNodes(nodesWithConnectedFields);
+    setEdges(rawEdges);
+  }, [nodesWithLayout, rawEdges, setNodes, setEdges]);
+
+  const isValidConnection = useCallback(
+    (connection: Connection) => {
+      if (!connection.source || !connection.target) return false;
+      if (!connection.sourceHandle || !connection.targetHandle) return false;
+
+      const sourceInfo = parseHandleId(connection.sourceHandle);
+      const targetInfo = parseHandleId(connection.targetHandle);
+
+      if (!sourceInfo || !targetInfo) return false;
+      if (sourceInfo.tableId === targetInfo.tableId) return false;
+      if (hasEdgeBetweenTables(rawEdges as Edge<JoinEdgeData>[], sourceInfo.tableId, targetInfo.tableId)) {
+        return false;
+      }
+
+      return true;
+    },
+    [rawEdges],
+  );
+
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      if (!isValidConnection(connection)) return;
+
+      const sourceInfo = parseHandleId(connection.sourceHandle!);
+      const targetInfo = parseHandleId(connection.targetHandle!);
+
+      if (!sourceInfo || !targetInfo) return;
+
+      const newJoin: JoinConfig = {
+        id: `join-${Date.now()}`,
+        leftTable: sourceInfo.tableId,
+        leftField: sourceInfo.columnName,
+        joinType: "inner",
+        rightTable: targetInfo.tableId,
+        rightField: targetInfo.columnName,
+      };
+
+      onAddJoin(newJoin);
+    },
+    [isValidConnection, onAddJoin],
+  );
 
   if (isSingleTable) {
     return (
@@ -62,163 +207,49 @@ export const JoinConfigStep = ({
     );
   }
 
-  const handleAddJoin = () => {
-    const newJoin: JoinConfig = {
-      id: `join-${Date.now()}`,
-      leftTable: formData.tables[0]?.tableId || "",
-      leftField: "",
-      joinType: "inner",
-      rightTable: formData.tables[1]?.tableId || "",
-      rightField: "",
-    };
-    onAddJoin(newJoin);
-  };
-
-  const tableOptions = formData.tables.map((t) => ({
-    value: t.tableId,
-    label: t.tableName,
-  }));
-
-  const joinTypeOptions = [
-    { value: "inner", label: "INNER JOIN" },
-    { value: "left", label: "LEFT JOIN" },
-    { value: "right", label: "RIGHT JOIN" },
-    { value: "full", label: "FULL JOIN" },
-  ];
+  if (!selectedDatasource || selectedDatasource.tables?.length === 0) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.emptyState}>
+          <AlertCircle size={48} className={styles.emptyIcon} />
+          <h3 className={styles.emptyTitle}>暂无数据源</h3>
+          <p className={styles.emptyText}>请先在数据源与表步骤中选择数据源和表。</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div>
-          <h3 className={styles.title}>关联关系配置</h3>
-          <p className={styles.hint}>配置表中字段之间的关联关系</p>
-        </div>
-        <button className={styles.addButton} onClick={handleAddJoin}>
-          <Plus size={14} />
-          添加关联
-        </button>
+      <div className={styles.flowContainer}>
+        <ReactFlow
+          nodes={nodesState}
+          edges={edgesState}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={handleConnect}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          nodesDraggable={true}
+          nodesConnectable={true}
+          fitView
+          minZoom={0.1}
+          maxZoom={2}
+          defaultEdgeOptions={{
+            type: "joinEdge",
+          }}
+        >
+          <Controls />
+          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+        </ReactFlow>
       </div>
 
-      {formData.joins.length === 0 ? (
-        <div className={styles.emptyState}>
-          <p className={styles.emptyText}>暂未配置关联关系</p>
-        </div>
-      ) : (
-        <div className={styles.joinList}>
-          {formData.joins.map((join, index) => (
-            <div key={join.id} className={styles.joinItem}>
-              <div className={styles.joinHeader}>
-                <span className={styles.joinLabel}>关联 {index + 1}</span>
-                <button
-                  className={styles.removeButton}
-                  onClick={() => onRemoveJoin(join.id)}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-
-              <div className={styles.joinGrid}>
-                <div className={styles.field}>
-                  <label className={styles.fieldLabel}>左表</label>
-                  <select
-                    className={styles.select}
-                    value={join.leftTable}
-                    onChange={(e) =>
-                      onUpdateJoin(join.id, {
-                        leftTable: e.target.value,
-                        leftField: "",
-                      })
-                    }
-                  >
-                    <option value="">选择表</option>
-                    {tableOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={styles.field}>
-                  <label className={styles.fieldLabel}>左字段</label>
-                  <select
-                    className={styles.select}
-                    value={join.leftField}
-                    onChange={(e) =>
-                      onUpdateJoin(join.id, { leftField: e.target.value })
-                    }
-                  >
-                    <option value="">选择字段</option>
-                    {getFieldOptions(join.leftTable).map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={styles.field}>
-                  <label className={styles.fieldLabel}>关联类型</label>
-                  <select
-                    className={styles.select}
-                    value={join.joinType}
-                    onChange={(e) =>
-                      onUpdateJoin(join.id, {
-                        joinType: e.target.value as JoinConfig["joinType"],
-                      })
-                    }
-                  >
-                    {joinTypeOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={styles.field}>
-                  <label className={styles.fieldLabel}>右表</label>
-                  <select
-                    className={styles.select}
-                    value={join.rightTable}
-                    onChange={(e) =>
-                      onUpdateJoin(join.id, {
-                        rightTable: e.target.value,
-                        rightField: "",
-                      })
-                    }
-                  >
-                    <option value="">选择表</option>
-                    {tableOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={styles.field}>
-                  <label className={styles.fieldLabel}>右字段</label>
-                  <select
-                    className={styles.select}
-                    value={join.rightField}
-                    onChange={(e) =>
-                      onUpdateJoin(join.id, { rightField: e.target.value })
-                    }
-                  >
-                    <option value="">选择字段</option>
-                    {getFieldOptions(join.rightTable).map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <JoinInfoPanel
+        joins={formData.joins}
+        tables={formData.tables}
+        onUpdateJoin={onUpdateJoin}
+        onRemoveJoin={onRemoveJoin}
+      />
     </div>
   );
 };

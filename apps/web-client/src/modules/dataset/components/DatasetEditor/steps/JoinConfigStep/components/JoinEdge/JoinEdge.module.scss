@@ -1,0 +1,54 @@
+.joinEdge {
+  stroke: #9ca3af;
+  stroke-width: 2;
+}
+
+.edgeInner {
+  stroke: #3b82f6;
+}
+
+.edgeLeft {
+  stroke: #10b981;
+}
+
+.edgeRight {
+  stroke: #f59e0b;
+}
+
+.edgeFull {
+  stroke: #8b5cf6;
+}
+
+.edgeLabel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-size: 11px;
+}
+
+.edgeLabelTopRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.edgeLabelField {
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.edgeLabelArrow {
+  color: #9ca3af;
+}
+
+.edgeLabelType {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+}

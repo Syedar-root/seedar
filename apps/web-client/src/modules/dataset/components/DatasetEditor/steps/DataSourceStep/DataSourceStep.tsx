@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Checkbox } from "@base-ui/react/checkbox";
 import { Check, Key } from "lucide-react";
 import { useDatasources } from "#pkg/seedar/ui-react";
+import { useDatasetEditorStore } from "../../../../store";
 import { Select } from "@/core/components/ui/Select";
 import type { DatasetFormData } from "../../../../types/editor.types";
 import styles from "./DataSourceStep.module.scss";
@@ -9,24 +10,15 @@ import styles from "./DataSourceStep.module.scss";
 interface DataSourceStepProps {
   formData: DatasetFormData;
   onUpdate: (updates: Partial<DatasetFormData>) => void;
-  selectedDatasource?: {
-    tables?: Array<{
-      tableName: string;
-      columns?: Array<{
-        columnName: string;
-        isPrimaryKey?: boolean;
-        type?: string;
-      }>;
-    }>;
-  };
 }
 
-export const DataSourceStep = ({
-  formData,
-  onUpdate,
-  selectedDatasource,
-}: DataSourceStepProps) => {
+export const DataSourceStep = ({ formData, onUpdate }: DataSourceStepProps) => {
   const { data: datasources } = useDatasources();
+  const {
+    datasource: selectedDatasource,
+    datasourceId,
+    fetchDatasource,
+  } = useDatasetEditorStore();
   const [selectedDatasourceId, setSelectedDatasourceId] = useState<string>(
     formData.datasourceId,
   );
@@ -47,6 +39,15 @@ export const DataSourceStep = ({
       setSelectedTableNames([]);
     }
   }, [selectedDatasourceId]);
+
+  useEffect(() => {
+    if (selectedDatasourceId) {
+      const id = parseInt(selectedDatasourceId, 10);
+      if (id > 0) {
+        fetchDatasource(id);
+      }
+    }
+  }, [selectedDatasourceId, fetchDatasource]);
 
   useEffect(() => {
     const getTableId = (name: string) => `${selectedDatasourceId}-${name}`;

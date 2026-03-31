@@ -1,0 +1,1 @@
+export { JoinInfoPanel } from './JoinInfoPanel';
