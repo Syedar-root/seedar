@@ -51,11 +51,7 @@ describe('Dynamic Join Selection', () => {
       datasource: {
         id: 1,
         name: 'Test Datasource',
-        type: 'mysql' as any,
-        config: {},
-        status: 'active' as any,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        type: 'mysql',
       },
       mainTable: {
         id: 1,
@@ -63,18 +59,23 @@ describe('Dynamic Join Selection', () => {
         datasetName: 'Orders',
       },
       tables: [
-        { id: 1, tableName: 'orders', datasetName: 'Orders', description: '' },
+        {
+          id: 1,
+          datasourceTableId: 1,
+          tableName: 'orders',
+          datasetName: 'Orders',
+        },
         {
           id: 2,
+          datasourceTableId: 2,
           tableName: 'customers',
           datasetName: 'Customers',
-          description: '',
         },
         {
           id: 3,
+          datasourceTableId: 3,
           tableName: 'products',
           datasetName: 'Products',
-          description: '',
         },
       ] as DatasetTableResponse[],
       fields: [
@@ -179,8 +180,6 @@ describe('Dynamic Join Selection', () => {
           rightField: '7',
         },
       ] as DatasetJoinResponse[],
-      createdAt: new Date(),
-      updatedAt: new Date(),
     };
   });
 

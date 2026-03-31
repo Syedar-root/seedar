@@ -6,6 +6,7 @@ import {
   DataSourceConfig,
   DataSourceStatus,
 } from "./datasource.types";
+import { FieldType } from "../dataset/dataset.types";
 
 /**
  * 创建数据源请求
@@ -50,12 +51,13 @@ export class DatasourceResponse {
   createdAt: Date;
   updatedAt: Date;
   tables?: Array<{
+    tableId?: number;
     tableName: string;
     columns: Array<{
       columnId?: number;
       columnName: string;
       rawDataType: string;
-      normalizedType: any;
+      normalizedType: FieldType;
       nullable: boolean;
       isPrimaryKey: boolean;
     }>;

@@ -263,6 +263,7 @@ export const useDatasetForm = ({
 
     setIsSubmitting(true);
     try {
+      console.log("hcs formData", formData);
       await onSubmit?.(formData);
     } finally {
       setIsSubmitting(false);

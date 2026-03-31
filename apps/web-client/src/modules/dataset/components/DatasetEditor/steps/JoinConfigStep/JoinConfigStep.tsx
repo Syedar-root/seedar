@@ -84,6 +84,7 @@ export const JoinConfigStep = ({
     (tableId: string) => {
       const table = formData.tables.find((t) => t.tableId === tableId);
       if (!table || !selectedDatasource?.tables) return [];
+      console.log("hcs selectedDatasource?.tables", selectedDatasource?.tables);
       const datasourceTable = selectedDatasource.tables.find(
         (t) => t.tableName === table.tableName,
       );
@@ -117,6 +118,7 @@ export const JoinConfigStep = ({
   );
 
   const rawNodes = useMemo((): TableNode[] => {
+    console.log("hcs formData.tables", formData.tables);
     return formData.tables.map((table) => {
       const columns = getTableColumns(table.tableId);
       const isMainTable = table.tableId === formData.mainTable;
@@ -171,6 +173,8 @@ export const JoinConfigStep = ({
   const [nodesState, setNodes, onNodesChange] = useNodesState(rawNodes);
   const [edgesState, setEdges, onEdgesChange] = useEdgesState(rawEdges);
   const { fitView } = useReactFlow();
+
+  console.log("hcs nodesState", nodesState);
 
   const applyLayout = useCallback(() => {
     const layoutedNodes = getLayoutedElements(nodesState, edgesState, {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Checkbox } from "@base-ui/react/checkbox";
 import { Check, Key } from "lucide-react";
 import { useDatasources } from "#pkg/seedar/ui-react";
@@ -46,8 +46,23 @@ export const DataSourceStep = ({ formData, onUpdate }: DataSourceStepProps) => {
     }
   }, [selectedDatasourceId, fetchDatasource]);
 
+  const tableIdMap = useMemo<Record<string, string>>(
+    () =>
+      selectedDatasource?.tables?.reduce(
+        (acc, cur) => ({
+          ...acc,
+          [cur.tableName]: String(cur.tableId),
+        }),
+        {},
+      ) || {},
+    [selectedDatasource?.tables],
+  );
+
   useEffect(() => {
-    const getTableId = (name: string) => `${selectedDatasourceId}-${name}`;
+    if (!tableIdMap || !Object.keys(tableIdMap).length) {
+      return;
+    }
+    const getTableId = (name: string) => tableIdMap[name];
     const newTables = selectedTableNames.map((name) => ({
       tableId: getTableId(name),
       tableName: name,
