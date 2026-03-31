@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { toast } from "sonner";
 import { useDatasource } from "#pkg/seedar/ui-react";
 import type {
   DatasetFormData,
@@ -71,6 +72,38 @@ export const useDatasetForm = ({
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === STEPS.length - 1;
 
+  const onBeforeNext: Partial<Record<EditorSteps, () => boolean>> = {
+    dataSource: () => {
+      const validTableIds = new Set(formData.tables.map((t) => t.tableId));
+      const validJoins = formData.joins.filter(
+        (join) =>
+          validTableIds.has(join.leftTable) &&
+          validTableIds.has(join.rightTable),
+      );
+      if (validJoins.length !== formData.joins.length) {
+        updateFormData({ joins: validJoins });
+      }
+      return true;
+    },
+    joinConfig: () => {
+      if (formData.tables.length <= 1) return true;
+      const tableIds = new Set(formData.tables.map((t) => t.tableId));
+      const joinedTables = new Set<string>();
+      formData.joins.forEach((join) => {
+        joinedTables.add(join.leftTable);
+        joinedTables.add(join.rightTable);
+      });
+      const unjoinedTables = [...tableIds].filter(
+        (id) => !joinedTables.has(id),
+      );
+      if (unjoinedTables.length > 0) {
+        toast.error(`表 ${unjoinedTables.join(", ")} 没有任何关联关系`);
+        return false;
+      }
+      return true;
+    },
+  };
+
   const canGoNext = useCallback(() => {
     switch (currentStep) {
       case "basicInfo":
@@ -79,7 +112,7 @@ export const useDatasetForm = ({
         return (
           !!formData.datasourceId &&
           formData.tables.length > 0 &&
-          formData.mainTable
+          !!formData.mainTable
         );
       case "joinConfig":
         return formData.tables.length <= 1 || formData.joins.length > 0;
@@ -91,10 +124,12 @@ export const useDatasetForm = ({
   }, [currentStep, formData]);
 
   const goToNextStep = useCallback(() => {
-    if (!isLastStep && canGoNext()) {
+    if (isLastStep) return;
+    if (onBeforeNext[currentStep]?.() === false) return;
+    if (canGoNext()) {
       setCurrentStep(STEPS[currentStepIndex + 1]);
     }
-  }, [currentStepIndex, isLastStep, canGoNext]);
+  }, [currentStepIndex, isLastStep, currentStep, onBeforeNext, canGoNext]);
 
   const goToPrevStep = useCallback(() => {
     if (!isFirstStep) {
