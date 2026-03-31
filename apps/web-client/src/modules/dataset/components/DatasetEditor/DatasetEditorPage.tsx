@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { ReactFlowProvider } from "@xyflow/react";
 import { Timeline } from "./Timeline";
 import {
   BasicInfoStep,
@@ -120,13 +121,15 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
         return <DataSourceStep {...commonProps} />;
       case "joinConfig":
         return (
-          <JoinConfigStep
-            formData={formData}
-            selectedDatasource={datasource ?? undefined}
-            onAddJoin={addJoin}
-            onRemoveJoin={removeJoin}
-            onUpdateJoin={updateJoin}
-          />
+          <ReactFlowProvider>
+            <JoinConfigStep
+              formData={formData}
+              selectedDatasource={datasource ?? undefined}
+              onAddJoin={addJoin}
+              onRemoveJoin={removeJoin}
+              onUpdateJoin={updateJoin}
+            />
+          </ReactFlowProvider>
         );
       case "fieldConfig":
         return (

@@ -54,16 +54,17 @@
 }
 
 .handle {
-  width: 8px;
-  height: 8px;
+  $size: 14px;
+  width: $size;
+  height: $size;
   background: #9ca3af;
-  border: 2px solid #fff;
   transition: all 0.15s ease;
-}
 
-.handle:hover {
-  background: #3b82f6;
-  transform: scale(1.2);
+  &:hover {
+    background: #3b82f6;
+    transform-origin: center center;
+    transform: scale(1.2) translate(50%, -50%);
+  }
 }
 
 .handleConnected {

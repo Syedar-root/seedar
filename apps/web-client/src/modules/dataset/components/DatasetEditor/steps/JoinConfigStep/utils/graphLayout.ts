@@ -5,7 +5,7 @@ const DEFAULT_NODE_WIDTH = 160;
 const DEFAULT_NODE_HEIGHT = 40;
 const DEFAULT_FIELD_ROW_HEIGHT = 28;
 const DEFAULT_NODE_SEPARATION = 120;
-const DEFAULT_RANK_SEPARATION = 100;
+const DEFAULT_RANK_SEPARATION = 200;
 
 interface LayoutOptions {
   direction?: "TB" | "LR" | "BT" | "RL";
@@ -70,15 +70,10 @@ export const getLayoutedElements = (
     }
     return {
       ...node,
-      position: isHorizontal
-        ? {
-            x: nodeWithPosition.y - height / 2,
-            y: nodeWithPosition.x - nodeWidth / 2,
-          }
-        : {
-            x: nodeWithPosition.x - nodeWidth / 2,
-            y: nodeWithPosition.y - height / 2,
-          },
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - height / 2,
+      },
     };
   });
 

@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import {
   ReactFlow,
   Controls,
@@ -7,6 +7,8 @@ import {
   useNodesState,
   useEdgesState,
   BackgroundVariant,
+  Panel,
+  useReactFlow,
   type NodeTypes,
   type EdgeTypes,
   type Connection,
@@ -14,7 +16,7 @@ import {
   type Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Layout } from "lucide-react";
 import { toast } from "sonner";
 
 import { TableFieldNode } from "./components";
@@ -130,30 +132,35 @@ export const JoinConfigStep = ({
     });
   }, [formData.joins]);
 
-  const nodesWithLayout = useMemo(() => {
-    return getLayoutedElements(rawNodes, rawEdges, { direction: "LR" });
-  }, [formData.tables.length]);
-
-  const [nodesState, setNodes, onNodesChange] = useNodesState(nodesWithLayout);
+  const [nodesState, setNodes, onNodesChange] = useNodesState(rawNodes);
   const [edgesState, setEdges, onEdgesChange] = useEdgesState(rawEdges);
+  const { fitView } = useReactFlow();
 
-  useEffect(() => {
-    const nodesWithConnectedFields = nodesWithLayout.map((node) => {
+  const applyLayout = useCallback(() => {
+    const layoutedNodes = getLayoutedElements(nodesState, edgesState, {
+      direction: "LR",
+    });
+    const nodesWithConnectedFields = layoutedNodes.map((node) => {
+      const nodeData = node.data as TableFieldNodeData;
       const connectedFields = getConnectedFieldsSet(
-        rawEdges as Edge<JoinEdgeData>[],
+        edgesState as Edge<JoinEdgeData>[],
         node.id,
       );
       return {
         ...node,
         data: {
-          ...node.data,
+          ...nodeData,
           connectedFields,
         },
       };
     });
-    setNodes(nodesWithConnectedFields);
-    setEdges(rawEdges);
-  }, [nodesWithLayout, rawEdges, setNodes, setEdges]);
+    setNodes(nodesWithConnectedFields as TableNode[]);
+    setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50);
+  }, [nodesState, edgesState, setNodes, fitView]);
+
+  useEffect(() => {
+    applyLayout();
+  }, []);
 
   const isValidConnection = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return false;
@@ -243,7 +250,6 @@ export const JoinConfigStep = ({
           edgeTypes={edgeTypes}
           nodesDraggable={true}
           nodesConnectable={true}
-          fitView
           minZoom={0.1}
           maxZoom={2}
           defaultEdgeOptions={{
@@ -260,6 +266,12 @@ export const JoinConfigStep = ({
             maskColor="rgba(0, 0, 0, 0.1)"
           />
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+          <Panel position="top-right">
+            <button className={styles.layoutButton} onClick={applyLayout}>
+              <Layout size={16} />
+              整理布局
+            </button>
+          </Panel>
         </ReactFlow>
       </div>
 
