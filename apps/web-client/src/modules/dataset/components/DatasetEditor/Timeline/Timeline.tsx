@@ -14,7 +14,11 @@ interface TimelineProps {
   onStepClick: (key: string) => void;
 }
 
-export const Timeline = ({ steps, currentStep, onStepClick }: TimelineProps) => {
+export const Timeline = ({
+  steps,
+  currentStep,
+  onStepClick,
+}: TimelineProps) => {
   return (
     <div className={styles.timeline}>
       {steps.map((step, index) => {
@@ -37,21 +41,21 @@ export const Timeline = ({ steps, currentStep, onStepClick }: TimelineProps) => 
                 {isPending && <div className={styles.pendingDot} />}
                 {isError && <div className={styles.errorDot} />}
               </div>
-              {index < steps.length - 1 && <div className={styles.connector} />}
+              <div
+                className={styles.stepContent}
+                onClick={() => isCompleted && onStepClick(step.key)}
+                role={isCompleted ? "button" : undefined}
+                tabIndex={isCompleted ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (isCompleted && (e.key === "Enter" || e.key === " ")) {
+                    onStepClick(step.key);
+                  }
+                }}
+              >
+                <span className={styles.stepLabel}>{step.label}</span>
+              </div>
             </div>
-            <div
-              className={styles.stepContent}
-              onClick={() => isCompleted && onStepClick(step.key)}
-              role={isCompleted ? "button" : undefined}
-              tabIndex={isCompleted ? 0 : undefined}
-              onKeyDown={(e) => {
-                if (isCompleted && (e.key === "Enter" || e.key === " ")) {
-                  onStepClick(step.key);
-                }
-              }}
-            >
-              <span className={styles.stepLabel}>{step.label}</span>
-            </div>
+            {index < steps.length - 1 && <div className={styles.connector} />}
           </div>
         );
       })}
