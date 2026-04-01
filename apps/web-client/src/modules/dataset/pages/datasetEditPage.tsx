@@ -43,6 +43,40 @@ export const DatasetEditPage = () => {
       )
       .map((f) => f.backendId!);
 
+    const initialMetrics = initialData?.metrics || [];
+    const currentMetrics = data.metrics;
+
+    const addedMetrics = currentMetrics
+      .filter((m) => !initialMetrics.some((im) => im.id === m.id))
+      .map((m) => ({
+        name: m.name,
+        businessName: m.businessName,
+        description: m.description,
+        expression: m.expression,
+      }));
+
+    const updatedMetrics = currentMetrics
+      .filter((m) => initialMetrics.some((im) => im.id === m.id))
+      .map((m) => {
+        const initialMetric = initialMetrics.find((im) => im.id === m.id);
+        const isExistingId = initialMetric?.id?.match(/^\d+$/);
+        return {
+          id: isExistingId ? parseInt(initialMetric!.id, 10) : undefined,
+          name: m.name,
+          businessName: m.businessName,
+          description: m.description,
+        };
+      })
+      .filter((m) => m.id !== undefined);
+
+    const deletedMetricIds = initialMetrics
+      .filter(
+        (initialMetric) =>
+          !currentMetrics.some((cm) => cm.id === initialMetric.id),
+      )
+      .filter((m) => m.id?.match(/^\d+$/))
+      .map((m) => parseInt(m.id!, 10));
+
     await updateMutation.mutateAsync({
       dataSetId: dataset.id,
       name: data.name,
@@ -51,6 +85,11 @@ export const DatasetEditPage = () => {
         added: addedFields,
         updated: updatedFields,
         deletedIds,
+      },
+      metrics: {
+        added: addedMetrics,
+        updated: updatedMetrics,
+        deletedIds: deletedMetricIds,
       },
     });
 
@@ -103,6 +142,7 @@ export const DatasetEditPage = () => {
       metrics: (dataset.metrics || []).map((m) => ({
         id: m.id.toString(),
         name: m.name,
+        businessName: m.businessName,
         expression: m.expression || "",
         description: m.description,
       })),

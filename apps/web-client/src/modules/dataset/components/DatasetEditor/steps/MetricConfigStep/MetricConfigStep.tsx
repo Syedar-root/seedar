@@ -1,9 +1,12 @@
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { useState, useMemo } from "react";
 import type {
   DatasetFormData,
   MetricConfig,
 } from "../../../../types/editor.types";
 import styles from "./MetricConfigStep.module.scss";
+import { MetricDialog } from "./MetricDialog";
+import { useFormulaParser } from "./useFormulaParser";
 
 interface MetricConfigStepProps {
   formData: DatasetFormData;
@@ -19,6 +22,13 @@ export const MetricConfigStep = ({
   onUpdateMetric,
 }: MetricConfigStepProps) => {
   const isWideTable = formData.type === "wideTable";
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editMetric, setEditMetric] = useState<MetricConfig | undefined>();
+
+  const { toDisplay } = useFormulaParser({
+    fields: formData.fields as any,
+    metrics: formData.metrics as any,
+  });
 
   if (isWideTable) {
     return (
@@ -31,13 +41,26 @@ export const MetricConfigStep = ({
   }
 
   const handleAddMetric = () => {
-    const newMetric: MetricConfig = {
-      id: `metric-${Date.now()}`,
-      name: "",
-      expression: "",
-      description: "",
-    };
-    onAddMetric(newMetric);
+    setEditMetric(undefined);
+    setDialogOpen(true);
+  };
+
+  const handleEditMetric = (metric: MetricConfig) => {
+    setEditMetric(metric);
+    setDialogOpen(true);
+  };
+
+  const handleSaveMetric = (metric: MetricConfig) => {
+    if (editMetric) {
+      onUpdateMetric(metric.id, metric);
+    } else {
+      onAddMetric(metric);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setEditMetric(undefined);
   };
 
   return (
@@ -64,11 +87,21 @@ export const MetricConfigStep = ({
           {formData.metrics.map((metric) => (
             <div key={metric.id} className={styles.metricItem}>
               <div className={styles.metricHeader}>
-                <span className={styles.metricName}>
-                  {metric.name || "未命名指标"}
-                </span>
+                <div className={styles.metricInfo}>
+                  <span className={styles.metricName}>
+                    {metric.name || "未命名指标"}
+                  </span>
+                  {metric.businessName && (
+                    <span className={styles.metricBusinessName}>
+                      ({metric.businessName})
+                    </span>
+                  )}
+                </div>
                 <div className={styles.metricActions}>
-                  <button className={styles.actionBtn}>
+                  <button
+                    className={styles.actionBtn}
+                    onClick={() => handleEditMetric(metric)}
+                  >
                     <Pencil size={14} />
                   </button>
                   <button
@@ -80,54 +113,34 @@ export const MetricConfigStep = ({
                 </div>
               </div>
 
-              <div className={styles.metricForm}>
-                <div className={styles.field}>
-                  <label className={styles.label}>指标名称</label>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={metric.name}
-                    onChange={(e) =>
-                      onUpdateMetric(metric.id, { name: e.target.value })
-                    }
-                    placeholder="请输入指标名称"
-                  />
-                </div>
-
-                <div className={styles.field}>
-                  <label className={styles.label}>表达式</label>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={metric.expression}
-                    onChange={(e) =>
-                      onUpdateMetric(metric.id, {
-                        expression: e.target.value,
-                      })
-                    }
-                    placeholder="请输入指标表达式"
-                  />
-                </div>
-
-                <div className={styles.field}>
-                  <label className={styles.label}>描述</label>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={metric.description || ""}
-                    onChange={(e) =>
-                      onUpdateMetric(metric.id, {
-                        description: e.target.value,
-                      })
-                    }
-                    placeholder="请输入指标描述（可选）"
-                  />
-                </div>
+              <div className={styles.metricExpression}>
+                <span className={styles.expressionLabel}>表达式:</span>
+                <span className={styles.expressionValue}>
+                  {toDisplay(metric.expression)}
+                </span>
               </div>
+
+              {metric.description && (
+                <div className={styles.metricDescription}>
+                  <span className={styles.descriptionLabel}>描述:</span>
+                  <span className={styles.descriptionValue}>
+                    {metric.description}
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
+
+      <MetricDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        onSave={handleSaveMetric}
+        fields={formData.fields}
+        metrics={formData.metrics}
+        editMetric={editMetric}
+      />
     </div>
   );
 };

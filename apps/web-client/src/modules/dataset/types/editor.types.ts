@@ -22,6 +22,7 @@ export interface JoinConfig {
 export interface MetricConfig {
   id: string;
   name: string;
+  businessName?: string;
   expression: string;
   description?: string;
 }

@@ -110,10 +110,47 @@
   gap: var(--spacing-xs);
 }
 
-.metricForm {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--spacing-md);
+.metricInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.metricBusinessName {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.metricExpression {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-sm);
+}
+
+.expressionLabel {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.expressionValue {
+  color: var(--text-primary);
+  font-family: "SF Mono", "Monaco", "Inconsolata", "Fira Code", monospace;
+}
+
+.metricDescription {
+  display: flex;
+  gap: var(--spacing-xs);
+  font-size: var(--font-sm);
+}
+
+.descriptionLabel {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.descriptionValue {
+  color: var(--text-primary);
 }
 
 .field {
