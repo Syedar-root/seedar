@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useDataset } from "#pkg/seedar/ui-react";
+import { useDataset, useUpdateDataset } from "#pkg/seedar/ui-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import { ScrollText, BarChart3, GitMerge } from "lucide-react";
 import {
@@ -14,12 +15,77 @@ import {
 } from "../components";
 import styles from "./styles/datasetDetailPage.module.scss";
 import clsx from "clsx";
+import { DatasetMetricResponse } from "#pkg/seedar/types";
+
+const datasetKeys = {
+  all: ["datasets"] as const,
+  detail: (id: number) => ["datasets", "detail", id] as const,
+};
 
 export const DatasetDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const datasetId = id ? parseInt(id, 10) : 0;
   const { data: dataset, isLoading, error } = useDataset(datasetId);
+  const updateMutation = useUpdateDataset();
+  const queryClient = useQueryClient();
+
+  const handleAddMetric = (metric: DatasetMetricResponse) => {
+    updateMutation.mutate(
+      {
+        dataSetId: datasetId,
+        metrics: {
+          added: [metric],
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: datasetKeys.detail(datasetId),
+          });
+        },
+      },
+    );
+  };
+
+  const handleUpdateMetric = (
+    metricId: number,
+    metric: DatasetMetricResponse,
+  ) => {
+    updateMutation.mutate(
+      {
+        dataSetId: datasetId,
+        metrics: {
+          updated: [{ ...metric, id: metricId }],
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: datasetKeys.detail(datasetId),
+          });
+        },
+      },
+    );
+  };
+
+  const handleRemoveMetric = (metricId: number) => {
+    updateMutation.mutate(
+      {
+        dataSetId: datasetId,
+        metrics: {
+          deletedIds: [metricId],
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: datasetKeys.detail(datasetId),
+          });
+        },
+      },
+    );
+  };
 
   if (isLoading) {
     return (
@@ -108,6 +174,9 @@ export const DatasetDetailPage = () => {
                 <MetricList
                   metrics={dataset.metrics || []}
                   fields={dataset.fields || []}
+                  onAddMetric={handleAddMetric}
+                  onUpdateMetric={handleUpdateMetric}
+                  onRemoveMetric={handleRemoveMetric}
                 />
               </ScrollArea>
             </section>

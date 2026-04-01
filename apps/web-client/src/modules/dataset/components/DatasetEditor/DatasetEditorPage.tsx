@@ -149,14 +149,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
           />
         );
       case "metricConfig":
-        return (
-          <MetricConfigStep
-            formData={formData}
-            onAddMetric={addMetric}
-            onRemoveMetric={removeMetric}
-            onUpdateMetric={updateMetric}
-          />
-        );
+        return <MetricConfigStep formData={formData} />;
       case "confirm":
         return <ConfirmStep formData={formData} isSubmitting={isSubmitting} />;
       default:
