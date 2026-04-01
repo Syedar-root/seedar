@@ -7,20 +7,24 @@
 }
 
 .heroContent {
+  position: relative;
   max-width: 1200px;
   margin: 0 auto;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
   padding: 0 clamp(1rem, 3vw, 1.75rem);
 }
 
 .heroInfo {
-  flex: 1;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  width: 100%;
+  margin: 0 var(--spacing-xl);
 }
 
 .backButton {
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -45,9 +49,11 @@
 }
 
 .heroTopRow {
+  width: 100%;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+  gap: var(--spacing-md);
   margin-bottom: var(--spacing-sm);
   animation: fadeIn 0.5s ease-out 0.1s both;
 }

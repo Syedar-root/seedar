@@ -6,18 +6,6 @@ interface MetricConfigStepProps {
 }
 
 export const MetricConfigStep = ({ formData }: MetricConfigStepProps) => {
-  const isWideTable = formData.type === "wideTable";
-
-  if (isWideTable) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.emptyState}>
-          <p className={styles.emptyText}>宽表型数据集不支持指标配置</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.container}>
       <div className={styles.header}>
