@@ -37,12 +37,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  max-height: 600px;
 }
 
 .tableSection {
   border: 1px solid var(--border-secondary);
   border-radius: var(--radius-lg);
-  overflow: hidden;
 }
 
 .tableHeader {
@@ -66,20 +66,47 @@
   color: var(--text-tertiary);
 }
 
-.fieldGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md) var(--spacing-lg);
+.fieldTable {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.fieldItem {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
+.fieldTable thead {
+  background: var(--bg-tertiary);
+}
+
+.fieldTable th,
+.fieldTable td {
   padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  cursor: pointer;
+  text-align: left;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.fieldTable th {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.checkboxColumn {
+  width: 50px;
+}
+
+.nameColumn {
+  width: 25%;
+}
+
+.businessNameColumn {
+  width: 35%;
+}
+
+.flagsColumn {
+  width: 80px;
+}
+
+.fieldRow {
   transition: background-color 0.15s ease;
 
   &:hover {
@@ -91,8 +118,7 @@
   }
 
   &.locked {
-    opacity: 0.6;
-    cursor: not-allowed;
+    opacity: 1;
   }
 }
 
@@ -102,15 +128,49 @@
   margin: 0;
   cursor: pointer;
   accent-color: var(--primary-active);
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  &.checkboxLocked {
+    opacity: 0.6;
+  }
 }
 
 .fieldName {
   font-size: var(--font-sm);
   color: var(--text-primary);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.businessNameInput {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-sm);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary-active);
+    box-shadow: 0 0 0 2px
+      color-mix(in srgb, var(--primary-active) 20%, transparent);
+  }
+
+  &::placeholder {
+    color: var(--text-tertiary);
+  }
+}
+
+.flags {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
 }
 
 .pkIcon {
@@ -141,7 +201,12 @@
     gap: var(--spacing-sm);
   }
 
-  .fieldGrid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  .fieldTable {
+    font-size: var(--font-xs);
+  }
+
+  .nameColumn,
+  .businessNameColumn {
+    width: auto;
   }
 }

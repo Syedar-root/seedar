@@ -174,8 +174,6 @@ export const JoinConfigStep = ({
   const [edgesState, setEdges, onEdgesChange] = useEdgesState(rawEdges);
   const { fitView } = useReactFlow();
 
-  console.log("hcs nodesState", nodesState);
-
   const applyLayout = useCallback(() => {
     const layoutedNodes = getLayoutedElements(nodesState, edgesState, {
       direction: "LR",

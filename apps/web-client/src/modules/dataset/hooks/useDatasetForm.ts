@@ -7,6 +7,7 @@ import type {
   MetricConfig,
   EditorSteps,
   EditorMode,
+  FormField,
 } from "../types/editor.types";
 import type { DatasourceResponse } from "#pkg/seedar/types";
 
@@ -163,9 +164,9 @@ export const useDatasetForm = ({
 
       formData.metrics.forEach((metric) => {
         const fieldMatches = formData.fields.filter((field) =>
-          metric.expression.includes(field),
+          metric.expression.includes(field.id),
         );
-        fieldMatches.forEach((field) => lockedFields.add(field));
+        fieldMatches.forEach((field) => lockedFields.add(field.id));
       });
 
       if (selectedDatasource?.tables) {
@@ -194,11 +195,71 @@ export const useDatasetForm = ({
         return;
       }
 
+      setFormData((prev) => {
+        const isSelected = prev.fields.some((f) => f.id === fieldId);
+        if (isSelected) {
+          return {
+            ...prev,
+            fields: prev.fields.filter((f) => f.id !== fieldId),
+          };
+        } else {
+          let newField: FormField | undefined;
+
+          if (selectedDatasource?.tables) {
+            for (const table of prev.tables) {
+              const datasourceTable = selectedDatasource.tables.find(
+                (dt) => dt.tableName === table.tableName,
+              );
+              if (datasourceTable?.columns) {
+                const column = datasourceTable.columns.find(
+                  (c) => c.columnId?.toString() === fieldId,
+                );
+                if (column) {
+                  newField = {
+                    id: fieldId,
+                    dataSourceColumnId: column.columnId,
+                    tableId: parseInt(table.tableId, 10),
+                    name: column.columnName,
+                    businessName: column.columnName,
+                    isPrimaryKey: column.isPrimaryKey,
+                  };
+                  break;
+                }
+              }
+            }
+          }
+
+          if (!newField) {
+            newField = {
+              id: fieldId,
+              name: fieldId,
+              businessName: fieldId,
+            };
+          }
+
+          return {
+            ...prev,
+            fields: [...prev.fields, newField],
+          };
+        }
+      });
+    },
+    [selectedDatasource],
+  );
+
+  const updateFieldBusinessName = useCallback(
+    (fieldId: string, businessName: string) => {
       setFormData((prev) => ({
         ...prev,
-        fields: prev.fields.includes(fieldId)
-          ? prev.fields.filter((id) => id !== fieldId)
-          : [...prev.fields, fieldId],
+        fields: prev.fields.map((field) => {
+          if (field.id === fieldId) {
+            return {
+              ...field,
+              businessName: businessName.trim() || field.name,
+            };
+          }
+          return field;
+        }),
       }));
     },
     [],
@@ -280,9 +341,9 @@ export const useDatasetForm = ({
 
     formData.metrics.forEach((metric) => {
       const fieldMatches = formData.fields.filter((field) =>
-        metric.expression.includes(field),
+        metric.expression.includes(field.id),
       );
-      fieldMatches.forEach((field) => lockedFields.add(field));
+      fieldMatches.forEach((field) => lockedFields.add(field.id));
     });
 
     if (selectedDatasource?.tables) {
@@ -300,13 +361,51 @@ export const useDatasetForm = ({
       });
     }
 
+    const existingFieldIds = new Set(formData.fields.map((f) => f.id));
     const missingLockedFields = [...lockedFields].filter(
-      (field) => !formData.fields.includes(field),
+      (fieldId) => !existingFieldIds.has(fieldId),
     );
+
     if (missingLockedFields.length > 0) {
+      const newFields: FormField[] = [];
+      for (const fieldId of missingLockedFields) {
+        let newField: FormField | undefined;
+        if (selectedDatasource?.tables) {
+          for (const table of formData.tables) {
+            const datasourceTable = selectedDatasource.tables.find(
+              (dt) => dt.tableName === table.tableName,
+            );
+            if (datasourceTable?.columns) {
+              const column = datasourceTable.columns.find(
+                (c) => c.columnId?.toString() === fieldId,
+              );
+              if (column) {
+                newField = {
+                  id: fieldId,
+                  dataSourceColumnId: column.columnId,
+                  tableId: parseInt(table.tableId, 10),
+                  name: column.columnName,
+                  businessName: column.columnName,
+                  isPrimaryKey: column.isPrimaryKey,
+                };
+                break;
+              }
+            }
+          }
+        }
+        if (!newField) {
+          newField = {
+            id: fieldId,
+            name: fieldId,
+            businessName: fieldId,
+          };
+        }
+        newFields.push(newField);
+      }
+
       setFormData((prev) => ({
         ...prev,
-        fields: [...prev.fields, ...missingLockedFields],
+        fields: [...prev.fields, ...newFields],
       }));
     }
   }, [formData.tables, formData.joins, formData.metrics, selectedDatasource]);
@@ -328,6 +427,7 @@ export const useDatasetForm = ({
     updateFormData,
     getLockedFields,
     toggleField,
+    updateFieldBusinessName,
     addJoin,
     removeJoin,
     updateJoin,

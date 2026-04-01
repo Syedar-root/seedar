@@ -26,6 +26,17 @@ export interface MetricConfig {
   description?: string;
 }
 
+export interface FormField {
+  id: string;
+  dataSourceColumnId?: number;
+  tableId?: number;
+  name: string;
+  businessName: string;
+  description?: string;
+  isPrimaryKey?: boolean;
+  backendId?: number;
+}
+
 export interface DatasetFormData {
   name: string;
   description: string;
@@ -34,6 +45,6 @@ export interface DatasetFormData {
   tables: Array<{ tableId: string; tableName: string; alias?: string }>;
   mainTable: string;
   joins: JoinConfig[];
-  fields: string[];
+  fields: FormField[];
   metrics: MetricConfig[];
 }

@@ -3,13 +3,30 @@ import { useDatasetForm } from "../hooks/useDatasetForm";
 import { useCreateDataset } from "#pkg/seedar/ui-react";
 import type { EditorMode, DatasetFormData } from "../types/editor.types";
 import { DatasetEditorPage } from "../components/DatasetEditor/DatasetEditorPage";
-import { DatasetType } from "#pkg/seedar/types";
+import { DatasetType, JoinType } from "#pkg/seedar/types";
 
 export const DatasetCreatePage = () => {
   const navigate = useNavigate();
   const createMutation = useCreateDataset();
 
   const handleSubmit = async (data: DatasetFormData) => {
+    const fields = data.fields.map((field) => ({
+      dataSourceColumnId: field.dataSourceColumnId!,
+      tableId: field.tableId!,
+      name: field.name,
+      businessName: field.businessName,
+      description: field.description,
+      isPrimaryKey: field.isPrimaryKey,
+    }));
+
+    const joins = data.joins.map((join) => ({
+      leftTableId: parseInt(join.leftTable, 10),
+      leftColumnId: parseInt(join.leftField, 10),
+      rightTableId: parseInt(join.rightTable, 10),
+      rightColumnId: parseInt(join.rightField, 10),
+      joinType: join.joinType as JoinType,
+    }));
+
     const result = await createMutation.mutateAsync({
       name: data.name,
       description: data.description,
@@ -17,6 +34,8 @@ export const DatasetCreatePage = () => {
       datasourceId: parseInt(data.datasourceId, 10),
       datasourceTableIds: data.tables.map((t) => parseInt(t.tableId, 10)),
       mainTableId: data.mainTable ? parseInt(data.mainTable, 10) : undefined,
+      fields,
+      joins,
     });
 
     if (result?.id) {

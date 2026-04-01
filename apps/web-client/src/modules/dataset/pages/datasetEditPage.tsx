@@ -15,10 +15,41 @@ export const DatasetEditPage = () => {
   const handleSubmit = async (data: DatasetFormData) => {
     if (!dataset) return;
 
+    const initialFields = initialData?.fields || [];
+    const currentFields = data.fields;
+
+    const addedFields = currentFields
+      .filter((f) => !f.backendId)
+      .map((f) => ({
+        dataSourceColumnId: f.dataSourceColumnId,
+        businessName: f.businessName,
+      }));
+
+    const updatedFields = currentFields
+      .filter((f) => f.backendId)
+      .map((f) => ({
+        id: f.backendId,
+        businessName: f.businessName,
+        description: f.description,
+      }));
+
+    const initialFieldIds = new Set(initialFields.map((f) => f.backendId));
+    const deletedIds = initialFields
+      .filter(
+        (initialField) =>
+          !currentFields.some((f) => f.backendId === initialField.backendId),
+      )
+      .map((f) => f.backendId!);
+
     await updateMutation.mutateAsync({
       dataSetId: dataset.id,
       name: data.name,
       description: data.description,
+      fields: {
+        added: addedFields,
+        updated: updatedFields,
+        deletedIds,
+      },
     });
 
     navigate(`/dataset/${dataset.id}`);
@@ -44,7 +75,16 @@ export const DatasetEditPage = () => {
           rightTable: j.rightTableId.toString(),
           rightField: j.rightField,
         })),
-        fields: (dataset.fields || []).map((f) => f.id.toString()),
+        fields: (dataset.fields || []).map((f) => ({
+          id: f.id.toString(),
+          backendId: f.id,
+          dataSourceColumnId: f.datasourceColumnId,
+          tableId: f.tableId,
+          name: f.name,
+          businessName: f.businessName || f.name,
+          description: f.description,
+          isPrimaryKey: f.isPrimaryKey,
+        })),
         metrics: (dataset.metrics || []).map((m) => ({
           id: m.id.toString(),
           name: m.name,
