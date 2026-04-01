@@ -9,7 +9,7 @@ import styles from "./DataSourceStep.module.scss";
 
 interface DataSourceStepProps {
   formData: DatasetFormData;
-  onUpdate: (updates: Partial<DatasetFormData>) => void;
+  onUpdate: (updates: Partial<DatasetFormData>, tag: string) => void;
 }
 
 export const DataSourceStep = ({ formData, onUpdate }: DataSourceStepProps) => {
@@ -28,11 +28,14 @@ export const DataSourceStep = ({ formData, onUpdate }: DataSourceStepProps) => {
       selectedDatasourceId &&
       selectedDatasourceId !== formData.datasourceId
     ) {
-      onUpdate({
-        datasourceId: selectedDatasourceId,
-        tables: [],
-        mainTable: "",
-      });
+      onUpdate(
+        {
+          datasourceId: selectedDatasourceId,
+          tables: [],
+          mainTable: "",
+        },
+        "DataSourceStep datasourceId",
+      );
       setSelectedTableNames([]);
     }
   }, [selectedDatasourceId]);
@@ -67,13 +70,13 @@ export const DataSourceStep = ({ formData, onUpdate }: DataSourceStepProps) => {
       tableId: getTableId(name),
       tableName: name,
     }));
-    onUpdate({ tables: newTables });
+    onUpdate({ tables: newTables }, "DataSourceStep tables");
 
     if (
       formData.mainTable &&
       !selectedTableNames.some((n) => getTableId(n) === formData.mainTable)
     ) {
-      onUpdate({ mainTable: "" });
+      onUpdate({ mainTable: "" }, "DataSourceStep mainTable");
     }
   }, [selectedTableNames]);
 
@@ -86,7 +89,7 @@ export const DataSourceStep = ({ formData, onUpdate }: DataSourceStepProps) => {
   };
 
   const handleMainTableChange = (value: string | null) => {
-    onUpdate({ mainTable: value || "" });
+    onUpdate({ mainTable: value || "" }, "DataSourceStep mainTable");
   };
 
   const datasourceOptions =

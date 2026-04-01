@@ -3,7 +3,7 @@ import styles from "./BasicInfoStep.module.scss";
 
 interface BasicInfoStepProps {
   formData: DatasetFormData;
-  onUpdate: (updates: Partial<DatasetFormData>) => void;
+  onUpdate: (updates: Partial<DatasetFormData>, tag: string) => void;
 }
 
 export const BasicInfoStep = ({ formData, onUpdate }: BasicInfoStepProps) => {
@@ -17,7 +17,9 @@ export const BasicInfoStep = ({ formData, onUpdate }: BasicInfoStepProps) => {
           type="text"
           className={styles.input}
           value={formData.name}
-          onChange={(e) => onUpdate({ name: e.target.value })}
+          onChange={(e) =>
+            onUpdate({ name: e.target.value }, "BasicInfoStep name")
+          }
           placeholder="请输入数据集名称"
           maxLength={100}
         />
@@ -28,7 +30,12 @@ export const BasicInfoStep = ({ formData, onUpdate }: BasicInfoStepProps) => {
         <textarea
           className={styles.textarea}
           value={formData.description}
-          onChange={(e) => onUpdate({ description: e.target.value })}
+          onChange={(e) =>
+            onUpdate(
+              { description: e.target.value },
+              "BasicInfoStep description",
+            )
+          }
           placeholder="请输入数据集描述（可选）"
           rows={3}
           maxLength={500}
@@ -43,7 +50,10 @@ export const BasicInfoStep = ({ formData, onUpdate }: BasicInfoStepProps) => {
           className={styles.select}
           value={formData.type}
           onChange={(e) =>
-            onUpdate({ type: e.target.value as "semantic" | "wideTable" })
+            onUpdate(
+              { type: e.target.value as "semantic" | "wideTable" },
+              "BasicInfoStep type",
+            )
           }
         >
           <option value="semantic">语义型</option>

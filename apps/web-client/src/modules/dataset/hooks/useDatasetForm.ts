@@ -20,17 +20,19 @@ const STEPS: EditorSteps[] = [
   "confirm",
 ];
 
-const createEmptyFormData = (): DatasetFormData => ({
-  name: "",
-  description: "",
-  type: "semantic",
-  datasourceId: "",
-  tables: [],
-  mainTable: "",
-  joins: [],
-  fields: [],
-  metrics: [],
-});
+const createEmptyFormData = (): DatasetFormData => {
+  return {
+    name: "",
+    description: "",
+    type: "semantic",
+    datasourceId: "",
+    tables: [],
+    mainTable: "",
+    joins: [],
+    fields: [],
+    metrics: [],
+  };
+};
 
 interface UseDatasetFormProps {
   mode: EditorMode;
@@ -46,6 +48,13 @@ export const useDatasetForm = ({
   const [formData, setFormData] = useState<DatasetFormData>(
     initialData || createEmptyFormData(),
   );
+
+  useEffect(() => {
+    if (initialData && initialData.name) {
+      setFormData(initialData);
+    }
+  }, [initialData?.name]); // name 是稳定字符串，不会引起无限循环
+
   const [currentStep, setCurrentStep] = useState<EditorSteps>("basicInfo");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -57,14 +66,17 @@ export const useDatasetForm = ({
   const isCreateMode = mode === "create";
 
   useEffect(() => {
-    if (formData.datasourceId) {
-      updateFormData({
-        tables: [],
-        mainTable: "",
-        joins: [],
-      });
+    if (formData.datasourceId && isCreateMode) {
+      updateFormData(
+        {
+          tables: [],
+          mainTable: "",
+          joins: [],
+        },
+        "useEffect formData.datasourceId && isCreateMode",
+      );
     }
-  }, [formData.datasourceId]);
+  }, [formData.datasourceId, isCreateMode]);
 
   const currentStepIndex = useMemo(
     () => STEPS.indexOf(currentStep),
@@ -83,7 +95,7 @@ export const useDatasetForm = ({
           validTableIds.has(join.rightTable),
       );
       if (validJoins.length !== formData.joins.length) {
-        updateFormData({ joins: validJoins });
+        updateFormData({ joins: validJoins }, "onBeforeNext dataSource");
       }
       return true;
     },
@@ -149,9 +161,13 @@ export const useDatasetForm = ({
     [currentStepIndex],
   );
 
-  const updateFormData = useCallback((updates: Partial<DatasetFormData>) => {
-    setFormData((prev) => ({ ...prev, ...updates }));
-  }, []);
+  const updateFormData = useCallback(
+    (updates: Partial<DatasetFormData>, tag?: string) => {
+      console.log(`hcs update ${tag}`, updates);
+      setFormData((prev) => ({ ...prev, ...updates }));
+    },
+    [],
+  );
 
   const getLockedFields = useCallback(
     (selectedDatasource?: DatasourceResponse | null): Set<string> => {
@@ -194,7 +210,6 @@ export const useDatasetForm = ({
       if (lockedFields.has(fieldId)) {
         return;
       }
-
       setFormData((prev) => {
         const isSelected = prev.fields.some((f) => f.id === fieldId);
         if (isSelected) {
@@ -324,7 +339,6 @@ export const useDatasetForm = ({
 
     setIsSubmitting(true);
     try {
-      console.log("hcs formData", formData);
       await onSubmit?.(formData);
     } finally {
       setIsSubmitting(false);

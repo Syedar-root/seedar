@@ -42,8 +42,10 @@ export interface DatasetEditorPageProps {
   goToNextStep: () => void;
   goToPrevStep: () => void;
   goToStep: (step: EditorSteps) => void;
-  updateFormData: (updates: Partial<DatasetFormData>) => void;
-  getLockedFields: (selectedDatasource?: DatasourceResponse | null) => Set<string>;
+  updateFormData: (updates: Partial<DatasetFormData>, tag: string) => void;
+  getLockedFields: (
+    selectedDatasource?: DatasourceResponse | null,
+  ) => Set<string>;
   toggleField: (fieldId: string, lockedFields: Set<string>) => void;
   updateFieldBusinessName: (fieldId: string, businessName: string) => void;
   addJoin: (join: JoinConfig) => void;
@@ -139,7 +141,9 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
           <FieldConfigStep
             formData={formData}
             lockedFields={getLockedFields(datasource)}
-            onToggleField={(fieldId) => toggleField(fieldId, getLockedFields(datasource))}
+            onToggleField={(fieldId) =>
+              toggleField(fieldId, getLockedFields(datasource))
+            }
             onUpdateFieldBusinessName={updateFieldBusinessName}
             selectedDatasource={datasource ?? undefined}
           />
