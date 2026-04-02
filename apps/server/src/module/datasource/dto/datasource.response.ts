@@ -35,8 +35,10 @@ export class DatasourceResponse {
   createdAt: Date;
   updatedAt: Date;
   tables?: Array<{
+    tableId?: number;
     tableName: string;
     columns: Array<{
+      columnId?: number;
       columnName: string;
       rawDataType: string;
       normalizedType: FieldType;
@@ -49,6 +51,7 @@ export class DatasourceResponse {
   constructor(
     datasource: Datasource,
     tables?: Array<{
+      tableId?: number;
       tableName: string;
       columns: Array<{
         columnName: string;
@@ -56,6 +59,7 @@ export class DatasourceResponse {
         normalizedType: FieldType;
         nullable: boolean;
         isPrimaryKey: boolean;
+        columnId?: number;
       }>;
     }>,
     foreignKeys?: ForeignKeyResponse[],
@@ -75,7 +79,7 @@ export class DatasourceResponse {
     this.lastValidateAt = datasource.lastValidateAt;
     this.createdAt = datasource.createdAt;
     this.updatedAt = datasource.updatedAt;
-    this.tables = tables;
+    this.tables = tables || datasource.tables;
     this.foreignKeys = foreignKeys;
   }
 }

@@ -1,0 +1,81 @@
+.tableFieldNode {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  min-width: 160px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 8px 8px 0 0;
+}
+
+.mainTableStar {
+  flex-shrink: 0;
+}
+
+.tableName {
+  font-weight: 600;
+  font-size: 13px;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldList {
+  padding: 4px 0;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  position: relative;
+}
+
+.fieldName {
+  flex: 1;
+  font-size: 12px;
+  color: #4b5563;
+  padding: 2px 0;
+  text-align: center;
+}
+
+.fieldName.primaryKey {
+  color: #d97706;
+  font-weight: 500;
+}
+
+.handle {
+  $size: 14px;
+  width: $size;
+  height: $size;
+  background: #9ca3af;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #3b82f6;
+    transform-origin: center center;
+
+    &.leftHandle {
+      transform: scale(1.2) translate(-50%, -50%);
+    }
+
+    &.rightHandle {
+      transform: scale(1.2) translate(50%, -50%);
+    }
+  }
+}
+
+.handleConnected {
+  background: #3b82f6;
+  opacity: 0.5;
+  cursor: not-allowed;
+}

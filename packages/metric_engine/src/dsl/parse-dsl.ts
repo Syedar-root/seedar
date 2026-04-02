@@ -1,5 +1,5 @@
 import { SchemaInspector } from '../database/schema-inspector';
-import { Query, Dimension } from '../query/query-builder';
+import { Query, Dimension } from '../v1/query/query-builder';
 import { Table } from '../core/table';
 import {
   AggregateMetric,
@@ -8,22 +8,20 @@ import {
   ArithmeticMetric,
   MetricExpression,
   SubQueryMetric,
-} from '../metrics/metric-classes';
-import { Filter, TimeFilter, TimeRange } from '../query/filter';
+} from '../v1/metrics/metric-classes';
+import { Filter, TimeFilter, TimeRange } from '../v1/query/filter';
 import { AggregateFunction, Operator } from '../core/types';
 import { Join, JoinCondition } from '../core/join';
-import { QueryBuilder } from '../query/query-builder';
+import { QueryBuilder } from '../v1/query/query-builder';
 
 export type MinimalMetric = {
   name?: string;
-  // metric kind: 'aggregate' 表示使用 agg 字段指定函数；其它为行级/特殊类型
-  type: 'aggregate' | 'subquery' | 'row' | 'post_agg' | 'arithmetic';
+  type: 'aggregate' | 'subquery' | 'row' | 'post_agg' | 'arithmetic' | 'count' | 'sum' | 'avg' | 'max' | 'min' | 'distinct_count';
   field?: string;
   alias?: string;
   sqlTemplate?: string;
-  // optional extended fields for row/post_agg/arithmetic/aggregate
   expression?: string;
-  agg?: 'count' | 'sum' | 'avg' | 'max' | 'min' | 'distinct_count'; // 聚合函数名（仅在 type === 'aggregate' 时使用）
+  agg?: 'count' | 'sum' | 'avg' | 'max' | 'min' | 'distinct_count';
   metric?: string;
   left?: any;
   operator?: string;
@@ -50,6 +48,8 @@ export type MinimalDSL = {
   metrics?: MinimalMetric[];
   filters?: MinimalFilter[];
   joins?: MinimalJoin[];
+  limit?: number;
+  offset?: number;
 };
 
 /**
@@ -333,6 +333,14 @@ export async function parseMinimalDslToQuery(
   });
 
   // 返回前为所有表分配别名
-  const query = new Query(mainTable, dims, metrics, filters, joins);
+  const query = new Query(
+    mainTable,
+    dims,
+    metrics,
+    filters,
+    joins,
+    dsl.limit,
+    dsl.offset
+  );
   return QueryBuilder.assignTableAliases(query);
 }

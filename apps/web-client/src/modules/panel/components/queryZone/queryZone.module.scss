@@ -1,0 +1,77 @@
+.queryZone {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--bg-selected);
+  background: var(--bg-base);
+
+  .zone {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    border-top: 1px solid var(--bg-selected);
+
+    .title {
+      width: 40px;
+      font-size: var(--font-lg);
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 40px;
+      text-align: center;
+      background: var(--bg-hover);
+      border-right: 1px solid var(--bg-selected);
+    }
+  }
+}
+
+.dragZone {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  text-align: center;
+  gap: var(--spacing-md);
+  align-items: center;
+  padding-inline: var(--spacing-lg);
+  min-height: 48px;
+  transition: background-color var(--transition-slow);
+}
+
+@mixin drag-item-style($bg-color, $border-color, $text-color) {
+  padding: 6px var(--spacing-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid $border-color;
+  cursor: pointer;
+  background: $bg-color;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-base);
+  font-weight: 500;
+  user-select: none;
+  color: $text-color;
+  transition: opacity var(--transition-base);
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  svg {
+    opacity: 0.6;
+    transition: opacity var(--transition-base);
+    flex-shrink: 0;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+.field {
+  @include drag-item-style(var(--accent-1), var(--accent-1-border), var(--accent-1-text));
+}
+
+.metric {
+  @include drag-item-style(var(--accent-2), var(--accent-2-border), var(--accent-2-text));
+}

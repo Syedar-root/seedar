@@ -1,0 +1,45 @@
+.labelConfigurator {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.title {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.label {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  min-width: 60px;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.select {
+  flex: 1;
+  padding: 6px var(--spacing-sm);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  outline: none;
+
+  &:focus {
+    border-color: var(--primary);
+  }
+}

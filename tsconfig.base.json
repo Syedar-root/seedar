@@ -12,7 +12,9 @@
     "strict": true,
     "noEmit": true,
     "baseUrl": ".",
-    "paths": {}
-  }
+    "paths": {
+      "#pkg/seedar/*": ["./packages/*/src/index.ts"]
+    }
+  },
+  "include": ["packages/**/*", "apps/**/*"]
 }
-

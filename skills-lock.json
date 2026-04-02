@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": {
+    "VTable Development Assistant": {
+      "source": "VisActor/VTable",
+      "sourceType": "github",
+      "computedHash": "50c73844e72b4fe148d1779b33ef4c37f4623c66a014cb282622bd6c7d00343a"
+    },
+    "docx": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "150be87ff7b18f273ad07da303adb1cf2ca21cc3e76db7a2cf0373405178a278"
+    },
+    "humanizer-zh": {
+      "source": "op7418/humanizer-zh",
+      "sourceType": "github",
+      "computedHash": "ad6b2b1f1433413c64f6403dc322d950da175a058f494291bd4399e77cb587c7"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "6337038fe1fe6bbe1b9f252ab678ee575859190bab6f0f246f4061824eb40875"
+    },
+    "vchart-development-assistant": {
+      "source": "VisActor/VChart",
+      "sourceType": "github",
+      "computedHash": "ba292dbccb70f99b29394311f41fac8468285aa30eec5b00e54b177486f4314e"
+    }
+  }
+}

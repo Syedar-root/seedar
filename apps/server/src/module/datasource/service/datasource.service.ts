@@ -139,6 +139,19 @@ export class DatasourceService {
     return new DatasourceResponse(savedDatasource);
   }
 
+  async findAll(): Promise<DatasourceResponse[]> {
+    this.logger.log('开始查询所有数据源', 'FindAllDatasourcesStart');
+
+    const datasources = await this.datasourceRepository.find();
+
+    this.logger.log(
+      `数据源列表查询成功,共 ${datasources.length} 个数据源`,
+      'FindAllDatasourcesSuccess',
+    );
+
+    return datasources.map((datasource) => new DatasourceResponse(datasource));
+  }
+
   async findOne(id: number): Promise<DatasourceResponse> {
     this.logger.log(`开始查询数据源: ID ${id}`, 'FindOneDatasourceStart');
 
@@ -720,7 +733,7 @@ export class DatasourceService {
       .join('pg_class as tco', 'tco.oid', 'con.conrelid')
       .where('tco.relname', tableName)
       .andWhere('con.contype', 'p')
-      .andWhere('att.attnum', 'con.conkey[1]');
+      .andWhereRaw('att.attnum = con.conkey[1]');
 
     const primaryKeyColumns = new Set(
       primaryKeysResult.map((row: PostgreSQLColumnRow) => row.column_name),
@@ -964,8 +977,8 @@ export class DatasourceService {
       .join('pg_attribute as fatt', 'fatt.attrelid', 'con.confrelid')
       .join('pg_class as ftco', 'ftco.oid', 'con.confrelid')
       .where('con.contype', 'f')
-      .andWhere('att.attnum', 'con.conkey[1]')
-      .andWhere('fatt.attnum', 'confkey[1]')
+      .andWhereRaw('att.attnum = con.conkey[1]')
+      .andWhereRaw('fatt.attnum = con.confkey[1]')
       .andWhere('tco.relname', '!=', 'datasource_tables')
       .andWhere('ftco.relname', '!=', 'datasource_tables')) as Array<{
       fk_name: string;

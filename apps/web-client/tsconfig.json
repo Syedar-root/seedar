@@ -5,8 +5,14 @@
     "module": "ESNext",
     "jsx": "react-jsx",
     "types": ["vite/client"],
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "#pkg/seedar/ui-react": ["../../packages/ui-react/src/index.tsx"],
+      "#pkg/seedar/ui-core": ["../../packages/ui-core/src/index.ts"],
+      "#pkg/seedar/types": ["../../packages/types/src/index.ts"]
+    }
   },
   "include": ["src", "vite.config.ts"]
 }
-

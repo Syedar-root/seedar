@@ -7,8 +7,14 @@ import { CreateQueryRequest } from './dto/create-query.request';
 import { UpdateQueryRequest } from './dto/update-query.request';
 import { ExecuteQueryResponse } from './dto/execute-query.response';
 import { QueryStatus } from './query-status.enum';
-import { DSLTransformer } from './dsl-transformer';
-import { KnexSQLGenerator, Table, Field } from '@metric-engine/core';
+import { DSLTransformer, QueryDSL } from './dsl-transformer/dsl-transformer';
+import {
+  KnexQueryBuilder,
+  QueryAdapter,
+  Table,
+  Field,
+  DatabaseDialect,
+} from '@metric-engine/core';
 import { Datasource } from '@/module/datasource/entities/datasource.entity';
 import { DatasetService } from '@/module/dataset/services/dataset.service';
 import { KnexConnectionFactory } from '@/module/datasource/knex-connection.factory';
@@ -17,6 +23,7 @@ import { MySqlConfig } from '@/module/datasource/datasource.types';
 import { DataSourceType } from '@/module/datasource/datasource.types';
 import { DatasetResponse } from '@/module/dataset/dataset.types';
 import { LoggerService } from '@/logger/logger.service';
+import { DSLTransformerV2 } from './dsl-transformer/dsl-transformer.v2';
 
 @Injectable()
 export class QueryService {
@@ -48,7 +55,7 @@ export class QueryService {
     return this.queryRepository.find();
   }
 
-  async findOne(id: number): Promise<Query> {
+  async findOne(id: string): Promise<Query> {
     const query = await this.queryRepository.findOne({ where: { id } });
     if (!query) {
       throw new NotFoundException(`Query with ID ${id} not found`);
@@ -57,7 +64,7 @@ export class QueryService {
   }
 
   async update(
-    id: number,
+    id: string,
     updateQueryRequest: UpdateQueryRequest,
   ): Promise<Query> {
     const query = await this.findOne(id);
@@ -65,26 +72,38 @@ export class QueryService {
     return this.queryRepository.save(query);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     const result = await this.queryRepository.delete(id);
     if (result.affected === 0) {
       throw new NotFoundException(`Query with ID ${id} not found`);
     }
   }
 
-  async execute(queryId: number): Promise<ExecuteQueryResponse> {
-    // 查找查询
+  async execute(queryId: string): Promise<ExecuteQueryResponse> {
     const query = await this.findOne(queryId);
 
-    // 获取数据集
-    const dataset = await this.datasetService.findOne(query.datasetId);
+    if (!query.dsl) {
+      throw new Error('Query DSL is required for execution');
+    }
+
+    return this.executeDSL(query.dsl, query.datasetId);
+  }
+
+  async executeTemp(dsl: QueryDSL): Promise<ExecuteQueryResponse> {
+    return this.executeDSL(dsl, dsl.datasetId);
+  }
+
+  private async executeDSL(
+    dsl: QueryDSL,
+    datasetId: number,
+  ): Promise<ExecuteQueryResponse> {
+    const dataset = await this.datasetService.findOne(datasetId);
     if (!dataset || !dataset.datasource) {
       throw new NotFoundException(
-        `DataSource not found for Dataset ${query.datasetId}`,
+        `DataSource not found for Dataset ${datasetId}`,
       );
     }
 
-    // 从数据库获取原始的Datasource实体
     const datasourceEntity = await this.datasourceRepository.findOne({
       where: { id: dataset.datasource.id },
     });
@@ -95,79 +114,77 @@ export class QueryService {
       );
     }
 
-    // 解密配置
     datasourceEntity.config = configDecryption(
       datasourceEntity.config as MySqlConfig,
       this.configService,
     );
 
-    // 从数据集获取表结构信息
     const tables = this.getTablesFromDataset(dataset);
 
-    // 检查 DSL 是否存在
-    if (!query.dsl) {
-      throw new Error('Query DSL is required for execution');
-    }
-
-    // 转换DSL
-    const metricQuery = DSLTransformer.transform(query.dsl, dataset, tables);
-
-    // 创建动态数据库连接
     const knexConnection =
       this.knexConnectionFactory.createConnection(datasourceEntity);
 
     try {
-      // 初始化KnexSQLGenerator
-      KnexSQLGenerator.initializeKnex({
-        client:
-          datasourceEntity.type === DataSourceType.MYSQL
-            ? 'mysql2'
-            : datasourceEntity.type,
-        connection: datasourceEntity.config,
-      });
+      const knexClientMap: Record<string, string> = {
+        [DataSourceType.MYSQL]: 'mysql2',
+        [DataSourceType.POSTGRES]: 'pg',
+        [DataSourceType.CLICKHOUSE]: 'clickhouse',
+      };
 
-      // 生成SQL
+      const clientType =
+        knexClientMap[datasourceEntity.type] || datasourceEntity.type;
+
+      DatabaseDialect.setClient(clientType as any);
+
       const startTime = Date.now();
-      const sqlResult = KnexSQLGenerator.generateSQLWithBindings(metricQuery);
 
-      // 执行SQL
+      // v1 的使用方法
+      // const metricQuery = DSLTransformer.transform(dsl, dataset, tables);
+      // const querySpec = QueryAdapter.toQuerySpec(metricQuery);
+
+      const querySpec = DSLTransformerV2.transform(dsl, dataset, tables);
+
+      const builder = new KnexQueryBuilder(knexConnection);
+
+      const sqlResult = builder.build(querySpec);
+
       const results = await knexConnection.raw<any[][]>(
         sqlResult.sql,
         sqlResult.bindings,
       );
-
       const executionTime = Date.now() - startTime;
 
-      // 处理执行结果
       let rawRows: any[] = [];
       if (Array.isArray(results)) {
-        // 对于返回数组的情况（如某些数据库驱动）
-        rawRows = results;
+        rawRows = Array.isArray(results[0]) ? results[0] : results;
+      } else if (results && typeof results === 'object' && 'rows' in results) {
+        rawRows = (results as unknown as any).rows;
       } else {
-        // 对于其他情况，尝试转换
-        rawRows = [results];
+        rawRows = [];
       }
 
-      // 生成 header
-      const columnMappings = sqlResult.columnMappings || [];
+      const columnMappings = (sqlResult as any).columnMappings || [];
 
-      const header = columnMappings.map(
-        (mapping) => mapping.businessName || mapping.displayName,
-      );
+      let header: string[];
+      let columnAliases: string[];
 
-      // 将对象数组转换为二维数组，顺序与 header 一致
-      const columnAliases = columnMappings.map((mapping) => mapping.alias);
+      if (columnMappings.length > 0) {
+        header = columnMappings.map(
+          (mapping: any) => mapping.businessName || mapping.displayName,
+        );
+        columnAliases = columnMappings.map((mapping: any) => mapping.alias);
+      } else {
+        header = Object.keys(rawRows[0] || {});
+        columnAliases = header;
+      }
 
-      const rows = Array.isArray(rawRows[0])
-        ? rawRows[0].map((row: Record<string, unknown>) => {
-            return columnAliases.map((alias: string) => {
-              const value = row[alias];
-              return typeof value === 'number' ? value : String(value);
-            });
-          })
-        : [];
+      const rows = rawRows.map((row: Record<string, unknown>) => {
+        return columnAliases.map((alias: string) => {
+          const value = row[alias.split('.').at(-1) || alias];
+          return typeof value === 'number' ? value : String(value);
+        });
+      });
 
-      // 构建响应
       return {
         sql: sqlResult.sql,
         results: {
@@ -175,10 +192,8 @@ export class QueryService {
           rows,
         },
         executionTime,
-        // columnMappings: sqlResult.columnMappings || [],
       };
     } finally {
-      // 确保连接正确关闭
       await knexConnection.destroy();
     }
   }

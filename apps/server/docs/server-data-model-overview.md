@@ -2,7 +2,7 @@
 
 ## 1. 项目概述
 
-Seedar 后端服务的数据模型体系围绕数据分析平台的三个核心模块设计：数据源模块、数据集模块和查询模块。这些数据模型通过 TypeORM 进行管理，存储在 MySQL/PostgreSQL 数据库中。
+Seedar 后端服务的数据模型体系围绕数据分析平台的四个核心模块设计：数据源模块、数据集模块、查询模块和仪表盘模块。这些数据模型通过 TypeORM 进行管理，存储在 MySQL/PostgreSQL 数据库中。
 
 ## 2. 实体关系总览
 
@@ -22,6 +22,10 @@ erDiagram
     DATASET_FIELD }o--|| DATASOURCE_COLUMN : references
     
     QUERY }o--|| DATASET : uses
+    
+    DASHBOARD ||--o{ DASHBOARD_PANEL_RELATION : contains
+    PANEL ||--o{ DASHBOARD_PANEL_RELATION : used_in
+    PANEL }o--o{ QUERY : references
 ```
 
 ## 3. 模块数据模型
@@ -63,14 +67,26 @@ erDiagram
 
 **详细数据模型**：[query-data-model.md](module/query/docs/query-data-model.md)
 
+### 3.4 仪表盘模块
+
+包含 3 个核心实体：
+
+| 实体 | 描述 | 关键字段 |
+|------|------|----------|
+| `Dashboard` | 仪表盘基本信息 | id, name, layout |
+| `Panel` | 面板信息 | id, title, type, query_id, config, width, height |
+| `DashboardPanelRelation` | 仪表盘与面板的关联关系 | dashboard_id, panel_id |
+
+**详细数据模型**：[dashboard-data-model.md](module/dashboard/docs/dashboard-data-model.md)
+
 ## 4. 数据流关系
 
 ```
-数据源 → 数据集 → 查询
-  ↓         ↓       ↓
-表结构    字段定义   DSL
-  ↓         ↓       ↓
-列信息    关联关系   SQL
+数据源 → 数据集 → 查询 → 仪表盘
+  ↓         ↓       ↓        ↓
+表结构    字段定义   DSL     面板
+  ↓         ↓       ↓        ↓
+列信息    关联关系   SQL     布局
 ```
 
 ## 5. 数据类型标准化
@@ -137,6 +153,15 @@ erDiagram
 | `left` | 左连接 |
 | `right` | 右连接 |
 
+### 面板类型 (PanelType)
+
+| 值 | 描述 |
+|-----|------|
+| `chart` | 图表面板 |
+| `table` | 表格面板 |
+| `text` | 文本面板 |
+| `card` | 卡片面板 |
+
 ## 7. 数据安全
 
 ### 配置加密
@@ -153,12 +178,13 @@ erDiagram
 
 ### 主键约束
 
-- 所有实体都有自增主键 `id`
+- 所有实体都有自增主键 `id`（UUID 类型）
 
 ### 外键约束
 
 - 实体之间的关联使用外键约束
 - 确保数据完整性
+- 支持级联删除
 
 ### 非空约束
 
@@ -184,8 +210,12 @@ erDiagram
 
 Seedar 后端服务的数据模型设计遵循以下原则：
 
-1. **分层设计**：数据源层 → 数据集层 → 查询层，职责清晰
+1. **分层设计**：数据源层 → 数据集层 → 查询层 → 仪表盘层，职责清晰
 2. **标准化**：数据类型统一标准化，提供统一的数据访问接口
 3. **安全性**：敏感信息加密存储，采用软删除机制
 4. **性能优化**：合理设计索引，采用批量操作提高性能
 5. **扩展性**：使用枚举类型和 JSON 字段，便于后续扩展
+
+---
+
+> 【更新于 2026-03-15】：新增仪表盘模块数据模型说明，包含 Dashboard、Panel、DashboardPanelRelation 三个核心实体，新增面板类型枚举 (PanelType)，更新实体关系总览图。

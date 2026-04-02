@@ -1,0 +1,54 @@
+{
+  "name": "@seedar/types",
+  "version": "1.0.0",
+  "description": "Seedar 项目的类型定义包",
+  "types": "index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts",
+      "require": "./index.ts"
+    },
+    "./datasource": {
+      "types": "./src/datasource/index.ts",
+      "import": "./src/datasource/index.ts",
+      "require": "./src/datasource/index.ts"
+    },
+    "./dataset": {
+      "types": "./src/dataset/index.ts",
+      "import": "./src/dataset/index.ts",
+      "require": "./src/dataset/index.ts"
+    },
+    "./query": {
+      "types": "./src/query/index.ts",
+      "import": "./src/query/index.ts",
+      "require": "./src/query/index.ts"
+    },
+    "./common": {
+      "types": "./src/common/index.ts",
+      "import": "./src/common/index.ts",
+      "require": "./src/common/index.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "types",
+    "typescript",
+    "seedar"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.6",
+    "rimraf": "^5.0.5"
+  },
+  "sideEffects": false
+}

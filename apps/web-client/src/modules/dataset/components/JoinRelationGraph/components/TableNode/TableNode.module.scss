@@ -1,0 +1,35 @@
+.tableNode {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--color-bg-primary, #ffffff);
+  border: 2px solid var(--color-border, #e2e8f0);
+  min-width: 120px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  position: relative;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+}
+
+.mainTableStar {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
+.tableName {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text-primary, #1e293b);
+}
+
+.handle {
+  width: 8px;
+  height: 8px;
+  background: var(--color-primary, #3b82f6);
+  border: 2px solid white;
+}

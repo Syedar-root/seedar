@@ -1,0 +1,110 @@
+.joinEdge {
+  stroke-width: 2;
+  fill: none;
+  transition: stroke-width 0.2s ease;
+}
+
+.edgeInner {
+  stroke: var(--primary, #a0522d);
+}
+
+.edgeLeft {
+  stroke: var(--success, #6b8e4e);
+  stroke-dasharray: 5 5;
+}
+
+.edgeRight {
+  stroke: var(--warning, #c4842a);
+  stroke-dasharray: 2 2;
+}
+
+.edgeSelected {
+  stroke-width: 3;
+}
+
+.edgeLabel {
+  padding: 8px 12px;
+  background: var(--bg-elevated, #ffffff);
+  border-radius: var(--radius-base, 6px);
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  pointer-events: none;
+}
+
+.edgeLabelHorizontal {
+  flex-direction: column;
+}
+
+.edgeLabelTopRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.edgeLabelLeftField {
+  color: var(--text-primary, #5a4a3a);
+  font-weight: 600;
+  font-size: var(--font-sm, 12px);
+  letter-spacing: 0.2px;
+}
+
+.edgeLabelArrow {
+  position: relative;
+  width: 24px;
+  height: 2px;
+  background: var(--text-secondary, #8b7355);
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 6px solid var(--text-secondary, #8b7355);
+  }
+}
+
+.edgeLabelRightField {
+  color: var(--text-primary, #5a4a3a);
+  font-weight: 600;
+  font-size: var(--font-sm, 12px);
+  letter-spacing: 0.2px;
+}
+
+.edgeLabelType {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edgeLabelTypeIcon {
+  font-weight: 700;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  .edgeInner & {
+    color: var(--primary, #a0522d);
+    background: var(--primary-light, #faf6f0);
+  }
+
+  .edgeLeft & {
+    color: var(--success, #6b8e4e);
+    background: var(--success-light, #f0f4eb);
+  }
+
+  .edgeRight & {
+    color: var(--warning, #c4842a);
+    background: var(--warning-light, #faf5eb);
+  }
+}

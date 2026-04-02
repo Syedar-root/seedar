@@ -1,0 +1,180 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.sectionTitle {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.required {
+  color: var(--error-active);
+}
+
+.hint {
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.tableGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.tableCard {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-secondary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: var(--primary-active);
+    background: color-mix(
+      in srgb,
+      var(--primary-active) 5%,
+      var(--bg-secondary)
+    );
+  }
+
+  &:has([data-checked]) {
+    border-color: var(--primary-active);
+    background: color-mix(
+      in srgb,
+      var(--primary-active) 10%,
+      var(--bg-secondary)
+    );
+  }
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  margin: var(--spacing-sm);
+  border: 1px solid var(--border-base);
+  border-radius: 2px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+
+  &[data-checked] {
+    background: var(--primary-active);
+    border-color: var(--primary-active);
+  }
+}
+
+.checkboxIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.cardContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.tableName {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.columnCount {
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.cardBody {
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.fieldItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) 0;
+}
+
+.fieldName {
+  font-size: var(--font-xs);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.primaryKey {
+  .fieldName {
+    color: var(--primary-active);
+    font-weight: 500;
+  }
+}
+
+.pkIcon {
+  color: var(--primary-active);
+  flex-shrink: 0;
+}
+
+.moreFields {
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  padding: var(--spacing-xs) 0;
+}
+
+.noTables {
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+@media (max-width: 768px) {
+  .tableGrid {
+    grid-template-columns: 1fr;
+  }
+}

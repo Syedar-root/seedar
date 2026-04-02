@@ -1,0 +1,108 @@
+.SelectContainer {
+  position: relative;
+  display: flex;
+  align-items: start;
+}
+
+.Select {
+  box-sizing: border-box;
+  padding: var(--spacing-sm);
+  padding-inline: var(--spacing-lg);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--border-base);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: var(--font-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+
+  &:hover {
+    border-color: var(--border-hover);
+  }
+  &:focus {
+    outline: none;
+    border-color: var(--border-focus);
+  }
+}
+
+.Positioner {
+  outline: none;
+  z-index: 1;
+  -webkit-user-select: none;
+  user-select: none;
+  z-index: 1000;
+}
+
+.Popup {
+  box-sizing: border-box;
+  border-radius: var(--radius-base);
+  background-color: var(--bg-base);
+  background-clip: padding-box;
+  color: var(--text-primary);
+  min-width: var(--anchor-width);
+  transform-origin: var(--transform-origin);
+
+  &[data-starting-style],
+  &[data-ending-style] {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  &[data-side="none"] {
+    transition: none;
+    transform: none;
+    opacity: 1;
+    min-width: calc(var(--anchor-width) + 1rem);
+  }
+}
+
+.List {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  border-radius: var(--radius-base);
+  border: 1px solid color-mix(in srgb, var(--border-base) 50%, #fff 10%);
+}
+
+.Item {
+  width: 100%;
+  padding-block: var(--spacing-sm);
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-xl);
+  display: grid;
+  align-items: center;
+  grid-template-columns: var(--font-base) 1fr;
+  gap: var(--spacing-xs);
+  font-size: var(--font-base);
+  font-weight: 500;
+
+  &[data-highlighted] {
+    z-index: 0;
+    position: relative;
+    color: var(--primary);
+    background-color: var(--bg-hover);
+  }
+
+  .ItemIndicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    height: fit-content;
+    grid-column-start: 1;
+  }
+  .ItemIndicatorIcon {
+    width: var(--font-base);
+    height: var(--font-base);
+  }
+  .ItemText {
+    grid-column-start: 2;
+  }
+}

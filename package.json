@@ -9,7 +9,8 @@
     "pnpm": ">=8"
   },
   "scripts": {
-    "dev": "pnpm -r --parallel dev",
+    "dev": "pnpm -r --parallel start:dev",
+    "start:dev": "pnpm -r --parallel start:dev",
     "build": "pnpm -r build",
     "lint": "echo \"Add lint config\"",
     "dev:server": "pnpm --filter server run start:dev"
@@ -21,5 +22,8 @@
   "devDependencies": {
     "@types/node": "^20.17.9",
     "typescript": "^5.8.0"
+  },
+  "dependencies": {
+    "docx": "^9.6.1"
   }
 }

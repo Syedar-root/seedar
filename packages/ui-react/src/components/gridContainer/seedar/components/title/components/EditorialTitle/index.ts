@@ -1,0 +1,1 @@
+export { EditorialTitle } from "./EditorialTitle";

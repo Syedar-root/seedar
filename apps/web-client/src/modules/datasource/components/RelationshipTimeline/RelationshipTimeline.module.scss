@@ -1,0 +1,141 @@
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.relationshipTimeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.relationshipNode {
+  background: transparent;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: fadeIn 0.4s ease-out var(--delay) both;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    border-color: var(--border-base);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.relationshipHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: linear-gradient(
+    to bottom,
+    var(--bg-elevated) 0%,
+    color-mix(in srgb, var(--bg-elevated) 95%, var(--warning-light) 5%) 100%
+  );
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.relationshipIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  width: 16px;
+  height: 16px;
+}
+
+.relationshipName {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+  flex: 1;
+  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+}
+
+.relationshipBody {
+  padding: var(--spacing-lg) var(--spacing-xl);
+}
+
+.relationshipFlow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-lg);
+}
+
+.flowEndpoint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 100px;
+}
+
+.flowColumn {
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.flowEndpoint.isTarget .flowColumn {
+  color: var(--warning-active);
+}
+
+.flowTable {
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--spacing-xs);
+}
+
+.flowEndpoint.isTarget .flowTable {
+  color: var(--text-secondary);
+}
+
+.flowDivider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.flowArrow {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .relationshipFlow {
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+
+  .flowDivider {
+    transform: rotate(90deg);
+  }
+
+  .flowArrow {
+    transform: rotate(90deg);
+  }
+}

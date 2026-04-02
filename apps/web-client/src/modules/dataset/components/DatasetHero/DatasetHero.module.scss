@@ -1,0 +1,229 @@
+.heroSection {
+  position: relative;
+  padding: clamp(1.25rem, 3vw, 1.75rem) 0;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-secondary);
+  animation: fadeIn 0.5s ease-out;
+}
+
+.heroContent {
+  position: relative;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 3vw, 1.75rem);
+}
+
+.heroInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  width: 100%;
+  margin: 0 var(--spacing-xl);
+}
+
+.backButton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.heroTopRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  animation: fadeIn 0.5s ease-out 0.1s both;
+}
+
+.heroMetaLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.metaTextGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.heroMetaRight {
+  display: flex;
+  align-items: center;
+}
+
+.metaLabel {
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.typeIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--primary);
+  color: var(--text-inverse);
+  border-radius: var(--radius-sm);
+}
+
+.typeLabel {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.datasourceName {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+}
+
+.statusBadge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: var(--font-xs);
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.statusActive {
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.statusDisabled {
+  background: var(--warning-light);
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+
+.statusDeleted {
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.heroTitle {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-md) 0;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  animation: fadeIn 0.5s ease-out 0.15s both;
+}
+
+.heroDescription {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-md) 0;
+  line-height: 1.5;
+  animation: fadeIn 0.5s ease-out 0.18s both;
+}
+
+.heroStats {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--bg-base);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--border-secondary);
+  animation: fadeIn 0.5s ease-out 0.2s both;
+}
+
+.statItem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+}
+
+.statValue {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.statDivider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .heroSection {
+    padding: 1rem 0.875rem;
+    gap: var(--spacing-sm);
+  }
+
+  .heroTitle {
+    font-size: 1.5rem;
+  }
+
+  .heroStats {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    width: 100%;
+  }
+
+  .statDivider {
+    display: none;
+  }
+}

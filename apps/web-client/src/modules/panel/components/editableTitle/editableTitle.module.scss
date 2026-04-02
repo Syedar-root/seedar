@@ -1,0 +1,23 @@
+.editableTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.editIcon {
+  cursor: pointer;
+  transition:
+    opacity var(--transition-slow),
+    color var(--transition-slow);
+  color: var(--text-secondary);
+
+  &:hover {
+    color: var(--primary);
+  }
+}

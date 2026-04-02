@@ -1,0 +1,253 @@
+@use "sass:color";
+
+@mixin button-base {
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  transition: all var(--transition-base);
+  font-weight: 500;
+  line-height: 1.5;
+  box-shadow: var(--shadow-sm);
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  &:active {
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.container {
+  position: relative;
+  margin: 0;
+  height: 100%;
+  display: flex;
+
+  h2 {
+    margin-bottom: 1.5rem;
+    color: #333;
+  }
+}
+
+main {
+  flex: 1;
+  height: 100%;
+  background: var(--bg-color);
+  padding: var(--spacing-md);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-md);
+
+  .headerActions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  .modeToggle {
+    @include button-base;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--text-tertiary);
+    color: var(--text-inverse);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-base);
+
+    &:hover {
+      background: var(--primary-hover);
+    }
+
+    &:active {
+      background: var(--primary-active);
+    }
+  }
+
+  .createPanel {
+    @include button-base;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--primary);
+    color: var(--text-inverse);
+    border-radius: var(--radius-base);
+    font-size: var(--font-lg);
+
+    &:hover {
+      background: var(--primary-hover);
+    }
+
+    &:active {
+      background: var(--primary-active);
+    }
+  }
+
+  .addPanel {
+    @include button-base;
+    padding: var(--spacing-sm) var(--spacing-sm);
+    background: var(--info);
+    color: var(--text-inverse);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-base);
+
+    &:hover {
+      background: var(--info-hover);
+    }
+
+    &:active {
+      background: var(--info-active);
+    }
+  }
+}
+
+.panelHeaderExtra {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.panelHeaderExtra * {
+  cursor: pointer;
+}
+
+.dashboardInfo {
+  background: var(--bg-color);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboardInfoHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.dashboardName {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+}
+
+.dashboardNameValue {
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.editButton {
+  @include button-base;
+  padding: var(--spacing-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+
+  &:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+}
+
+.nameEditForm {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+  max-width: 500px;
+}
+
+.nameInput {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-color);
+  max-width: 400px;
+
+  &:focus,
+  &.editing {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.editActions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.saveButton {
+  @include button-base;
+  padding: var(--spacing-xs);
+  background: var(--success);
+  color: var(--text-inverse);
+  border-radius: var(--radius-sm);
+
+  &:hover {
+    background: var(--success-hover);
+  }
+}
+
+.cancelButton {
+  @include button-base;
+  padding: var(--spacing-xs);
+  background: var(--text-tertiary);
+  color: var(--text-inverse);
+  border-radius: var(--radius-sm);
+
+  &:hover {
+    background: var(--text-secondary);
+  }
+}
+
+.dashboardId {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.dashboardIdLabel {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.dashboardIdValue {
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+  font-family: monospace;
+}
+
+.copyButton {
+  @include button-base;
+  padding: var(--spacing-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+
+  &:hover {
+    background: var(--bg-color);
+    color: var(--text-primary);
+  }
+}

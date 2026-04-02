@@ -1,33 +1,54 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./App";
-import "./index.css";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './styles/global.scss';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ApiClient } from '#pkg/seedar/ui-core';
+import type { ApiConfig } from '#pkg/seedar/types';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
-const root = document.getElementById("root");
+// 初始化 API 客户端
+const apiConfig: ApiConfig = {
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  autoParseResponse: true,
+  globalOnError: (error) => {
+    console.error('API Error:', error);
+    if (error.code === '401') {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+  },
+};
+
+ApiClient.init(apiConfig);
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
+
+const root = document.getElementById('root');
 
 if (!root) {
-  throw new Error("Root element #root not found");
+  throw new Error('Root element #root not found');
 }
-
-// #region agent log
-fetch("http://127.0.0.1:7242/ingest/495e0556-5e46-4e41-a5a9-3ec163344688", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    sessionId: "debug-session",
-    runId: "pre-fix2",
-    hypothesisId: "H3",
-    location: "apps/web-client/src/main.tsx:bootstrap",
-    message: "bootstrap_root_found",
-    data: { hasRoot: !!root },
-    timestamp: Date.now()
-  })
-}).catch(() => {});
-// #endregion
 
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <App />
-  </React.StrictMode>
+    <DndProvider backend={HTML5Backend}>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </DndProvider>
+  </React.StrictMode>,
 );
-
