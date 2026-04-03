@@ -72,8 +72,6 @@ export class AiController {
 
     // 🔥 仅包装成 @Sse 要求的 Observable，内部逻辑完全是你的
     return new Observable((subscriber) => {
-      const encoder = new TextEncoder();
-
       // 心跳包（防Apifox断开，不影响你的逻辑）
       const ping = setInterval(() => {
         subscriber.next({ type: 'ping', data: '{}' } as MessageEvent);

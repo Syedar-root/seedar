@@ -5,7 +5,12 @@ import { AiChatResponseDto } from '../dto/ai-chat.response.dto';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatDeepSeek } from '@langchain/deepseek';
-import { HumanMessage, AIMessage, Message } from '@langchain/core/messages';
+import {
+  HumanMessage,
+  AIMessage,
+  Message,
+  BaseMessage,
+} from '@langchain/core/messages';
 import { AiResponse } from '../dto/ai.response';
 import { createDeepAgent, DeepAgent } from 'deepagents';
 import { tool } from '@langchain/core/tools';
@@ -86,19 +91,20 @@ export class ChatService {
       const reasoningBlocks = [] as any[];
       for await (const chunk of stream) {
         const [token, metadata] = chunk;
-        reasoningBlocks.push(...token.contentBlocks);
-        if (token && token.content.length > 0) {
-          const content = token.content as string;
-          if (content) {
-            response += content;
-            yield { content, type: token.type, done: false };
+        let { content, type } = this.getContentAndTypeWithStreamMessage(token);
+        if (content && type) {
+          if (type === 'reasoning') {
+            reasoningResponse += content;
+          } else if (type === 'text') {
+            // 需要判断是不是tool_result
+            type = token.type === 'tool' ? 'tool_result' : type;
           }
+          response += content;
+          yield { content, type, done: false };
         }
       }
 
       chatHistory.push(new AIMessage({ content: response }));
-      // this.memoryStore.set(sessionId, chatHistory.slice(-20));
-      console.log('reasoningBlocks', reasoningBlocks);
       yield { content: '', done: true };
     } catch (error) {
       console.error(error);
@@ -219,6 +225,8 @@ export class ChatService {
     }
   }
 
+  testPrompt = `请你不要在思考内容或者标签中直接说出任何关于内部工具的信息，使用直白的用户能理解的语言概括这一步骤即可，如“用户需要知道当前地点的天气，我将使用工具为用户查询天气`;
+
   /**
    * 创建 Deep Agent 实例
    * @param llmConfig LLM 配置
@@ -239,7 +247,7 @@ export class ChatService {
     const agent = createDeepAgent({
       model: llm,
       tools: [getCurrentTime],
-      systemPrompt: `你的名字是9903。请你不要在<think></think>标签中的思考内容中直接说出任何关于内部工具的信息，使用直白人话概括这一步骤即可，如“<think>用户需要知道当前地点的天气，我将使用工具为用户查询天气</think>用户需要知道当前地点的天气，我将使用工具为用户查询天气</think>”`,
+      systemPrompt: this.testPrompt,
     });
 
     return agent;
@@ -266,7 +274,7 @@ export class ChatService {
     const agent = createAgent({
       model: llm,
       tools: [getCurrentTime],
-      systemPrompt: llmConfig.systemPrompt || `你是一个有帮助的 AI 助手。`,
+      systemPrompt: this.testPrompt,
     });
 
     return agent;
@@ -278,5 +286,16 @@ export class ChatService {
    */
   private getOrCreateSessionId(aiId: string): string {
     return `ai_${aiId}`;
+  }
+
+  private getContentAndTypeWithStreamMessage(token: BaseMessage): {
+    content: string;
+    type?: string;
+  } {
+    const contentBlock = token.contentBlocks[0];
+    return {
+      content: (contentBlock?.[contentBlock?.type || 'text'] as string) || '',
+      type: contentBlock?.type || 'text',
+    };
   }
 }
