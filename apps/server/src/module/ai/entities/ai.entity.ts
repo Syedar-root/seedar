@@ -4,8 +4,9 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
 } from 'typeorm';
-import { AiStatus, AiType } from '../ai.types';
+import { AiStatus, AiType } from '../enums/ai-status.enum';
 
 @Entity('ai')
 export class Ai {
@@ -34,6 +35,9 @@ export class Ai {
 
   @Column({ type: 'json', nullable: true })
   config?: Record<string, any>;
+
+  @DeleteDateColumn({ name: 'deleted_at', nullable: true })
+  deletedAt?: Date;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

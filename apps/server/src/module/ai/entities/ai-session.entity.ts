@@ -6,8 +6,7 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
 } from 'typeorm';
-import { AiSessionType } from '../enums/ai-session-type.enum';
-import { AiSessionStatus } from '../enums/ai-session-status.enum';
+import { AiSessionType, AiSessionStatus } from '../enums';
 
 @Entity('ai_session')
 export class AiSession {

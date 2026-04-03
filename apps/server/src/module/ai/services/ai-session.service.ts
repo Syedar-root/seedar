@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AiSession } from '../entities/ai-session.entity';
-import { AiSessionStatus } from '../enums/ai-session-status.enum';
+import { AiSessionStatus } from '../enums';
 import {
   CreateAiSessionRequest,
   QueryAiSessionRequest,
@@ -60,19 +60,20 @@ export class AiSessionService {
     };
   }
 
-  async findOne(id: string): Promise<AiSessionResponse | null> {
+  async findOne(id: string): Promise<AiSessionResponse> {
     const session = await this.aiSessionRepository.findOne({ where: { id } });
-    return session ? this.toResponse(session) : null;
+    if (!session) {
+      throw new NotFoundException(`AI Session with ID ${id} not found`);
+    }
+    return this.toResponse(session);
   }
 
-  async update(
-    request: UpdateAiSessionRequest,
-  ): Promise<AiSessionResponse | null> {
+  async update(request: UpdateAiSessionRequest): Promise<AiSessionResponse> {
     const session = await this.aiSessionRepository.findOne({
       where: { id: request.id },
     });
     if (!session) {
-      return null;
+      throw new NotFoundException(`AI Session with ID ${request.id} not found`);
     }
     if (request.title !== undefined) {
       session.title = request.title;
@@ -84,9 +85,12 @@ export class AiSessionService {
     return this.toResponse(saved);
   }
 
-  async remove(id: string): Promise<boolean> {
-    const result = await this.aiSessionRepository.softDelete({ id });
-    return (result.affected ?? 0) > 0;
+  async remove(id: string): Promise<void> {
+    const session = await this.aiSessionRepository.findOne({ where: { id } });
+    if (!session) {
+      throw new NotFoundException(`AI Session with ID ${id} not found`);
+    }
+    await this.aiSessionRepository.softRemove(session);
   }
 
   private toResponse(session: AiSession): AiSessionResponse {

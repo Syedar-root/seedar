@@ -1,12 +1,27 @@
-export enum AiStatus {
-  ACTIVE = 'active',
-  INACTIVE = 'inactive',
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
-export enum AiType {
-  CHAT = 'chat',
-  COMPLETION = 'completion',
-  EMBEDDING = 'embedding',
+export interface LLMConfig {
+  type: 'openai' | 'anthropic' | 'qwen' | 'local';
+  apiKey: string;
+  baseUrl?: string;
+  model: string;
+  temperature?: number;
+  maxTokens?: number;
+  systemPrompt?: string;
 }
 
-export { AiSessionType, AiSessionStatus } from './enums';
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+export interface StreamingResult {
+  sessionId: string;
+  timestamp: Date;
+}

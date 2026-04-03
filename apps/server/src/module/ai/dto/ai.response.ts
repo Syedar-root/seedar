@@ -1,4 +1,4 @@
-import { AiStatus, AiType } from '../ai.types';
+import { AiStatus, AiType } from '../enums/ai-status.enum';
 
 export class AiResponse {
   id: string;

@@ -1,4 +1,4 @@
-import { AiSessionStatus, AiSessionType } from '../ai.types';
+import { AiSessionStatus, AiSessionType } from '../enums';
 
 export class AiSessionResponse {
   id: string;
