@@ -6,10 +6,12 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
-import { AiService } from './services/ai.service';
+import { AiService, PaginatedResult } from './services/ai.service';
 import { CreateAiRequest } from './dto/create-ai.request';
 import { UpdateAiRequest } from './dto/update-ai.request';
+import { AiResponse } from './dto/ai.response';
 
 @Controller('ai')
 export class AiController {
@@ -21,13 +23,16 @@ export class AiController {
   }
 
   @Get()
-  findAll() {
-    return this.aiService.findAll();
+  findAll(
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+  ): Promise<PaginatedResult<AiResponse>> {
+    return this.aiService.findAll(page, pageSize);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.aiService.findOne(+id);
+    return this.aiService.findOne(id);
   }
 
   @Patch()
@@ -37,6 +42,6 @@ export class AiController {
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.aiService.remove(+id);
+    return this.aiService.remove(id);
   }
 }

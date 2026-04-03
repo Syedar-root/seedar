@@ -1,7 +1,7 @@
 import { AiStatus, AiType } from '../ai.types';
 
 export class AiResponse {
-  id: number;
+  id: string;
   name: string;
   description?: string;
   type: AiType;

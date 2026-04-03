@@ -9,8 +9,8 @@ import { AiStatus, AiType } from '../ai.types';
 
 @Entity('ai')
 export class Ai {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 100 })
   name: string;

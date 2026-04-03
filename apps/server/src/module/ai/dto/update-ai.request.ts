@@ -1,7 +1,7 @@
 import { AiType } from '../ai.types';
 
 export class UpdateAiRequest {
-  id: number;
+  id: string;
   name?: string;
   description?: string;
   type?: AiType;

@@ -21,6 +21,9 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@langchain/core": "^1.1.38",
+    "@langchain/openai": "^1.4.1",
+    "@langchain/tavily": "^1.2.0",
     "@metric-engine/core": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -33,7 +36,9 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
     "csv-parser": "^3.2.0",
+    "deepagents": "^1.8.8",
     "knex": "^3.1.0",
+    "langchain": "^1.2.39",
     "mysql2": "^3.11.4",
     "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",

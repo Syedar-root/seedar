@@ -8,3 +8,5 @@ export enum AiType {
   COMPLETION = 'completion',
   EMBEDDING = 'embedding',
 }
+
+export { AiSessionType, AiSessionStatus } from './enums';

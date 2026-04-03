@@ -6,6 +6,13 @@ import { CreateAiRequest } from '../dto/create-ai.request';
 import { UpdateAiRequest } from '../dto/update-ai.request';
 import { AiResponse } from '../dto/ai.response';
 
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 @Injectable()
 export class AiService {
   constructor(
@@ -19,12 +26,27 @@ export class AiService {
     return this.toResponse(saved);
   }
 
-  async findAll(): Promise<AiResponse[]> {
-    const ais = await this.aiRepository.find();
-    return ais.map((ai) => this.toResponse(ai));
+  async findAll(
+    page: number = 1,
+    pageSize: number = 20,
+  ): Promise<PaginatedResult<AiResponse>> {
+    const pageSizeLimit = Math.min(pageSize, 100);
+
+    const [ais, total] = await this.aiRepository.findAndCount({
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSizeLimit,
+      take: pageSizeLimit,
+    });
+
+    return {
+      data: ais.map((ai) => this.toResponse(ai)),
+      total,
+      page,
+      pageSize: pageSizeLimit,
+    };
   }
 
-  async findOne(id: number): Promise<AiResponse | null> {
+  async findOne(id: string): Promise<AiResponse | null> {
     const ai = await this.aiRepository.findOne({ where: { id } });
     return ai ? this.toResponse(ai) : null;
   }
@@ -39,9 +61,9 @@ export class AiService {
     return this.toResponse(saved);
   }
 
-  async remove(id: number): Promise<boolean> {
+  async remove(id: string): Promise<boolean> {
     const result = await this.aiRepository.delete(id);
-    return result.affected > 0;
+    return (result.affected ?? 0) > 0;
   }
 
   private toResponse(ai: Ai): AiResponse {
