@@ -3,8 +3,14 @@ import { AiService } from './ai.service';
 import { LLMConfig } from '../ai.types';
 import { AiChatResponseDto } from '../dto/ai-chat.response.dto';
 import { ChatOpenAI } from '@langchain/openai';
-import { HumanMessage, AIMessage } from '@langchain/core/messages';
+import { ChatAnthropic } from '@langchain/anthropic';
+import { ChatDeepSeek } from '@langchain/deepseek';
+import { HumanMessage, AIMessage, Message } from '@langchain/core/messages';
 import { AiResponse } from '../dto/ai.response';
+import { createDeepAgent, DeepAgent } from 'deepagents';
+import { tool } from '@langchain/core/tools';
+import { createAgent, ReactAgent } from 'langchain';
+import z from 'zod';
 
 @Injectable()
 export class ChatService {
@@ -17,12 +23,12 @@ export class ChatService {
    * 处理对话请求
    * @param aiId AI 实例 ID
    * @param message 用户消息
-   * @param _stream 是否流式输出（暂未实现）
+   * @param stream 是否流式输出
    */
   async chat(
     aiId: string,
     message: string,
-    _stream?: boolean,
+    stream?: boolean,
   ): Promise<AiChatResponseDto> {
     const ai = await this.aiService.findOne(aiId);
     const llmConfig = this.getLLMConfig(ai);
@@ -30,7 +36,76 @@ export class ChatService {
     const sessionId = this.getOrCreateSessionId(aiId);
     const timestamp = new Date();
 
+    if (stream) {
+      throw new Error('请使用 streamChat 方法进行流式输出');
+    }
+
     return this.nonStreamChat(llmConfig, message, sessionId, timestamp);
+  }
+
+  /**
+   * 处理流式对话请求
+   * @param aiId AI 实例 ID
+   * @param message 用户消息
+   * @param agentType agent 类型 ('deep' | 'normal')，默认为 'deep'
+   */
+  async *streamChat(
+    aiId: string,
+    message: string,
+    agentType: 'deep' | 'normal' = 'normal',
+  ): AsyncGenerator<
+    { content: string; type?: string; done: boolean },
+    void,
+    unknown
+  > {
+    try {
+      const ai = await this.aiService.findOne(aiId);
+      const llmConfig = this.getLLMConfig(ai);
+      // const sessionId = this.getOrCreateSessionId(aiId);
+
+      // const chatHistory = this.memoryStore.get(sessionId) || [];
+      const chatHistory: Message[] = [];
+      chatHistory.push(new HumanMessage({ content: message }));
+
+      const agent =
+        agentType === 'deep'
+          ? this.createDeepAgent(llmConfig)
+          : this.createNormalAgent(llmConfig);
+
+      const stream = await agent.stream(
+        {
+          messages: chatHistory,
+        },
+        {
+          streamMode: 'messages',
+        },
+      );
+
+      let reasoningResponse = '';
+      let response = '';
+      const reasoningBlocks = [] as any[];
+      for await (const chunk of stream) {
+        const [token, metadata] = chunk;
+        reasoningBlocks.push(...token.contentBlocks);
+        if (token && token.content.length > 0) {
+          const content = token.content as string;
+          if (content) {
+            response += content;
+            yield { content, type: token.type, done: false };
+          }
+        }
+      }
+
+      chatHistory.push(new AIMessage({ content: response }));
+      // this.memoryStore.set(sessionId, chatHistory.slice(-20));
+      console.log('reasoningBlocks', reasoningBlocks);
+      yield { content: '', done: true };
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException(
+        `流式对话失败: ${error instanceof Error ? error.message : '未知错误'}`,
+      );
+    }
   }
 
   /**
@@ -77,7 +152,6 @@ export class ChatService {
   private getLLMConfig(ai: AiResponse): LLMConfig {
     const config = ai.config as Record<string, unknown> | undefined;
     const llmConfig = config?.llm as Record<string, unknown> | undefined;
-
     if (!llmConfig) {
       throw new InternalServerErrorException('AI 配置中缺少 llm 配置');
     }
@@ -89,15 +163,15 @@ export class ChatService {
       throw new InternalServerErrorException('LLM 配置中缺少 apiKey');
     }
 
-    if (!model) {
-      throw new InternalServerErrorException('LLM 配置中缺少 model');
+    if (!model && !ai.name) {
+      throw new InternalServerErrorException('LLM 配置中缺少 model 或 name');
     }
 
     return {
       type: (llmConfig.type as LLMConfig['type']) || 'openai',
       apiKey,
       baseUrl: llmConfig.baseUrl as string | undefined,
-      model,
+      model: model || ai.name,
       temperature: (llmConfig.temperature as number) ?? 0.7,
       maxTokens: (llmConfig.maxTokens as number) ?? 2000,
       systemPrompt: llmConfig.systemPrompt as string | undefined,
@@ -108,7 +182,9 @@ export class ChatService {
    * 创建 LLM 实例
    * @param llmConfig LLM 配置
    */
-  private createLLM(llmConfig: LLMConfig): ChatOpenAI {
+  private createLLM(
+    llmConfig: LLMConfig,
+  ): ChatOpenAI | ChatAnthropic | ChatDeepSeek {
     const config: Record<string, unknown> = {
       temperature: llmConfig.temperature,
       maxTokens: llmConfig.maxTokens,
@@ -120,11 +196,80 @@ export class ChatService {
       };
     }
 
-    return new ChatOpenAI({
-      model: llmConfig.model,
-      apiKey: llmConfig.apiKey,
-      ...config,
+    switch (llmConfig.type) {
+      case 'deepseek':
+        return new ChatDeepSeek(llmConfig.model, {
+          apiKey: llmConfig.apiKey,
+          ...config,
+        });
+      case 'anthropic':
+        return new ChatAnthropic(llmConfig.model, {
+          apiKey: llmConfig.apiKey,
+          clientOptions: {
+            baseURL: llmConfig.baseUrl,
+          },
+          ...config,
+        });
+      case 'openai':
+      default:
+        return new ChatOpenAI(llmConfig.model, {
+          apiKey: llmConfig.apiKey,
+          ...config,
+        });
+    }
+  }
+
+  /**
+   * 创建 Deep Agent 实例
+   * @param llmConfig LLM 配置
+   */
+  private createDeepAgent(llmConfig: LLMConfig): DeepAgent {
+    const llm = this.createLLM(llmConfig);
+    const getCurrentTime = tool(
+      async ({}) => {
+        return new Date().toLocaleString();
+      },
+      {
+        name: 'get_current_time',
+        description: 'Get current time.',
+        schema: z.object({}),
+      },
+    );
+
+    const agent = createDeepAgent({
+      model: llm,
+      tools: [getCurrentTime],
+      systemPrompt: `你的名字是9903。请你不要在<think></think>标签中的思考内容中直接说出任何关于内部工具的信息，使用直白人话概括这一步骤即可，如“<think>用户需要知道当前地点的天气，我将使用工具为用户查询天气</think>用户需要知道当前地点的天气，我将使用工具为用户查询天气</think>”`,
     });
+
+    return agent;
+  }
+
+  /**
+   * 创建普通 Agent 实例
+   * @param llmConfig LLM 配置
+   */
+  private createNormalAgent(llmConfig: LLMConfig): ReactAgent {
+    const llm = this.createLLM(llmConfig);
+
+    const getCurrentTime = tool(
+      async ({}) => {
+        return new Date().toLocaleString();
+      },
+      {
+        name: 'get_current_time',
+        description: '获取当前时间',
+        schema: z.object({}),
+      },
+    );
+
+    const agent = createAgent({
+      model: llm,
+      tools: [getCurrentTime],
+      systemPrompt: llmConfig.systemPrompt || `你是一个有帮助的 AI 助手。`,
+    });
+
+    return agent;
   }
 
   /**

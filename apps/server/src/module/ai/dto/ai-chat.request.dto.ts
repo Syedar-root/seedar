@@ -1,6 +1,9 @@
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsUUID } from 'class-validator';
 
 export class AiChatRequestDto {
+  @IsUUID()
+  aiId: string;
+
   @IsString()
   message: string;
 

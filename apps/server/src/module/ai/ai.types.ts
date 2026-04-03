@@ -6,7 +6,7 @@ export interface PaginatedResult<T> {
 }
 
 export interface LLMConfig {
-  type: 'openai' | 'anthropic' | 'qwen' | 'local';
+  type: 'openai' | 'anthropic' | 'qwen' | 'local' | 'deepseek';
   apiKey: string;
   baseUrl?: string;
   model: string;
