@@ -459,7 +459,7 @@ export class DatasetService {
             tableName: dataset.mainTable.tableName,
             datasetName: dataset.mainTable.datasetName,
           }
-        : null,
+        : undefined,
       tables: tables.map((table) => ({
         id: table.id,
         datasourceTableId: table.datasourceTableId,

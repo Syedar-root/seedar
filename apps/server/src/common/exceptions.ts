@@ -19,6 +19,10 @@ export enum ExceptionType {
   DATASOURCE_ALREADY_EXISTS = 'DATASOURCE_ALREADY_EXISTS',
   DATASOURCE_CONNECTION_FAILED = 'DATASOURCE_CONNECTION_FAILED', //数据源连接失败
   METHOD_NOT_IMPLEMENTED = 'METHOD_NOT_IMPLEMENTED',
+
+  // Ai Agent 相关异常
+  AI_AGENT_FAILED = 'AI_AGENT_FAILED',
+  AI_AGENT_TOOL_FAILED = 'AI_AGENT_TOOL_FAILED',
 }
 
 /**
@@ -189,6 +193,15 @@ export class ExceptionFactory {
       ExceptionType.METHOD_NOT_IMPLEMENTED,
       message,
       HttpStatus.NOT_IMPLEMENTED,
+    );
+  }
+
+  static callToolFailed(message: string, details?: any): never {
+    throw new BusinessException(
+      ExceptionType.AI_AGENT_TOOL_FAILED,
+      message,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      details,
     );
   }
 }

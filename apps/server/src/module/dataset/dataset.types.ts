@@ -174,7 +174,7 @@ export interface DatasetTableResponse {
   id: number;
   datasourceTableId: number;
   tableName: string;
-  datasetName: string;
+  datasetName?: string;
   primaryFieldId?: number;
   alias?: string;
 }
@@ -251,7 +251,7 @@ export interface DatasetResponse {
   status: DatasetStatus;
   mainTableId?: number;
   datasource: DatasourceResponse | null;
-  mainTable: MainTableResponse | null;
+  mainTable?: MainTableResponse;
   tables: DatasetTableResponse[];
   fields: DatasetFieldResponse[];
   metrics: DatasetMetricResponse[];

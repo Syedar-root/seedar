@@ -16,13 +16,19 @@ import { createDeepAgent, DeepAgent } from 'deepagents';
 import { tool } from '@langchain/core/tools';
 import { createAgent, ReactAgent } from 'langchain';
 import z from 'zod';
+import { ToolService } from './tool.service';
 
 @Injectable()
 export class ChatService {
   private readonly memoryStore: Map<string, Array<HumanMessage | AIMessage>> =
     new Map();
 
-  constructor(private readonly aiService: AiService) {}
+  private readonly testPrompt = `请你不要在思考内容或者标签中直接说出任何关于内部工具的信息，使用直白的用户能理解的语言概括这一步骤即可，如“用户需要知道当前地点的天气，我将使用工具为用户查询天气`;
+
+  constructor(
+    private readonly aiService: AiService,
+    private readonly toolService: ToolService,
+  ) {}
 
   /**
    * 处理对话请求
@@ -225,28 +231,17 @@ export class ChatService {
     }
   }
 
-  testPrompt = `请你不要在思考内容或者标签中直接说出任何关于内部工具的信息，使用直白的用户能理解的语言概括这一步骤即可，如“用户需要知道当前地点的天气，我将使用工具为用户查询天气`;
-
   /**
    * 创建 Deep Agent 实例
    * @param llmConfig LLM 配置
    */
   private createDeepAgent(llmConfig: LLMConfig): DeepAgent {
     const llm = this.createLLM(llmConfig);
-    const getCurrentTime = tool(
-      async ({}) => {
-        return new Date().toLocaleString();
-      },
-      {
-        name: 'get_current_time',
-        description: 'Get current time.',
-        schema: z.object({}),
-      },
-    );
+    const tools = this.toolService.getTools();
 
     const agent = createDeepAgent({
       model: llm,
-      tools: [getCurrentTime],
+      tools: tools,
       systemPrompt: this.testPrompt,
     });
 
@@ -259,21 +254,11 @@ export class ChatService {
    */
   private createNormalAgent(llmConfig: LLMConfig): ReactAgent {
     const llm = this.createLLM(llmConfig);
-
-    const getCurrentTime = tool(
-      async ({}) => {
-        return new Date().toLocaleString();
-      },
-      {
-        name: 'get_current_time',
-        description: '获取当前时间',
-        schema: z.object({}),
-      },
-    );
+    const tools = this.toolService.getTools();
 
     const agent = createAgent({
       model: llm,
-      tools: [getCurrentTime],
+      tools: tools,
       systemPrompt: this.testPrompt,
     });
 

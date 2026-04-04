@@ -592,7 +592,7 @@ export class DSLTransformerV2 {
 
     /**
      * 预处理表达式：将 #F 和 #M 替换为实际字段/指标名
-     * #F10,20,30 表示字段ID列表
+     * #F100,200,300 表示字段ID列表
      * #M100,200 表示指标ID列表
      */
     const preprocessExpression = (expression: string): string => {
