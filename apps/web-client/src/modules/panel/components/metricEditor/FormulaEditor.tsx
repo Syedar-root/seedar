@@ -71,6 +71,7 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
             id: f.id,
             name: f.businessName || f.name,
             businessName: f.businessName,
+            tableName: f.tableName,
             type: "field" as const,
           })),
         );
@@ -195,6 +196,7 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
                           id: f.id,
                           name: f.businessName || f.name,
                           businessName: f.businessName,
+                          tableName: f.tableName,
                           type: "field" as const,
                         })),
                       );

@@ -12,7 +12,12 @@ import { ScrollArea } from "@/core/components/ui/ScrollArea/ScrollArea";
 import styles from "./FormulaEditor.module.scss";
 
 interface FormulaEditorProps {
-  fields: Array<{ id: string | number; name: string; businessName?: string }>;
+  fields: Array<{
+    id: string | number;
+    name: string;
+    businessName?: string;
+    tableName?: string;
+  }>;
   metrics: Array<{ id: string | number; name: string; businessName?: string }>;
   value: string;
   onChange: (value: string) => void;
@@ -70,6 +75,7 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
             id: f.id,
             name: f.businessName || f.name,
             businessName: f.businessName,
+            tableName: f.tableName,
             type: "field" as const,
           })),
         );
@@ -194,6 +200,7 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
                           id: f.id,
                           name: f.businessName || f.name,
                           businessName: f.businessName,
+                          tableName: f.tableName,
                           type: "field" as const,
                         })),
                       );
@@ -274,6 +281,7 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
                         id: field.id,
                         name: field.businessName || field.name,
                         businessName: field.businessName,
+                        tableName: field.tableName,
                         type: "field",
                       } as FieldItem)
                     }
@@ -282,6 +290,9 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
                     <span className={styles.itemName}>
                       {field.businessName || field.name}
                     </span>
+                    {field.tableName && (
+                      <span className={styles.tableTag}>{field.tableName}</span>
+                    )}
                   </button>
                 ))}
               </div>

@@ -169,6 +169,7 @@ export const MetricDialog: React.FC<MetricDialogProps> = ({
                       id: f.id,
                       name: f.name,
                       businessName: f.businessName,
+                      tableName: f.tableName,
                     }))}
                     metrics={metrics.map((m) => ({
                       id: m.id,

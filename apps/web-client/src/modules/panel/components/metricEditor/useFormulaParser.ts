@@ -5,6 +5,7 @@ export interface FieldItem {
   id: number;
   name: string;
   businessName?: string;
+  tableName?: string;
   type: "field";
 }
 
