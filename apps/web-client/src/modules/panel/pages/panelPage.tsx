@@ -101,6 +101,7 @@ export const PanelPage = () => {
               titleConfig={titleConfig}
               onTitleChange={handleTitleChange}
             />
+            <div className={styles.smartMode}>智能模式</div>
           </div>
           <QueryZone
             onDropField={handleDropField}

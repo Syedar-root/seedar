@@ -5,12 +5,14 @@
 }
 
 .sidebar {
+  flex-shrink: 0;
   width: 200px;
   height: 100%;
   background: var(--bg-base);
 }
 
 .editor {
+  flex-shrink: 0;
   width: 300px;
   height: 100%;
   border-left: 1px solid var(--border-base);
@@ -71,8 +73,13 @@
 
     .titleArea {
       display: flex;
+      justify-content: space-between;
       align-items: center;
       padding: 0 var(--spacing-sm);
+
+      .smartMode {
+        flex-shrink: 0;
+      }
     }
   }
 

@@ -1,7 +1,9 @@
 .editableTitle {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: var(--spacing-sm);
+  max-width: 70%;
 }
 
 .title {
@@ -11,6 +13,7 @@
 }
 
 .editIcon {
+  flex-shrink: 0;
   cursor: pointer;
   transition:
     opacity var(--transition-slow),

@@ -13,9 +13,7 @@ import {
 } from '@langchain/core/messages';
 import { AiResponse } from '../dto/ai.response';
 import { createDeepAgent, DeepAgent } from 'deepagents';
-import { tool } from '@langchain/core/tools';
 import { createAgent, ReactAgent } from 'langchain';
-import z from 'zod';
 import { ToolService } from './tool.service';
 
 @Injectable()

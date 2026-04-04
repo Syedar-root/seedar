@@ -83,4 +83,7 @@ export class ToolService {
     name: 'getCurrentTime',
     description: '获取当前时间',
   });
+
+  // TODO: 提问工具AskQuestion, 用于做问题澄清收集
+  // TODO: 确认工具Confirm, 用于发送确认信号
 }
