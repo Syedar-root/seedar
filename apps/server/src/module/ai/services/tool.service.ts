@@ -19,6 +19,7 @@ import { QueryService } from '@/module/query/query.service';
 import { getDatasetInfoCompact } from './helper';
 import { interrupt } from '@langchain/langgraph';
 import { randomUUID } from 'crypto';
+import { ToolConfig } from '../ai.types';
 
 type ToolMethod = (
   input: Record<string, unknown>,
@@ -27,11 +28,7 @@ type ToolMethod = (
 
 const TOOL_METADATA_KEY = 'Seedar_Tool';
 
-function Seedar_Tool(config: {
-  name: string;
-  description: string;
-  schema?: any; // tool schema
-}): MethodDecorator {
+function Seedar_Tool(config: ToolConfig): MethodDecorator {
   return function (target, propertyKey, descriptor: PropertyDescriptor) {
     Reflect.defineMetadata(TOOL_METADATA_KEY, config, target, propertyKey);
   };
@@ -39,7 +36,7 @@ function Seedar_Tool(config: {
 
 @Injectable()
 export class ToolService {
-  private toolMethods: Array<{ method: ToolMethod; config: any }> = [];
+  private toolMethods: Array<{ method: ToolMethod; config: ToolConfig }> = [];
 
   constructor(
     private readonly datasetService: DatasetService,
@@ -84,6 +81,10 @@ export class ToolService {
 
   public getToolNames() {
     return this.toolMethods.map((tool) => tool.config.name);
+  }
+
+  public getToolConfigs() {
+    return this.toolMethods.map((tool) => tool.config);
   }
 
   @Seedar_Tool({

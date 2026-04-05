@@ -25,3 +25,9 @@ export interface StreamingResult {
   sessionId: string;
   timestamp: Date;
 }
+
+export interface ToolConfig {
+  name: string;
+  description: string;
+  schema?: any; // tool schema
+}

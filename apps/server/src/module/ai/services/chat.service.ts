@@ -37,19 +37,18 @@ import { loadSkill } from './helper';
 
 @Injectable()
 export class ChatService {
-  private readonly memoryStore: Map<string, Array<HumanMessage | AIMessage>> =
-    new Map();
-
-  private readonly testPrompt = `
-  你的名字是Seedar，你是一个智能助手，你的任务是帮助用户完成任务。
-  你需要严格遵循下面的规则：
-  1. 请你不要在思考内容或者标签中直接说出任何关于内部工具的信息，使用直白的用户能理解的语言概括这一步骤即可，如“用户需要知道当前地点的天气，我将使用工具为用户查询天气"
-  2. 当你在问题澄清、需求获取、步骤确认等场景下，请你使用提问工具向用户提出问题。
-      - 你需要根据具体的问题，来决定使用的问题类型。
-      - 如果你认为答案是有限的，你可以给用户提供选择。
-      - 如果你认为答案是无限的，你可以直接向用户提问。
-      - 如果你已经有了答案，那你必须先向用户确认。
+  private readonly SYSTEM_PROMPT = `
+你的名字是Seedar，你是一个智能助手，你的任务是帮助用户完成任务。
+你需要严格遵循下面的规则：
+1. 请你不要在思考内容或者标签中直接说出任何关于内部工具的信息，使用直白的用户能理解的语言概括这一步骤即可，如"用户需要知道当前地点的天气，我将使用工具为用户查询天气"
+2. 当你在问题澄清、需求获取、步骤确认等场景下，请你使用提问工具向用户提出问题。
+   - 你需要根据具体的问题，来决定使用的问题类型。
+   - 如果你认为答案是有限的，你可以给用户提供选择。
+   - 如果你认为答案是无限的，你可以直接向用户提问。
+   - 如果你已经有了答案，那你必须先向用户确认。
   `;
+
+  private readonly AVAILABLE_SKILLS = ['数据查询', '图表推荐'] as const;
 
   constructor(
     private readonly aiService: AiService,
@@ -69,25 +68,82 @@ export class ChatService {
 
   private readonly checkpointer = new MemorySaver();
 
-  private readonly skills = ['数据查询', '图表推荐'];
 
+
+  /**
+   * 创建对话图
+   * @param aiId AI 实例 ID
+   * @returns 编译后的状态图
+   */
   private async createGraph(aiId: string) {
     const ai = await this.aiService.findOne(aiId);
     const llmConfig = this.getLLMConfig(ai);
-    const clarifyNode: GraphNode<typeof this.State> = async (state) => {
-      const messages = state.messages;
+
+    const graphBuilder = new StateGraph(this.State);
+    graphBuilder
+      .addNode('clarify', this.createClarifyNode(llmConfig))
+      .addNode('act', this.createActNode(llmConfig))
+      .addEdge(START, 'clarify')
+      .addEdge('clarify', 'act')
+      .addEdge('act', END);
+
+    return graphBuilder.compile({
+      checkpointer: this.checkpointer,
+    });
+  }
+
+  /**
+   * 创建澄清节点
+   * 负责理解用户需求，确定需要使用的工具和技能
+   * 
+   * Agent 特点：
+   * - 使用固定的工具集：askQuestion, getCurrentTime
+   * - 使用结构化响应格式，返回用户需求、允许的工具和技能
+   * 
+   * @param llmConfig LLM 配置
+   * @returns Graph 节点
+   */
+  private createClarifyNode(
+    llmConfig: LLMConfig,
+  ): GraphNode<typeof this.State> {
+    return async (state) => {
+      // 步骤1: 动态生成系统提示词
       const prompt = await loadSkill('front-agent');
       const promptTemplate = PromptTemplate.fromTemplate(prompt);
-      llmConfig.systemPrompt = await promptTemplate.format({
-        demands: '数据查询、图表推荐',
+      const systemPrompt = await promptTemplate.format({
+        demands: this.AVAILABLE_SKILLS.join('、'),
         tools: this.toolService.getToolNames().join(', '),
-        skills: this.skills.join(', '),
+        skills: this.AVAILABLE_SKILLS.join(', '),
       });
-      console.log('hcs llmConfig.systemPrompt', llmConfig.systemPrompt);
-      const frontAgent = this.createNormalAgent(llmConfig, 'clarify');
-      const response = await frontAgent.invoke({
-        messages,
+
+      // 步骤2: 创建 React Agent
+      const llm = this.createLLM({ ...llmConfig, systemPrompt });
+      const tools = this.toolService.getTools(['askQuestion', 'getCurrentTime']);
+      const agent = createAgent({
+        model: llm,
+        tools,
+        systemPrompt: llmConfig.systemPrompt || this.SYSTEM_PROMPT,
+        name: 'clarify',
+        responseFormat: toolStrategy(
+          z.object({
+            userDemand: z.string().describe('用户需求'),
+            allowTools: z
+              .array(z.enum(this.toolService.getToolNames()))
+              .describe('允许的工具'),
+            allowSkills: z
+              .array(z.enum(this.AVAILABLE_SKILLS))
+              .describe('允许的技能'),
+          }),
+          {
+            toolMessageContent: '',
+          },
+        ),
       });
+
+      // 步骤3: 执行 Agent
+      const response = await agent.invoke({ messages: state.messages });
+
+      // 步骤4: 返回更新后的状态
       return {
         messages: response.messages,
         allowTools: [
@@ -100,31 +156,39 @@ export class ChatService {
         ],
       };
     };
+  }
 
-    const actNode: GraphNode<typeof this.State> = async (state) => {
-      const messages = state.messages;
-      const deepAgent = this.createDeepAgent(
-        llmConfig,
-        state.allowTools,
-        state.allowSkills,
-        'act',
-      );
-      const response = await deepAgent.invoke({
-        messages,
+  /**
+   * 创建执行节点
+   * 负责使用工具和技能执行具体任务
+   * 
+   * Agent 特点：
+   * - 根据允许的工具列表动态过滤工具
+   * - 使用自由响应格式，不限制输出结构
+   * 
+   * @param llmConfig LLM 配置
+   * @returns Graph 节点
+   */
+  private createActNode(llmConfig: LLMConfig): GraphNode<typeof this.State> {
+    return async (state) => {
+      // 步骤1: 创建 Deep Agent
+      const llm = this.createLLM(llmConfig);
+      const tools = this.toolService
+        .getTools()
+        .filter((tool) => state.allowTools?.includes(tool.name));
+      const agent = createDeepAgent({
+        model: llm,
+        tools,
+        systemPrompt: this.SYSTEM_PROMPT,
+        name: 'act',
       });
+
+      // 步骤2: 执行 Agent
+      const response = await agent.invoke({ messages: state.messages });
+
+      // 步骤3: 返回更新后的消息
       return { messages: response.messages };
     };
-
-    const graphBuilder = new StateGraph(this.State);
-    graphBuilder
-      .addNode('clarify', clarifyNode)
-      .addNode('act', actNode)
-      .addEdge(START, 'clarify')
-      .addEdge('clarify', 'act')
-      .addEdge('act', END);
-    return graphBuilder.compile({
-      checkpointer: this.checkpointer,
-    });
   }
 
   /**
@@ -132,6 +196,13 @@ export class ChatService {
    * @param aiId AI 实例 ID
    * @param message 用户消息
    * @param agentType agent 类型 ('deep' | 'normal')，默认为 'deep'
+   */
+  /**
+   * 处理流式对话请求
+   * @param aiId AI 实例 ID
+   * @param message 用户消息
+   * @param sessionId 会话 ID
+   * @yields 流式响应数据
    */
   async *streamChat(
     aiId: string,
@@ -143,8 +214,13 @@ export class ChatService {
     unknown
   > {
     try {
+      // 步骤1: 获取会话信息
       const session = await this.aiSessionService.findOne(sessionId);
+      
+      // 步骤2: 创建对话图
       const agent = await this.createGraph(aiId);
+      
+      // 步骤3: 启动流式对话
       const stream = await agent.stream(
         {
           messages: [new HumanMessage({ content: message })],
@@ -156,32 +232,58 @@ export class ChatService {
           },
         },
       );
+
+      // 步骤4: 处理流式响应
       for await (const [streamMode, chunk] of stream) {
+        // 处理 values 模式的中断信息
         if (streamMode === 'values') {
-          if ((chunk as any)?.__interrupt__) {
-            const interrupt = (chunk as any).__interrupt__;
-            yield { content: interrupt, type: 'interrupt', done: false };
+          const interruptData = this.extractInterrupt(chunk);
+          if (interruptData) {
+            yield { content: interruptData, type: 'interrupt', done: false };
           }
           continue;
         }
+
+        // 处理 messages 模式的消息内容
         const token = chunk[0];
         const metadata = chunk[1];
-        let { content, type } = this.getContentAndTypeWithStreamMessage(token);
+        const { content, type } = this.getContentAndTypeWithStreamMessage(token);
+        
         if (content && type) {
-          if (type === 'text') {
-            // 需要判断是不是tool_result
-            type = token.type === 'tool' ? 'tool_result' : type;
-          }
-          yield { content, type, done: false, role: metadata.lc_agent_name };
+          // 判断是否为工具调用结果
+          const messageType = token.type === 'tool' ? 'tool_result' : type;
+          yield { 
+            content, 
+            type: messageType, 
+            done: false, 
+            role: metadata.lc_agent_name 
+          };
         }
       }
+
+      // 步骤5: 返回完成标记
       yield { content: '', done: true };
     } catch (error) {
-      console.error('hcs streamChat error', error);
-      throw new InternalServerErrorException(
-        `流式对话失败: ${error instanceof Error ? error.message : '未知错误'}`,
-      );
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      console.error('streamChat error:', errorMessage, error);
+      throw new InternalServerErrorException(`流式对话失败: ${errorMessage}`);
     }
+  }
+
+  /**
+   * 从流数据中提取中断信息
+   * @param chunk 流数据块
+   * @returns 中断信息或 null
+   */
+  private extractInterrupt(chunk: unknown): string | null {
+    if (
+      typeof chunk === 'object' &&
+      chunk !== null &&
+      '__interrupt__' in chunk
+    ) {
+      return (chunk as { __interrupt__: string }).__interrupt__;
+    }
+    return null;
   }
 
   /**
@@ -256,61 +358,6 @@ export class ChatService {
           ...config,
         });
     }
-  }
-
-  /**
-   * 创建 Deep Agent 实例
-   * @param llmConfig LLM 配置
-   */
-  private createDeepAgent(
-    llmConfig: LLMConfig,
-    allowTools?: string[],
-    allowSkills?: string[],
-    name?: string,
-  ): DeepAgent {
-    const llm = this.createLLM(llmConfig);
-    const tools = this.toolService
-      .getTools()
-      .filter((tool) => allowTools?.includes(tool.name));
-
-    const agent = createDeepAgent({
-      model: llm,
-      tools: tools,
-      systemPrompt: this.testPrompt,
-      name,
-    });
-
-    return agent;
-  }
-
-  /**
-   * 创建普通 Agent 实例
-   * @param llmConfig LLM 配置
-   */
-  private createNormalAgent(llmConfig: LLMConfig, name?: string): ReactAgent {
-    const llm = this.createLLM(llmConfig);
-    const tools = this.toolService.getTools(['askQuestion', 'getCurrentTime']);
-
-    const agent = createAgent({
-      model: llm,
-      tools: tools,
-      systemPrompt: this.testPrompt,
-      name,
-      responseFormat: toolStrategy(
-        z.object({
-          userDemand: z.string().describe('用户需求'),
-          allowTools: z
-            .array(z.enum(this.toolService.getToolNames()))
-            .describe('允许的工具'),
-          allowSkills: z.array(z.enum(this.skills)).describe('允许的技能'),
-        }),
-        {
-          toolMessageContent: '',
-        },
-      ),
-    });
-
-    return agent;
   }
 
   private getContentAndTypeWithStreamMessage(token: BaseMessage): {
