@@ -25,6 +25,7 @@
     "@langchain/community": "^1.1.27",
     "@langchain/core": "^1.1.38",
     "@langchain/deepseek": "^1.0.21",
+    "@langchain/langgraph": "^1.2.7",
     "@langchain/openai": "^1.4.1",
     "@langchain/tavily": "^1.2.0",
     "@metric-engine/core": "workspace:*",
@@ -49,7 +50,7 @@
     "typeorm": "^0.3.20",
     "winston": "^3.19.0",
     "xlsx": "^0.18.5",
-    "zod": "^3.22.4"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -75,8 +76,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0",
-    "zod": "^3.22.4"
+    "typescript-eslint": "^8.20.0"
   },
   "jest": {
     "moduleFileExtensions": [

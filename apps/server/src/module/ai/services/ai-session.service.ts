@@ -22,8 +22,8 @@ export class AiSessionService {
 
   async create(request: CreateAiSessionRequest): Promise<AiSessionResponse> {
     const session = this.aiSessionRepository.create({
-      title: request.title,
-      type: request.type,
+      title: request?.title,
+      type: request?.type,
       status: AiSessionStatus.ACTIVE,
     });
     const saved = await this.aiSessionRepository.save(session);

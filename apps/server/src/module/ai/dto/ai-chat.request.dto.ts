@@ -10,4 +10,8 @@ export class AiChatRequestDto {
   @IsOptional()
   @IsBoolean()
   stream?: boolean;
+
+  @IsOptional()
+  @IsUUID()
+  sessionId: string;
 }

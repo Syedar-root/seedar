@@ -1,4 +1,6 @@
 import { DatasetResponse } from '@/module/dataset/dataset.types';
+import path from 'path';
+import fs from 'fs/promises';
 
 const getDatasetInfoCompact = (
   response: DatasetResponse | null,
@@ -21,4 +23,9 @@ const getDatasetInfoCompact = (
         })),
       }
     : null;
-export { getDatasetInfoCompact };
+
+const loadSkill = async (skillName: string) => {
+  const promptPath = path.join(__dirname, `../skills/${skillName}/SKILL.md`);
+  return await fs.readFile(promptPath, 'utf8');
+};
+export { getDatasetInfoCompact, loadSkill };

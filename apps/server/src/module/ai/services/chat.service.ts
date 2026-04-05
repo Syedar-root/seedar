@@ -13,43 +13,118 @@ import {
 } from '@langchain/core/messages';
 import { AiResponse } from '../dto/ai.response';
 import { createDeepAgent, DeepAgent } from 'deepagents';
-import { createAgent, ReactAgent } from 'langchain';
+import {
+  createAgent,
+  providerStrategy,
+  ReactAgent,
+  toolStrategy,
+} from 'langchain';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { ToolService } from './tool.service';
+import {
+  StateSchema,
+  MessagesValue,
+  ReducedValue,
+  GraphNode,
+  StateGraph,
+  START,
+  END,
+  MemorySaver,
+} from '@langchain/langgraph';
+import * as z from 'zod/v4';
+import { AiSessionService } from './ai-session.service';
+import { loadSkill } from './helper';
 
 @Injectable()
 export class ChatService {
   private readonly memoryStore: Map<string, Array<HumanMessage | AIMessage>> =
     new Map();
 
-  private readonly testPrompt = `请你不要在思考内容或者标签中直接说出任何关于内部工具的信息，使用直白的用户能理解的语言概括这一步骤即可，如“用户需要知道当前地点的天气，我将使用工具为用户查询天气`;
+  private readonly testPrompt = `
+  你的名字是Seedar，你是一个智能助手，你的任务是帮助用户完成任务。
+  你需要严格遵循下面的规则：
+  1. 请你不要在思考内容或者标签中直接说出任何关于内部工具的信息，使用直白的用户能理解的语言概括这一步骤即可，如“用户需要知道当前地点的天气，我将使用工具为用户查询天气"
+  2. 当你在问题澄清、需求获取、步骤确认等场景下，请你使用提问工具向用户提出问题。
+      - 你需要根据具体的问题，来决定使用的问题类型。
+      - 如果你认为答案是有限的，你可以给用户提供选择。
+      - 如果你认为答案是无限的，你可以直接向用户提问。
+      - 如果你已经有了答案，那你必须先向用户确认。
+  `;
 
   constructor(
     private readonly aiService: AiService,
     private readonly toolService: ToolService,
+    private readonly aiSessionService: AiSessionService,
   ) {}
 
-  /**
-   * 处理对话请求
-   * @param aiId AI 实例 ID
-   * @param message 用户消息
-   * @param stream 是否流式输出
-   */
-  async chat(
-    aiId: string,
-    message: string,
-    stream?: boolean,
-  ): Promise<AiChatResponseDto> {
+  private readonly State = new StateSchema({
+    messages: MessagesValue,
+    allowTools: new ReducedValue(z.array(z.string()).default([]), {
+      reducer: (current, newStep) => newStep,
+    }),
+    allowSkills: new ReducedValue(z.array(z.string()).default([]), {
+      reducer: (current, newStep) => newStep,
+    }),
+  });
+
+  private readonly checkpointer = new MemorySaver();
+
+  private readonly skills = ['数据查询', '图表推荐'];
+
+  private async createGraph(aiId: string) {
     const ai = await this.aiService.findOne(aiId);
     const llmConfig = this.getLLMConfig(ai);
+    const clarifyNode: GraphNode<typeof this.State> = async (state) => {
+      const messages = state.messages;
+      const prompt = await loadSkill('front-agent');
+      const promptTemplate = PromptTemplate.fromTemplate(prompt);
+      llmConfig.systemPrompt = await promptTemplate.format({
+        demands: '数据查询、图表推荐',
+        tools: this.toolService.getToolNames().join(', '),
+        skills: this.skills.join(', '),
+      });
+      console.log('hcs llmConfig.systemPrompt', llmConfig.systemPrompt);
+      const frontAgent = this.createNormalAgent(llmConfig, 'clarify');
+      const response = await frontAgent.invoke({
+        messages,
+      });
+      return {
+        messages: response.messages,
+        allowTools: [
+          ...state.allowTools,
+          ...response.structuredResponse.allowTools!,
+        ],
+        allowSkills: [
+          ...state.allowSkills,
+          ...response.structuredResponse.allowSkills!,
+        ],
+      };
+    };
 
-    const sessionId = this.getOrCreateSessionId(aiId);
-    const timestamp = new Date();
+    const actNode: GraphNode<typeof this.State> = async (state) => {
+      const messages = state.messages;
+      const deepAgent = this.createDeepAgent(
+        llmConfig,
+        state.allowTools,
+        state.allowSkills,
+        'act',
+      );
+      const response = await deepAgent.invoke({
+        messages,
+      });
+      return { messages: response.messages };
+    };
 
-    if (stream) {
-      throw new Error('请使用 streamChat 方法进行流式输出');
-    }
-
-    return this.nonStreamChat(llmConfig, message, sessionId, timestamp);
+    const graphBuilder = new StateGraph(this.State);
+    graphBuilder
+      .addNode('clarify', clarifyNode)
+      .addNode('act', actNode)
+      .addEdge(START, 'clarify')
+      .addEdge('clarify', 'act')
+      .addEdge('act', END);
+    return graphBuilder.compile({
+      checkpointer: this.checkpointer,
+    });
   }
 
   /**
@@ -61,96 +136,50 @@ export class ChatService {
   async *streamChat(
     aiId: string,
     message: string,
-    agentType: 'deep' | 'normal' = 'normal',
+    sessionId: string,
   ): AsyncGenerator<
-    { content: string; type?: string; done: boolean },
+    { content: string; type?: string; done: boolean; role?: string },
     void,
     unknown
   > {
     try {
-      const ai = await this.aiService.findOne(aiId);
-      const llmConfig = this.getLLMConfig(ai);
-      // const sessionId = this.getOrCreateSessionId(aiId);
-
-      // const chatHistory = this.memoryStore.get(sessionId) || [];
-      const chatHistory: Message[] = [];
-      chatHistory.push(new HumanMessage({ content: message }));
-
-      const agent =
-        agentType === 'deep'
-          ? this.createDeepAgent(llmConfig)
-          : this.createNormalAgent(llmConfig);
-
+      const session = await this.aiSessionService.findOne(sessionId);
+      const agent = await this.createGraph(aiId);
       const stream = await agent.stream(
         {
-          messages: chatHistory,
+          messages: [new HumanMessage({ content: message })],
         },
         {
-          streamMode: 'messages',
+          streamMode: ['messages', 'values'],
+          configurable: {
+            thread_id: session.id,
+          },
         },
       );
-
-      let reasoningResponse = '';
-      let response = '';
-      const reasoningBlocks = [] as any[];
-      for await (const chunk of stream) {
-        const [token, metadata] = chunk;
+      for await (const [streamMode, chunk] of stream) {
+        if (streamMode === 'values') {
+          if ((chunk as any)?.__interrupt__) {
+            const interrupt = (chunk as any).__interrupt__;
+            yield { content: interrupt, type: 'interrupt', done: false };
+          }
+          continue;
+        }
+        const token = chunk[0];
+        const metadata = chunk[1];
         let { content, type } = this.getContentAndTypeWithStreamMessage(token);
         if (content && type) {
-          if (type === 'reasoning') {
-            reasoningResponse += content;
-          } else if (type === 'text') {
+          if (type === 'text') {
             // 需要判断是不是tool_result
             type = token.type === 'tool' ? 'tool_result' : type;
           }
-          response += content;
-          yield { content, type, done: false };
+          yield { content, type, done: false, role: metadata.lc_agent_name };
         }
       }
-
-      chatHistory.push(new AIMessage({ content: response }));
       yield { content: '', done: true };
     } catch (error) {
-      console.error(error);
+      console.error('hcs streamChat error', error);
       throw new InternalServerErrorException(
         `流式对话失败: ${error instanceof Error ? error.message : '未知错误'}`,
-      );
-    }
-  }
-
-  /**
-   * 获取非流式对话结果
-   * @param llmConfig LLM 配置
-   * @param message 用户消息
-   * @param sessionId 会话 ID
-   * @param timestamp 时间戳
-   */
-  private async nonStreamChat(
-    llmConfig: LLMConfig,
-    message: string,
-    sessionId: string,
-    timestamp: Date,
-  ): Promise<AiChatResponseDto> {
-    try {
-      const llm = this.createLLM(llmConfig);
-      const chatHistory = this.memoryStore.get(sessionId) || [];
-
-      chatHistory.push(new HumanMessage({ content: message }));
-
-      const response = await llm.invoke(chatHistory);
-
-      chatHistory.push(new AIMessage({ content: response.content as string }));
-
-      this.memoryStore.set(sessionId, chatHistory.slice(-20));
-
-      return {
-        reply: response.content as string,
-        sessionId,
-        timestamp,
-      };
-    } catch (error) {
-      throw new InternalServerErrorException(
-        `对话失败: ${error instanceof Error ? error.message : '未知错误'}`,
       );
     }
   }
@@ -233,14 +262,22 @@ export class ChatService {
    * 创建 Deep Agent 实例
    * @param llmConfig LLM 配置
    */
-  private createDeepAgent(llmConfig: LLMConfig): DeepAgent {
+  private createDeepAgent(
+    llmConfig: LLMConfig,
+    allowTools?: string[],
+    allowSkills?: string[],
+    name?: string,
+  ): DeepAgent {
     const llm = this.createLLM(llmConfig);
-    const tools = this.toolService.getTools();
+    const tools = this.toolService
+      .getTools()
+      .filter((tool) => allowTools?.includes(tool.name));
 
     const agent = createDeepAgent({
       model: llm,
       tools: tools,
       systemPrompt: this.testPrompt,
+      name,
     });
 
     return agent;
@@ -250,25 +287,30 @@ export class ChatService {
    * 创建普通 Agent 实例
    * @param llmConfig LLM 配置
    */
-  private createNormalAgent(llmConfig: LLMConfig): ReactAgent {
+  private createNormalAgent(llmConfig: LLMConfig, name?: string): ReactAgent {
     const llm = this.createLLM(llmConfig);
-    const tools = this.toolService.getTools();
+    const tools = this.toolService.getTools(['askQuestion', 'getCurrentTime']);
 
     const agent = createAgent({
       model: llm,
       tools: tools,
       systemPrompt: this.testPrompt,
+      name,
+      responseFormat: toolStrategy(
+        z.object({
+          userDemand: z.string().describe('用户需求'),
+          allowTools: z
+            .array(z.enum(this.toolService.getToolNames()))
+            .describe('允许的工具'),
+          allowSkills: z.array(z.enum(this.skills)).describe('允许的技能'),
+        }),
+        {
+          toolMessageContent: '',
+        },
+      ),
     });
 
     return agent;
-  }
-
-  /**
-   * 获取或创建会话 ID
-   * @param aiId AI 实例 ID
-   */
-  private getOrCreateSessionId(aiId: string): string {
-    return `ai_${aiId}`;
   }
 
   private getContentAndTypeWithStreamMessage(token: BaseMessage): {

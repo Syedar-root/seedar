@@ -7,31 +7,6 @@ const getDatasetInfoSchema = z.object({
 
 type GetDatasetInfoParams = z.infer<typeof getDatasetInfoSchema>;
 
-export interface QueryDSL {
-  /** 数据集ID */
-  datasetId: number;
-  /** 主表ID */
-  tableId: number;
-  /** 维度 - 使用字段ID引用 */
-  dimensions?: Array<number | { fieldId: number; alias?: string }>;
-  /** 指标 - 使用指标ID引用 */
-  metrics?: Array<{
-    id: number;
-    alias?: string;
-  }>;
-  /** 筛选条件 */
-  filters?: Array<{
-    fieldId: number;
-    op: string;
-    value?: any;
-    raw?: boolean;
-  }>;
-  /** 限制返回的记录数（可选） */
-  limit?: number;
-  /** 偏移量（用于分页，可选） */
-  offset?: number;
-}
-
 const OperatorList = ['=', '!=', '>', '>=', '<', '<='] as const;
 
 const getDataAtTempSchema = z.object({
@@ -61,9 +36,52 @@ const getDataAtTempSchema = z.object({
 
 type GetDataAtTempParams = z.infer<typeof getDataAtTempSchema>;
 
+interface AskQuestion {
+  // 一次可以提多个问题
+  questions: Array<{
+    // 问题描述
+    question: string;
+    // 问题类型
+    type: 'confirm' | 'radio' | 'checkbox' | 'text';
+    // 选项：radio/checkbox 才需要
+    options?: string[];
+  }>;
+}
+
+const askQuestionSchema = z.object({
+  questions: z
+    .array(
+      z
+        .object({
+          question: z.string().describe('用户问题'),
+          type: z
+            .enum(['confirm', 'choice', 'text'])
+            .describe(
+              '问题类型，confirm/choice/text，confirm为确认问题，choice为单选/多选问题，text为文本问题',
+            ),
+          options: z.array(z.string()).describe('选项列表').optional(),
+          multiple: z.boolean().optional().describe('是否为多选问题'),
+        })
+        .refine(
+          (data) => {
+            if (data.type === 'choice') {
+              return Array.isArray(data.options) && data.options.length > 0;
+            }
+            return true;
+          },
+          { message: 'radio/checkbox类型的问题需要选项列表' },
+        ),
+    )
+    .describe('用户问题列表'),
+});
+
+type AskQuestionParams = z.infer<typeof askQuestionSchema>;
+
 export {
   getDatasetInfoSchema,
   type GetDatasetInfoParams,
   getDataAtTempSchema,
   type GetDataAtTempParams,
+  askQuestionSchema,
+  type AskQuestionParams,
 };

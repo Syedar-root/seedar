@@ -17,21 +17,35 @@ import { ChatService } from './services/chat.service';
 import { CreateAiRequest } from './dto/create-ai.request';
 import { UpdateAiRequest } from './dto/update-ai.request';
 import { AiResponse } from './dto/ai.response';
-import { AiChatRequestDto, AiChatResponseDto } from './dto';
+import {
+  AiChatRequestDto,
+  AiChatResponseDto,
+  AiSessionResponse,
+  CreateAiSessionRequest,
+} from './dto';
 import { PaginatedResult } from './ai.types';
 import { Observable } from 'rxjs';
+import { AiSessionService } from './services';
 
 @Controller('v1/ai')
 export class AiController {
   constructor(
     private readonly aiService: AiService,
     private readonly chatService: ChatService,
+    private readonly aiSessionService: AiSessionService,
   ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() createAiDto: CreateAiRequest): Promise<AiResponse> {
     return this.aiService.create(createAiDto);
+  }
+
+  @Post('session')
+  createSession(
+    @Body() createSessionDto: CreateAiSessionRequest,
+  ): Promise<AiSessionResponse> {
+    return this.aiSessionService.create(createSessionDto);
   }
 
   @Get()
@@ -58,17 +72,15 @@ export class AiController {
     return this.aiService.remove(id);
   }
 
-  @Post('chat')
-  @HttpCode(HttpStatus.OK)
-  async chat(@Body() dto: AiChatRequestDto): Promise<AiChatResponseDto> {
-    return this.chatService.chat(dto.aiId, dto.message, dto.stream);
-  }
-
   @Sse('chat/stream')
   streamChat(@Body() dto: AiChatRequestDto): Observable<MessageEvent> {
-    const sessionId = `ai_${dto.aiId}`;
     const timestamp = new Date().toISOString();
-    const stream = this.chatService.streamChat(dto.aiId, dto.message);
+    const sessionId = dto.sessionId;
+    const stream = this.chatService.streamChat(
+      dto.aiId,
+      dto.message,
+      sessionId,
+    );
 
     // 🔥 仅包装成 @Sse 要求的 Observable，内部逻辑完全是你的
     return new Observable((subscriber) => {
