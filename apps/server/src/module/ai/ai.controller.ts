@@ -80,6 +80,7 @@ export class AiController {
       dto.aiId,
       dto.message,
       sessionId,
+      dto.isResume,
     );
 
     // 🔥 仅包装成 @Sse 要求的 Observable，内部逻辑完全是你的

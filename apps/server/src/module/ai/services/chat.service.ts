@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { AiService } from './ai.service';
-import { LLMConfig } from '../ai.types';
+import { LLMConfig, YieldType } from '../ai.types';
 import { AiChatResponseDto } from '../dto/ai-chat.response.dto';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatAnthropic } from '@langchain/anthropic';
@@ -10,9 +10,10 @@ import {
   AIMessage,
   Message,
   BaseMessage,
+  ToolMessage,
 } from '@langchain/core/messages';
 import { AiResponse } from '../dto/ai.response';
-import { createDeepAgent, DeepAgent } from 'deepagents';
+import { createDeepAgent, DeepAgent, FilesystemBackend } from 'deepagents';
 import {
   createAgent,
   providerStrategy,
@@ -30,10 +31,14 @@ import {
   START,
   END,
   MemorySaver,
+  Command,
 } from '@langchain/langgraph';
 import * as z from 'zod/v4';
 import { AiSessionService } from './ai-session.service';
 import { loadSkill } from './helper';
+import path from 'path';
+import { existsSync } from 'fs';
+import { AskQuestionParams } from './toolSchema';
 
 @Injectable()
 export class ChatService {
@@ -48,7 +53,10 @@ export class ChatService {
    - 如果你已经有了答案，那你必须先向用户确认。
   `;
 
-  private readonly AVAILABLE_SKILLS = [] as const;
+  private readonly DEMAND_TOOL_MAP = {
+    'data-query': ['getDataAtTemp', 'getDatasetInfo'],
+    'chart-recommend': ['askQuestion', 'getCurrentTime'],
+  };
 
   constructor(
     private readonly aiService: AiService,
@@ -109,11 +117,7 @@ export class ChatService {
       const prompt = await loadSkill('clarify');
       const promptTemplate = PromptTemplate.fromTemplate(prompt);
       const systemPrompt = await promptTemplate.format({
-        demands: this.AVAILABLE_SKILLS.join('、'),
-        tools: this.toolService.getToolNames().join(', '),
-        skills: this.AVAILABLE_SKILLS.length
-          ? this.AVAILABLE_SKILLS.join(', ')
-          : '暂无技能',
+        demands: Object.keys(this.DEMAND_TOOL_MAP).join('、'),
       });
 
       // 步骤2: 创建 React Agent
@@ -129,13 +133,10 @@ export class ChatService {
         name: 'clarify',
         responseFormat: toolStrategy(
           z.object({
-            userDemand: z.string().describe('用户需求'),
-            allowTools: z
-              .array(z.enum(this.toolService.getToolNames()))
-              .describe('允许的工具'),
-            allowSkills: z
-              .array(z.enum(this.AVAILABLE_SKILLS))
-              .describe('允许的技能'),
+            userDemand: z
+              .enum(Object.keys(this.DEMAND_TOOL_MAP))
+              .describe('用户需求类型'),
+            userDemandDesc: z.string().describe('用户需求描述'),
           }),
           {
             toolMessageContent: '',
@@ -149,14 +150,18 @@ export class ChatService {
       // 步骤4: 返回更新后的状态
       return {
         messages: response.messages,
-        allowTools: [
-          ...state.allowTools,
-          ...response.structuredResponse.allowTools,
-        ],
-        allowSkills: [
-          ...state.allowSkills,
-          ...response.structuredResponse.allowSkills,
-        ],
+        allowTools: Array.from(
+          new Set([
+            ...state.allowTools,
+            ...this.DEMAND_TOOL_MAP[response.structuredResponse.userDemand],
+          ]),
+        ),
+        allowSkills: Array.from(
+          new Set([
+            ...state.allowSkills,
+            ...response.structuredResponse.userDemand,
+          ]),
+        ),
       };
     };
   }
@@ -193,11 +198,29 @@ export class ChatService {
         recommendSkills: state.allowSkills?.join(', ') || '',
       });
 
+      // 1. 技能根目录（NestJS 源码目录：src/skills）
+      const SKILLS_ROOT = path.join(__dirname, '.');
+      // 2. 校验目录是否存在
+      if (!existsSync(SKILLS_ROOT)) {
+        throw new InternalServerErrorException(
+          `技能目录不存在：${SKILLS_ROOT}`,
+        );
+      }
+      console.log('hcs SKILLS_ROOT', SKILLS_ROOT); //hcs SKILLS_ROOT D:\Program\projects\seedar\apps\server\dist\module\ai\services
+
+      // 3. 创建文件系统后端（允许读取本地技能文件）
+      const backend = new FilesystemBackend({
+        rootDir: SKILLS_ROOT, // 技能根目录
+        virtualMode: true,
+      });
+
       const agent = createDeepAgent({
         model: llm,
         tools,
         systemPrompt,
         name: 'act',
+        backend,
+        skills: ['/skills/'],
       });
 
       // 步骤2: 执行 Agent
@@ -212,12 +235,6 @@ export class ChatService {
    * 处理流式对话请求
    * @param aiId AI 实例 ID
    * @param message 用户消息
-   * @param agentType agent 类型 ('deep' | 'normal')，默认为 'deep'
-   */
-  /**
-   * 处理流式对话请求
-   * @param aiId AI 实例 ID
-   * @param message 用户消息
    * @param sessionId 会话 ID
    * @yields 流式响应数据
    */
@@ -225,8 +242,18 @@ export class ChatService {
     aiId: string,
     message: string,
     sessionId: string,
+    isResume: boolean = false,
   ): AsyncGenerator<
-    { content: string; type?: string; done: boolean; role?: string },
+    {
+      content: string | AskQuestionParams['questions'];
+      type?: YieldType;
+      done: boolean;
+      role?: string;
+      meta?: {
+        tool_call?: { id: string; name: string; [key: string]: any };
+        tool_result?: { tool_call_id: string };
+      };
+    },
     void,
     unknown
   > {
@@ -239,9 +266,11 @@ export class ChatService {
 
       // 步骤3: 启动流式对话
       const stream = await agent.stream(
-        {
-          messages: [new HumanMessage({ content: message })],
-        },
+        !isResume
+          ? {
+              messages: [new HumanMessage({ content: message })],
+            }
+          : new Command({ resume: { message } }),
         {
           streamMode: ['messages', 'values'],
           configurable: {
@@ -249,6 +278,8 @@ export class ChatService {
           },
         },
       );
+
+      const tool_call: any[] = [];
 
       // 步骤4: 处理流式响应
       for await (const [streamMode, chunk] of stream) {
@@ -267,23 +298,44 @@ export class ChatService {
         const { content, type } =
           this.getContentAndTypeWithStreamMessage(token);
 
+        if (type === 'tool_call') {
+          tool_call.push(token.contentBlocks);
+        }
+
         if (content && type) {
           // 判断是否为工具调用结果
           const messageType = token.type === 'tool' ? 'tool_result' : type;
+          const meta = {
+            tool_call:
+              type === 'tool_call'
+                ? {
+                    id: token.contentBlocks[0].id as string,
+                    name: token.contentBlocks[0].name as string,
+                  }
+                : undefined,
+            tool_result:
+              messageType === 'tool_result'
+                ? { tool_call_id: (token as ToolMessage).tool_call_id }
+                : undefined,
+            role: metadata.lc_agent_name,
+          };
           yield {
             content,
-            type: messageType,
+            type: messageType as YieldType,
             done: false,
             role: metadata.lc_agent_name,
+            meta,
           };
         }
       }
 
       // 步骤5: 返回完成标记
+      console.log('hcs tool_call', JSON.stringify(tool_call, null, 2));
       yield { content: '', done: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
-      console.error('streamChat error:', errorMessage, error);
+      console.error('streamChat error:', errorMessage, error, '\n');
+      console.log('error type:', typeof error, '\n');
       throw new InternalServerErrorException(`流式对话失败: ${errorMessage}`);
     }
   }

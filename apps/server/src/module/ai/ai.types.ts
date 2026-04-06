@@ -31,3 +31,11 @@ export interface ToolConfig {
   description: string;
   schema?: any; // tool schema
 }
+
+export type YieldType =
+  | 'interrupt'
+  | 'tool_call'
+  | 'tool_result'
+  | 'text'
+  | 'reasoning'
+  | 'error';

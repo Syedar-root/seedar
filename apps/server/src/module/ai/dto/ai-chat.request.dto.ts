@@ -14,4 +14,8 @@ export class AiChatRequestDto {
   @IsOptional()
   @IsUUID()
   sessionId: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isResume?: boolean;
 }
