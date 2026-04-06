@@ -48,7 +48,7 @@ export class ChatService {
    - 如果你已经有了答案，那你必须先向用户确认。
   `;
 
-  private readonly AVAILABLE_SKILLS = ['数据查询', '图表推荐'] as const;
+  private readonly AVAILABLE_SKILLS = [] as const;
 
   constructor(
     private readonly aiService: AiService,
@@ -67,8 +67,6 @@ export class ChatService {
   });
 
   private readonly checkpointer = new MemorySaver();
-
-
 
   /**
    * 创建对话图
@@ -95,11 +93,11 @@ export class ChatService {
   /**
    * 创建澄清节点
    * 负责理解用户需求，确定需要使用的工具和技能
-   * 
+   *
    * Agent 特点：
    * - 使用固定的工具集：askQuestion, getCurrentTime
    * - 使用结构化响应格式，返回用户需求、允许的工具和技能
-   * 
+   *
    * @param llmConfig LLM 配置
    * @returns Graph 节点
    */
@@ -108,17 +106,22 @@ export class ChatService {
   ): GraphNode<typeof this.State> {
     return async (state) => {
       // 步骤1: 动态生成系统提示词
-      const prompt = await loadSkill('front-agent');
+      const prompt = await loadSkill('clarify');
       const promptTemplate = PromptTemplate.fromTemplate(prompt);
       const systemPrompt = await promptTemplate.format({
         demands: this.AVAILABLE_SKILLS.join('、'),
         tools: this.toolService.getToolNames().join(', '),
-        skills: this.AVAILABLE_SKILLS.join(', '),
+        skills: this.AVAILABLE_SKILLS.length
+          ? this.AVAILABLE_SKILLS.join(', ')
+          : '暂无技能',
       });
 
       // 步骤2: 创建 React Agent
       const llm = this.createLLM({ ...llmConfig, systemPrompt });
-      const tools = this.toolService.getTools(['askQuestion', 'getCurrentTime']);
+      const tools = this.toolService.getTools([
+        'askQuestion',
+        'getCurrentTime',
+      ]);
       const agent = createAgent({
         model: llm,
         tools,
@@ -161,11 +164,11 @@ export class ChatService {
   /**
    * 创建执行节点
    * 负责使用工具和技能执行具体任务
-   * 
+   *
    * Agent 特点：
    * - 根据允许的工具列表动态过滤工具
    * - 使用自由响应格式，不限制输出结构
-   * 
+   *
    * @param llmConfig LLM 配置
    * @returns Graph 节点
    */
@@ -173,13 +176,27 @@ export class ChatService {
     return async (state) => {
       // 步骤1: 创建 Deep Agent
       const llm = this.createLLM(llmConfig);
+      // 保证有两个必要工具：askQuestion, getCurrentTime
+      if (!state.allowTools?.includes('askQuestion')) {
+        state.allowTools?.push('askQuestion');
+      }
+      if (!state.allowTools?.includes('getCurrentTime')) {
+        state.allowTools?.push('getCurrentTime');
+      }
       const tools = this.toolService
         .getTools()
         .filter((tool) => state.allowTools?.includes(tool.name));
+
+      const prompt = await loadSkill('act');
+      const promptTemplate = PromptTemplate.fromTemplate(prompt);
+      const systemPrompt = await promptTemplate.format({
+        recommendSkills: state.allowSkills?.join(', ') || '',
+      });
+
       const agent = createDeepAgent({
         model: llm,
         tools,
-        systemPrompt: this.SYSTEM_PROMPT,
+        systemPrompt,
         name: 'act',
       });
 
@@ -216,10 +233,10 @@ export class ChatService {
     try {
       // 步骤1: 获取会话信息
       const session = await this.aiSessionService.findOne(sessionId);
-      
+
       // 步骤2: 创建对话图
       const agent = await this.createGraph(aiId);
-      
+
       // 步骤3: 启动流式对话
       const stream = await agent.stream(
         {
@@ -247,16 +264,17 @@ export class ChatService {
         // 处理 messages 模式的消息内容
         const token = chunk[0];
         const metadata = chunk[1];
-        const { content, type } = this.getContentAndTypeWithStreamMessage(token);
-        
+        const { content, type } =
+          this.getContentAndTypeWithStreamMessage(token);
+
         if (content && type) {
           // 判断是否为工具调用结果
           const messageType = token.type === 'tool' ? 'tool_result' : type;
-          yield { 
-            content, 
-            type: messageType, 
-            done: false, 
-            role: metadata.lc_agent_name 
+          yield {
+            content,
+            type: messageType,
+            done: false,
+            role: metadata.lc_agent_name,
           };
         }
       }
