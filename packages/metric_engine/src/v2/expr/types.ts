@@ -19,6 +19,14 @@ export enum ExprKind {
   Conditional = "Conditional",
   /** 选择表达式，表示从多个值中选择一个 */
   Select = "Select",
+  /** IN 表达式，表示字段值是否在指定列表中 */
+  In = "In",
+  /** BETWEEN 表达式，表示字段值是否在指定范围内 */
+  Between = "Between",
+  /** LIKE 表达式，表示字段值是否匹配指定模式 */
+  Like = "Like",
+  /** IS NULL 表达式，表示字段值是否为空 */
+  IsNull = "IsNull",
 }
 
 /**

@@ -151,11 +151,11 @@ export class ChatService {
         messages: response.messages,
         allowTools: [
           ...state.allowTools,
-          ...response.structuredResponse.allowTools!,
+          ...response.structuredResponse.allowTools,
         ],
         allowSkills: [
           ...state.allowSkills,
-          ...response.structuredResponse.allowSkills!,
+          ...response.structuredResponse.allowSkills,
         ],
       };
     };

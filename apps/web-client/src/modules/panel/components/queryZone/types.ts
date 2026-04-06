@@ -19,8 +19,11 @@ export const OPERATORS_BY_TYPE: Record<FieldType, OperatorOption[]> = {
     { value: "=", label: "等于" },
     { value: "!=", label: "不等于" },
     { value: "like", label: "包含" },
+    { value: "not_like", label: "不包含" },
     { value: "in", label: "属于" },
     { value: "not_in", label: "不属于" },
+    { value: "between", label: "介于" },
+    { value: "not_between", label: "不介于" },
     { value: "is_null", label: "为空" },
     { value: "is_not_null", label: "不为空" },
   ],
@@ -31,6 +34,8 @@ export const OPERATORS_BY_TYPE: Record<FieldType, OperatorOption[]> = {
     { value: "<", label: "小于" },
     { value: ">=", label: "大于等于" },
     { value: "<=", label: "小于等于" },
+    { value: "between", label: "介于" },
+    { value: "not_between", label: "不介于" },
     { value: "is_null", label: "为空" },
     { value: "is_not_null", label: "不为空" },
   ],
@@ -41,6 +46,8 @@ export const OPERATORS_BY_TYPE: Record<FieldType, OperatorOption[]> = {
     { value: "<", label: "小于" },
     { value: ">=", label: "大于等于" },
     { value: "<=", label: "小于等于" },
+    { value: "between", label: "介于" },
+    { value: "not_between", label: "不介于" },
     { value: "is_null", label: "为空" },
     { value: "is_not_null", label: "不为空" },
   ],
@@ -81,3 +88,7 @@ export const OPERATORS_BY_TYPE: Record<FieldType, OperatorOption[]> = {
 export const NO_VALUE_OPERATORS = ["is_null", "is_not_null"];
 
 export const TIME_RANGE_OPERATORS = ["recent_days", "recent_weeks", "recent_months"];
+
+export const ARRAY_VALUE_OPERATORS = ["in", "not_in"];
+
+export const RANGE_VALUE_OPERATORS = ["between", "not_between"];

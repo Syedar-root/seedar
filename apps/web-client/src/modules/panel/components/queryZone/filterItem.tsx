@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState, useRef } from "react";
 import { X, Check } from "lucide-react";
 import {
   FilterItem as FilterItemType,
   OPERATORS_BY_TYPE,
   NO_VALUE_OPERATORS,
   TIME_RANGE_OPERATORS,
+  ARRAY_VALUE_OPERATORS,
+  RANGE_VALUE_OPERATORS,
 } from "./types";
 import { FieldType } from "#pkg/seedar/types";
 import { Select } from "@base-ui/react/select";
@@ -22,10 +24,15 @@ export const FilterItem: React.FC<FilterItemProps> = ({
   onUpdate,
   onRemove,
 }) => {
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const operators =
     OPERATORS_BY_TYPE[filter.fieldType] || OPERATORS_BY_TYPE[FieldType.STRING];
   const needsValue = !NO_VALUE_OPERATORS.includes(filter.op);
   const isTimeRange = TIME_RANGE_OPERATORS.includes(filter.op);
+  const isArrayValue = ARRAY_VALUE_OPERATORS.includes(filter.op);
+  const isRangeValue = RANGE_VALUE_OPERATORS.includes(filter.op);
 
   const handleOperatorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newOp = e.target.value;
@@ -51,8 +58,99 @@ export const FilterItem: React.FC<FilterItemProps> = ({
     onUpdate(filter.id, { value });
   };
 
+  const handleAddArrayValue = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    
+    const value = inputValue.trim();
+    if (!value) return;
+
+    const currentValues = Array.isArray(filter.value) ? filter.value : [];
+    if (currentValues.includes(value)) return;
+
+    onUpdate(filter.id, { value: [...currentValues, value] });
+    setInputValue("");
+  };
+
+  const handleRemoveArrayValue = (index: number) => {
+    const currentValues = Array.isArray(filter.value) ? filter.value : [];
+    const newValues = currentValues.filter((_, i) => i !== index);
+    onUpdate(filter.id, { value: newValues.length > 0 ? newValues : undefined });
+  };
+
+  const handleRangeChange = (key: "low" | "high", value: string) => {
+    const rangeValue = (filter.value as { low?: number; high?: number }) || {};
+    const numValue = value === "" ? undefined : Number(value);
+    onUpdate(filter.id, {
+      value: { ...rangeValue, [key]: numValue },
+    });
+  };
+
+  const renderArrayInput = () => {
+    if (!isArrayValue) return null;
+
+    const values = Array.isArray(filter.value) ? filter.value : [];
+
+    return (
+      <div className={styles.arrayInput}>
+        {values.map((v, idx) => (
+          <span key={idx} className={styles.tag}>
+            {String(v)}
+            <X
+              size={10}
+              className={styles.tagRemove}
+              onClick={() => handleRemoveArrayValue(idx)}
+            />
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          className={styles.arrayInputField}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleAddArrayValue}
+          placeholder="输入后回车"
+        />
+      </div>
+    );
+  };
+
+  const renderRangeInput = () => {
+    if (!isRangeValue) return null;
+
+    const rangeValue = (filter.value as { low?: number; high?: number }) || {};
+
+    return (
+      <div className={styles.rangeInput}>
+        <Input
+          type="number"
+          className={styles.rangeInputField}
+          value={rangeValue.low ?? ""}
+          onChange={(e) => handleRangeChange("low", e.target.value)}
+          placeholder="最小值"
+        />
+        <span className={styles.rangeSeparator}>至</span>
+        <Input
+          type="number"
+          className={styles.rangeInputField}
+          value={rangeValue.high ?? ""}
+          onChange={(e) => handleRangeChange("high", e.target.value)}
+          placeholder="最大值"
+        />
+      </div>
+    );
+  };
+
   const renderValueInput = () => {
     if (!needsValue) return null;
+
+    if (isArrayValue) {
+      return renderArrayInput();
+    }
+
+    if (isRangeValue) {
+      return renderRangeInput();
+    }
 
     if (isTimeRange) {
       return (

@@ -10,6 +10,7 @@ import {
   MetricAggregateFunction,
   JoinType,
 } from '../../dataset/dataset.types';
+import { InExpr, BetweenExpr, LikeExpr, IsNullExpr } from '@metric-engine/core';
 
 describe('Dynamic Join Selection', () => {
   let mockDatasetInfo: DatasetResponse;
@@ -356,6 +357,264 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins).toBeDefined();
       expect(result.joins.length).toBe(1);
       expect(result.joins[0].rightTable.name).toBe('customers');
+    });
+  });
+});
+
+describe('Filter Expression Types', () => {
+  let mockDatasetInfo: DatasetResponse;
+  let mockTables: any[];
+
+  beforeEach(() => {
+    const createMockTable = (name: string, fieldNames: string[]) => {
+      const table = {
+        name,
+        alias: name,
+        fields: fieldNames.map((fname) => ({ name: fname, type: 'string' })),
+        getField: jest.fn((fname: string) => {
+          const field = fieldNames.includes(fname)
+            ? { name: fname, type: 'string' }
+            : null;
+          return field;
+        }),
+        withAlias: jest.fn((alias: string) => {
+          const newTable = createMockTable(name, fieldNames);
+          newTable.alias = alias;
+          return newTable;
+        }),
+      };
+      return table;
+    };
+
+    mockTables = [
+      createMockTable('orders', ['id', 'status', 'amount', 'name']),
+    ];
+
+    mockDatasetInfo = {
+      id: 1,
+      name: 'Test Dataset',
+      description: 'Test dataset for filter expressions',
+      type: 'semantic' as any,
+      status: 'active' as any,
+      datasource: {
+        id: 1,
+        name: 'Test Datasource',
+        type: 'mysql',
+      },
+      mainTable: {
+        id: 1,
+        tableName: 'orders',
+        datasetName: 'Orders',
+      },
+      tables: [
+        {
+          id: 1,
+          datasourceTableId: 1,
+          tableName: 'orders',
+          datasetName: 'Orders',
+        },
+      ] as DatasetTableResponse[],
+      fields: [
+        {
+          id: 1,
+          tableId: 1,
+          name: 'id',
+          businessName: 'Order ID',
+          type: 'number' as any,
+          datasourceColumnId: 1,
+        },
+        {
+          id: 2,
+          tableId: 1,
+          name: 'status',
+          businessName: 'Status',
+          type: 'string' as any,
+          datasourceColumnId: 2,
+        },
+        {
+          id: 3,
+          tableId: 1,
+          name: 'amount',
+          businessName: 'Amount',
+          type: 'number' as any,
+          datasourceColumnId: 3,
+        },
+        {
+          id: 4,
+          tableId: 1,
+          name: 'name',
+          businessName: 'Name',
+          type: 'string' as any,
+          datasourceColumnId: 4,
+        },
+      ] as DatasetFieldResponse[],
+      metrics: [],
+      joins: [],
+    };
+  });
+
+  describe('IN Expression', () => {
+    it('should transform IN filter to InExpr', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        filters: [{ fieldId: 2, op: 'in', value: ['paid', 'shipped'] }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.filters).toBeDefined();
+      expect(result.filters.length).toBe(1);
+      expect(result.filters[0]).toBeInstanceOf(InExpr);
+      expect((result.filters[0] as InExpr).negated).toBe(false);
+    });
+
+    it('should transform NOT IN filter to InExpr with negated=true', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        filters: [{ fieldId: 2, op: 'not_in', value: ['cancelled'] }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.filters).toBeDefined();
+      expect(result.filters[0]).toBeInstanceOf(InExpr);
+      expect((result.filters[0] as InExpr).negated).toBe(true);
+    });
+  });
+
+  describe('BETWEEN Expression', () => {
+    it('should transform BETWEEN filter to BetweenExpr', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        filters: [
+          { fieldId: 3, op: 'between', value: { low: 100, high: 1000 } },
+        ],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.filters).toBeDefined();
+      expect(result.filters[0]).toBeInstanceOf(BetweenExpr);
+      expect((result.filters[0] as BetweenExpr).negated).toBe(false);
+    });
+
+    it('should transform NOT BETWEEN filter to BetweenExpr with negated=true', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        filters: [
+          { fieldId: 3, op: 'not_between', value: { low: 100, high: 1000 } },
+        ],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.filters).toBeDefined();
+      expect(result.filters[0]).toBeInstanceOf(BetweenExpr);
+      expect((result.filters[0] as BetweenExpr).negated).toBe(true);
+    });
+  });
+
+  describe('LIKE Expression', () => {
+    it('should transform LIKE filter to LikeExpr', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        filters: [{ fieldId: 4, op: 'like', value: '%张%' }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.filters).toBeDefined();
+      expect(result.filters[0]).toBeInstanceOf(LikeExpr);
+      expect((result.filters[0] as LikeExpr).negated).toBe(false);
+    });
+
+    it('should transform NOT LIKE filter to LikeExpr with negated=true', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        filters: [{ fieldId: 4, op: 'not_like', value: '%spam%' }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.filters).toBeDefined();
+      expect(result.filters[0]).toBeInstanceOf(LikeExpr);
+      expect((result.filters[0] as LikeExpr).negated).toBe(true);
+    });
+  });
+
+  describe('IS NULL Expression', () => {
+    it('should transform IS NULL filter to IsNullExpr', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        filters: [{ fieldId: 2, op: 'is_null' }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.filters).toBeDefined();
+      expect(result.filters[0]).toBeInstanceOf(IsNullExpr);
+      expect((result.filters[0] as IsNullExpr).negated).toBe(false);
+    });
+
+    it('should transform IS NOT NULL filter to IsNullExpr with negated=true', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        filters: [{ fieldId: 2, op: 'is_not_null' }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.filters).toBeDefined();
+      expect(result.filters[0]).toBeInstanceOf(IsNullExpr);
+      expect((result.filters[0] as IsNullExpr).negated).toBe(true);
     });
   });
 });

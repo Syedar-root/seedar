@@ -497,6 +497,37 @@ export class KnexQueryBuilder {
       return `CASE WHEN ${condStr} THEN ${consStr} ELSE ${altStr} END`;
     }
 
+    // 处理 IN 表达式 (InExpr)
+    if (expr.values !== undefined && Array.isArray(expr.values) && expr.expr !== undefined) {
+      const leftStr = this.buildExprWithAlias(expr.expr, aliasMap);
+      const valuesStr = expr.values.map((v: any) => this.buildExprWithAlias(v, aliasMap)).join(", ");
+      const op = expr.negated ? "NOT IN" : "IN";
+      return `${leftStr} ${op} (${valuesStr})`;
+    }
+
+    // 处理 BETWEEN 表达式 (BetweenExpr)
+    if (expr.low !== undefined && expr.high !== undefined && expr.expr !== undefined) {
+      const exprStr = this.buildExprWithAlias(expr.expr, aliasMap);
+      const lowStr = this.buildExprWithAlias(expr.low, aliasMap);
+      const highStr = this.buildExprWithAlias(expr.high, aliasMap);
+      const op = expr.negated ? "NOT BETWEEN" : "BETWEEN";
+      return `${exprStr} ${op} ${lowStr} AND ${highStr}`;
+    }
+
+    // 处理 LIKE 表达式 (LikeExpr)
+    if (expr.pattern !== undefined && expr.expr !== undefined && expr.values === undefined) {
+      const leftStr = this.buildExprWithAlias(expr.expr, aliasMap);
+      const patternStr = this.buildExprWithAlias(expr.pattern, aliasMap);
+      const op = expr.negated ? "NOT LIKE" : "LIKE";
+      return `${leftStr} ${op} ${patternStr}`;
+    }
+
+    // 处理 IS NULL 表达式 (IsNullExpr)
+    if (expr.negated !== undefined && expr.expr !== undefined && expr.values === undefined && expr.pattern === undefined && expr.low === undefined) {
+      const exprStr = this.buildExprWithAlias(expr.expr, aliasMap);
+      return expr.negated ? `${exprStr} IS NOT NULL` : `${exprStr} IS NULL`;
+    }
+
     // 如果是字符串，直接返回
     if (typeof expr === "string") {
       return aliasMap.get(expr) || expr;
@@ -699,6 +730,37 @@ export class KnexQueryBuilder {
         return `CASE WHEN ${condStr} THEN ${consStr} END`;
       }
       return `CASE WHEN ${condStr} THEN ${consStr} ELSE ${altStr} END`;
+    }
+
+    // 处理 IN 表达式 (InExpr)
+    if (expr.values !== undefined && Array.isArray(expr.values) && expr.expr !== undefined) {
+      const leftStr = this.buildExpr(expr.expr);
+      const valuesStr = expr.values.map((v: any) => this.buildExpr(v)).join(", ");
+      const op = expr.negated ? "NOT IN" : "IN";
+      return `${leftStr} ${op} (${valuesStr})`;
+    }
+
+    // 处理 BETWEEN 表达式 (BetweenExpr)
+    if (expr.low !== undefined && expr.high !== undefined && expr.expr !== undefined) {
+      const exprStr = this.buildExpr(expr.expr);
+      const lowStr = this.buildExpr(expr.low);
+      const highStr = this.buildExpr(expr.high);
+      const op = expr.negated ? "NOT BETWEEN" : "BETWEEN";
+      return `${exprStr} ${op} ${lowStr} AND ${highStr}`;
+    }
+
+    // 处理 LIKE 表达式 (LikeExpr)
+    if (expr.pattern !== undefined && expr.expr !== undefined && expr.values === undefined) {
+      const leftStr = this.buildExpr(expr.expr);
+      const patternStr = this.buildExpr(expr.pattern);
+      const op = expr.negated ? "NOT LIKE" : "LIKE";
+      return `${leftStr} ${op} ${patternStr}`;
+    }
+
+    // 处理 IS NULL 表达式 (IsNullExpr)
+    if (expr.negated !== undefined && expr.expr !== undefined && expr.values === undefined && expr.pattern === undefined && expr.low === undefined) {
+      const exprStr = this.buildExpr(expr.expr);
+      return expr.negated ? `${exprStr} IS NOT NULL` : `${exprStr} IS NULL`;
     }
 
     // 如果是字符串，直接返回

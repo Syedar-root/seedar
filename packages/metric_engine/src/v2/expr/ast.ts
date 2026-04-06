@@ -256,3 +256,87 @@ export class SelectExpr extends Expr {
     );
   }
 }
+
+export class InExpr extends Expr {
+  expr: Expr;
+  values: Expr[];
+  negated: boolean;
+
+  constructor(expr: Expr, values: Expr[], negated = false, meta?: ExprMeta) {
+    super(ExprKind.In, meta);
+    this.expr = expr;
+    this.values = values;
+    this.negated = negated;
+  }
+
+  clone(): InExpr {
+    return new InExpr(
+      this.expr.clone(),
+      this.values.map((v) => v.clone()),
+      this.negated,
+      this.meta,
+    );
+  }
+}
+
+export class BetweenExpr extends Expr {
+  expr: Expr;
+  low: Expr;
+  high: Expr;
+  negated: boolean;
+
+  constructor(expr: Expr, low: Expr, high: Expr, negated = false, meta?: ExprMeta) {
+    super(ExprKind.Between, meta);
+    this.expr = expr;
+    this.low = low;
+    this.high = high;
+    this.negated = negated;
+  }
+
+  clone(): BetweenExpr {
+    return new BetweenExpr(
+      this.expr.clone(),
+      this.low.clone(),
+      this.high.clone(),
+      this.negated,
+      this.meta,
+    );
+  }
+}
+
+export class LikeExpr extends Expr {
+  expr: Expr;
+  pattern: Expr;
+  negated: boolean;
+
+  constructor(expr: Expr, pattern: Expr, negated = false, meta?: ExprMeta) {
+    super(ExprKind.Like, meta);
+    this.expr = expr;
+    this.pattern = pattern;
+    this.negated = negated;
+  }
+
+  clone(): LikeExpr {
+    return new LikeExpr(
+      this.expr.clone(),
+      this.pattern.clone(),
+      this.negated,
+      this.meta,
+    );
+  }
+}
+
+export class IsNullExpr extends Expr {
+  expr: Expr;
+  negated: boolean;
+
+  constructor(expr: Expr, negated = false, meta?: ExprMeta) {
+    super(ExprKind.IsNull, meta);
+    this.expr = expr;
+    this.negated = negated;
+  }
+
+  clone(): IsNullExpr {
+    return new IsNullExpr(this.expr.clone(), this.negated, this.meta);
+  }
+}

@@ -16,6 +16,18 @@
 =  ==  !=  <>  >  <  >=  <=
 ```
 
+### 筛选运算符
+```typescript
+IN        // 列表匹配
+NOT IN    // 列表排除
+BETWEEN   // 范围匹配
+NOT BETWEEN
+LIKE      // 模糊匹配
+NOT LIKE
+IS NULL   // 空值判断
+IS NOT NULL
+```
+
 ### 聚合函数
 ```typescript
 SUM  COUNT  AVG  MAX  MIN  DISTINCT_COUNT
@@ -112,7 +124,111 @@ COUNT(DISTINCT CASE WHEN status = 'paid' THEN user_id END)
 
 ---
 
+## 筛选表达式
+
+### 1. IN / NOT IN 列表匹配
+```typescript
+import { InExpr, FieldRefExpr, LiteralExpr } from '@metric-engine/core';
+
+// IN 列表
+new InExpr(
+  new FieldRefExpr("status", "orders", "t1"),
+  [new LiteralExpr("paid"), new LiteralExpr("shipped")]
+);
+```
+```sql
+status IN ('paid', 'shipped')
+```
+
+```typescript
+// NOT IN 列表
+new InExpr(
+  new FieldRefExpr("status", "orders", "t1"),
+  [new LiteralExpr("cancelled"), new LiteralExpr("refunded")],
+  true  // negated = true
+);
+```
+```sql
+status NOT IN ('cancelled', 'refunded')
+```
+
+### 2. BETWEEN / NOT BETWEEN 范围匹配
+```typescript
+import { BetweenExpr, FieldRefExpr, LiteralExpr } from '@metric-engine/core';
+
+// BETWEEN
+new BetweenExpr(
+  new FieldRefExpr("amount", "orders", "t1"),
+  new LiteralExpr(100),
+  new LiteralExpr(1000)
+);
+```
+```sql
+amount BETWEEN 100 AND 1000
+```
+
+```typescript
+// NOT BETWEEN
+new BetweenExpr(
+  new FieldRefExpr("amount", "orders", "t1"),
+  new LiteralExpr(100),
+  new LiteralExpr(1000),
+  true  // negated = true
+);
+```
+```sql
+amount NOT BETWEEN 100 AND 1000
+```
+
+### 3. LIKE / NOT LIKE 模糊匹配
+```typescript
+import { LikeExpr, FieldRefExpr, LiteralExpr } from '@metric-engine/core';
+
+// LIKE
+new LikeExpr(
+  new FieldRefExpr("name", "users", "t1"),
+  new LiteralExpr("%张%")
+);
+```
+```sql
+name LIKE '%张%'
+```
+
+```typescript
+// NOT LIKE
+new LikeExpr(
+  new FieldRefExpr("email", "users", "t1"),
+  new LiteralExpr("%spam%"),
+  true  // negated = true
+);
+```
+```sql
+email NOT LIKE '%spam%'
+```
+
+### 4. IS NULL / IS NOT NULL 空值判断
+```typescript
+import { IsNullExpr, FieldRefExpr } from '@metric-engine/core';
+
+// IS NULL
+new IsNullExpr(new FieldRefExpr("deleted_at", "orders", "t1"));
+```
+```sql
+deleted_at IS NULL
+```
+
+```typescript
+// IS NOT NULL
+new IsNullExpr(new FieldRefExpr("paid_at", "orders", "t1"), true);
+```
+```sql
+paid_at IS NOT NULL
+```
+
+---
+
 ## 不支持
 
 - SQL 风格 CASE WHEN（只支持三元运算符）
-- AND/OR 组合条件
+- AND/OR 组合条件（需通过多个 filter 实现）
+- 表达式字符串解析 IN/BETWEEN/LIKE/IS NULL（需直接构造 AST 对象）

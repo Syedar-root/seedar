@@ -9,7 +9,11 @@ import {
   CallExpr,
   UnaryExpr,
   ConditionalExpr,
-  SelectExpr
+  SelectExpr,
+  InExpr,
+  BetweenExpr,
+  LikeExpr,
+  IsNullExpr
 } from './ast';
 
 /**
@@ -150,6 +154,56 @@ export class ExprAnalyzer {
 
       // 其他情况为部分聚合
       return AggLevel.Partial;
+    }
+
+    // IN 表达式：分析左侧表达式和值列表
+    if (expr instanceof InExpr) {
+      const exprLevel = this.getAggLevel(expr.expr);
+      const valuesLevels = expr.values.map(v => this.getAggLevel(v));
+      const allLevels = [exprLevel, ...valuesLevels];
+
+      if (allLevels.every(level => level === AggLevel.None)) {
+        return AggLevel.None;
+      }
+      if (allLevels.every(level => level === AggLevel.Full)) {
+        return AggLevel.Full;
+      }
+      return AggLevel.Partial;
+    }
+
+    // BETWEEN 表达式：分析表达式和边界值
+    if (expr instanceof BetweenExpr) {
+      const exprLevel = this.getAggLevel(expr.expr);
+      const lowLevel = this.getAggLevel(expr.low);
+      const highLevel = this.getAggLevel(expr.high);
+      const allLevels = [exprLevel, lowLevel, highLevel];
+
+      if (allLevels.every(level => level === AggLevel.None)) {
+        return AggLevel.None;
+      }
+      if (allLevels.every(level => level === AggLevel.Full)) {
+        return AggLevel.Full;
+      }
+      return AggLevel.Partial;
+    }
+
+    // LIKE 表达式：分析表达式和模式
+    if (expr instanceof LikeExpr) {
+      const exprLevel = this.getAggLevel(expr.expr);
+      const patternLevel = this.getAggLevel(expr.pattern);
+
+      if (exprLevel === AggLevel.None && patternLevel === AggLevel.None) {
+        return AggLevel.None;
+      }
+      if (exprLevel === AggLevel.Full && patternLevel === AggLevel.Full) {
+        return AggLevel.Full;
+      }
+      return AggLevel.Partial;
+    }
+
+    // IS NULL 表达式：分析表达式
+    if (expr instanceof IsNullExpr) {
+      return this.getAggLevel(expr.expr);
     }
 
     // 默认返回无聚合

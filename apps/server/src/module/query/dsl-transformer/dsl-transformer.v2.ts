@@ -12,6 +12,10 @@ import {
   ConditionalExpr,
   SelectExpr,
   parseExpression,
+  InExpr,
+  BetweenExpr,
+  LikeExpr,
+  IsNullExpr,
 } from '@metric-engine/core';
 import {
   DatasetResponse,
@@ -988,31 +992,104 @@ export class DSLTransformerV2 {
         );
       }
 
-      const opMap: Record<string, Operator> = {
-        '=': Operator.EQUALS,
-        '!=': Operator.NOT_EQUALS,
-        '>': Operator.GREATER_THAN,
-        '<': Operator.LESS_THAN,
-        '>=': Operator.GREATER_EQUAL,
-        '<=': Operator.LESS_EQUAL,
-        like: Operator.LIKE,
-        in: Operator.IN,
-        not_in: Operator.NOT_IN,
-        is_null: Operator.IS_NULL,
-        is_not_null: Operator.IS_NOT_NULL,
-      };
+      switch (filter.op) {
+        case 'in': {
+          const values = Array.isArray(filter.value)
+            ? filter.value.map((v) => new LiteralExpr(v))
+            : [new LiteralExpr(filter.value)];
+          return new InExpr(fieldExpr, values, false);
+        }
 
-      const op = opMap[filter.op] || (filter.op as Operator);
-      let value: any = filter.value;
-      if (filter.raw && typeof value === 'string') {
-        value = { rawSql: value };
+        case 'not_in': {
+          const values = Array.isArray(filter.value)
+            ? filter.value.map((v) => new LiteralExpr(v))
+            : [new LiteralExpr(filter.value)];
+          return new InExpr(fieldExpr, values, true);
+        }
+
+        case 'between': {
+          if (
+            filter.value &&
+            typeof filter.value === 'object' &&
+            'low' in filter.value &&
+            'high' in filter.value
+          ) {
+            const rangeValue = filter.value as { low: unknown; high: unknown };
+            return new BetweenExpr(
+              fieldExpr,
+              new LiteralExpr(
+                rangeValue.low as string | number | boolean | null,
+              ),
+              new LiteralExpr(
+                rangeValue.high as string | number | boolean | null,
+              ),
+              false,
+            );
+          }
+          throw new Error('BETWEEN 操作符需要 { low, high } 格式的 value');
+        }
+
+        case 'not_between': {
+          if (
+            filter.value &&
+            typeof filter.value === 'object' &&
+            'low' in filter.value &&
+            'high' in filter.value
+          ) {
+            const rangeValue = filter.value as { low: unknown; high: unknown };
+            return new BetweenExpr(
+              fieldExpr,
+              new LiteralExpr(
+                rangeValue.low as string | number | boolean | null,
+              ),
+              new LiteralExpr(
+                rangeValue.high as string | number | boolean | null,
+              ),
+              true,
+            );
+          }
+          throw new Error('NOT BETWEEN 操作符需要 { low, high } 格式的 value');
+        }
+
+        case 'like':
+          return new LikeExpr(fieldExpr, new LiteralExpr(filter.value), false);
+
+        case 'not_like':
+          return new LikeExpr(fieldExpr, new LiteralExpr(filter.value), true);
+
+        case 'is_null':
+          return new IsNullExpr(fieldExpr, false);
+
+        case 'is_not_null':
+          return new IsNullExpr(fieldExpr, true);
+
+        default: {
+          const opMap: Record<string, Operator> = {
+            '=': Operator.EQUALS,
+            '!=': Operator.NOT_EQUALS,
+            '>': Operator.GREATER_THAN,
+            '<': Operator.LESS_THAN,
+            '>=': Operator.GREATER_EQUAL,
+            '<=': Operator.LESS_EQUAL,
+          };
+
+          const op = opMap[filter.op];
+          if (!op) {
+            throw new Error(`不支持的操作符: ${filter.op}`);
+          }
+
+          let value: any = filter.value;
+          if (filter.raw && typeof value === 'string') {
+            value = { rawSql: value };
+          }
+
+          return new ComparisonExpr(
+            op as ComparisonOperator,
+            fieldExpr,
+            value !== undefined ? new LiteralExpr(value) : (undefined as any),
+          );
+        }
       }
-
-      return new ComparisonExpr(
-        op as ComparisonOperator,
-        fieldExpr,
-        value !== undefined ? new LiteralExpr(value) : (undefined as any),
-      );
     });
 
     return {

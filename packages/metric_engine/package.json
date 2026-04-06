@@ -15,9 +15,12 @@
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "type-check": "tsc --noEmit",
-    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});\""
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});\"",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
   },
   "keywords": [
     "metric",
@@ -49,8 +52,14 @@
     "jsep": "^1.4.0"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/knex": "^0.16.1",
     "@types/node": "^25.0.9",
+    "jest": "^30.0.0",
+    "knex": "^3.1.0",
+    "mysql2": "^3.16.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.0"
   }
 }
