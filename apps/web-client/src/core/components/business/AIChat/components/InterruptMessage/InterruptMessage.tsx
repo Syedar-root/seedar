@@ -166,10 +166,11 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
             const selectedWithoutOther = formState.choiceValue.filter(
               (v) => v !== otherValue,
             );
-            answer = [
-              ...selectedWithoutOther,
-              formState.choiceOtherInput || otherValue,
-            ];
+            if (!formState.choiceOtherInput.trim()) {
+              answer = "user rejected answer";
+            } else {
+              answer = [...selectedWithoutOther, formState.choiceOtherInput];
+            }
           } else {
             answer = formState.choiceValue;
           }

@@ -119,9 +119,9 @@ const AIChat: React.FC<AIChatProps> = ({
       (msg: ChatMessage) => msg.type === "text" || msg.type === "interrupt",
     );
 
-    const errorMessages = group.filter(
-      (msg: ChatMessage) => msg.type === "error",
-    );
+    // const errorMessages = group.filter(
+    //   (msg: ChatMessage) => msg.type === "error",
+    // );
 
     const isThoughtChainType = (type: string) =>
       type === "reasoning" || type === "tool_call" || type === "tool_result";
@@ -261,18 +261,19 @@ const AIChat: React.FC<AIChatProps> = ({
       <div key={groupIndex} className={styles["assistant-group"]}>
         <div className={styles["assistant-content"]}>
           {renderAll()}
-          {textOrInterruptMessages.some((msg) => msg.type === "text") && (
-            <Actions
-              items={getMessageActions(
-                textOrInterruptMessages
-                  .filter((msg) => msg.type === "text")
-                  .map((msg) =>
-                    typeof msg.content === "string" ? msg.content : "",
-                  )
-                  .join(""),
-              )}
-            />
-          )}
+          {textOrInterruptMessages.some((msg) => msg.type === "text") &&
+            loading && (
+              <Actions
+                items={getMessageActions(
+                  textOrInterruptMessages
+                    .filter((msg) => msg.type === "text")
+                    .map((msg) =>
+                      typeof msg.content === "string" ? msg.content : "",
+                    )
+                    .join(""),
+                )}
+              />
+            )}
         </div>
       </div>
     );

@@ -24,8 +24,6 @@ const AIChatPreview: React.FC = () => {
   const { data: aisData } = useAis();
   const { mutateAsync: createSession } = useCreateAiSession();
 
-  console.log("hcs chatState", chatState);
-
   const handleSendMessage = async (
     content: string,
     isResume: boolean = false,
@@ -42,16 +40,18 @@ const AIChatPreview: React.FC = () => {
         },
       ));
 
-    const userMessage: ChatMessage = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type: "text",
-      content,
-      role: "user",
-      timestamp: Date.now(),
-      done: true,
-    };
-
-    chatState.addMessage(userMessage);
+    if (!isResume) {
+      // isResume表示从中断恢复，中断信息不需要添加到消息列表
+      const userMessage: ChatMessage = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: "text",
+        content,
+        role: "user",
+        timestamp: Date.now(),
+        done: true,
+      };
+      chatState.addMessage(userMessage);
+    }
     setIsLoading(true);
     setError(null);
 
@@ -67,7 +67,6 @@ const AIChatPreview: React.FC = () => {
         {
           onSession: (data) => {},
           onMessage: (chunk) => {
-            console.log("chunk", chunk);
             const sseData: SSEData = {
               type: chunk.type,
               data: {

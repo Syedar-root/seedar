@@ -96,21 +96,23 @@ export const useInterruptForm = (
   }, [currentIndex]);
 
   const validateAndSubmit = useCallback(() => {
-    const firstUnansweredIndex = questions.findIndex(
-      (q) => !answeredIds.has(q.id),
-    );
-
-    if (firstUnansweredIndex !== -1) {
-      setCurrentIndex(firstUnansweredIndex);
-      return;
-    }
+    const allAnswers = new Map(answers);
+    questions.forEach((q) => {
+      if (!allAnswers.has(q.id)) {
+        allAnswers.set(q.id, {
+          questionId: q.id,
+          question: q.question,
+          answer: "user rejected answer",
+        });
+      }
+    });
 
     const submitData: InterruptSubmitData = {
-      answers: Array.from(answers.values()),
+      answers: Array.from(allAnswers.values()),
     };
     onSubmit?.(`user answer: ${JSON.stringify(submitData)}`, true);
     setCurrentIndex(totalQuestions);
-  }, [questions, answeredIds, answers, onSubmit, totalQuestions]);
+  }, [answers, questions, onSubmit, totalQuestions]);
 
   return {
     currentIndex,
