@@ -100,7 +100,7 @@ export interface ModelItem {
 export interface AIChatProps {
   messages?: ChatMessage[];
   loading?: boolean;
-  onSendMessage?: (content: string) => void;
+  onSendMessage?: (content: string, isResume?: boolean) => void;
   sseData?: SSEData;
   placeholder?: string;
   disabled?: boolean;
@@ -148,7 +148,8 @@ export interface OnInterruptSubmitCallback {
 
 export interface InterruptMessageProps {
   content: string | AskQuestionItem[];
-  onSubmit?: (data: InterruptSubmitData) => void;
+  onSubmit?: (data: string, isResume: boolean) => void;
+  disabled?: boolean;
 }
 
 export interface AiSessionState {

@@ -26,7 +26,10 @@ const AIChatPreview: React.FC = () => {
 
   console.log("hcs chatState", chatState);
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (
+    content: string,
+    isResume: boolean = false,
+  ) => {
     const session =
       currentSession ||
       (await createSession(
@@ -59,6 +62,7 @@ const AIChatPreview: React.FC = () => {
           message: content,
           stream: true,
           sessionId: session?.id || undefined,
+          isResume: isResume || false,
         },
         {
           onSession: (data) => {},

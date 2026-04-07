@@ -2,7 +2,7 @@ import type { CommandItem, ModelItem } from "../../types";
 
 export interface EnhancedSenderProps {
   loading?: boolean;
-  onSubmit?: (content: string) => void;
+  onSubmit?: (content: string, isResume?: boolean) => void;
   placeholder?: string;
   disabled?: boolean;
   commands?: CommandItem[];

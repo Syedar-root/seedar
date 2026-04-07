@@ -161,7 +161,7 @@ export class ToolService {
           // 移除只保留第一个其他选项
           q.options = q.options?.filter((o) => !o.isOther);
           q.options?.push(otherOptions[0]);
-        } else if (!otherOptions) {
+        } else if (!otherOptions || otherOptions?.length === 0) {
           // 如果没有其他选项，添加一个默认的其他选项
           q.options?.push({ label: '其它', value: '其它', isOther: true });
         }

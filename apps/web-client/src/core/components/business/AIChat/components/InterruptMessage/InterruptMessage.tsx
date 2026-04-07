@@ -57,6 +57,7 @@ const formReducer = (state: FormState, action: FormAction): FormState => {
 const InterruptMessage: React.FC<InterruptMessageProps> = ({
   content,
   onSubmit,
+  disabled = false,
 }) => {
   const questions: AskQuestionItem[] =
     typeof content === "string" ? [] : content;
@@ -85,12 +86,53 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
   useEffect(() => {
     if (prevIndexRef.current !== currentIndex) {
       prevIndexRef.current = currentIndex;
+
+      if (currentQuestion) {
+        const existingAnswer = answers.get(currentQuestion.id);
+        if (existingAnswer) {
+          if (currentQuestion.type === "text") {
+            dispatch({
+              type: "SET_TEXT",
+              payload: existingAnswer.answer as string,
+            });
+          } else if (currentQuestion.type === "confirm") {
+            dispatch({
+              type: "SET_CONFIRM",
+              payload: existingAnswer.answer as string,
+            });
+          } else if (currentQuestion.type === "choice") {
+            const answerArray = Array.isArray(existingAnswer.answer)
+              ? existingAnswer.answer
+              : [existingAnswer.answer];
+            const otherOption = (currentQuestion.options || []).find(
+              (opt: ChoiceOptionItem) => opt.isOther,
+            );
+            if (otherOption && answerArray.includes(otherOption.value)) {
+              const userOtherInput = answerArray.find(
+                (v) => v !== otherOption.value,
+              );
+              dispatch({
+                type: "SET_CHOICE",
+                payload: answerArray,
+              });
+              dispatch({
+                type: "SET_CHOICE_OTHER",
+                payload: userOtherInput || "",
+              });
+            } else {
+              dispatch({ type: "SET_CHOICE", payload: answerArray });
+            }
+          }
+          return;
+        }
+      }
+
       dispatch({ type: "RESET" });
     }
-  }, [currentIndex]);
+  }, [currentIndex, currentQuestion, answers]);
 
   const handleCancel = () => {
-    onSubmit?.({ answers: [] });
+    onSubmit?.("user reject answer", true);
   };
 
   const handleNext = () => {
@@ -160,15 +202,14 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
             }
             onKeyDown={(e) => {
               if (e.key === "Enter" && formState.textValue.trim()) {
-                onSubmit?.({
-                  answers: [
-                    {
-                      questionId: "text",
-                      question: content,
-                      answer: formState.textValue,
-                    },
-                  ],
-                });
+                onSubmit?.(
+                  `user answer: ${JSON.stringify({
+                    questionId: "text",
+                    question: content,
+                    answer: formState.textValue,
+                  })}`,
+                  true,
+                );
               }
             }}
             placeholder="请输入..."
@@ -178,15 +219,14 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
             className={styles["primary-button"]}
             onClick={() => {
               if (formState.textValue.trim()) {
-                onSubmit?.({
-                  answers: [
-                    {
-                      questionId: "text",
-                      question: content,
-                      answer: formState.textValue,
-                    },
-                  ],
-                });
+                onSubmit?.(
+                  `user answer: ${JSON.stringify({
+                    questionId: "text",
+                    question: content,
+                    answer: formState.textValue,
+                  })}`,
+                  true,
+                );
               }
             }}
           >

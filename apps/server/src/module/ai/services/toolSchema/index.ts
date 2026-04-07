@@ -69,8 +69,10 @@ const askQuestionSchema = z.object({
                 description: z.string().describe('选项描述').optional(),
                 isOther: z
                   .boolean()
-                  .optional()
-                  .describe('是否为「其他」选项, 有时需要用户补充选项'),
+                  .default(false)
+                  .describe(
+                    '是否为「其他」选项, 有时需要用户补充选项，默认false',
+                  ),
               }),
             )
             .describe('选项列表')

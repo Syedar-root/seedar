@@ -14,7 +14,7 @@ export const parseOptions = (
 
 interface UseInterruptFormOptions {
   questions: AskQuestionItem[];
-  onSubmit?: (data: InterruptSubmitData) => void;
+  onSubmit?: (data: string, isResume: boolean) => void;
 }
 
 interface UseInterruptFormReturn {
@@ -108,7 +108,7 @@ export const useInterruptForm = (
     const submitData: InterruptSubmitData = {
       answers: Array.from(answers.values()),
     };
-    onSubmit?.(submitData);
+    onSubmit?.(`user answer: ${JSON.stringify(submitData)}`, true);
     setCurrentIndex(totalQuestions);
   }, [questions, answeredIds, answers, onSubmit, totalQuestions]);
 
