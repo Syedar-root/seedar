@@ -1,5 +1,6 @@
 import type { ChatMessage, MessageType } from "../types";
 import type { AiStreamChunk } from "#pkg/seedar/types";
+import { v7 } from "uuid";
 
 export const adaptMessageToBubble = (message: ChatMessage) => {
   return {
@@ -13,7 +14,7 @@ export const adaptMessageToBubble = (message: ChatMessage) => {
 };
 
 export const generateMessageId = () => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return v7();
 };
 
 export const createUserMessage = (content: string): ChatMessage => {
@@ -35,7 +36,7 @@ export const createAssistantMessage = (
     id: generateMessageId(),
     type,
     content,
-    role: "assistant",
+    role: "act",
     timestamp: Date.now(),
     done: false,
   };
@@ -51,7 +52,7 @@ export const adaptAiStreamChunkToChatMessage = (
     id: existingMessageId || generateMessageId(),
     type,
     content: chunk.content,
-    role: (chunk.role as "user" | "assistant" | "act") || "assistant",
+    role: (chunk.role as "user" | "clarify" | "act") || "act",
     timestamp: Date.now(),
     done: chunk.done,
     meta: chunk.meta

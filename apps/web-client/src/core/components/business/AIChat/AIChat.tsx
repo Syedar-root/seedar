@@ -1,5 +1,16 @@
-import React, { useEffect, useCallback, useMemo, useRef } from "react";
-import { Bubble, ThoughtChain, Actions } from "@ant-design/x";
+import React, {
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  Bubble,
+  ThoughtChain,
+  Actions,
+  ThoughtChainItemType,
+} from "@ant-design/x";
 import styles from "./AIChat.module.scss";
 import "./variables.css";
 import { useChatState } from "./hooks/useChatState.hook";
@@ -9,13 +20,13 @@ import {
   TextMessage,
   InterruptMessage,
   ToolCallMessage,
-  ToolResultMessage,
   ErrorMessage,
   Header,
   EnhancedSender,
 } from "./components";
 import { createUserMessage } from "./utils/messageAdapter.utils";
 import type { AIChatProps, ChatMessage, YieldType } from "./types";
+import type { ToolCallMessageProps } from "./components";
 import clsx from "clsx";
 
 type AssistantMessageGroup = ChatMessage[];
@@ -117,39 +128,45 @@ const AIChat: React.FC<AIChatProps> = ({
     message: ChatMessage,
     index: number,
     messages: ChatMessage[],
-  ): ThoughtChainItem | null => {
+  ): ThoughtChainItemType | null => {
     switch (message.type) {
       case "reasoning":
         return {
           key: message.id,
           title: index < messages.length - 1 ? "思考完成" : "思考中...",
           status: index < messages.length - 1 ? "success" : "loading",
+          collapsible: true,
           content: typeof message.content === "string" ? message.content : "",
         };
-      case "tool_call":
+      case "tool_call": {
+        const toolCallId = message.meta?.tool_call?.id;
+        const toolResult = toolCallId
+          ? messages.find(
+              (m) =>
+                m.type === "tool_result" &&
+                m.meta?.tool_result?.tool_call_id === toolCallId,
+            )
+          : null;
         return {
           key: message.id,
           title: `调用工具: ${message.meta?.tool_call?.name || "未知工具"}`,
           status: index < messages.length - 1 ? "success" : "loading",
+          collapsible: true,
           content: (
             <ToolCallMessage
-              meta={{ name: message.meta?.tool_call?.name || "" }}
-            />
-          ),
-        };
-      case "tool_result":
-        return {
-          key: message.id,
-          title: "工具执行结果",
-          status: "success",
-          content: (
-            <ToolResultMessage
-              content={
-                typeof message.content === "string" ? message.content : ""
+              meta={message.meta as ToolCallMessageProps["meta"]}
+              toolCallId={toolCallId}
+              resultContent={
+                toolResult
+                  ? typeof toolResult.content === "string"
+                    ? toolResult.content
+                    : ""
+                  : undefined
               }
             />
           ),
         };
+      }
       case "error":
         return {
           key: message.id,
@@ -172,40 +189,64 @@ const AIChat: React.FC<AIChatProps> = ({
     group: AssistantMessageGroup,
     groupIndex: number,
   ): React.ReactNode => {
-    const thoughtChainItems = group
-      .map(renderThoughtChainItem)
-      .filter((item): item is ThoughtChainItem => item !== null);
+    const thoughtChainMap = new Map<string, ThoughtChainItem>();
 
-    const textMessage = group.find((msg: ChatMessage) => msg.type === "text");
-    const interruptMessage = group.find(
-      (msg: ChatMessage) => msg.type === "interrupt",
+    group.forEach((msg: ChatMessage, index: number) => {
+      const chainItem = renderThoughtChainItem(msg, index, group);
+      if (chainItem) {
+        thoughtChainMap.set(msg.id, chainItem as ThoughtChainItem);
+      }
+    });
+
+    const allExpandedKeys = Array.from(thoughtChainMap.keys());
+
+    const renderItem = (msg: ChatMessage): React.ReactNode => {
+      if (msg.type === "text") {
+        return (
+          <div key={msg.id} className={styles["message-item"]}>
+            <TextMessage message={msg} />
+          </div>
+        );
+      }
+      if (msg.type === "interrupt") {
+        return (
+          <div key={msg.id} className={styles["message-item"]}>
+            <InterruptMessage content={msg.content} />
+          </div>
+        );
+      }
+      if (thoughtChainMap.has(msg.id)) {
+        const item = thoughtChainMap.get(msg.id)!;
+        return (
+          <div key={msg.id} className={styles["message-item"]}>
+            <ThoughtChain
+              defaultExpandedKeys={allExpandedKeys}
+              items={[item]}
+            />
+          </div>
+        );
+      }
+      return null;
+    };
+
+    const textOrInterruptMessages = group.filter(
+      (msg: ChatMessage) => msg.type === "text" || msg.type === "interrupt",
     );
 
     return (
       <div key={groupIndex} className={styles["assistant-group"]}>
         <div className={styles["assistant-content"]}>
-          {thoughtChainItems.length > 0 && (
-            <div className={styles["thought-chain"]}>
-              <ThoughtChain items={thoughtChainItems} />
-            </div>
-          )}
+          {group.map((msg) => renderItem(msg))}
 
-          {textMessage && (
-            <div className={styles["message-item"]}>
-              <TextMessage message={textMessage} />
-            </div>
-          )}
-
-          {interruptMessage && (
-            <InterruptMessage content={interruptMessage.content} />
-          )}
-
-          {textMessage && (
+          {textOrInterruptMessages.some((msg) => msg.type === "text") && (
             <Actions
               items={getMessageActions(
-                typeof textMessage.content === "string"
-                  ? textMessage.content
-                  : "",
+                textOrInterruptMessages
+                  .filter((msg) => msg.type === "text")
+                  .map((msg) =>
+                    typeof msg.content === "string" ? msg.content : "",
+                  )
+                  .join(""),
               )}
             />
           )}
