@@ -11,6 +11,7 @@ import {
   HttpStatus,
   Header,
   Sse,
+  RequestMethod,
 } from '@nestjs/common';
 import { AiService } from './services/ai.service';
 import { ChatService } from './services/chat.service';
@@ -72,7 +73,9 @@ export class AiController {
     return this.aiService.remove(id);
   }
 
-  @Sse('chat/stream')
+  @Sse('chat/stream', {
+    method: RequestMethod.POST,
+  })
   streamChat(@Body() dto: AiChatRequestDto): Observable<MessageEvent> {
     const timestamp = new Date().toISOString();
     const sessionId = dto.sessionId;

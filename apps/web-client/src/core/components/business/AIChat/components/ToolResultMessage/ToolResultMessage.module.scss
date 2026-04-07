@@ -25,4 +25,5 @@
 .content {
   font: var(--chat-text-body);
   color: var(--chat-color-secondary);
+  word-break: break-all;
 }

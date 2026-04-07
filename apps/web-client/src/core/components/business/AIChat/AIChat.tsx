@@ -16,6 +16,7 @@ import {
 } from "./components";
 import { createUserMessage } from "./utils/messageAdapter.utils";
 import type { AIChatProps, ChatMessage, YieldType } from "./types";
+import clsx from "clsx";
 
 type AssistantMessageGroup = ChatMessage[];
 
@@ -27,7 +28,8 @@ interface ThoughtChainItem {
 }
 
 const AIChat: React.FC<AIChatProps> = ({
-  messages: initialMessages = [],
+  messages = [],
+  loading = false,
   onSendMessage,
   sseData,
   placeholder = "请输入消息...",
@@ -40,22 +42,12 @@ const AIChat: React.FC<AIChatProps> = ({
   title,
   onAddChat,
   onShowHistory,
+  className,
+  style,
 }) => {
-  const chatState = useChatState(initialMessages);
   const { getMessageActions } = useMessageActions();
   const messagesListRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
-
-  const { handleSSEData } = useSSEHandler({
-    onNewMessage: chatState.addMessage,
-    onUpdateMessage: chatState.updateMessage,
-  });
-
-  useEffect(() => {
-    if (sseData) {
-      handleSSEData(sseData);
-    }
-  }, [sseData, handleSSEData]);
 
   const handleScroll = useCallback(() => {
     if (!messagesListRef.current) return;
@@ -67,36 +59,33 @@ const AIChat: React.FC<AIChatProps> = ({
     if (isAtBottomRef.current && messagesListRef.current) {
       messagesListRef.current.scrollTop = messagesListRef.current.scrollHeight;
     }
-  }, [chatState.messages]);
+  }, [messages]);
 
   const handleSend = useCallback(
     (content: string) => {
-      const userMessage = createUserMessage(content);
-      chatState.addMessage(userMessage);
-      chatState.setIsLoading(true);
       onSendMessage?.(content);
     },
-    [chatState, onSendMessage],
+    [onSendMessage],
   );
 
   const renderContent = useCallback(
     (_: unknown, info: { key?: string | number }): React.ReactNode => {
-      const msg = chatState.messages.find((m) => m.id === info.key);
+      const msg = messages.find((m) => m.id === info.key);
       if (!msg) return "";
       return <TextMessage message={msg} />;
     },
-    [chatState.messages],
+    [messages],
   );
 
   const renderActions = useCallback(
     (_: unknown, info: { key?: string | number }): React.ReactNode => {
-      const msg = chatState.messages.find((m) => m.id === info.key);
+      const msg = messages.find((m) => m.id === info.key);
       if (!msg || msg.role === "user") return null;
       const content = typeof msg.content === "string" ? msg.content : "";
       const actions = getMessageActions(content);
       return <Actions items={actions} />;
     },
-    [getMessageActions, chatState.messages],
+    [getMessageActions, messages],
   );
 
   const { userMessages, assistantGroups } = useMemo(() => {
@@ -105,7 +94,7 @@ const AIChat: React.FC<AIChatProps> = ({
 
     let currentGroup: AssistantMessageGroup = [];
 
-    chatState.messages.forEach((message: ChatMessage) => {
+    messages.forEach((message: ChatMessage) => {
       if (message.role === "user") {
         if (currentGroup.length > 0) {
           assistantGroups.push([...currentGroup]);
@@ -122,25 +111,31 @@ const AIChat: React.FC<AIChatProps> = ({
     }
 
     return { userMessages, assistantGroups };
-  }, [chatState.messages]);
+  }, [messages]);
 
   const renderThoughtChainItem = (
     message: ChatMessage,
+    index: number,
+    messages: ChatMessage[],
   ): ThoughtChainItem | null => {
     switch (message.type) {
       case "reasoning":
         return {
           key: message.id,
-          title: "思考中...",
-          status: message.done ? "success" : "loading",
+          title: index < messages.length - 1 ? "思考完成" : "思考中...",
+          status: index < messages.length - 1 ? "success" : "loading",
           content: typeof message.content === "string" ? message.content : "",
         };
       case "tool_call":
         return {
           key: message.id,
-          title: `调用工具: ${message.meta?.name || "未知工具"}`,
-          status: message.done ? "success" : "loading",
-          content: <ToolCallMessage meta={message.meta} />,
+          title: `调用工具: ${message.meta?.tool_call?.name || "未知工具"}`,
+          status: index < messages.length - 1 ? "success" : "loading",
+          content: (
+            <ToolCallMessage
+              meta={{ name: message.meta?.tool_call?.name || "" }}
+            />
+          ),
         };
       case "tool_result":
         return {
@@ -152,7 +147,6 @@ const AIChat: React.FC<AIChatProps> = ({
               content={
                 typeof message.content === "string" ? message.content : ""
               }
-              meta={message.meta}
             />
           ),
         };
@@ -179,11 +173,6 @@ const AIChat: React.FC<AIChatProps> = ({
     groupIndex: number,
   ): React.ReactNode => {
     const thoughtChainItems = group
-      .filter((msg: ChatMessage) =>
-        ["reasoning", "tool_call", "tool_result", "error"].includes(
-          msg.type as YieldType,
-        ),
-      )
       .map(renderThoughtChainItem)
       .filter((item): item is ThoughtChainItem => item !== null);
 
@@ -239,7 +228,8 @@ const AIChat: React.FC<AIChatProps> = ({
 
   return (
     <div
-      className={styles["chat-container"]}
+      className={clsx(styles["chat-container"], className)}
+      style={style}
       role="region"
       aria-label="AI对话区域"
     >
@@ -278,7 +268,7 @@ const AIChat: React.FC<AIChatProps> = ({
       </div>
       <div className={styles["sender-wrapper"]}>
         <EnhancedSender
-          loading={chatState.isLoading}
+          loading={loading}
           onSubmit={handleSend}
           placeholder={placeholder}
           disabled={disabled}

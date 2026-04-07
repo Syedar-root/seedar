@@ -1,10 +1,10 @@
 export type YieldType =
-  | 'interrupt'
-  | 'tool_call'
-  | 'tool_result'
-  | 'text'
-  | 'reasoning'
-  | 'error';
+  | "interrupt"
+  | "tool_call"
+  | "tool_result"
+  | "text"
+  | "reasoning"
+  | "error";
 
 export interface AiChatRequestDto {
   aiId: string;
@@ -15,8 +15,8 @@ export interface AiChatRequestDto {
 }
 
 export interface AiStreamChunk {
-  content: string | AskQuestionParams['questions'];
-  type?: YieldType;
+  content: string | AskQuestionParams["questions"];
+  type: YieldType;
   done: boolean;
   role?: string;
   meta?: {
@@ -26,16 +26,23 @@ export interface AiStreamChunk {
 }
 
 export interface AiSseEvent {
-  type: 'ping' | 'session' | 'message' | 'done' | 'error';
+  type: "ping" | "session" | "message" | "done" | "error";
   data: string | AiStreamChunk;
   sessionId?: string;
 }
 
 export interface AskQuestion {
   questions: Array<{
+    id: string;
     question: string;
-    type: 'confirm' | 'radio' | 'checkbox' | 'text';
-    options?: string[];
+    type: "confirm" | "choice" | "text";
+    options?: {
+      label: string;
+      value: string;
+      description?: string;
+      isOther?: boolean;
+    }[];
+    multiple?: boolean;
   }>;
 }
 

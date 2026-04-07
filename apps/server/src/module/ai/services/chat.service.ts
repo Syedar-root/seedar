@@ -284,10 +284,15 @@ export class ChatService {
       // 步骤4: 处理流式响应
       for await (const [streamMode, chunk] of stream) {
         // 处理 values 模式的中断信息
+        // TODO: 这样是有风险的
         if (streamMode === 'values') {
           const interruptData = this.extractInterrupt(chunk);
-          if (interruptData) {
-            yield { content: interruptData, type: 'interrupt', done: false };
+          if (interruptData && interruptData?.[0]?.value) {
+            yield {
+              content: interruptData[0].value.questions,
+              type: 'interrupt',
+              done: false,
+            };
           }
           continue;
         }
@@ -319,6 +324,10 @@ export class ChatService {
                 : undefined,
             role: metadata.lc_agent_name,
           };
+
+          if (messageType === 'tool_call') {
+            console.log('hcs meta', meta);
+          }
           yield {
             content,
             type: messageType as YieldType,
@@ -345,13 +354,13 @@ export class ChatService {
    * @param chunk 流数据块
    * @returns 中断信息或 null
    */
-  private extractInterrupt(chunk: unknown): string | null {
+  private extractInterrupt(chunk: unknown): any | null {
     if (
       typeof chunk === 'object' &&
       chunk !== null &&
       '__interrupt__' in chunk
     ) {
-      return (chunk as { __interrupt__: string }).__interrupt__;
+      return (chunk as { __interrupt__: any }).__interrupt__;
     }
     return null;
   }
@@ -435,9 +444,28 @@ export class ChatService {
     type?: string;
   } {
     const contentBlock = token.contentBlocks[0];
-    return {
-      content: (contentBlock?.[contentBlock?.type || 'text'] as string) || '',
-      type: contentBlock?.type || 'text',
-    };
+    switch (contentBlock?.type) {
+      case 'text':
+        return {
+          content: contentBlock.text,
+          type: 'text',
+        };
+      case 'tool_call':
+        return {
+          content: contentBlock.name,
+          type: 'tool_call',
+        };
+      case 'reasoning':
+        return {
+          content: contentBlock.reasoning,
+          type: 'reasoning',
+        };
+      default:
+        return {
+          content:
+            (contentBlock?.[contentBlock?.type || 'text'] as string) || '',
+          type: contentBlock?.type || 'text',
+        };
+    }
   }
 }

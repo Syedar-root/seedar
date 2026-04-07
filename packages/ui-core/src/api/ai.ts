@@ -86,15 +86,12 @@ export class AiApi {
     const controller = new AbortController();
     const { signal } = controller;
 
-    const baseUrl = (() => {
-      const config = (globalThis as any).__API_CONFIG__;
-      return config?.baseURL || "";
-    })();
+    const baseUrl = ApiClient._baseURL;
 
     const url = `${baseUrl}/v1/ai/chat/stream`;
 
     fetch(url, {
-      method: "GET",
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
@@ -136,7 +133,7 @@ export class AiApi {
 
                 const event = JSON.parse(data) as {
                   type: string;
-                  data: string;
+                  data: string | AiStreamChunk;
                 };
 
                 switch (event.type) {
@@ -144,19 +141,19 @@ export class AiApi {
                     callbacks.onPing?.();
                     break;
                   case "session":
-                    callbacks.onSession?.(JSON.parse(event.data));
+                    callbacks.onSession?.(JSON.parse(event.data as string));
                     break;
                   case "message":
                     callbacks.onMessage?.({
-                      ...JSON.parse(event.data),
+                      ...(event.data as AiStreamChunk),
                       done: false,
                     });
                     break;
                   case "done":
-                    callbacks.onDone?.(JSON.parse(event.data));
+                    callbacks.onDone?.(JSON.parse(event.data as string));
                     break;
                   case "error":
-                    callbacks.onError?.(event.data);
+                    callbacks.onError?.(event.data as string);
                     break;
                 }
               } catch (e) {

@@ -1,16 +1,16 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import {
   ApiConfig,
   ApiResponse,
   ApiError,
   RequestOptions,
-} from '#pkg/seedar/types';
-import { DatasourceApi } from './datasource.js';
-import { DatasetApi } from './dataset.js';
-import { QueryApi } from './query.js';
-import { DashboardApi } from './dashboard.js';
-import { PanelApi } from './panel.js';
-import { AiApi } from './ai.js';
+} from "#pkg/seedar/types";
+import { DatasourceApi } from "./datasource.js";
+import { DatasetApi } from "./dataset.js";
+import { QueryApi } from "./query.js";
+import { DashboardApi } from "./dashboard.js";
+import { PanelApi } from "./panel.js";
+import { AiApi } from "./ai.js";
 
 /**
  * API 客户端类
@@ -22,6 +22,11 @@ export class ApiClient {
 
   /** API 配置 */
   private static config: ApiConfig | null = null;
+
+  static get _baseURL(): string {
+    console.log("hcs base", this.getConfig().baseURL);
+    return this.getConfig().baseURL || "";
+  }
 
   /**
    * 初始化 API 客户端
@@ -43,7 +48,7 @@ export class ApiClient {
    */
   private static getInstance(): AxiosInstance {
     if (!this.instance) {
-      throw new Error('ApiClient 未初始化，请先调用 ApiClient.init() 方法');
+      throw new Error("ApiClient 未初始化，请先调用 ApiClient.init() 方法");
     }
     return this.instance;
   }
@@ -55,7 +60,7 @@ export class ApiClient {
    */
   private static getConfig(): ApiConfig {
     if (!this.config) {
-      throw new Error('ApiClient 未初始化，请先调用 ApiClient.init() 方法');
+      throw new Error("ApiClient 未初始化，请先调用 ApiClient.init() 方法");
     }
     return this.config;
   }
@@ -96,7 +101,7 @@ export class ApiClient {
   private static handleError(error: any, options?: RequestOptions): void {
     const config = this.getConfig();
     const apiError: ApiError = {
-      message: error.message || '请求失败',
+      message: error.message || "请求失败",
       code: error.code,
       details: error.response?.data || error.details,
     };
@@ -114,7 +119,7 @@ export class ApiClient {
    * @returns Axios 请求配置
    */
   private static buildRequestConfig(
-    options?: RequestOptions
+    options?: RequestOptions,
   ): AxiosRequestConfig {
     const config: AxiosRequestConfig = {};
 
@@ -157,7 +162,7 @@ export class ApiClient {
   static async post<T = any>(
     url: string,
     data?: any,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<T> {
     try {
       const instance = this.getInstance();
@@ -180,7 +185,7 @@ export class ApiClient {
   static async put<T = any>(
     url: string,
     data?: any,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<T> {
     try {
       const instance = this.getInstance();
@@ -203,7 +208,7 @@ export class ApiClient {
   static async patch<T = any>(
     url: string,
     data?: any,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<T> {
     try {
       const instance = this.getInstance();
@@ -224,7 +229,7 @@ export class ApiClient {
    */
   static async delete<T = any>(
     url: string,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<T> {
     try {
       const instance = this.getInstance();
@@ -262,4 +267,4 @@ export const panelApi = new PanelApi();
 
 export const aiApi = new AiApi();
 
-export { AiApi } from './ai.js';
+export { AiApi } from "./ai.js";

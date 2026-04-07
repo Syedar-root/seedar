@@ -165,6 +165,7 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
   const handleSubmit = useCallback(
     (value: string) => {
       onSubmit?.(value);
+      senderRef.current?.clear();
     },
     [onSubmit],
   );

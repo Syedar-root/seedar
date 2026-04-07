@@ -20,6 +20,7 @@ import { getDatasetInfoCompact } from './helper';
 import { interrupt } from '@langchain/langgraph';
 import { randomUUID } from 'crypto';
 import { ToolConfig } from '../ai.types';
+import { is } from 'zod/v4/locales';
 
 type ToolMethod = (
   input: Record<string, unknown>,
@@ -154,7 +155,16 @@ export class ToolService {
     // 当问题是选择题时，需要提供一个其他选项，用户可以补充选项
     questions.forEach((q) => {
       if (q.type === 'choice') {
-        q.options?.push('[其它]');
+        // 检查是否有且只有一个其他选项
+        const otherOptions = q.options?.filter((o) => o.isOther);
+        if (otherOptions && otherOptions?.length > 1) {
+          // 移除只保留第一个其他选项
+          q.options = q.options?.filter((o) => !o.isOther);
+          q.options?.push(otherOptions[0]);
+        } else if (!otherOptions) {
+          // 如果没有其他选项，添加一个默认的其他选项
+          q.options?.push({ label: '其它', value: '其它', isOther: true });
+        }
       }
     });
 
@@ -166,7 +176,7 @@ export class ToolService {
     const response = interrupt({
       questions: questions.map((q) => ({
         ...q,
-        key: `${q.type}_${randomUUID()}`,
+        id: `${q.type}_${randomUUID()}`,
       })),
     });
     return response;

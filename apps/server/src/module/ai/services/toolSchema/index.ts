@@ -59,7 +59,22 @@ const askQuestionSchema = z.object({
             .describe(
               '问题类型，confirm/choice/text，confirm为确认问题，choice为单选/多选问题，text为文本问题',
             ),
-          options: z.array(z.string()).describe('选项列表').optional(),
+          options: z
+            .array(
+              z.object({
+                label: z.string().describe('选项标签'),
+                value: z
+                  .string()
+                  .describe('选项值, 用于提交时识别, 一般和选项标签一致'),
+                description: z.string().describe('选项描述').optional(),
+                isOther: z
+                  .boolean()
+                  .optional()
+                  .describe('是否为「其他」选项, 有时需要用户补充选项'),
+              }),
+            )
+            .describe('选项列表')
+            .optional(),
           multiple: z.boolean().optional().describe('是否为多选问题'),
         })
         .refine(

@@ -1,4 +1,5 @@
 import type React from "react";
+import type { AiStreamChunk } from "#pkg/seedar/types";
 
 export type YieldType =
   | "interrupt"
@@ -46,25 +47,18 @@ export interface InterruptSubmitData {
 }
 
 export interface ToolCallMeta {
-  id?: string;
-  name?: string;
   tool_call?: {
     id: string;
     name: string;
-    [key: string]: unknown;
   };
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 export interface ToolResultMeta {
-  id?: string;
-  name?: string;
-  tool_call_id?: string;
   tool_result?: {
     tool_call_id: string;
-    [key: string]: unknown;
   };
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 export interface SSEData {
@@ -73,7 +67,7 @@ export interface SSEData {
     content: string | AskQuestionItem[];
     type?: MessageType;
     done: boolean;
-    role: "user" | "act" | "assistant";
+    role: "user" | "clarify" | "act";
     sessionId: string;
     meta?: ToolCallMeta | ToolResultMeta;
   };
@@ -83,10 +77,10 @@ export interface ChatMessage {
   id: string;
   type: MessageType;
   content: string | AskQuestionItem[];
-  role: "user" | "assistant" | "act";
+  role: "user" | "clarify" | "act";
   timestamp: number;
   done: boolean;
-  meta?: ToolCallMeta | ToolResultMeta | Record<string, unknown>;
+  meta?: ToolCallMeta | ToolResultMeta;
 }
 
 export interface CommandItem {
@@ -105,6 +99,7 @@ export interface ModelItem {
 
 export interface AIChatProps {
   messages?: ChatMessage[];
+  loading?: boolean;
   onSendMessage?: (content: string) => void;
   sseData?: SSEData;
   placeholder?: string;
@@ -117,6 +112,12 @@ export interface AIChatProps {
   title?: React.ReactNode;
   onAddChat?: () => void;
   onShowHistory?: () => void;
+  aiId?: string;
+  initialSessionId?: string;
+  onSessionChange?: (sessionId: string) => void;
+  onError?: (error: string) => void;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 export interface ChatStoreState {
@@ -148,4 +149,28 @@ export interface OnInterruptSubmitCallback {
 export interface InterruptMessageProps {
   content: string | AskQuestionItem[];
   onSubmit?: (data: InterruptSubmitData) => void;
+}
+
+export interface AiSessionState {
+  currentSessionId: string | null;
+  isStreaming: boolean;
+  error: string | null;
+  currentModel: string;
+}
+
+export interface AiChatState {
+  messages: ChatMessage[];
+  isLoading: boolean;
+  inputValue: string;
+}
+
+export interface SessionActions {
+  setCurrentSessionId: (sessionId: string | null) => void;
+  setIsStreaming: (isStreaming: boolean) => void;
+  setError: (error: string | null) => void;
+  setCurrentModel: (model: string) => void;
+}
+
+export interface AiStreamChunkAdapter {
+  (chunk: AiStreamChunk): ChatMessage;
 }
