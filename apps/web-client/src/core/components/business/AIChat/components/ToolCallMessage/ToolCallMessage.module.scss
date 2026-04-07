@@ -1,0 +1,16 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: var(--chat-space-sm);
+  padding-left: var(--chat-space-sm);
+  border-left: 2px solid var(--chat-border-default);
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.label {
+  font: var(--chat-text-caption);
+  color: var(--chat-color-secondary);
+}

@@ -1,0 +1,105 @@
+.enhanced-sender-wrapper {
+  width: 100%;
+}
+
+.command-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chat-space-xs);
+}
+
+.sender-footer {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.model-switch-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chat-space-xs);
+  padding: var(--chat-space-xs) var(--chat-space-sm);
+  font: var(--chat-text-label);
+  font-size: 12px;
+  color: var(--chat-color-secondary);
+  background: transparent;
+  border: 1px solid var(--chat-border-default);
+  border-radius: var(--chat-radius-sm);
+  cursor: pointer;
+  transition: all var(--chat-transition-fast);
+
+  &:hover:not(:disabled) {
+    color: var(--chat-color-primary);
+    border-color: var(--chat-color-primary);
+    background: var(--chat-bg-tertiary);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.menu-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+}
+
+.menu-item-label {
+  display: flex;
+  align-items: center;
+  gap: var(--chat-space-xs);
+  font: var(--chat-text-body);
+  color: var(--chat-color-primary);
+}
+
+.menu-item-description {
+  font: var(--chat-text-label);
+  font-size: 11px;
+  color: var(--chat-color-tertiary);
+  padding-left: calc(16px + var(--chat-space-xs));
+}
+
+.model-menu-listbox {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: var(--chat-space-xs);
+  background: var(--chat-bg-secondary);
+  border: 1px solid var(--chat-border-default);
+  border-radius: var(--chat-radius-md);
+  box-shadow: var(--chat-shadow-dropdown);
+}
+
+.model-menu-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--chat-space-sm) var(--chat-space-md);
+  border-radius: var(--chat-radius-sm);
+  cursor: pointer;
+  transition: background var(--chat-transition-fast);
+
+  &:hover {
+    background: var(--chat-bg-tertiary);
+  }
+
+  &[data-selected] {
+    background: var(--chat-bg-tertiary);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .model-switch-button {
+    transition: none;
+  }
+
+  .model-menu-item {
+    transition: none;
+  }
+}

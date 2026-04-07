@@ -1,0 +1,48 @@
+:root {
+  --chat-color-primary: #595567;
+  --chat-color-secondary: #858094;
+  --chat-color-muted: #b3b0bd;
+  --chat-color-accent: #8b5cf6;
+
+  --chat-bg-primary: #ffffff;
+  --chat-bg-secondary: #f9f9fb;
+  --chat-bg-tertiary: #f3f3f5;
+  --chat-bg-inverse: #1f2028;
+
+  --chat-border-default: #e8e7ed;
+  --chat-border-strong: #d1d0d8;
+
+  --chat-color-success: #059669;
+  --chat-color-error: #dc2626;
+  --chat-color-warning: #d97706;
+
+  --chat-space-xs: 4px;
+  --chat-space-sm: 8px;
+  --chat-space-md: 16px;
+  --chat-space-lg: 24px;
+  --chat-space-xl: 32px;
+
+  --chat-text-display: 500 18px / 1.3 var(--chat-font-sans);
+  --chat-text-title: 600 15px / 1.4 var(--chat-font-sans);
+  --chat-text-heading: 600 14px / 1.4 var(--chat-font-sans);
+  --chat-text-heading-tracking: 0.01em;
+  --chat-text-body: 400 14px / 1.5 var(--chat-font-sans);
+  --chat-text-label: 500 12px / 1.3 var(--chat-font-sans);
+  --chat-text-label-tracking: 0.02em;
+  --chat-text-label-transform: uppercase;
+  --chat-text-caption: 400 12px / 1.4 var(--chat-font-sans);
+  --chat-text-caption-tracking: 0.02em;
+  --chat-text-caption-style: italic;
+
+  --chat-font-sans: system-ui, "Segoe UI", -apple-system, sans-serif;
+
+  --chat-radius-sm: 4px;
+  --chat-radius-md: 6px;
+  --chat-radius-lg: 8px;
+
+  --chat-transition-fast: 150ms ease;
+  --chat-transition-normal: 200ms ease;
+
+  --chat-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --chat-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

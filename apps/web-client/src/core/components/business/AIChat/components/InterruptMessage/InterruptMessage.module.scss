@@ -1,0 +1,107 @@
+.container {
+  padding: var(--chat-space-md);
+  background: var(--chat-bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--chat-border-default);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chat-space-md);
+}
+
+.header {
+  font: var(--chat-text-heading);
+  color: var(--chat-color-primary);
+  letter-spacing: var(--chat-text-heading-tracking);
+  margin-bottom: var(--chat-space-sm);
+}
+
+.input-row {
+  display: flex;
+  gap: var(--chat-space-sm);
+}
+
+.input-field {
+  flex: 1;
+  padding: var(--chat-space-sm) var(--chat-space-md);
+  border-radius: var(--chat-radius-md);
+  border: 1px solid var(--chat-border-default);
+  font: var(--chat-text-body);
+  color: var(--chat-color-primary);
+  background: var(--chat-bg-primary);
+  outline: none;
+  transition:
+    border-color var(--chat-transition-fast),
+    box-shadow var(--chat-transition-fast);
+
+  &:focus {
+    border-color: var(--chat-color-accent);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+  }
+
+  &::placeholder {
+    color: var(--chat-color-muted);
+  }
+}
+
+.question-area {
+  flex: 1;
+}
+
+.footer-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--chat-space-md);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--chat-space-sm);
+}
+
+.footer-right {
+  display: flex;
+  gap: var(--chat-space-sm);
+}
+
+.default-button {
+  padding: var(--chat-space-xs) var(--chat-space-md);
+  font: var(--chat-text-body);
+  color: var(--chat-color-secondary);
+  background: var(--chat-bg-primary);
+  border: 1px solid var(--chat-border-default);
+  border-radius: var(--chat-radius-md);
+  cursor: pointer;
+  transition: all var(--chat-transition-fast);
+
+  &:hover {
+    color: var(--chat-color-primary);
+    border-color: var(--chat-border-strong);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+  }
+}
+
+.primary-button {
+  padding: var(--chat-space-xs) var(--chat-space-md);
+  font: var(--chat-text-body);
+  color: var(--chat-bg-primary);
+  background: var(--chat-color-accent);
+  border: none;
+  border-radius: var(--chat-radius-md);
+  cursor: pointer;
+  transition: all var(--chat-transition-fast);
+
+  &:hover {
+    background: #7c3aed;
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+  }
+}

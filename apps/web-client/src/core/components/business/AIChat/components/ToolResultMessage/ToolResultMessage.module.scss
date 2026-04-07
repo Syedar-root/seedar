@@ -1,0 +1,28 @@
+.container {
+  padding: var(--chat-space-sm);
+  background: var(--chat-bg-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--chat-border-default);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--chat-space-xs);
+  margin-bottom: var(--chat-space-xs);
+}
+
+.header-icon {
+  flex-shrink: 0;
+}
+
+.header-title {
+  font: var(--chat-text-title);
+  color: var(--chat-color-primary);
+  font-size: 12px;
+}
+
+.content {
+  font: var(--chat-text-body);
+  color: var(--chat-color-secondary);
+}

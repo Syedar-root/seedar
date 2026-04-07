@@ -1,0 +1,111 @@
+.question-title {
+  font: var(--chat-text-heading);
+  color: var(--chat-color-primary);
+  letter-spacing: var(--chat-text-heading-tracking);
+  margin-bottom: var(--chat-space-sm);
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chat-space-sm);
+}
+
+.option-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--chat-space-sm);
+  cursor: pointer;
+}
+
+.checkbox-root {
+  position: relative;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--chat-border-strong);
+  border-radius: var(--chat-radius-sm);
+  background: var(--chat-bg-primary);
+  transition:
+    border-color var(--chat-transition-fast),
+    background-color var(--chat-transition-fast);
+  margin-top: 2px;
+
+  &[data-checked] {
+    border-color: var(--chat-color-accent);
+    background: var(--chat-color-accent);
+  }
+
+  &[data-disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.checkbox-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  color: var(--chat-bg-primary);
+  opacity: 0;
+  transition: opacity var(--chat-transition-fast);
+
+  &[data-checked] {
+    opacity: 1;
+  }
+
+  &::after {
+    content: "";
+    display: block;
+    width: 5px;
+    height: 8px;
+    border: solid var(--chat-bg-primary);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-left: 2px;
+    margin-top: -1px;
+  }
+}
+
+.option-label {
+  font: var(--chat-text-body);
+  color: var(--chat-color-primary);
+}
+
+.option-description {
+  font: var(--chat-text-caption);
+  color: var(--chat-color-muted);
+  margin-top: var(--chat-space-xs);
+  margin-left: 26px;
+}
+
+.other-input {
+  margin-top: var(--chat-space-sm);
+  margin-left: 26px;
+}
+
+.other-input-field {
+  width: 200px;
+  padding: var(--chat-space-sm) var(--chat-space-md);
+  font: var(--chat-text-body);
+  color: var(--chat-color-primary);
+  background: var(--chat-bg-primary);
+  border: 1px solid var(--chat-border-default);
+  border-radius: var(--chat-radius-md);
+  outline: none;
+  transition:
+    border-color var(--chat-transition-fast),
+    box-shadow var(--chat-transition-fast);
+
+  &:focus {
+    border-color: var(--chat-color-accent);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+  }
+
+  &::placeholder {
+    color: var(--chat-color-muted);
+  }
+}
