@@ -18,6 +18,7 @@ import {
   createAgent,
   providerStrategy,
   ReactAgent,
+  Tool,
   toolStrategy,
 } from 'langchain';
 import { PromptTemplate } from '@langchain/core/prompts';
@@ -56,6 +57,7 @@ export class ChatService {
   private readonly DEMAND_TOOL_MAP = {
     'data-query': ['getDataAtTemp', 'getDatasetInfo'],
     'chart-recommend': ['askQuestion', 'getCurrentTime'],
+    'convert-to-backend': [],
   };
 
   constructor(
@@ -72,6 +74,7 @@ export class ChatService {
     allowSkills: new ReducedValue(z.array(z.string()).default([]), {
       reducer: (current, newStep) => newStep,
     }),
+    isClarify: z.boolean().default(false),
   });
 
   private readonly checkpointer = new MemorySaver();
@@ -90,7 +93,9 @@ export class ChatService {
       .addNode('clarify', this.createClarifyNode(llmConfig))
       .addNode('act', this.createActNode(llmConfig))
       .addEdge(START, 'clarify')
-      .addEdge('clarify', 'act')
+      .addConditionalEdges('clarify', (state) => {
+        return state.isClarify ? 'act' : END;
+      })
       .addEdge('act', END);
 
     return graphBuilder.compile({
@@ -153,15 +158,18 @@ export class ChatService {
         allowTools: Array.from(
           new Set([
             ...state.allowTools,
-            ...this.DEMAND_TOOL_MAP[response.structuredResponse.userDemand],
+            ...(this.DEMAND_TOOL_MAP[
+              response?.structuredResponse?.userDemand
+            ] || []),
           ]),
         ),
         allowSkills: Array.from(
           new Set([
             ...state.allowSkills,
-            ...response.structuredResponse.userDemand,
+            response?.structuredResponse?.userDemand,
           ]),
         ),
+        isClarify: !!response?.structuredResponse?.userDemand,
       };
     };
   }
@@ -188,14 +196,22 @@ export class ChatService {
       if (!state.allowTools?.includes('getCurrentTime')) {
         state.allowTools?.push('getCurrentTime');
       }
-      const tools = this.toolService
-        .getTools()
-        .filter((tool) => state.allowTools?.includes(tool.name));
+      let tools: Tool[] = [];
+      if (state.allowSkills?.includes('convert-to-backend')) {
+        tools = this.toolService.getTools();
+      } else {
+        tools = this.toolService
+          .getTools()
+          .filter((tool) => state.allowTools?.includes(tool.name));
+      }
 
       const prompt = await loadSkill('act');
       const promptTemplate = PromptTemplate.fromTemplate(prompt);
       const systemPrompt = await promptTemplate.format({
-        recommendSkills: state.allowSkills?.join(', ') || '',
+        recommendSkills:
+          state.allowSkills
+            ?.filter((skill) => skill !== 'convert-to-backend')
+            .join(', ') || '',
       });
 
       // 1. 技能根目录（NestJS 源码目录：src/skills）
@@ -230,6 +246,8 @@ export class ChatService {
       return { messages: response.messages };
     };
   }
+
+  private readonly BLACKLIST_TOOL_NAMES: RegExp[] = [/askQuestion/, /extract/];
 
   /**
    * 处理流式对话请求
@@ -280,6 +298,7 @@ export class ChatService {
       );
 
       const tool_call: any[] = [];
+      const blacklistToolCallIds: string[] = [];
 
       // 步骤4: 处理流式响应
       for await (const [streamMode, chunk] of stream) {
@@ -303,6 +322,20 @@ export class ChatService {
         const { content, type } =
           this.getContentAndTypeWithStreamMessage(token);
 
+        if (
+          type === 'tool_call' &&
+          this.BLACKLIST_TOOL_NAMES.some((name) =>
+            name.test(token.contentBlocks[0].name as string),
+          )
+        ) {
+          console.log(
+            'hcs blacklist tool_call',
+            token.contentBlocks[0].name as string,
+          );
+          blacklistToolCallIds.push(token.contentBlocks[0].id as string);
+          continue;
+        }
+
         if (type === 'tool_call') {
           tool_call.push(token.contentBlocks);
         }
@@ -310,6 +343,14 @@ export class ChatService {
         if (content && type) {
           // 判断是否为工具调用结果
           const messageType = token.type === 'tool' ? 'tool_result' : type;
+          if (
+            messageType === 'tool_result' &&
+            blacklistToolCallIds.includes(
+              (token as ToolMessage).tool_call_id as string,
+            )
+          ) {
+            continue;
+          }
           const meta = {
             tool_call:
               type === 'tool_call'
@@ -325,9 +366,6 @@ export class ChatService {
             role: metadata.lc_agent_name,
           };
 
-          if (messageType === 'tool_call') {
-            console.log('hcs meta', meta);
-          }
           yield {
             content,
             type: messageType as YieldType,

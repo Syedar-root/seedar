@@ -36,18 +36,6 @@ const getDataAtTempSchema = z.object({
 
 type GetDataAtTempParams = z.infer<typeof getDataAtTempSchema>;
 
-interface AskQuestion {
-  // 一次可以提多个问题
-  questions: Array<{
-    // 问题描述
-    question: string;
-    // 问题类型
-    type: 'confirm' | 'radio' | 'checkbox' | 'text';
-    // 选项：radio/checkbox 才需要
-    options?: string[];
-  }>;
-}
-
 const askQuestionSchema = z.object({
   questions: z
     .array(
