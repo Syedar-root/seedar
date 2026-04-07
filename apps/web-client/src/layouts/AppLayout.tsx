@@ -1,6 +1,6 @@
-import { Outlet } from 'react-router-dom';
-import { GlobalNavigation } from '@/core/components/ui/GlobalNavigation';
-import styles from './AppLayout.module.scss';
+import { Outlet } from "react-router-dom";
+import { GlobalNavigation } from "@/core/components/business/GlobalNavigation";
+import styles from "./AppLayout.module.scss";
 
 const AppLayout = () => {
   return (
