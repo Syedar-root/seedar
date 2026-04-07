@@ -52,3 +52,10 @@ export interface RequestOptions {
   /** 错误处理函数 */
   onError?: (error: ApiError, globalOnError?: (error: ApiError) => void) => void;
 }
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}

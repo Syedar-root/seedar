@@ -1,5 +1,12 @@
-import { useCallback } from 'react';
-import { DatasourceApi, DatasetApi, QueryApi, DashboardApi, PanelApi } from '#pkg/seedar/ui-core';
+import { useCallback } from "react";
+import {
+  DatasourceApi,
+  DatasetApi,
+  QueryApi,
+  DashboardApi,
+  PanelApi,
+  AiApi,
+} from "#pkg/seedar/ui-core";
 import type {
   DatasourceResponse,
   CreateDatasourceRequest,
@@ -21,7 +28,15 @@ import type {
   UpdatePanelRequest,
   Layouts,
   RequestOptions,
-} from '#pkg/seedar/types';
+  AiResponse,
+  CreateAiRequest,
+  UpdateAiRequest,
+  AiSessionResponse,
+  CreateAiSessionRequest,
+  UpdateAiSessionRequest,
+  AiChatRequestDto,
+  AiStreamChunk,
+} from "#pkg/seedar/types";
 
 /**
  * 使用数据源 API 的 Hook
@@ -40,14 +55,14 @@ export const useDatasourceApi = () => {
     (data: CreateDatasourceRequest, options?: RequestOptions) => {
       return DatasourceApi.create(data, options);
     },
-    []
+    [],
   );
 
   const update = useCallback(
     (id: number, data: UpdateDatasourceRequest, options?: RequestOptions) => {
       return DatasourceApi.update(id, data, options);
     },
-    []
+    [],
   );
 
   const remove = useCallback((id: number, options?: RequestOptions) => {
@@ -80,14 +95,14 @@ export const useDatasetApi = () => {
     (data: CreateDatasetRequest, options?: RequestOptions) => {
       return DatasetApi.create(data, options);
     },
-    []
+    [],
   );
 
   const update = useCallback(
     (data: UpdateDatasetRequest, options?: RequestOptions) => {
       return DatasetApi.update(data, options);
     },
-    []
+    [],
   );
 
   const remove = useCallback((id: number, options?: RequestOptions) => {
@@ -112,7 +127,7 @@ export const useQueryApi = () => {
     (status?: QueryStatus, options?: RequestOptions) => {
       return QueryApi.findAll(status, options);
     },
-    []
+    [],
   );
 
   const findOne = useCallback((id: string, options?: RequestOptions) => {
@@ -123,14 +138,14 @@ export const useQueryApi = () => {
     (data: CreateQueryRequest, options?: RequestOptions) => {
       return QueryApi.create(data, options);
     },
-    []
+    [],
   );
 
   const update = useCallback(
     (id: string, data: UpdateQueryRequest, options?: RequestOptions) => {
       return QueryApi.update(id, data, options);
     },
-    []
+    [],
   );
 
   const remove = useCallback((id: string, options?: RequestOptions) => {
@@ -169,14 +184,14 @@ export const useDashboardApi = () => {
     (data: CreateDashboardRequest, options?: RequestOptions) => {
       return DashboardApi.create(data, options);
     },
-    []
+    [],
   );
 
   const update = useCallback(
     (id: string, data: UpdateDashboardRequest, options?: RequestOptions) => {
       return DashboardApi.update(id, data, options);
     },
-    []
+    [],
   );
 
   const remove = useCallback((id: string, options?: RequestOptions) => {
@@ -187,21 +202,21 @@ export const useDashboardApi = () => {
     (id: string, layout: Layouts, options?: RequestOptions) => {
       return DashboardApi.updateLayout(id, layout, options);
     },
-    []
+    [],
   );
 
   const addPanel = useCallback(
     (id: string, panelId: string, options?: RequestOptions) => {
       return DashboardApi.addPanel(id, panelId, options);
     },
-    []
+    [],
   );
 
   const removePanel = useCallback(
     (id: string, panelId: string, options?: RequestOptions) => {
       return DashboardApi.removePanel(id, panelId, options);
     },
-    []
+    [],
   );
 
   return {
@@ -229,14 +244,14 @@ export const usePanelApi = () => {
     (data: CreatePanelRequest, options?: RequestOptions) => {
       return PanelApi.create(data, options);
     },
-    []
+    [],
   );
 
   const update = useCallback(
     (id: string, data: UpdatePanelRequest, options?: RequestOptions) => {
       return PanelApi.update(id, data, options);
     },
-    []
+    [],
   );
 
   const remove = useCallback((id: string, options?: RequestOptions) => {
@@ -249,5 +264,79 @@ export const usePanelApi = () => {
     create,
     update,
     remove,
+  };
+};
+
+export const useAiApi = () => {
+  const findAll = useCallback(
+    (page?: number, pageSize?: number, options?: RequestOptions) => {
+      return AiApi.findAll(page, pageSize, options);
+    },
+    [],
+  );
+
+  const findOne = useCallback((id: string, options?: RequestOptions) => {
+    return AiApi.findOne(id, options);
+  }, []);
+
+  const create = useCallback(
+    (data: CreateAiRequest, options?: RequestOptions) => {
+      return AiApi.create(data, options);
+    },
+    [],
+  );
+
+  const update = useCallback(
+    (data: UpdateAiRequest, options?: RequestOptions) => {
+      return AiApi.update(data, options);
+    },
+    [],
+  );
+
+  const remove = useCallback((id: string, options?: RequestOptions) => {
+    return AiApi.remove(id, options);
+  }, []);
+
+  const createSession = useCallback(
+    (data: CreateAiSessionRequest, options?: RequestOptions) => {
+      return AiApi.createSession(data, options);
+    },
+    [],
+  );
+
+  const findSession = useCallback((id: string, options?: RequestOptions) => {
+    return AiApi.findSession(id, options);
+  }, []);
+
+  const updateSession = useCallback(
+    (data: UpdateAiSessionRequest, options?: RequestOptions) => {
+      return AiApi.updateSession(data, options);
+    },
+    [],
+  );
+
+  const streamChat = (
+    dto: AiChatRequestDto,
+    callbacks: {
+      onSession?: (data: { sessionId: string; timestamp: string }) => void;
+      onMessage?: (chunk: AiStreamChunk) => void;
+      onDone?: (data: { sessionId: string }) => void;
+      onError?: (error: string) => void;
+      onPing?: () => void;
+    },
+  ) => {
+    return AiApi.streamChat(dto, callbacks);
+  };
+
+  return {
+    findAll,
+    findOne,
+    create,
+    update,
+    remove,
+    createSession,
+    findSession,
+    updateSession,
+    streamChat,
   };
 };

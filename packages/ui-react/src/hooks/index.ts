@@ -6,6 +6,7 @@ export {
   useQueryApi,
   useDashboardApi,
   usePanelApi,
+  useAiApi,
 } from "./useApi";
 
 export {
@@ -60,3 +61,15 @@ export {
 export { usePreventTextSelection } from "./usePreventTextSelection";
 
 export { useAutoScroll } from "./useAutoScroll";
+
+export {
+  useAis,
+  useAi,
+  useCreateAi,
+  useUpdateAi,
+  useDeleteAi,
+  useAiSession,
+  useCreateAiSession,
+  useUpdateAiSession,
+  useAiChat,
+} from "./useAi";

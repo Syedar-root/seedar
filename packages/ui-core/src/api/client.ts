@@ -10,6 +10,7 @@ import { DatasetApi } from './dataset.js';
 import { QueryApi } from './query.js';
 import { DashboardApi } from './dashboard.js';
 import { PanelApi } from './panel.js';
+import { AiApi } from './ai.js';
 
 /**
  * API 客户端类
@@ -258,3 +259,7 @@ export const queryApi = new QueryApi();
 export const dashboardApi = new DashboardApi();
 
 export const panelApi = new PanelApi();
+
+export const aiApi = new AiApi();
+
+export { AiApi } from './ai.js';
