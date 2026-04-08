@@ -16,6 +16,7 @@ import { AiResponse } from '../dto/ai.response';
 import { createDeepAgent, DeepAgent, FilesystemBackend } from 'deepagents';
 import {
   createAgent,
+  createMiddleware,
   providerStrategy,
   ReactAgent,
   Tool,
@@ -79,6 +80,24 @@ export class ChatService {
 
   private readonly checkpointer = new MemorySaver();
 
+  private createCatchToolExceptionMiddleware() {
+    return createMiddleware({
+      name: 'catchToolException',
+      wrapToolCall: (request, handler) => {
+        try {
+          return handler(request);
+        } catch (error) {
+          return Promise.resolve(
+            new ToolMessage({
+              content: `工具调用失败：${error instanceof Error ? error.message : error?.toString()}`,
+              tool_call_id: request.toolCall.id || '',
+            }),
+          );
+        }
+      },
+    });
+  }
+
   /**
    * 创建对话图
    * @param aiId AI 实例 ID
@@ -136,6 +155,7 @@ export class ChatService {
         tools,
         systemPrompt: llmConfig.systemPrompt || this.SYSTEM_PROMPT,
         name: 'clarify',
+        middleware: [this.createCatchToolExceptionMiddleware()],
         responseFormat: toolStrategy(
           z.object({
             userDemand: z
@@ -151,6 +171,8 @@ export class ChatService {
 
       // 步骤3: 执行 Agent
       const response = await agent.invoke({ messages: state.messages });
+
+      console.log('hcs response', response);
 
       // 步骤4: 返回更新后的状态
       return {
@@ -236,6 +258,7 @@ export class ChatService {
         systemPrompt,
         name: 'act',
         backend,
+        middleware: [this.createCatchToolExceptionMiddleware()],
         skills: ['/skills/'],
       });
 

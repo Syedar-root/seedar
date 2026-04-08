@@ -4,6 +4,7 @@ import {
   ThoughtChain,
   Actions,
   ThoughtChainItemType,
+  Think,
 } from "@ant-design/x";
 import styles from "./AIChat.module.scss";
 import "./variables.css";
@@ -221,12 +222,18 @@ const AIChat: React.FC<AIChatProps> = ({
 
         return (
           <div key={`chain-${startIdx}`} className={styles["message-item"]}>
-            <ThoughtChain
-              defaultExpandedKeys={items
-                .map((item) => item.key)
-                .filter((key): key is string => key !== undefined)}
-              items={items}
-            />
+            <Think
+              title={nextMsgAfterChain ? "思考完成" : "思考中..."}
+              loading={nextMsgAfterChain === undefined}
+              defaultExpanded={false}
+            >
+              <ThoughtChain
+                defaultExpandedKeys={items
+                  .map((item) => item.key)
+                  .filter((key): key is string => key !== undefined)}
+                items={items}
+              />
+            </Think>
           </div>
         );
       };
@@ -265,19 +272,21 @@ const AIChat: React.FC<AIChatProps> = ({
         <div key={groupIndex} className={styles["assistant-group"]}>
           <div className={styles["assistant-content"]}>
             {renderAll()}
-            {textOrInterruptMessages.some((msg) => msg.type === "text") &&
-              !loading && (
-                <Actions
-                  items={getMessageActions(
-                    textOrInterruptMessages
-                      .filter((msg) => msg.type === "text")
-                      .map((msg) =>
-                        typeof msg.content === "string" ? msg.content : "",
-                      )
-                      .join(""),
-                  )}
-                />
-              )}
+            {group[group.length - 1]?.type === "text" && !loading && (
+              <Actions
+                items={getMessageActions(
+                  textOrInterruptMessages
+                    .filter((msg) => msg.type === "text")
+                    .map((msg) =>
+                      typeof msg.content === "string" ? msg.content : "",
+                    )
+                    .join(""),
+                )}
+              />
+            )}
+            {group[group.length - 1]?.type === "interrupt" && !loading && (
+              <span>SeeMind等你回答</span>
+            )}
           </div>
         </div>
       );
