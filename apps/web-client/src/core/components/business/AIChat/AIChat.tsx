@@ -23,6 +23,7 @@ import { createUserMessage } from "./utils/messageAdapter.utils";
 import type { AIChatProps, ChatMessage, YieldType } from "./types";
 import type { ToolCallMessageProps } from "./components";
 import clsx from "clsx";
+import { ScrollArea } from "../../ui/ScrollArea";
 
 type AssistantMessageGroup = ChatMessage[];
 
@@ -327,6 +328,7 @@ const AIChat: React.FC<AIChatProps> = ({
           onShowHistory={onShowHistory}
         />
       )}
+
       <div
         className={styles["messages-list"]}
         ref={messagesListRef}
@@ -335,24 +337,33 @@ const AIChat: React.FC<AIChatProps> = ({
         aria-label="消息列表"
         aria-live="polite"
       >
-        {assistantGroups.map((group: AssistantMessageGroup, index: number) => {
-          const userMessageBefore = userMessages[index];
-          return (
-            <React.Fragment key={index}>
-              {userMessageBefore && (
-                <Bubble.List
-                  items={[userBubbleItems[index]]}
-                  className={styles["bubble-item"]}
-                />
-              )}
-              {renderAssistantGroup(group, index)}
-            </React.Fragment>
-          );
-        })}
-        {userMessages.length > assistantGroups.length && (
-          <Bubble.List items={[userBubbleItems[userBubbleItems.length - 1]]} />
-        )}
+        <ScrollArea
+          contentStyle={{ minWidth: "none", paddingInline: "1.25rem" }}
+        >
+          {assistantGroups.map(
+            (group: AssistantMessageGroup, index: number) => {
+              const userMessageBefore = userMessages[index];
+              return (
+                <React.Fragment key={index}>
+                  {userMessageBefore && (
+                    <Bubble.List
+                      items={[userBubbleItems[index]]}
+                      className={styles["bubble-item"]}
+                    />
+                  )}
+                  {renderAssistantGroup(group, index)}
+                </React.Fragment>
+              );
+            },
+          )}
+          {userMessages.length > assistantGroups.length && (
+            <Bubble.List
+              items={[userBubbleItems[userBubbleItems.length - 1]]}
+            />
+          )}
+        </ScrollArea>
       </div>
+
       <div className={styles["sender-wrapper"]}>
         <EnhancedSender
           loading={loading}

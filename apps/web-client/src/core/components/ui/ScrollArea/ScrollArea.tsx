@@ -6,17 +6,22 @@ interface ScrollAreaProps {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  contentStyle?: React.CSSProperties;
 }
 
 export const ScrollArea: React.FC<ScrollAreaProps> = ({
   children,
   className,
   style,
+  contentStyle,
 }) => {
   return (
     <BaseScrollArea.Root className={clsx(styles.root)} style={style}>
       <BaseScrollArea.Viewport className={styles.viewport}>
-        <BaseScrollArea.Content className={clsx(styles.content, className)}>
+        <BaseScrollArea.Content
+          className={clsx(styles.content, className)}
+          style={contentStyle}
+        >
           {children}
         </BaseScrollArea.Content>
       </BaseScrollArea.Viewport>

@@ -5,6 +5,7 @@
   border: 1px solid var(--chat-border-default);
   border-radius: 8px;
   overflow: hidden;
+  background-color: var(--chat-bg-secondary);
 
   * {
     font: var(--chat-text-body);

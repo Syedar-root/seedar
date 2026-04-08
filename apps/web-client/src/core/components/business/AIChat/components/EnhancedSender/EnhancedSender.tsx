@@ -10,6 +10,7 @@ import { Menu } from "@base-ui/react/menu";
 import { ChevronDown, Bot } from "lucide-react";
 import styles from "./EnhancedSender.module.scss";
 import type { EnhancedSenderProps } from "./types";
+import clsx from "clsx";
 
 type SenderRef = GetRef<typeof Sender>;
 
@@ -154,7 +155,11 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
                 {loading ? (
                   <LoadingButton />
                 ) : (
-                  <SendButton type="primary" disabled={disabled} />
+                  <SendButton
+                    className={clsx(styles["send-button"])}
+                    type="primary"
+                    disabled={disabled}
+                  />
                 )}
               </Flex>
             </Flex>
