@@ -120,52 +120,56 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
     }));
   }, [models, onModelChange]);
 
-  const footer =
-    models && models.length > 0
-      ? (_: React.ReactNode, info: { components: ActionsComponents }) => {
-          const { SendButton, LoadingButton } = info.components;
-          return (
-            <Flex justify="space-between" align="center">
-              <Menu.Root>
-                <Menu.Trigger
-                  className={styles["model-switch-button"]}
-                  disabled={disabled}
-                >
-                  {getCurrentModelIcon()}
-                  <span>{getCurrentModelLabel()}</span>
-                  <ChevronDown size={12} />
-                </Menu.Trigger>
-                <Menu.Portal>
-                  <Menu.Positioner side="top" align="end">
-                    <Menu.Popup className={styles["model-menu-listbox"]}>
-                      {modelMenuItems.map((item) => (
-                        <Menu.Item
-                          key={item.value}
-                          onClick={item.onClick}
-                          className={styles["model-menu-item"]}
-                        >
-                          {item.label}
-                        </Menu.Item>
-                      ))}
-                    </Menu.Popup>
-                  </Menu.Positioner>
-                </Menu.Portal>
-              </Menu.Root>
-              <Flex align="center" gap="small">
-                {loading ? (
-                  <LoadingButton />
-                ) : (
-                  <SendButton
-                    className={clsx(styles["send-button"])}
-                    type="primary"
-                    disabled={disabled}
-                  />
-                )}
-              </Flex>
-            </Flex>
-          );
-        }
-      : undefined;
+  const footer = (
+    _: React.ReactNode,
+    info: { components: ActionsComponents },
+  ) => {
+    const { SendButton, LoadingButton } = info.components;
+    return (
+      <Flex justify="space-between" align="center">
+        {models && models.length > 0 ? (
+          <Menu.Root>
+            <Menu.Trigger
+              className={styles["model-switch-button"]}
+              disabled={disabled}
+            >
+              {getCurrentModelIcon()}
+              <span>{getCurrentModelLabel()}</span>
+              <ChevronDown size={12} />
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner side="top" align="end">
+                <Menu.Popup className={styles["model-menu-listbox"]}>
+                  {modelMenuItems.map((item) => (
+                    <Menu.Item
+                      key={item.value}
+                      onClick={item.onClick}
+                      className={styles["model-menu-item"]}
+                    >
+                      {item.label}
+                    </Menu.Item>
+                  ))}
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
+        ) : (
+          <span></span>
+        )}
+        <Flex align="center" gap="small">
+          {loading ? (
+            <LoadingButton />
+          ) : (
+            <SendButton
+              className={clsx(styles["send-button"])}
+              type="primary"
+              disabled={disabled}
+            />
+          )}
+        </Flex>
+      </Flex>
+    );
+  };
 
   const handleSubmit = useCallback(
     (value: string) => {

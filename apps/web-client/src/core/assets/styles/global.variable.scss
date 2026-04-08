@@ -28,10 +28,10 @@
 // - primary-light: 主色的浅色版本，用于标签背景、选中状态背景、提示区域等
 // --------------------------------------------
 $cv-primary: (
-  "primary": #a0522d,
-  "primary-hover": #b8633a,
-  "primary-active": #8b4513,
-  "primary-light": #faf6f0,
+  "primary": #1c1c1c,
+  "primary-hover": #2a2a2a,
+  "primary-active": #0f0f0f,
+  "primary-light": #f7f4ed,
 );
 
 // --------------------------------------------
@@ -45,11 +45,11 @@ $cv-primary: (
 // - text-inverse: 反色文字，用于深色背景上的文字（如主色按钮上的白色文字）
 // --------------------------------------------
 $cv-text: (
-  "text-primary": #5a4a3a,
-  "text-secondary": #8b4513,
-  "text-tertiary": #a0522d,
-  "text-disabled": #bfbfbf,
-  "text-inverse": #faf6f0,
+  "text-primary": #1c1c1c,
+  "text-secondary": rgba(28, 28, 28, 0.83),
+  "text-tertiary": rgba(28, 28, 28, 0.6),
+  "text-disabled": rgba(28, 28, 28, 0.3),
+  "text-inverse": #fcfbf8,
 );
 
 // --------------------------------------------
@@ -64,12 +64,12 @@ $cv-text: (
 // - bg-disabled: 禁用状态的背景色，用于禁用的输入框、禁用的卡片等
 // --------------------------------------------
 $cv-bg: (
-  "bg-base": #faf6f0,
-  "bg-elevated": #ffffff,
-  "bg-hover": #f5f0e8,
-  "bg-selected": #e5ddd3,
-  "bg-container": #e5d4d4,
-  "bg-disabled": #f5f5f5,
+  "bg-base": #f7f4ed,
+  "bg-elevated": #fcfbf8,
+  "bg-hover": rgba(28, 28, 28, 0.04),
+  "bg-selected": rgba(28, 28, 28, 0.08),
+  "bg-container": #eceae4,
+  "bg-disabled": rgba(28, 28, 28, 0.03),
 );
 
 // --------------------------------------------
@@ -82,10 +82,10 @@ $cv-bg: (
 // - border-focus: 聚焦状态的边框色，用于输入框获得焦点时的边框高亮
 // --------------------------------------------
 $cv-border: (
-  "border-base": #d5c4b0,
-  "border-secondary": #c8a8a8,
-  "border-hover": #c0a080,
-  "border-focus": #a0522d,
+  "border-base": #eceae4,
+  "border-secondary": rgba(28, 28, 28, 0.1),
+  "border-hover": rgba(28, 28, 28, 0.2),
+  "border-focus": #1c1c1c,
 );
 
 // --------------------------------------------
@@ -150,9 +150,9 @@ $cv-accent: (
 // - shadow-lg: 大阴影，用于模态框、重要通知、大幅浮动的元素
 // --------------------------------------------
 $cv-shadow: (
-  "shadow-sm": 0 1px 2px rgba(0, 0, 0, 0.05),
-  "shadow-md": 0 2px 8px rgba(0, 0, 0, 0.1),
-  "shadow-lg": 0 4px 16px rgba(0, 0, 0, 0.12),
+  "shadow-sm": 0 1px 2px rgba(28, 28, 28, 0.05),
+  "shadow-md": 0 2px 8px rgba(28, 28, 28, 0.08),
+  "shadow-lg": 0 4px 16px rgba(28, 28, 28, 0.1),
 );
 
 // --------------------------------------------
@@ -167,6 +167,8 @@ $cv-radius: (
   "radius-sm": 4px,
   "radius-base": 6px,
   "radius-lg": 8px,
+  "radius-card": 12px,
+  "radius-pill": 9999px,
 );
 
 // --------------------------------------------
@@ -185,6 +187,26 @@ $cv-spacing: (
   "spacing-md": 12px,
   "spacing-lg": 16px,
   "spacing-xl": 24px,
+  "spacing-2xl": 32px,
+  "spacing-3xl": 48px,
+  "spacing-4xl": 64px,
+  "spacing-5xl": 80px,
+);
+
+// --------------------------------------------
+// 字体 Font Family
+// --------------------------------------------
+// 字体栈设计：
+// - Inter: 西文主字体（可变字体，支持 100-900 字重）
+// - OPPO Sans: 中文回退字体（现代、清晰、与 Inter 风格协调）
+// - JetBrains Mono: 等宽字体（代码、数据展示）
+// - system-ui: 系统字体兜底
+// --------------------------------------------
+$cv-font-family: (
+  "font-primary":
+    "'Inter', 'OPPO Sans', ui-sans-serif, system-ui, -apple-system, sans-serif",
+  "font-mono-override":
+    "'JetBrains Mono', 'OPPO Sans', ui-monospace, SFMono-Regular, monospace",
 );
 
 // --------------------------------------------
@@ -196,6 +218,9 @@ $cv-spacing: (
 // - font-base: 基础字号（13px），用于正文、表单内容、列表项
 // - font-lg: 大字号（14px），用于小标题、强调文字、按钮文字
 // - font-xl: 超大字号（16px），用于标题、重要信息
+// - font-2xl: 20px，卡片标题
+// - font-3xl: 24px，区块标题
+// - font-4xl: 36px，页面标题
 // --------------------------------------------
 $cv-font: (
   "font-xs": 11px,
@@ -203,6 +228,9 @@ $cv-font: (
   "font-base": 13px,
   "font-lg": 14px,
   "font-xl": 16px,
+  "font-2xl": 20px,
+  "font-3xl": 24px,
+  "font-4xl": 36px,
 );
 
 // --------------------------------------------
@@ -218,6 +246,79 @@ $cv-transition: (
   "transition-fast": 0.1s ease,
   "transition-base": 0.15s ease,
   "transition-slow": 0.2s ease,
+);
+
+// --------------------------------------------
+// 层级与深度 Elevation
+// --------------------------------------------
+// Lovable 特有的深度系统，使用温暖的阴影和 inset 效果：
+// - focus-shadow: 聚焦状态的柔和阴影
+// - button-inset-shadow: 深色按钮的内阴影（Lovable 标志性效果）
+// - ring-color: 聚焦环颜色（无障碍访问）
+// --------------------------------------------
+$cv-elevation: (
+  "focus-shadow": 0 4px 12px rgba(0, 0, 0, 0.1),
+  "button-inset-shadow": (
+    rgba(255, 255, 255, 0.2) 0px 0.5px 0px 0px inset,
+    rgba(0, 0, 0, 0.2) 0px 0px 0px 0.5px inset,
+    rgba(0, 0, 0, 0.05) 0px 1px 2px 0px,
+  ),
+  "ring-color": rgba(59, 130, 246, 0.5),
+);
+
+// --------------------------------------------
+// 动画缓动函数 Animation
+// --------------------------------------------
+// 更精细的动画缓动控制，参考 Lovable 的动效哲学：
+// - ease-out-quart: 自然的减速效果，用于元素进入
+// - ease-out-quint: 更明显的减速，用于重要元素
+// - ease-out-expo: 指数减速，用于戏剧性效果
+// --------------------------------------------
+$cv-animation: (
+  "ease-out-quart": cubic-bezier(0.25, 1, 0.5, 1),
+  "ease-out-quint": cubic-bezier(0.22, 1, 0.36, 1),
+  "ease-out-expo": cubic-bezier(0.16, 1, 0.3, 1),
+  "duration-instant": 0.1s,
+  "duration-fast": 0.15s,
+  "duration-normal": 0.2s,
+  "duration-slow": 0.3s,
+  "duration-slower": 0.5s,
+);
+
+// --------------------------------------------
+// 排版系统 Typography
+// --------------------------------------------
+// 扩展的排版变量，支持 Lovable 的字间距系统：
+// - letter-spacing-tight: 大标题紧凑字间距（-1.5px 到 -0.9px）
+// - letter-spacing-normal: 正文正常字间距
+// - line-height-tight: 紧凑行高（标题）
+// - line-height-normal: 正常行高（正文）
+// - line-height-relaxed: 宽松行高（大段文字）
+// --------------------------------------------
+$cv-typography: (
+  "letter-spacing-tight": -0.03em,
+  "letter-spacing-tighter": -0.05em,
+  "letter-spacing-normal": 0,
+  "line-height-tight": 1.1,
+  "line-height-snug": 1.25,
+  "line-height-normal": 1.5,
+  "line-height-relaxed": 1.625,
+);
+
+// --------------------------------------------
+// 组件状态 State
+// --------------------------------------------
+// 统一的组件状态透明度控制：
+// - opacity-hover: 悬停状态透明度
+// - opacity-active: 激活/按下状态透明度
+// - opacity-disabled: 禁用状态透明度
+// - opacity-loading: 加载状态透明度
+// --------------------------------------------
+$cv-state: (
+  "opacity-hover": 0.8,
+  "opacity-active": 0.6,
+  "opacity-disabled": 0.4,
+  "opacity-loading": 0.7,
 );
 
 // ============================================
@@ -237,6 +338,11 @@ $cv-transition: (
   @include output-css-vars($cv-shadow);
   @include output-css-vars($cv-radius);
   @include output-css-vars($cv-spacing);
+  @include output-css-vars($cv-font-family);
   @include output-css-vars($cv-font);
   @include output-css-vars($cv-transition);
+  @include output-css-vars($cv-elevation);
+  @include output-css-vars($cv-animation);
+  @include output-css-vars($cv-typography);
+  @include output-css-vars($cv-state);
 }
