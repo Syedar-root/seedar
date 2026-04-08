@@ -14,7 +14,7 @@ const AppLayout = (_props: AppLayoutProps) => {
       <GlobalNavigation />
       <div className={styles.content}>
         <Group orientation="horizontal">
-          <Panel defaultSize={isSeeMindOn ? 75 : 100}>
+          <Panel minSize={"25%"} defaultSize={isSeeMindOn ? "70%" : "100%"}>
             <main className={styles.main}>
               <Outlet />
             </main>
@@ -22,7 +22,7 @@ const AppLayout = (_props: AppLayoutProps) => {
           {isSeeMindOn && (
             <>
               <Separator className={styles.resizeHandle} />
-              <Panel defaultSize={25}>
+              <Panel defaultSize="30%">
                 <aside className={styles.sidebar}>
                   <div className={styles.sidebarInner}>
                     <AIChatPreview />
