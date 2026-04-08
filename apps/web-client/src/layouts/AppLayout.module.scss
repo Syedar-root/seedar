@@ -8,35 +8,38 @@
   display: flex;
   flex: 1;
   overflow: hidden;
-  transition: all 0.3s ease-in-out;
 }
 
 .main {
   flex: 1;
   background-color: var(--bg-base);
   overflow: hidden;
-  transition: all 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar {
   overflow: hidden;
-  opacity: 0;
-  transition: all 0.3s ease-out;
   position: relative;
-  $sidebarWidth: 36vw;
-
-  &.sidebarOpen {
-    opacity: 1;
-    width: $sidebarWidth;
-  }
-
-  &.sidebarClose {
-    opacity: 0;
-    width: 0;
-  }
+  height: 100%;
 
   .sidebarInner {
-    width: $sidebarWidth;
+    width: 100%;
     height: 100%;
+  }
+}
+
+.resizeHandle {
+  width: 8px;
+  background-color: var(--border-base);
+  cursor: col-resize;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: var(--border-hover);
+  }
+
+  &[data-resize-handle-active] {
+    background-color: var(--border-focus);
   }
 }
