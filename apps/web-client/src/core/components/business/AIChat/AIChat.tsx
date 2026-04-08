@@ -264,7 +264,7 @@ const AIChat: React.FC<AIChatProps> = ({
             i++;
           }
         }
-
+        console.log("hcs elements", elements);
         return elements;
       };
 
@@ -285,7 +285,9 @@ const AIChat: React.FC<AIChatProps> = ({
               />
             )}
             {group[group.length - 1]?.type === "interrupt" && !loading && (
-              <span>SeeMind等你回答</span>
+              <span className={styles["interrupt-wait-answer"]}>
+                SeeMind等你回答
+              </span>
             )}
           </div>
         </div>
@@ -305,6 +307,11 @@ const AIChat: React.FC<AIChatProps> = ({
       footer: renderActions,
     }));
   }, [userMessages, renderContent, renderActions]);
+
+  useEffect(() => {
+    if (loading) return;
+    console.log("hcs messages", messages);
+  }, [loading]);
 
   return (
     <div

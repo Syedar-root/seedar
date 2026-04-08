@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Wrench, ChevronUp, ChevronRight, CheckCircle } from "lucide-react";
 import type { ToolCallMessageProps } from "./types";
 import styles from "./ToolCallMessage.module.scss";
+import { ToolResultMessage } from "../ToolResultMessage";
 
 const ToolCallMessage: React.FC<ToolCallMessageProps> = ({
   meta,
@@ -34,19 +35,7 @@ const ToolCallMessage: React.FC<ToolCallMessageProps> = ({
           </span>
         )}
       </div>
-      {hasResult && isExpanded && (
-        <div className={styles["result"]}>
-          <div className={styles["result-header"]}>
-            <CheckCircle
-              size={12}
-              color="var(--chat-color-muted)"
-              className={styles["result-icon"]}
-            />
-            <span className={styles["result-title"]}>{toolName}</span>
-          </div>
-          <div className={styles["result-content"]}>{resultContent}</div>
-        </div>
-      )}
+      {hasResult && isExpanded && <ToolResultMessage content={resultContent} />}
     </div>
   );
 };

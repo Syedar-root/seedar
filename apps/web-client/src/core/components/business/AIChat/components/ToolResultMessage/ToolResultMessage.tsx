@@ -1,30 +1,36 @@
 import React from "react";
-import { CheckCircle } from "lucide-react";
+import { ScrollArea } from "@/core/components/ui/ScrollArea";
+import { XMarkdown } from "@ant-design/x-markdown";
+import "@ant-design/x-markdown/themes/light.css";
 import type { ToolResultMessageProps } from "./types";
 import styles from "./ToolResultMessage.module.scss";
 
-const ToolResultMessage: React.FC<ToolResultMessageProps> = ({
-  content,
-  meta,
-}) => {
-  const toolName = meta?.name || "未知工具";
+const isJSON = (str: string): boolean => {
+  try {
+    JSON.parse(str);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const ToolResultMessage: React.FC<ToolResultMessageProps> = ({ content }) => {
+  const isJsonContent = isJSON(content);
+
   return (
-    <div className={styles['container']}>
-      <div className={styles['header']}>
-        <CheckCircle
-          size={12}
-          color="var(--chat-color-muted)"
-          className={styles['header-icon']}
-        />
-        <span className={styles['header-title']}>
-          {toolName}
-        </span>
-      </div>
-      <div className={styles['content']}>
-        {content}
-      </div>
+    <div className={styles["container"]}>
+      <ScrollArea className={styles["content"]}>
+        {isJsonContent ? (
+          <pre className={styles["jsonContent"]}>
+            <code>{JSON.stringify(JSON.parse(content), null, 2)}</code>
+          </pre>
+        ) : (
+          <XMarkdown className="x-markdown-light" content={content} />
+        )}
+      </ScrollArea>
     </div>
   );
 };
 
-export default ToolResultMessage;
+export { ToolResultMessage };
+export type { ToolResultMessageProps };
