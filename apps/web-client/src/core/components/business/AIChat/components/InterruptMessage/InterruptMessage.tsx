@@ -74,7 +74,9 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
     jumpTo,
     goNext,
     validateAndSubmit,
+    cancelAndSubmit,
     isCompleted,
+    isCancelled,
   } = useInterruptForm({ questions, onSubmit, answers: propsAnswers });
 
   const [formState, dispatch] = useReducer(formReducer, {
@@ -104,9 +106,13 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
               payload: existingAnswer.answer as string,
             });
           } else if (currentQuestion.type === "choice") {
-            const answerArray = Array.isArray(existingAnswer.answer)
-              ? existingAnswer.answer
-              : [existingAnswer.answer];
+            const answerArray: string[] = Array.isArray(existingAnswer.answer)
+              ? existingAnswer.answer.filter(
+                  (v): v is string => v !== undefined,
+                )
+              : existingAnswer.answer
+                ? [existingAnswer.answer]
+                : [];
             const otherOption = (currentQuestion.options || []).find(
               (opt: ChoiceOptionItem) => opt.isOther,
             );
@@ -135,7 +141,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
   }, [currentIndex, currentQuestion, answers]);
 
   const handleCancel = () => {
-    onSubmit?.("user reject answer", true);
+    cancelAndSubmit();
   };
 
   const handleNext = () => {
@@ -246,26 +252,28 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
     return (
       <div className={styles["container"]}>
         <div className={styles["summary-area"]}>
-          <h3>问题表单已完成</h3>
-          <ul className={styles["summary-list"]}>
-            {questions.map((q) => {
-              const answer = answers.get(q.id);
-              return (
-                <li key={q.id} className={styles["summary-item"]}>
-                  <span className={styles["summary-question"]}>
-                    {q.question}
-                  </span>
-                  <span className={styles["summary-answer"]}>
-                    {Array.isArray(answer?.answer)
-                      ? answer.answer.length > 0
-                        ? answer.answer.join("、")
-                        : "-"
-                      : answer?.answer || "-"}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+          <h3>{isCancelled ? "问题表单已取消" : "问题表单已完成"}</h3>
+          {!isCancelled && (
+            <ul className={styles["summary-list"]}>
+              {questions.map((q) => {
+                const answer = answers.get(q.id);
+                return (
+                  <li key={q.id} className={styles["summary-item"]}>
+                    <span className={styles["summary-question"]}>
+                      {q.question}
+                    </span>
+                    <span className={styles["summary-answer"]}>
+                      {Array.isArray(answer?.answer)
+                        ? answer.answer.length > 0
+                          ? answer.answer.join("、")
+                          : "-"
+                        : answer?.answer || "-"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </div>
     );

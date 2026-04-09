@@ -43,8 +43,8 @@ export interface ChoiceOption {
 
 export interface InterruptAnswer {
   questionId: string;
-  question: string;
-  answer: string | string[];
+  question?: string;
+  answer?: string | string[];
 }
 
 export interface InterruptSubmitData {

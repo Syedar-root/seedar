@@ -31,7 +31,9 @@ interface UseInterruptFormReturn {
   goNext: () => void;
   goPrev: () => void;
   validateAndSubmit: () => void;
+  cancelAndSubmit: () => void;
   isCompleted: boolean;
+  isCancelled: boolean;
 }
 
 export const useInterruptForm = (
@@ -39,6 +41,7 @@ export const useInterruptForm = (
 ): UseInterruptFormReturn => {
   const { questions, onSubmit, answers: propsAnswers } = options;
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isCancelled, setIsCancelled] = useState(false);
   const [answers, setAnswers] = useState<Map<string, InterruptAnswer>>(
     propsAnswers?.reduce((prev, cur) => {
       prev.set(cur.questionId, cur);
@@ -119,6 +122,24 @@ export const useInterruptForm = (
     setCurrentIndex(totalQuestions);
   }, [answers, questions, onSubmit, totalQuestions]);
 
+  const cancelAndSubmit = useCallback(() => {
+    setIsCancelled(true);
+    const allAnswers = new Map(answers);
+    questions.forEach((q) => {
+      allAnswers.set(q.id, {
+        questionId: q.id,
+        question: q.question,
+        answer: "user rejected answer",
+      });
+    });
+
+    const submitData: InterruptSubmitData = {
+      answers: Array.from(allAnswers.values()),
+    };
+    onSubmit?.(`user answer: ${JSON.stringify(submitData)}`, true);
+    setCurrentIndex(totalQuestions);
+  }, [answers, questions, onSubmit, totalQuestions]);
+
   return {
     currentIndex,
     currentQuestion,
@@ -132,6 +153,8 @@ export const useInterruptForm = (
     goNext,
     goPrev,
     validateAndSubmit,
+    cancelAndSubmit,
     isCompleted,
+    isCancelled,
   };
 };

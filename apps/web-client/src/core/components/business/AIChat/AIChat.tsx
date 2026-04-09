@@ -18,6 +18,7 @@ import {
   ErrorMessage,
   Header,
   EnhancedSender,
+  LineLoading,
 } from "./components";
 import { createUserMessage } from "./utils/messageAdapter.utils";
 import type { AIChatProps, ChatMessage, YieldType } from "./types";
@@ -361,6 +362,7 @@ const AIChat: React.FC<AIChatProps> = ({
               items={[userBubbleItems[userBubbleItems.length - 1]]}
             />
           )}
+          {loading && <LineLoading />}
         </ScrollArea>
       </div>
 

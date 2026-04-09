@@ -1,0 +1,56 @@
+.line-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--chat-space-sm) 0;
+
+  &__track {
+    position: relative;
+    width: 100%;
+    height: 2px;
+    background: var(--chat-border-default, rgba(139, 92, 246, 0.1));
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  &__bar {
+    position: absolute;
+    top: 0;
+    left: -30%;
+    width: 30%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--line-loading-color, var(--chat-color-primary, #8b5cf6)) 50%,
+      transparent 100%
+    );
+    border-radius: 1px;
+    animation: line-flow var(--line-loading-duration, 1.5s) ease-in-out infinite;
+  }
+}
+
+@keyframes line-flow {
+  0% {
+    left: -30%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line-loading__bar {
+    animation: none;
+    left: 35%;
+    opacity: 0.6;
+  }
+}
