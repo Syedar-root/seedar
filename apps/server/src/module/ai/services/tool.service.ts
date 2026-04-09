@@ -14,13 +14,16 @@ import {
   askQuestionSchema,
   getDataAtTempSchema,
   getDatasetInfoSchema,
+  toolMarketExecutorSchema,
+  type ToolMarketExecutorParams,
 } from './toolSchema';
 import { QueryService } from '@/module/query/query.service';
 import { getDatasetInfoCompact } from './helper';
 import { interrupt } from '@langchain/langgraph';
 import { randomUUID } from 'crypto';
 import { ToolConfig } from '../ai.types';
-import { is } from 'zod/v4/locales';
+import { is, tr } from 'zod/v4/locales';
+import { type ToolRunnableConfig } from '@langchain/core/tools';
 
 type ToolMethod = (
   input: Record<string, unknown>,
@@ -38,6 +41,7 @@ function Seedar_Tool(config: ToolConfig): MethodDecorator {
 @Injectable()
 export class ToolService {
   private toolMethods: Array<{ method: ToolMethod; config: ToolConfig }> = [];
+  private INTERRUPT_TOOL_NAMES = ['askQuestion'];
 
   constructor(
     private readonly datasetService: DatasetService,
@@ -180,5 +184,46 @@ export class ToolService {
       })),
     });
     return response;
+  }
+
+  @Seedar_Tool({
+    name: 'toolMarket',
+    description:
+      '工具市场，返回所有可用的工具。如果你没有直接可使用的工具，你可以使用这个工具来获取可用的工具列表。搭配 toolMarketExecutor 工具使用',
+  })
+  public toolMarket() {
+    return {
+      toolInfoList: this.getToolConfigs().filter(
+        (tool) => tool.name !== 'toolMarket',
+      ),
+    };
+  }
+
+  // 工具市场执行器
+  @Seedar_Tool({
+    name: 'toolMarketExecutor',
+    description:
+      '工具市场执行器，根据用户输入的工具名称，执行对应的工具。搭配 toolMarket 工具使用',
+    schema: toolMarketExecutorSchema,
+  })
+  public async toolMarketExecutor(
+    { toolName, toolParams }: ToolMarketExecutorParams,
+    runtime?: ToolRunnableConfig,
+  ) {
+    if (this.INTERRUPT_TOOL_NAMES.includes(toolName)) {
+      return `不能使用中断工具 ${toolName}`;
+    }
+    const tool = this.getTools([toolName])[0];
+    if (!tool) {
+      return `工具 ${toolName} 不存在`;
+    }
+    try {
+      // 如果 toolParams 是字符串，则解析为对象
+      const parsedParams =
+        typeof toolParams === 'string' ? JSON.parse(toolParams) : toolParams;
+      return await tool.invoke(parsedParams, runtime);
+    } catch (error) {
+      return `工具 ${toolName} 执行失败：${error.message}`;
+    }
   }
 }

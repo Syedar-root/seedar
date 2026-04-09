@@ -124,9 +124,7 @@ export class ChatService {
       .addNode('clarify', this.createClarifyNode(llmConfig))
       .addNode('act', this.createActNode(llmConfig))
       .addEdge(START, 'clarify')
-      .addConditionalEdges('clarify', (state) => {
-        return state.isClarify ? 'act' : END;
-      })
+      .addEdge('clarify', 'act')
       .addEdge('act', END);
 
     return graphBuilder.compile({
@@ -161,59 +159,58 @@ export class ChatService {
     llmConfig: LLMConfig,
   ): GraphNode<typeof this.State> {
     return async (state) => {
-      // 步骤1: 动态生成系统提示词
-      const prompt = await loadSkill('clarify');
-      const promptTemplate = PromptTemplate.fromTemplate(prompt);
-      const systemPrompt = await promptTemplate.format({
-        demands: Object.keys(this.DEMAND_TOOL_MAP).join('、'),
-      });
+      const lastHumanMsg = state.messages
+        .filter((msg) => msg instanceof HumanMessage)
+        .at(-1);
 
-      // 步骤2: 创建 React Agent
-      const llm = this.createLLM({ ...llmConfig, systemPrompt });
-      const tools = this.toolService.getTools([
-        'askQuestion',
-        'getCurrentTime',
-      ]);
-      const agent = createAgent({
-        model: llm,
-        tools,
-        systemPrompt: llmConfig.systemPrompt || this.SYSTEM_PROMPT,
-        name: 'clarify',
-        middleware: [this.createCatchToolExceptionMiddleware()],
-        responseFormat: toolStrategy(
-          z.object({
-            userDemand: z
-              .enum(Object.keys(this.DEMAND_TOOL_MAP))
-              .describe('用户需求类型'),
-            userDemandDesc: z.string().describe('用户需求描述'),
-          }),
-          {
-            toolMessageContent: '',
-          },
-        ),
-      });
+      let maybeUserDemands: string[] = [];
+      const content = (lastHumanMsg?.content as string) || '';
+      const lowerContent = content.toLowerCase();
 
-      // 步骤3: 执行 Agent
-      const response = await agent.invoke({ messages: state.messages });
+      const keywordMap: Record<string, string[]> = {
+        'data-query': [
+          '数据',
+          '查询',
+          '温度',
+          '信息',
+          'data',
+          'query',
+          'temperature',
+          'info',
+        ],
+        'chart-recommend': [
+          '图表',
+          '画图',
+          '推荐',
+          'chart',
+          'recommend',
+          '图形',
+        ],
+      };
+
+      for (const [demand, keywords] of Object.entries(keywordMap)) {
+        if (keywords.some((keyword) => lowerContent.includes(keyword))) {
+          maybeUserDemands.push(demand);
+        }
+      }
+
+      if (!maybeUserDemands.length) {
+        maybeUserDemands.push('convert-to-backend');
+      }
 
       // 步骤4: 返回更新后的状态
       return {
-        messages: response.messages,
         allowTools: Array.from(
           new Set([
             ...state.allowTools,
-            ...(this.DEMAND_TOOL_MAP[
-              response?.structuredResponse?.userDemand
-            ] || []),
+            ...maybeUserDemands
+              .map((demand) => this.DEMAND_TOOL_MAP[demand] || [])
+              .flat(),
           ]),
         ),
         allowSkills: Array.from(
-          new Set([
-            ...state.allowSkills,
-            response?.structuredResponse?.userDemand,
-          ]),
+          new Set([...state.allowSkills, ...maybeUserDemands]),
         ),
-        isClarify: !!response?.structuredResponse?.userDemand,
       };
     };
   }
@@ -233,16 +230,22 @@ export class ChatService {
     return async (state) => {
       // 步骤1: 创建 Deep Agent
       const llm = this.createLLM(llmConfig);
-      // 保证有两个必要工具：askQuestion, getCurrentTime
-      if (!state.allowTools?.includes('askQuestion')) {
-        state.allowTools?.push('askQuestion');
-      }
-      if (!state.allowTools?.includes('getCurrentTime')) {
-        state.allowTools?.push('getCurrentTime');
-      }
+      const essentialTools = [
+        'askQuestion',
+        'getCurrentTime',
+        'toolMarket',
+        'toolMarketExecutor',
+      ];
+      state.allowTools = state.allowTools || [];
+      essentialTools.forEach((tool) => {
+        if (!state.allowTools!.includes(tool)) {
+          state.allowTools!.push(tool);
+        }
+      });
+
       let tools: Tool[] = [];
       if (state.allowSkills?.includes('convert-to-backend')) {
-        tools = this.toolService.getTools();
+        tools = this.toolService.getTools(essentialTools);
       } else {
         tools = this.toolService
           .getTools()
