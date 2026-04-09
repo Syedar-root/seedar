@@ -62,6 +62,8 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
   console.log("content", content);
   const questions: AskQuestionItem[] =
     typeof content === "string" ? [] : content.value.questions;
+  const propsAnswers =
+    typeof content === "string" ? undefined : content.value.answers;
 
   const {
     currentIndex,
@@ -73,7 +75,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
     goNext,
     validateAndSubmit,
     isCompleted,
-  } = useInterruptForm({ questions, onSubmit });
+  } = useInterruptForm({ questions, onSubmit, answers: propsAnswers });
 
   const [formState, dispatch] = useReducer(formReducer, {
     textValue: "",
@@ -240,7 +242,33 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
   }
 
   if (isCompleted || !currentQuestion) {
-    return null;
+    console.log("answers", answers);
+    return (
+      <div className={styles["container"]}>
+        <div className={styles["summary-area"]}>
+          <h3>问题表单已完成</h3>
+          <ul className={styles["summary-list"]}>
+            {questions.map((q) => {
+              const answer = answers.get(q.id);
+              return (
+                <li key={q.id} className={styles["summary-item"]}>
+                  <span className={styles["summary-question"]}>
+                    {q.question}
+                  </span>
+                  <span className={styles["summary-answer"]}>
+                    {Array.isArray(answer?.answer)
+                      ? answer.answer.length > 0
+                        ? answer.answer.join("、")
+                        : "-"
+                      : answer?.answer || "-"}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    );
   }
 
   const renderCurrentQuestion = () => {

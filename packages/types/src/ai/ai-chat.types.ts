@@ -50,6 +50,11 @@ export interface AskQuestion {
     }[];
     multiple?: boolean;
   }>;
+  answers?: {
+    questionId: string;
+    question?: string;
+    answer?: string | string[];
+  }[];
 }
 
 export type AskQuestionParams = AskQuestion;

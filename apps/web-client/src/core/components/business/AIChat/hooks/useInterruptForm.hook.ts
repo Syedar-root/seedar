@@ -15,6 +15,7 @@ export const parseOptions = (
 interface UseInterruptFormOptions {
   questions: AskQuestionItem[];
   onSubmit?: (data: string, isResume: boolean) => void;
+  answers?: InterruptAnswer[];
 }
 
 interface UseInterruptFormReturn {
@@ -36,17 +37,21 @@ interface UseInterruptFormReturn {
 export const useInterruptForm = (
   options: UseInterruptFormOptions,
 ): UseInterruptFormReturn => {
-  const { questions, onSubmit } = options;
+  const { questions, onSubmit, answers: propsAnswers } = options;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Map<string, InterruptAnswer>>(
-    new Map(),
+    propsAnswers?.reduce((prev, cur) => {
+      prev.set(cur.questionId, cur);
+      return prev;
+    }, new Map()) || new Map(),
   );
 
   const currentQuestion = questions[currentIndex] || null;
   const totalQuestions = questions.length;
   const progress =
     totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;
-  const isCompleted = currentIndex >= totalQuestions;
+  const isCompleted =
+    currentIndex >= totalQuestions || answers.size === totalQuestions;
 
   const answeredIds = useMemo(() => {
     return new Set(answers.keys());

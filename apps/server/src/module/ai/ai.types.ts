@@ -1,3 +1,5 @@
+import { AskQuestionParams } from './services/toolSchema';
+
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
@@ -44,6 +46,16 @@ export type InterruptContent<T> = {
   id: string;
   values: T;
 };
+
+interface InterruptAnswer {
+  questionId: string;
+  question?: string;
+  answer?: string | string[];
+}
+
+export interface AskQuestion extends AskQuestionParams {
+  answers?: InterruptAnswer[];
+}
 
 export type StreamChunkContent<T> = string | InterruptContent<T>;
 

@@ -32,6 +32,7 @@ export interface AskQuestionItem {
 
 export interface AskQuestionParams {
   questions: AskQuestionItem[];
+  answers?: InterruptAnswer[];
 }
 
 export interface ChoiceOption {

@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { AiService } from './ai.service';
 import {
+  AskQuestion,
   InterruptContent,
   LLMConfig,
   StreamChunk,
@@ -305,7 +306,7 @@ export class ChatService {
     message: string,
     sessionId: string,
     isResume: boolean = false,
-  ): AsyncGenerator<StreamChunk<AskQuestionParams>, void, unknown> {
+  ): AsyncGenerator<StreamChunk<AskQuestion>, void, unknown> {
     try {
       // 步骤1: 获取会话信息
       const session = await this.aiSessionService.findOne(sessionId);
