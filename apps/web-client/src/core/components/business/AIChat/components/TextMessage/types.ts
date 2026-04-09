@@ -2,8 +2,11 @@ import type {
   ChatMessage,
   ToolCallMeta,
   ToolResultMeta,
-  AskQuestionItem,
 } from "../../types";
+import type {
+  InterruptContent,
+  AskQuestionParams,
+} from "#pkg/seedar/types";
 
 export interface TextMessageProps {
   message: ChatMessage;
@@ -19,7 +22,7 @@ export interface ToolResultMessageProps {
 }
 
 export interface InterruptMessageProps {
-  content: string | AskQuestionItem[];
+  content: string | InterruptContent<AskQuestionParams>;
   onSubmit?: (data: Record<string, unknown>) => void;
 }
 

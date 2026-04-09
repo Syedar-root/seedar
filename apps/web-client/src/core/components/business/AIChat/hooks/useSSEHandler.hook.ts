@@ -17,6 +17,7 @@ interface UseSSEHandlerOptions {
 
 interface CurrentMessageInfo {
   id: string;
+  sid: string;
   type: string;
   toolCallId?: string;
   toolResultId?: string;
@@ -37,30 +38,21 @@ export const useSSEHandler = (options: UseSSEHandlerOptions = {}) => {
   const isSameMessage = (
     currentInfo: CurrentMessageInfo | null,
     data: SSEData["data"],
+    sid: string,
   ): boolean => {
     if (!currentInfo) return false;
-
-    const dataType = data.type ?? "text";
-    if (currentInfo.type !== dataType) return false;
-
-    if (dataType === "tool_call") {
-      return currentInfo.toolCallId === getToolCallId(data);
-    }
-    if (dataType === "tool_result") {
-      return currentInfo.toolResultId === getToolResultId(data);
-    }
-
+    if (currentInfo.sid !== sid) return false;
     return true;
   };
 
   const handleSSEData = useCallback(
-    (sseData: SSEData) => {
+    (sseData: SSEData, sid: string) => {
       const { data } = sseData;
       const dataType = data.type ?? "text";
       const isDone = data.done;
       const isFirstChunk =
         !currentMessageRef.current ||
-        !isSameMessage(currentMessageRef.current, data);
+        !isSameMessage(currentMessageRef.current, data, sid);
 
       if (isFirstChunk || isDone) {
         const meta: ToolCallMeta | ToolResultMeta | undefined = data.meta;
@@ -75,6 +67,7 @@ export const useSSEHandler = (options: UseSSEHandlerOptions = {}) => {
         };
         currentMessageRef.current = {
           id: newMessage.id,
+          sid,
           type: dataType,
           toolCallId: getToolCallId(data),
           toolResultId: getToolResultId(data),

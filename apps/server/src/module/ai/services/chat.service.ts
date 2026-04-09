@@ -1,6 +1,11 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { AiService } from './ai.service';
-import { LLMConfig, YieldType } from '../ai.types';
+import {
+  InterruptContent,
+  LLMConfig,
+  StreamChunk,
+  YieldType,
+} from '../ai.types';
 import { AiChatResponseDto } from '../dto/ai-chat.response.dto';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatAnthropic } from '@langchain/anthropic';
@@ -34,6 +39,7 @@ import {
   END,
   MemorySaver,
   Command,
+  GraphInterrupt,
 } from '@langchain/langgraph';
 import * as z from 'zod/v4';
 import { AiSessionService } from './ai-session.service';
@@ -41,6 +47,8 @@ import { loadSkill } from './helper';
 import path from 'path';
 import { existsSync } from 'fs';
 import { AskQuestionParams } from './toolSchema';
+import { randomUUID } from 'crypto';
+import { LoggerService } from '@/logger/logger.service';
 
 @Injectable()
 export class ChatService {
@@ -65,6 +73,7 @@ export class ChatService {
     private readonly aiService: AiService,
     private readonly toolService: ToolService,
     private readonly aiSessionService: AiSessionService,
+    private readonly logger: LoggerService,
   ) {}
 
   private readonly State = new StateSchema({
@@ -87,6 +96,7 @@ export class ChatService {
         try {
           return handler(request);
         } catch (error) {
+          this.logger.error(error);
           return Promise.resolve(
             new ToolMessage({
               content: `工具调用失败：${error instanceof Error ? error.message : error?.toString()}`,
@@ -108,6 +118,7 @@ export class ChatService {
     const llmConfig = this.getLLMConfig(ai);
 
     const graphBuilder = new StateGraph(this.State);
+
     graphBuilder
       .addNode('clarify', this.createClarifyNode(llmConfig))
       .addNode('act', this.createActNode(llmConfig))
@@ -121,6 +132,18 @@ export class ChatService {
       checkpointer: this.checkpointer,
     });
   }
+
+  // private createTestNode() {
+  //   return async (state) => {
+  //     const tools = this.toolService.getTools();
+  //     const askQuestionTool = tools.find((tool) => tool.name === 'askQuestion');
+
+  //     const result = await askQuestionTool?.invoke({
+  //       questions: [{ type: 'text', question: '你好' }],
+  //     });
+  //     return result;
+  //   };
+  // }
 
   /**
    * 创建澄清节点
@@ -171,8 +194,6 @@ export class ChatService {
 
       // 步骤3: 执行 Agent
       const response = await agent.invoke({ messages: state.messages });
-
-      console.log('hcs response', response);
 
       // 步骤4: 返回更新后的状态
       return {
@@ -284,20 +305,7 @@ export class ChatService {
     message: string,
     sessionId: string,
     isResume: boolean = false,
-  ): AsyncGenerator<
-    {
-      content: string | AskQuestionParams['questions'];
-      type?: YieldType;
-      done: boolean;
-      role?: string;
-      meta?: {
-        tool_call?: { id: string; name: string; [key: string]: any };
-        tool_result?: { tool_call_id: string };
-      };
-    },
-    void,
-    unknown
-  > {
+  ): AsyncGenerator<StreamChunk<AskQuestionParams>, void, unknown> {
     try {
       // 步骤1: 获取会话信息
       const session = await this.aiSessionService.findOne(sessionId);
@@ -323,6 +331,9 @@ export class ChatService {
       const tool_call: any[] = [];
       const blacklistToolCallIds: string[] = [];
 
+      let currentSid = '';
+      let lastType: YieldType | undefined;
+
       // 步骤4: 处理流式响应
       for await (const [streamMode, chunk] of stream) {
         // 处理 values 模式的中断信息
@@ -330,8 +341,11 @@ export class ChatService {
         if (streamMode === 'values') {
           const interruptData = this.extractInterrupt(chunk);
           if (interruptData && interruptData?.[0]?.value) {
+            currentSid = randomUUID();
+            lastType = 'interrupt';
             yield {
-              content: interruptData[0].value.questions,
+              sid: currentSid,
+              content: interruptData[0] as InterruptContent<AskQuestionParams>,
               type: 'interrupt',
               done: false,
             };
@@ -374,6 +388,13 @@ export class ChatService {
           ) {
             continue;
           }
+
+          // 类型变化时生成新的 sid
+          if (type !== lastType) {
+            currentSid = randomUUID();
+            lastType = type as YieldType;
+          }
+
           const meta = {
             tool_call:
               type === 'tool_call'
@@ -390,6 +411,7 @@ export class ChatService {
           };
 
           yield {
+            sid: currentSid,
             content,
             type: messageType as YieldType,
             done: false,
@@ -401,11 +423,18 @@ export class ChatService {
 
       // 步骤5: 返回完成标记
       console.log('hcs tool_call', JSON.stringify(tool_call, null, 2));
-      yield { content: '', done: true };
+      yield { sid: currentSid, content: '', done: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       console.error('streamChat error:', errorMessage, error, '\n');
       console.log('error type:', typeof error, '\n');
+      yield {
+        sid: randomUUID(),
+        content: errorMessage,
+        type: 'error',
+        done: true,
+        role: '',
+      };
       throw new InternalServerErrorException(`流式对话失败: ${errorMessage}`);
     }
   }

@@ -12,7 +12,9 @@ const TextMessage: React.FC<TextMessageProps> = ({ message }) => {
           content={
             typeof message.content === "string"
               ? message.content
-              : message.content.map((q) => q.question).join("\n")
+              : message.content.value.questions
+                  .map((q) => q.question)
+                  .join("\n")
           }
         />
       );

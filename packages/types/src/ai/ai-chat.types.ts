@@ -6,6 +6,11 @@ export type YieldType =
   | "reasoning"
   | "error";
 
+export type InterruptContent<T> = {
+  id: string;
+  value: T;
+};
+
 export interface AiChatRequestDto {
   aiId: string;
   message: string;
@@ -15,7 +20,8 @@ export interface AiChatRequestDto {
 }
 
 export interface AiStreamChunk {
-  content: string | AskQuestionParams["questions"];
+  sid: string;
+  content: string | InterruptContent<AskQuestionParams>;
   type: YieldType;
   done: boolean;
   role?: string;

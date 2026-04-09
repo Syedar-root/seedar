@@ -1,5 +1,9 @@
 import type React from "react";
-import type { AiStreamChunk } from "#pkg/seedar/types";
+import type {
+  AiStreamChunk,
+  InterruptContent,
+  AskQuestionParams as _AskQuestionParams,
+} from "#pkg/seedar/types";
 
 export type YieldType =
   | "interrupt"
@@ -64,7 +68,7 @@ export interface ToolResultMeta {
 export interface SSEData {
   type: MessageType;
   data: {
-    content: string | AskQuestionItem[];
+    content: string | InterruptContent<_AskQuestionParams>;
     type?: MessageType;
     done: boolean;
     role: "user" | "clarify" | "act";
@@ -76,7 +80,7 @@ export interface SSEData {
 export interface ChatMessage {
   id: string;
   type: MessageType;
-  content: string | AskQuestionItem[];
+  content: string | InterruptContent<_AskQuestionParams>;
   role: "user" | "clarify" | "act";
   timestamp: number;
   done: boolean;
@@ -147,7 +151,7 @@ export interface OnInterruptSubmitCallback {
 }
 
 export interface InterruptMessageProps {
-  content: string | AskQuestionItem[];
+  content: string | InterruptContent<AskQuestionParams>;
   onSubmit?: (data: string, isResume: boolean) => void;
   disabled?: boolean;
 }

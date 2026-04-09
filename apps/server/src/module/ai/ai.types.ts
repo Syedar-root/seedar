@@ -39,3 +39,22 @@ export type YieldType =
   | 'text'
   | 'reasoning'
   | 'error';
+
+export type InterruptContent<T> = {
+  id: string;
+  values: T;
+};
+
+export type StreamChunkContent<T> = string | InterruptContent<T>;
+
+export interface StreamChunk<T> {
+  sid: string; // segmentId, 流式块id，一段思考、一段正文...，每个流式块都有一个唯一的id
+  content: StreamChunkContent<T>;
+  type?: YieldType;
+  done: boolean; //表示流式是否完成
+  role?: string;
+  meta?: {
+    tool_call?: { id: string; name: string; [key: string]: any };
+    tool_result?: { tool_call_id: string };
+  };
+}

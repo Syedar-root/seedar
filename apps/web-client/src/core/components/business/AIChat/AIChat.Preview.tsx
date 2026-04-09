@@ -78,7 +78,7 @@ const AIChatPreview: React.FC = () => {
                 meta: chunk.meta,
               },
             };
-            handleSSEData(sseData);
+            handleSSEData(sseData, chunk.sid);
           },
           onDone: () => {
             setIsLoading(false);

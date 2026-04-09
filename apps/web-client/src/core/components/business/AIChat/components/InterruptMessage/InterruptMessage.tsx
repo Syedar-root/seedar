@@ -59,8 +59,9 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
   onSubmit,
   disabled = false,
 }) => {
+  console.log("content", content);
   const questions: AskQuestionItem[] =
-    typeof content === "string" ? [] : content;
+    typeof content === "string" ? [] : content.value.questions;
 
   const {
     currentIndex,
