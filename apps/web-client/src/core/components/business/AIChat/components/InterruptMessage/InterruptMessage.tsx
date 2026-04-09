@@ -20,7 +20,7 @@ import styles from "./InterruptMessage.module.scss";
 
 interface FormState {
   textValue: string;
-  confirmValue: string | undefined;
+  confirmValue: string;
   choiceValue: string[];
   choiceOtherInput: string;
 }
@@ -37,7 +37,7 @@ const formReducer = (state: FormState, action: FormAction): FormState => {
     case "RESET":
       return {
         textValue: "",
-        confirmValue: undefined,
+        confirmValue: "",
         choiceValue: [],
         choiceOtherInput: "",
       };
@@ -59,7 +59,6 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
   onSubmit,
   disabled = false,
 }) => {
-  console.log("content", content);
   const questions: AskQuestionItem[] =
     typeof content === "string" ? [] : content.value.questions;
   const propsAnswers =
@@ -71,6 +70,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
     totalQuestions,
     answers,
     answeredIds,
+    setAnswer,
     jumpTo,
     goNext,
     validateAndSubmit,
@@ -81,7 +81,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
 
   const [formState, dispatch] = useReducer(formReducer, {
     textValue: "",
-    confirmValue: undefined,
+    confirmValue: "",
     choiceValue: [],
     choiceOtherInput: "",
   });
@@ -103,7 +103,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
           } else if (currentQuestion.type === "confirm") {
             dispatch({
               type: "SET_CONFIRM",
-              payload: existingAnswer.answer as string,
+              payload: (existingAnswer.answer as string) || "",
             });
           } else if (currentQuestion.type === "choice") {
             const answerArray: string[] = Array.isArray(existingAnswer.answer)
@@ -144,54 +144,65 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
     cancelAndSubmit();
   };
 
+  const getCurrentAnswer = (): string | string[] => {
+    if (!currentQuestion) return "";
+
+    switch (currentQuestion.type) {
+      case "text":
+        return formState.textValue;
+      case "confirm":
+        return formState.confirmValue || "";
+      case "choice": {
+        const otherOption = (currentQuestion.options || []).find(
+          (opt: ChoiceOptionItem) => opt.isOther,
+        );
+        const hasOtherSelected = formState.choiceValue.some((v) => {
+          const option = (currentQuestion.options || []).find(
+            (opt: ChoiceOptionItem) => opt.value === v,
+          );
+          return option?.isOther;
+        });
+
+        if (hasOtherSelected && otherOption) {
+          const otherValue = otherOption.value;
+          const selectedWithoutOther = formState.choiceValue.filter(
+            (v) => v !== otherValue,
+          );
+          if (!formState.choiceOtherInput.trim()) {
+            return "user rejected answer";
+          }
+          return [...selectedWithoutOther, formState.choiceOtherInput];
+        }
+        return formState.choiceValue;
+      }
+      default:
+        return "";
+    }
+  };
+
+  const saveCurrentAnswer = () => {
+    if (!currentQuestion) return;
+
+    const answer = getCurrentAnswer();
+    const isEmptyAnswer =
+      answer === "" ||
+      answer === "user rejected answer" ||
+      (Array.isArray(answer) && answer.length === 0);
+
+    if (!isEmptyAnswer) {
+      setAnswer(currentQuestion.id, answer);
+    }
+  };
+
+  const handleJumpTo = (index: number) => {
+    saveCurrentAnswer();
+    jumpTo(index);
+  };
+
   const handleNext = () => {
     if (!currentQuestion) return;
 
-    const existingAnswer = answers.get(currentQuestion.id);
-    if (!existingAnswer) {
-      let answer: string | string[] = "";
-      switch (currentQuestion.type) {
-        case "text": {
-          answer = formState.textValue;
-          break;
-        }
-        case "confirm": {
-          answer = formState.confirmValue || "";
-          break;
-        }
-        case "choice": {
-          const otherOption = (currentQuestion.options || []).find(
-            (opt: ChoiceOptionItem) => opt.isOther,
-          );
-          const hasOtherSelected = formState.choiceValue.some((v) => {
-            const option = (currentQuestion.options || []).find(
-              (opt: ChoiceOptionItem) => opt.value === v,
-            );
-            return option?.isOther;
-          });
-
-          if (hasOtherSelected && otherOption) {
-            const otherValue = otherOption.value;
-            const selectedWithoutOther = formState.choiceValue.filter(
-              (v) => v !== otherValue,
-            );
-            if (!formState.choiceOtherInput.trim()) {
-              answer = "user rejected answer";
-            } else {
-              answer = [...selectedWithoutOther, formState.choiceOtherInput];
-            }
-          } else {
-            answer = formState.choiceValue;
-          }
-          break;
-        }
-      }
-      answers.set(currentQuestion.id, {
-        questionId: currentQuestion.id,
-        question: currentQuestion.question,
-        answer,
-      });
-    }
+    saveCurrentAnswer();
 
     if (currentIndex === totalQuestions - 1) {
       validateAndSubmit();
@@ -329,7 +340,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
             total={totalQuestions}
             answeredIds={answeredIds}
             questionInfos={questions}
-            onJumpTo={jumpTo}
+            onJumpTo={handleJumpTo}
           />
         </div>
         <div className={styles["footer-right"]}>

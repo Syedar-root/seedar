@@ -158,7 +158,7 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
         )}
         <Flex align="center" gap="small">
           {loading ? (
-            <LoadingButton />
+            <LoadingButton className={styles["loading-button"]} />
           ) : (
             <SendButton
               className={clsx(styles["send-button"])}

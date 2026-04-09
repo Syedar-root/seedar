@@ -25,6 +25,7 @@ import type { AIChatProps, ChatMessage, YieldType } from "./types";
 import type { ToolCallMessageProps } from "./components";
 import clsx from "clsx";
 import { ScrollArea } from "../../ui/ScrollArea";
+import { DotsJumpLoading } from "./components/DotsJumpLoading";
 
 type AssistantMessageGroup = ChatMessage[];
 
@@ -266,7 +267,6 @@ const AIChat: React.FC<AIChatProps> = ({
             i++;
           }
         }
-        console.log("hcs elements", elements);
         return elements;
       };
 
@@ -309,11 +309,6 @@ const AIChat: React.FC<AIChatProps> = ({
       footer: renderActions,
     }));
   }, [userMessages, renderContent, renderActions]);
-
-  useEffect(() => {
-    if (loading) return;
-    console.log("hcs messages", messages);
-  }, [loading]);
 
   return (
     <div
@@ -362,7 +357,13 @@ const AIChat: React.FC<AIChatProps> = ({
               items={[userBubbleItems[userBubbleItems.length - 1]]}
             />
           )}
-          {loading && <LineLoading />}
+          {loading && (
+            <DotsJumpLoading
+              size="medium"
+              speed={1}
+              color="var(--chat-color-primary)"
+            />
+          )}
         </ScrollArea>
       </div>
 

@@ -1,7 +1,7 @@
 .container {
   padding: var(--chat-space-md);
   background: var(--chat-bg-secondary);
-  border-radius: 8px;
+  border-radius: var(--chat-radius-lg);
   border: 1px solid var(--chat-border-default);
   display: flex;
   flex-direction: column;
@@ -35,7 +35,7 @@
 
   &:focus {
     border-color: var(--chat-color-accent);
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+    box-shadow: 0 0 0 2px var(--primary-light);
   }
 
   &::placeholder {
@@ -82,11 +82,12 @@
 
   &:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+    box-shadow: 0 0 0 2px var(--ring-color);
   }
 }
 
 .primary-button {
+  position: relative;
   padding: var(--chat-space-xs) var(--chat-space-md);
   font: var(--chat-text-body);
   color: var(--chat-bg-primary);
@@ -94,15 +95,17 @@
   border: none;
   border-radius: var(--chat-radius-md);
   cursor: pointer;
-  transition: all var(--chat-transition-fast);
+  transition: all var(--transition-base);
 
   &:hover {
-    background: #7c3aed;
+    background: var(--primary-hover);
+    box-shadow: 0 0 0 4px
+      color-mix(in oklab, var(--primary-hover) 20%, var(--chat-bg-primary) 80%) !important;
   }
 
   &:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 0 2px var(--primary-light);
   }
 }
 

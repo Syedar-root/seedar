@@ -111,7 +111,7 @@
     background-color: color-mix(
       in oklab,
       var(--chat-color-primary) 90%,
-      #fff 20%
+      #fff 10%
     ) !important;
   }
   &:active {
@@ -121,4 +121,8 @@
       #000 10%
     ) !important;
   }
+}
+
+.loading-button {
+  color: var(--chat-color-primary) !important;
 }
