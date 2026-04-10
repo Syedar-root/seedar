@@ -19,7 +19,7 @@ const AppLayout = (_props: AppLayoutProps) => {
       <GlobalNavigation />
       <div className={styles.content}>
         <Group orientation="horizontal">
-          <Panel minSize={50} defaultSize={70} style={{ flex: 1 }}>
+          <Panel minSize={"50%"} defaultSize={70} style={{ flex: 1 }}>
             <main className={styles.main}>
               <Outlet />
             </main>

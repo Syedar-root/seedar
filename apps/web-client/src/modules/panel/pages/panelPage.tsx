@@ -18,20 +18,27 @@ import {
 } from "../hooks";
 
 type SidePaneKey = "aside" | "editor";
-
-type PreviewPanel = NonNullable<React.ComponentProps<typeof SeedarPanel>["panel"]>;
+type LayoutMode = "expanded" | "collapsed" | "fullCollapsed";
+type PreviewPanel = NonNullable<
+  React.ComponentProps<typeof SeedarPanel>["panel"]
+>;
 
 const ASIDE_MIN_WIDTH = 160;
-const MAIN_MIN_WIDTH = 520;
-const COLLAPSE_EXIT_BUFFER = 16;
+const COLLAPSED_THRESHOLD = 1200;
+const FULL_COLLAPSED_THRESHOLD = 800;
+const LAYOUT_EXIT_BUFFER = 16;
 
 export const PanelPage = () => {
   const { panelId } = useParams();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("expanded");
   const [activePane, setActivePane] = useState<SidePaneKey>("aside");
+  const [manualLayoutMode, setManualLayoutMode] = useState<Exclude<
+    LayoutMode,
+    "fullCollapsed"
+  > | null>(null);
 
   const { datasets, handleSelectDataset } = useDatasetSelector(navigate);
 
@@ -110,27 +117,78 @@ export const PanelPage = () => {
     };
   }, []);
 
-  const collapseThreshold = useMemo(() => ASIDE_MIN_WIDTH * 2 + MAIN_MIN_WIDTH, []);
+  const autoLayoutMode = useMemo<LayoutMode>(() => {
+    if (containerWidth <= FULL_COLLAPSED_THRESHOLD) {
+      return "fullCollapsed";
+    }
+
+    if (containerWidth <= COLLAPSED_THRESHOLD) {
+      return "collapsed";
+    }
+
+    return "expanded";
+  }, [containerWidth]);
 
   useEffect(() => {
     if (!containerWidth) {
       return;
     }
 
-    if (!isCollapsed && containerWidth <= collapseThreshold) {
-      setIsCollapsed(true);
+    if (autoLayoutMode === "fullCollapsed") {
+      setLayoutMode("fullCollapsed");
       return;
     }
 
-    if (isCollapsed && containerWidth > collapseThreshold + COLLAPSE_EXIT_BUFFER) {
-      setIsCollapsed(false);
+    if (manualLayoutMode === "collapsed") {
+      setLayoutMode("collapsed");
+      return;
     }
-  }, [collapseThreshold, containerWidth, isCollapsed]);
+
+    if (manualLayoutMode === "expanded") {
+      if (containerWidth > COLLAPSED_THRESHOLD + LAYOUT_EXIT_BUFFER) {
+        setLayoutMode("expanded");
+        return;
+      }
+
+      setLayoutMode("collapsed");
+      return;
+    }
+
+    if (autoLayoutMode === "expanded") {
+      if (containerWidth > COLLAPSED_THRESHOLD + LAYOUT_EXIT_BUFFER) {
+        setLayoutMode("expanded");
+        return;
+      }
+    }
+
+    setLayoutMode(autoLayoutMode);
+  }, [autoLayoutMode, containerWidth, manualLayoutMode]);
 
   const handlePaneChange = (value: SegmentedValue) => {
     if (value === "aside" || value === "editor") {
       setActivePane(value);
     }
+  };
+
+  const handleCollapse = (pane: SidePaneKey) => {
+    setActivePane(pane);
+    setManualLayoutMode("collapsed");
+    setLayoutMode("collapsed");
+  };
+
+  const handleExpand = () => {
+    setManualLayoutMode("expanded");
+    if (containerWidth > COLLAPSED_THRESHOLD + LAYOUT_EXIT_BUFFER) {
+      setLayoutMode("expanded");
+      return;
+    }
+
+    setLayoutMode("collapsed");
+  };
+
+  const handleOpenFromRail = () => {
+    setManualLayoutMode("collapsed");
+    setLayoutMode("collapsed");
   };
 
   const previewPanel: PreviewPanel | undefined = panelData
@@ -165,9 +223,45 @@ export const PanelPage = () => {
 
   return panelId ? (
     <div ref={containerRef} className={styles.container}>
-      {isCollapsed ? (
+      {layoutMode === "expanded" ? (
+        <>
+          <aside className={styles.sidebar}>
+            <div className={styles.sideHeader}>
+              <span className={styles.sideTitle}>字段</span>
+              <button
+                type="button"
+                className={styles.sideAction}
+                onClick={() => handleCollapse("aside")}
+              >
+                收起
+              </button>
+            </div>
+            <div className={styles.sideContent}>{asideContent}</div>
+          </aside>
+          <aside className={styles.editor}>
+            <div className={styles.sideHeader}>
+              <span className={styles.sideTitle}>编辑</span>
+              <button
+                type="button"
+                className={styles.sideAction}
+                onClick={() => handleCollapse("editor")}
+              >
+                收起
+              </button>
+            </div>
+            <div className={styles.sideContent}>{editorContent}</div>
+          </aside>
+        </>
+      ) : layoutMode === "collapsed" ? (
         <aside className={styles.collapsedPane}>
-          <div className={styles.collapsedSwitch}>
+          <div className={styles.collapsedSwitchWrap}>
+            <button
+              type="button"
+              className={styles.expandAction}
+              onClick={handleExpand}
+            >
+              展开
+            </button>
             <Segmented
               block
               value={activePane}
@@ -183,10 +277,19 @@ export const PanelPage = () => {
           </div>
         </aside>
       ) : (
-        <>
-          <aside className={styles.sidebar}>{asideContent}</aside>
-          <aside className={styles.editor}>{editorContent}</aside>
-        </>
+        <aside className={styles.fullCollapsedRail}>
+          <button
+            type="button"
+            className={styles.railButton}
+            onClick={handleOpenFromRail}
+            aria-label="展开侧栏"
+            title="展开侧栏"
+          >
+            <span className={styles.railButtonIcon} aria-hidden="true">
+              ⟩
+            </span>
+          </button>
+        </aside>
       )}
       <main className={styles.main}>
         <header className={styles.mainHeader}>

@@ -8,7 +8,9 @@
 
 .sidebar,
 .editor {
+  display: flex;
   flex: 0 1 auto;
+  flex-direction: column;
   width: 200px;
   min-width: 160px;
   height: 100%;
@@ -22,11 +24,52 @@
   border-left: 1px solid var(--border-base);
 }
 
+.sideHeader {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  height: 40px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-base);
+  background: var(--bg-base);
+}
+
+.sideTitle {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sideAction,
+.expandAction,
+.railButton {
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+  color: var(--text-base);
+  cursor: pointer;
+}
+
+.sideAction,
+.expandAction {
+  height: 28px;
+  padding: 0 8px;
+}
+
+.sideContent {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .collapsedPane {
   display: flex;
-  flex: 0 0 320px;
+  flex: 0 0 280px;
   flex-direction: column;
-  min-width: 280px;
+  min-width: 260px;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -34,9 +77,12 @@
   border-right: 1px solid var(--border-base);
 }
 
-.collapsedSwitch {
+.collapsedSwitchWrap {
+  display: flex;
   flex-shrink: 0;
-  padding: var(--spacing-sm);
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
   border-bottom: 1px solid var(--border-base);
   background: var(--bg-base);
 }
@@ -45,6 +91,74 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+}
+
+.fullCollapsedRail {
+  display: flex;
+  flex: 0 0 36px;
+  align-items: stretch;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  height: 100%;
+  padding: 4px 0;
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-hover) 100%);
+  border-right: 1px solid var(--border-base);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.04);
+}
+
+.railButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% - 4px);
+  height: 100%;
+  margin-left: 4px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px 0 0 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    background: var(--bg-base);
+    color: var(--primary);
+    border-color: var(--border-base);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateX(-2px);
+  }
+
+  &:active {
+    transform: translateX(-1px) scale(0.98);
+    background: var(--bg-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+    color: var(--primary);
+  }
+}
+
+.railButtonIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.railButton:hover .railButtonIcon {
+  transform: translateX(1px);
 }
 
 @mixin button-style($bg-color, $bg-hover-color) {
