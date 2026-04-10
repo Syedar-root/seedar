@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/d/Program/projects/seedar/.claude/worktrees/**)",
+      "Read(//mnt/d/Program/projects/seedar/.claude/worktrees/agent-ad583cd5/apps/**)"
+    ]
+  }
+}
