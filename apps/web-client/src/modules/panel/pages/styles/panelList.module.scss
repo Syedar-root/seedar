@@ -1,19 +1,54 @@
 .container {
-  padding: 24px;
+  padding: var(--spacing-xl);
+  background-color: var(--bg-base);
+  min-height: 100%;
 
   .header {
-    margin-bottom: 24px;
+    margin-bottom: var(--spacing-xl);
 
     h1 {
-      font-size: 24px;
+      font-size: var(--font-3xl);
       font-weight: 600;
-      margin-bottom: 16px;
+      color: var(--text-primary);
+      margin-bottom: var(--spacing-lg);
+      letter-spacing: var(--letter-spacing-tight);
+      margin-top: 0;
     }
   }
 
   .filters {
     display: flex;
-    gap: 12px;
+    gap: var(--spacing-md);
+
+    /* 重写 Antd 组件样式 */
+    :global {
+      .ant-input-affix-wrapper,
+      .ant-select-selector {
+        background-color: var(--bg-base) !important;
+        border: 1px solid var(--border-base) !important;
+        border-radius: var(--radius-base) !important;
+        box-shadow: none !important;
+        transition: var(--transition-fast);
+
+        &:hover {
+          border-color: var(--border-hover) !important;
+        }
+      }
+
+      .ant-input-affix-wrapper-focused,
+      .ant-select-focused .ant-select-selector {
+        border-color: var(--border-focus) !important;
+        box-shadow: var(--focus-shadow) !important;
+      }
+
+      .ant-input {
+        background-color: transparent !important;
+        color: var(--text-primary);
+        &::placeholder {
+          color: var(--text-tertiary);
+        }
+      }
+    }
 
     .searchInput {
       width: 240px;
@@ -27,31 +62,113 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
+    gap: var(--spacing-lg);
   }
 
+  /* 原生卡片样式 */
   .card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--bg-base);
+    border: 1px solid var(--border-base);
+    border-radius: var(--radius-card);
+    padding: var(--spacing-lg);
+    cursor: pointer;
+    transition: var(--transition-base);
+
+    &:hover {
+      border-color: var(--border-hover);
+      background-color: var(--bg-hover);
+    }
+
     .cardHeader {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
+      align-items: flex-start;
+      margin-bottom: var(--spacing-sm);
+      gap: var(--spacing-sm);
     }
 
     .cardTitle {
+      font-size: var(--font-2xl);
+      font-weight: 400;
+      color: var(--text-primary);
+      line-height: var(--line-height-snug);
+      margin: 0;
+      word-break: break-all;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2; /* 限制最多显示 2 行 */
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      font-size: var(--font-xs);
       font-weight: 500;
-      font-size: 16px;
+      white-space: nowrap;
+
+      &.published {
+        background-color: var(--success-light);
+        color: var(--success);
+      }
+
+      &.draft {
+        background-color: var(--bg-selected);
+        color: var(--text-secondary);
+      }
     }
 
     .cardMeta {
-      font-size: 12px;
-      color: #999;
-      margin-bottom: 12px;
+      flex-grow: 1; /* 撑开中间区域，让底部操作栏对齐 */
+      font-size: var(--font-sm);
+      color: var(--text-tertiary);
+      margin-bottom: var(--spacing-lg);
     }
 
     .cardActions {
       display: flex;
-      gap: 8px;
+      gap: var(--spacing-sm);
+
+      .btnGhost {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background-color: transparent;
+        color: var(--text-primary);
+        border: 1px solid var(--border-secondary);
+        border-radius: var(--radius-base);
+        padding: 4px 12px;
+        font-size: var(--font-sm);
+        cursor: pointer;
+        transition: var(--transition-fast);
+        height: 28px;
+
+        &:hover {
+          border-color: var(--border-hover);
+          background-color: var(--bg-hover);
+        }
+
+        &:active {
+          opacity: var(--opacity-active);
+        }
+      }
+
+      .btnDanger {
+        color: var(--danger);
+        border-color: transparent;
+
+        &:hover {
+          background-color: var(--danger-light);
+          border-color: var(--danger-light);
+          color: var(--danger-hover);
+        }
+      }
     }
   }
 }

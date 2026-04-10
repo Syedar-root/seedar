@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input, Select, Card, Badge, Button, Empty, Popconfirm, message } from 'antd';
+import { Input, Select, Empty, Popconfirm } from 'antd';
 import { Trash2 } from 'lucide-react';
 import { usePanels, useUpdatePanel, useDeletePanel } from '#pkg/seedar/ui-react';
 import { PanelStatus } from '#pkg/seedar/types';
@@ -41,7 +41,7 @@ export const PanelListPage = () => {
         <h1>面板列表</h1>
         <div className={styles.filters}>
           <Input.Search
-            placeholder="搜索标题"
+            placeholder="搜索面板"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className={styles.searchInput}
@@ -51,7 +51,7 @@ export const PanelListPage = () => {
             onChange={setStatusFilter}
             className={styles.statusSelect}
             options={[
-              { label: '全部', value: 'all' },
+              { label: '全部状态', value: 'all' },
               { label: '草稿', value: PanelStatus.DRAFT },
               { label: '已发布', value: PanelStatus.PUBLISHED },
             ]}
@@ -66,34 +66,44 @@ export const PanelListPage = () => {
       ) : (
         <div className={styles.grid}>
           {filteredPanels.map((panel) => (
-            <Card
+            <article
               key={panel.id}
               className={styles.card}
-              hoverable
               onClick={() => navigate(`/panel/${panel.id}`)}
             >
               <div className={styles.cardHeader}>
-                <span className={styles.cardTitle}>{panel.title || '未命名面板'}</span>
-                <Badge
-                  status={panel.status === PanelStatus.PUBLISHED ? 'success' : 'default'}
-                  text={panel.status === PanelStatus.PUBLISHED ? '已发布' : '草稿'}
-                />
+                <h2 className={styles.cardTitle}>{panel.title || '未命名面板'}</h2>
+                <span
+                  className={`${styles.badge} ${
+                    panel.status === PanelStatus.PUBLISHED ? styles.published : styles.draft
+                  }`}
+                >
+                  {panel.status === PanelStatus.PUBLISHED ? '已发布' : '草稿'}
+                </span>
               </div>
               <div className={styles.cardMeta}>
-                创建时间：{new Date(panel.createdAt).toLocaleDateString()}
+                创建于 {new Date(panel.createdAt).toLocaleDateString()}
               </div>
               <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
-                <Button size="small" onClick={() => handleStatusToggle(panel)}>
-                  {panel.status === PanelStatus.DRAFT ? '发布' : '撤销'}
-                </Button>
-                <Popconfirm
-                  title="确认删除"
-                  onConfirm={() => handleDelete(panel.id)}
+                <button
+                  className={styles.btnGhost}
+                  onClick={() => handleStatusToggle(panel)}
+                  type="button"
                 >
-                  <Button size="small" danger icon={<Trash2 size={14} />} />
+                  {panel.status === PanelStatus.DRAFT ? '发布' : '撤销'}
+                </button>
+                <Popconfirm
+                  title="确认删除该面板？"
+                  onConfirm={() => handleDelete(panel.id)}
+                  okText="确认"
+                  cancelText="取消"
+                >
+                  <button className={`${styles.btnGhost} ${styles.btnDanger}`} type="button">
+                    <Trash2 size={14} />
+                  </button>
                 </Popconfirm>
               </div>
-            </Card>
+            </article>
           ))}
         </div>
       )}
