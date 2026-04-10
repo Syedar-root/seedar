@@ -7,6 +7,7 @@ import {
   IsUUID,
 } from 'class-validator';
 import { PanelType } from '../panel-types.enum';
+import { PanelStatus } from '../panel-status.enum';
 
 export class CreatePanelRequest {
   @IsOptional()
@@ -27,6 +28,10 @@ export class CreatePanelRequest {
   @IsOptional()
   @IsObject()
   config?: Record<string, any>;
+
+  @IsOptional()
+  @IsEnum(PanelStatus)
+  status?: PanelStatus;
 
   @IsOptional()
   @IsNumber()

@@ -5,6 +5,11 @@ export enum PanelType {
   CARD = "card",
 }
 
+export enum PanelStatus {
+  DRAFT = "draft",
+  PUBLISHED = "published",
+}
+
 export interface LayoutItem {
   i: string;
   x: number;
@@ -33,6 +38,7 @@ export interface PanelResponse {
   id: string;
   title?: string;
   type: PanelType;
+  status: PanelStatus;
   queryId?: string;
   config?: Record<string, any>;
   titleConfig?: Record<string, any>;

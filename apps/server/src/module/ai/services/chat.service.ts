@@ -163,7 +163,7 @@ export class ChatService {
         .filter((msg) => msg instanceof HumanMessage)
         .at(-1);
 
-      let maybeUserDemands: string[] = [];
+      const maybeUserDemands: string[] = [];
       const content = (lastHumanMsg?.content as string) || '';
       const lowerContent = content.toLowerCase();
 
@@ -238,8 +238,8 @@ export class ChatService {
       ];
       state.allowTools = state.allowTools || [];
       essentialTools.forEach((tool) => {
-        if (!state.allowTools!.includes(tool)) {
-          state.allowTools!.push(tool);
+        if (!state.allowTools.includes(tool)) {
+          state.allowTools.push(tool);
         }
       });
 
@@ -386,9 +386,7 @@ export class ChatService {
           const messageType = token.type === 'tool' ? 'tool_result' : type;
           if (
             messageType === 'tool_result' &&
-            blacklistToolCallIds.includes(
-              (token as ToolMessage).tool_call_id as string,
-            )
+            blacklistToolCallIds.includes((token as ToolMessage).tool_call_id)
           ) {
             continue;
           }
