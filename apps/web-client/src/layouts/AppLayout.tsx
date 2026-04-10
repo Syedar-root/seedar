@@ -25,13 +25,15 @@ const AppLayout = (_props: AppLayoutProps) => {
             </main>
           </Panel>
 
-          <Separator
-            className={styles.resizeHandle}
-            style={{
-              opacity: isSeeMindOn ? 1 : 0,
-              pointerEvents: isSeeMindOn ? "auto" : "none",
-            }}
-          />
+          {isSeeMindOn && (
+            <Separator
+              className={styles.resizeHandle}
+              style={{
+                opacity: isSeeMindOn ? 1 : 0,
+                pointerEvents: isSeeMindOn ? "auto" : "none",
+              }}
+            />
+          )}
 
           <CSSTransition
             in={isSeeMindOn}
