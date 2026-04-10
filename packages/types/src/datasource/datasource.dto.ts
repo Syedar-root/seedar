@@ -12,9 +12,9 @@ import { FieldType } from "../dataset/dataset.types";
  * 创建数据源请求
  */
 export class CreateDatasourceRequest {
-  name: string;
-  type: DataSourceType;
-  config: MySqlConfig | CsvConfig | ExcelConfig | Record<string, any>;
+  name!: string;
+  type!: DataSourceType;
+  config!: MySqlConfig | CsvConfig | ExcelConfig | Record<string, any>;
 }
 
 /**
@@ -42,14 +42,14 @@ export interface ForeignKeyResponse {
  * 数据源响应
  */
 export class DatasourceResponse {
-  id: number;
-  name: string;
-  type: DataSourceType;
-  config: Record<string, any>;
-  status: DataSourceStatus;
+  id!: number;
+  name!: string;
+  type!: DataSourceType;
+  config!: Record<string, any>;
+  status!: DataSourceStatus;
   lastValidateAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt!: Date;
+  updatedAt!: Date;
   tables?: Array<{
     tableId?: number;
     tableName: string;

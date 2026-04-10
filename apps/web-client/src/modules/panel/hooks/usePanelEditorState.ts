@@ -1,24 +1,30 @@
 import {
   useDataset,
   useExecuteTempQuery,
-  useQuery,
   usePanel,
+  useQuery,
 } from "#pkg/seedar/ui-react";
 import {
-  ExecuteQueryResponse,
-  PanelResponse,
-  DatasetResponse,
+  FieldType,
+  PanelStatus,
+  type DatasetResponse,
+  type ExecuteQueryResponse,
+  type PanelResponse,
+  type QueryResponse,
 } from "#pkg/seedar/types";
-import { DragItem } from "../components/dndHelper/dragZone/dragZone";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { TitleConfig } from "../components/editableTitle";
+import type { DragItem } from "../components/dndHelper/dragZone/dragZone";
 import {
-  DisplayPanelType,
-  PanelEditorConfig,
   DEFAULT_COLORS,
   DEFAULT_LEGENDS_CONFIG,
+  type DisplayPanelType,
+  type PanelEditorConfig,
 } from "../components/panelEditor";
-import { FilterItem } from "../components/queryZone/types";
-import { useCallback, useEffect, useState } from "react";
-import type { TitleConfig } from "../components/editableTitle";
+import type { FilterItem } from "../components/queryZone/types";
+
+type LocalPanelStatus = "unsaved" | PanelStatus.DRAFT | PanelStatus.PUBLISHED;
+type QueryDsl = Record<string, unknown>;
 
 interface UsePanelEditorStateReturn {
   dropFields: DragItem[];
@@ -28,8 +34,21 @@ interface UsePanelEditorStateReturn {
   editorConfig: PanelEditorConfig;
   tempData: ExecuteQueryResponse | undefined;
   panelData: PanelResponse | undefined;
-  queryData: any;
+  queryData: QueryResponse | undefined;
   datasetData: DatasetResponse | undefined;
+  selectedDataset: DatasetResponse | undefined;
+  panelStatus: LocalPanelStatus;
+  hasDataset: boolean;
+  hasQueryContent: boolean;
+  canRun: boolean;
+  isPreviewRunning: boolean;
+  selectDataset: (dataset: DatasetResponse) => void;
+  replaceDataset: (dataset: DatasetResponse) => void;
+  setPanelStatus: (status: LocalPanelStatus) => void;
+  setTempData: (data: ExecuteQueryResponse | undefined) => void;
+  buildDsl: (baseDsl?: QueryDsl) => QueryDsl | undefined;
+  resetForDatasetChange: () => void;
+  runPreview: (dsl?: QueryDsl) => Promise<ExecuteQueryResponse | undefined>;
   handleDropField: (item: DragItem) => void;
   handleRemoveField: (item: DragItem) => void;
   handleDropMetric: (item: DragItem) => void;
@@ -50,6 +69,29 @@ interface UsePanelEditorStateReturn {
   handleTitleChange: (title: string, titleConfig?: TitleConfig) => void;
 }
 
+const mapPanelTypeToDisplayType = (
+  panelData?: PanelResponse,
+): DisplayPanelType => {
+  if (!panelData) {
+    return "table";
+  }
+
+  if (panelData.type === "table") {
+    return "table";
+  }
+
+  if (panelData.type === "card") {
+    return "card";
+  }
+
+  const panelConfig = panelData.config as PanelEditorConfig | undefined;
+  if (panelConfig?.type) {
+    return panelConfig.type as DisplayPanelType;
+  }
+
+  return "line";
+};
+
 export const usePanelEditorState = (
   panelId?: string,
 ): UsePanelEditorStateReturn => {
@@ -62,116 +104,238 @@ export const usePanelEditorState = (
     legends: DEFAULT_LEGENDS_CONFIG,
   });
   const [tempData, setTempData] = useState<ExecuteQueryResponse>();
-  const [title, setTitle] = useState<string>("未命名面板");
+  const [title, setTitle] = useState("Untitled Panel");
   const [titleConfig, setTitleConfig] = useState<TitleConfig | undefined>();
+  const [selectedDataset, setSelectedDataset] = useState<
+    DatasetResponse | undefined
+  >();
+  const [panelStatus, setPanelStatus] = useState<LocalPanelStatus>(
+    panelId ? PanelStatus.DRAFT : "unsaved",
+  );
 
-  const { data: panelData } = usePanel(panelId!);
-  const { data: queryData } = useQuery((panelData as PanelResponse)?.queryId!);
-  const { data: datasetData } = useDataset(queryData?.datasetId!);
-  const { mutate: executeTempQuery } = useExecuteTempQuery();
+  const hydratedQueryRef = useRef<string | undefined>();
 
-  useEffect(() => {
-    if (!queryData || !datasetData) return;
-    setDropFields(
-      (queryData?.dsl?.dimensions as number[]).map((id) => {
-        return datasetData?.fields?.find((f) => f.id === id) || { id };
-      }),
-    );
-    setDropMetrics(
-      (queryData?.dsl?.metrics as { id: number }[]).map((metric) => {
-        return (
-          datasetData?.metrics?.find((m) => m.id === metric.id) || {
-            id: metric.id,
-          }
-        );
-      }),
-    );
-    setDropFilters(
-      (queryData?.dsl?.filters || []).map(
-        (filter: { fieldId: number; op: string; value?: any }) => {
-          const field = datasetData?.fields?.find(
-            (f) => f.id === filter.fieldId,
-          );
-          return {
-            id: `filter_${filter.fieldId}_${Date.now()}`,
-            fieldId: filter.fieldId,
-            name: field?.businessName || field?.name || `字段${filter.fieldId}`,
-            fieldType: field?.type,
-            op: filter.op,
-            value: filter.value,
-          };
-        },
-      ),
-    );
-  }, [queryData, datasetData]);
+  const { data: panelData } = usePanel(panelId ?? "", !!panelId);
+  const queryId = panelData?.queryId;
+  const { data: queryData } = useQuery(queryId ?? "");
+  const { data: remoteDatasetData } = useDataset(queryData?.datasetId ?? 0);
+  const {
+    mutate: executeTempQuery,
+    mutateAsync: executeTempQueryAsync,
+    isPending: isPreviewRunning,
+  } = useExecuteTempQuery();
 
   useEffect(() => {
-    if (!panelData) return;
-    const type = panelData.type as string;
-    const config = (panelData.config as PanelEditorConfig) || {};
-
-    if (type === "table" || type === "card") {
-      setDisplayType(type);
-    } else if (type === "chart" && config.type) {
-      setDisplayType(config.type as DisplayPanelType);
+    if (!panelId) {
+      setPanelStatus("unsaved");
+      hydratedQueryRef.current = undefined;
+      return;
     }
+
+    if (panelData?.status) {
+      setPanelStatus(panelData.status);
+    }
+  }, [panelData?.status, panelId]);
+
+  useEffect(() => {
+    if (!panelData) {
+      return;
+    }
+
+    if (panelData.title) {
+      setTitle(panelData.title);
+    }
+
+    if (panelData.titleConfig) {
+      setTitleConfig(panelData.titleConfig as TitleConfig);
+    }
+
+    setDisplayType(mapPanelTypeToDisplayType(panelData));
+    const panelConfig = (panelData.config as PanelEditorConfig | undefined) ?? {};
     setEditorConfig({
-      ...config,
-      color: config.color || DEFAULT_COLORS,
-      legends: config.legends || DEFAULT_LEGENDS_CONFIG,
+      ...panelConfig,
+      color: panelConfig.color || DEFAULT_COLORS,
+      legends: panelConfig.legends || DEFAULT_LEGENDS_CONFIG,
     });
   }, [panelData]);
 
   useEffect(() => {
-    if (panelData?.title) {
-      setTitle(panelData.title);
+    if (!queryData || !remoteDatasetData) {
+      return;
     }
-    if (panelData?.titleConfig) {
-      setTitleConfig(panelData.titleConfig as TitleConfig);
+
+    if (hydratedQueryRef.current === queryData.id) {
+      return;
     }
-  }, [panelData]);
+
+    setSelectedDataset(remoteDatasetData);
+    const nextFields = ((queryData.dsl?.dimensions as number[] | undefined) ?? [])
+      .map((id) => remoteDatasetData.fields.find((field) => field.id === id))
+      .filter((field): field is NonNullable<typeof field> => Boolean(field))
+      .map((field) => ({ ...field } as DragItem));
+    setDropFields(nextFields);
+
+    const nextMetrics = (
+      (queryData.dsl?.metrics as Array<{ id: number }> | undefined) ?? []
+    )
+      .map((metric) =>
+        remoteDatasetData.metrics.find((item) => item.id === metric.id),
+      )
+      .filter((metric): metric is NonNullable<typeof metric> => Boolean(metric))
+      .map((metric) => ({ ...metric } as DragItem));
+    setDropMetrics(nextMetrics);
+
+    const nextFilters =
+      ((queryData.dsl?.filters as
+        | Array<{ fieldId: number; op: string; value?: unknown }>
+        | undefined) ?? []
+      ).map((filter, index) => {
+        const field = remoteDatasetData.fields.find(
+          (item) => item.id === filter.fieldId,
+        );
+        return {
+          id: `filter_${filter.fieldId}_${index}`,
+          fieldId: filter.fieldId,
+          name: field?.businessName || field?.name || `field_${filter.fieldId}`,
+          fieldType: field?.type ?? FieldType.STRING,
+          op: filter.op,
+          value: filter.value,
+        };
+      });
+    setDropFilters(nextFilters);
+
+    hydratedQueryRef.current = queryData.id;
+  }, [queryData, remoteDatasetData]);
+
+  const datasetData = selectedDataset ?? remoteDatasetData;
+
+  const resetForDatasetChange = useCallback(() => {
+    setDropFields([]);
+    setDropMetrics([]);
+    setDropFilters([]);
+    setTempData(undefined);
+  }, []);
+
+  const selectDataset = useCallback((dataset: DatasetResponse) => {
+    setSelectedDataset(dataset);
+  }, []);
+
+  const replaceDataset = useCallback(
+    (dataset: DatasetResponse) => {
+      resetForDatasetChange();
+      setSelectedDataset(dataset);
+    },
+    [resetForDatasetChange],
+  );
+
+  const buildDsl = useCallback(
+    (baseDsl?: QueryDsl): QueryDsl | undefined => {
+      if (!datasetData?.id || !datasetData.mainTableId) {
+        return undefined;
+      }
+
+      return {
+        ...(baseDsl ?? {}),
+        datasetId: datasetData.id,
+        tableId: datasetData.mainTableId,
+        joins: datasetData.joins || [],
+        dimensions: dropFields.map((field) => field.id),
+        metrics: dropMetrics,
+        filters: dropFilters.map((filter) => ({
+          fieldId: filter.fieldId,
+          op: filter.op,
+          value: filter.value,
+        })),
+      };
+    },
+    [datasetData, dropFields, dropMetrics, dropFilters],
+  );
+
+  const hasDataset = Boolean(datasetData);
+  const hasQueryContent = Boolean(
+    dropFields.length || dropMetrics.length || dropFilters.length || tempData,
+  );
+  const canRun = hasDataset && (dropFields.length > 0 || dropMetrics.length > 0);
+
+  const runPreview = useCallback(
+    async (dsl?: QueryDsl): Promise<ExecuteQueryResponse | undefined> => {
+      const targetDsl =
+        dsl ?? buildDsl((queryData?.dsl as QueryDsl | undefined) ?? undefined);
+      if (!targetDsl) {
+        return undefined;
+      }
+
+      const data = await executeTempQueryAsync(targetDsl);
+      setTempData(data);
+      return data;
+    },
+    [buildDsl, executeTempQueryAsync, queryData?.dsl],
+  );
 
   const handleDropField = useCallback(
     (item: DragItem) => {
-      if (!datasetData) return;
-      setDropFields((prev) => {
-        if (prev.some((i) => i.id === item.id)) return prev;
-        const field = datasetData.fields?.find((f) => f.id === item.id);
-        return field ? [...prev, field] : prev;
+      if (!datasetData) {
+        return;
+      }
+
+      setDropFields((previous) => {
+        if (previous.some((entry) => entry.id === item.id)) {
+          return previous;
+        }
+        const field = datasetData.fields.find((entry) => entry.id === item.id);
+        return field ? [...previous, field] : previous;
       });
     },
     [datasetData],
   );
 
   const handleRemoveField = useCallback((item: DragItem) => {
-    setDropFields((prev) => prev.filter((i) => i.id !== item.id));
+    setDropFields((previous) =>
+      previous.filter((entry) => entry.id !== item.id),
+    );
   }, []);
 
   const handleDropMetric = useCallback(
     (item: DragItem) => {
-      if (!datasetData) return;
-      setDropMetrics((prev) => {
-        if (prev.some((i) => i.id === item.id)) return prev;
-        const metric = datasetData.metrics?.find((m) => m.id === item.id);
-        return metric ? [...prev, metric] : prev;
+      if (!datasetData) {
+        return;
+      }
+
+      setDropMetrics((previous) => {
+        if (previous.some((entry) => entry.id === item.id)) {
+          return previous;
+        }
+        const metric = datasetData.metrics.find((entry) => entry.id === item.id);
+        return metric ? [...previous, metric] : previous;
       });
     },
     [datasetData],
   );
 
   const handleRemoveMetric = useCallback((item: DragItem) => {
-    setDropMetrics((prev) => prev.filter((i) => i.id !== item.id));
+    setDropMetrics((previous) =>
+      previous.filter((entry) => entry.id !== item.id),
+    );
   }, []);
 
   const handleDropFilter = useCallback(
     (item: DragItem) => {
-      if (!datasetData) return;
-      const field = datasetData.fields?.find((f) => f.id === item.id);
-      if (!field) return;
-      setDropFilters((prev) => {
-        if (prev.some((f) => f.fieldId === item.id)) return prev;
+      if (!datasetData) {
+        return;
+      }
+
+      const field = datasetData.fields.find((entry) => entry.id === item.id);
+      if (!field) {
+        return;
+      }
+
+      setDropFilters((previous) => {
+        if (previous.some((filter) => filter.fieldId === item.id)) {
+          return previous;
+        }
+
         return [
-          ...prev,
+          ...previous,
           {
             id: `filter_${item.id}_${Date.now()}`,
             fieldId: field.id,
@@ -186,13 +350,15 @@ export const usePanelEditorState = (
   );
 
   const handleRemoveFilter = useCallback((id: string | number) => {
-    setDropFilters((prev) => prev.filter((f) => f.id !== id));
+    setDropFilters((previous) => previous.filter((filter) => filter.id !== id));
   }, []);
 
   const handleUpdateFilter = useCallback(
     (id: string | number, updates: Partial<FilterItem>) => {
-      setDropFilters((prev) =>
-        prev.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+      setDropFilters((previous) =>
+        previous.map((filter) =>
+          filter.id === id ? { ...filter, ...updates } : filter,
+        ),
       );
     },
     [],
@@ -206,46 +372,32 @@ export const usePanelEditorState = (
     [],
   );
 
-  const handleTitleChange = useCallback((newTitle: string, newTitleConfig?: TitleConfig) => {
-    setTitle(newTitle);
-    if (newTitleConfig) {
-      setTitleConfig(newTitleConfig);
-    }
-  }, []);
+  const handleTitleChange = useCallback(
+    (nextTitle: string, nextTitleConfig?: TitleConfig) => {
+      setTitle(nextTitle);
+      if (nextTitleConfig) {
+        setTitleConfig(nextTitleConfig);
+      }
+    },
+    [],
+  );
 
   const handleRun = useCallback(() => {
-    if (!queryData) return;
-    if (!dropFields.length && !dropMetrics.length) {
+    if (!canRun) {
       return;
     }
-    executeTempQuery(
-      {
-        datasetId: datasetData?.id!,
-        tableId: datasetData?.mainTableId!,
-        joins: datasetData?.joins || [],
-        ...queryData?.dsl,
-        dimensions: dropFields.map((f) => f.id),
-        metrics: dropMetrics,
-        filters: dropFilters.map((f) => ({
-          fieldId: f.fieldId,
-          op: f.op,
-          value: f.value,
-        })),
+
+    const dsl = buildDsl((queryData?.dsl as QueryDsl | undefined) ?? undefined);
+    if (!dsl) {
+      return;
+    }
+
+    executeTempQuery(dsl, {
+      onSuccess: (data) => {
+        setTempData(data);
       },
-      {
-        onSuccess: (data) => {
-          setTempData(data);
-        },
-      },
-    );
-  }, [
-    dropFields,
-    dropMetrics,
-    dropFilters,
-    executeTempQuery,
-    queryData,
-    datasetData,
-  ]);
+    });
+  }, [buildDsl, canRun, executeTempQuery, queryData?.dsl]);
 
   return {
     dropFields,
@@ -257,6 +409,19 @@ export const usePanelEditorState = (
     panelData,
     queryData,
     datasetData,
+    selectedDataset,
+    panelStatus,
+    hasDataset,
+    hasQueryContent,
+    canRun,
+    isPreviewRunning,
+    selectDataset,
+    replaceDataset,
+    setPanelStatus,
+    setTempData,
+    buildDsl,
+    resetForDatasetChange,
+    runPreview,
     handleDropField,
     handleRemoveField,
     handleDropMetric,

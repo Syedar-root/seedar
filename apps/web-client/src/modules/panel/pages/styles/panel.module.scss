@@ -248,3 +248,47 @@
     padding-inline: var(--spacing-xl);
   }
 }
+
+.secondaryAction {
+  @include button-style(var(--bg-base), var(--bg-hover));
+}
+
+.main {
+  .titleMeta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.previewEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 280px;
+  border: 1px dashed var(--border-base);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-hover) 100%);
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 24px;
+}
+
+.operations button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

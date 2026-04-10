@@ -50,6 +50,10 @@ export const router = createBrowserRouter([
         element: <PanelListPage />,
       },
       {
+        path: "panel/create",
+        element: <PanelPage />,
+      },
+      {
         path: "panel/:panelId",
         element: <PanelPage />,
       },

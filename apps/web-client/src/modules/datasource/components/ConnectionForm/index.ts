@@ -1,2 +1,6 @@
 export { ConnectionForm } from "./ConnectionForm";
-export type { ConnectionFormData, ConnectionFormErrors } from "./ConnectionForm";
+export type {
+  ConnectionConfig,
+  ConnectionFormData,
+  ConnectionFormErrors,
+} from "./ConnectionForm";

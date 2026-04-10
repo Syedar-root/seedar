@@ -1,21 +1,24 @@
-import { SeedarPanel } from "#pkg/seedar/ui-react";
+﻿import { SeedarPanel } from "#pkg/seedar/ui-react";
+import { PanelStatus } from "#pkg/seedar/types";
+import { Dialog } from "@base-ui/react/dialog";
 import { Segmented } from "antd";
 import type { SegmentedValue } from "antd/es/segmented";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import styles from "./styles/panel.module.scss";
-import { Aside } from "../components/aside";
-import { QueryZone } from "../components/queryZone";
-import { PanelEditor } from "../components/panelEditor";
-import { EditableTitle } from "../components/editableTitle";
-import { DatasetSelector } from "../components/datasetSelector";
 import { toast } from "sonner";
+import { Aside } from "../components/aside";
+import { DatasetSelector } from "../components/datasetSelector";
+import datasetSelectorStyles from "../components/datasetSelector/datasetSelector.module.scss";
+import { EditableTitle } from "../components/editableTitle";
+import { PanelEditor } from "../components/panelEditor";
+import { QueryZone } from "../components/queryZone";
 import {
-  usePanelEditorState,
-  usePanelActions,
   useDatasetSelector,
+  usePanelActions,
+  usePanelEditorState,
   usePreviewSpec,
 } from "../hooks";
+import styles from "./styles/panel.module.scss";
 
 type SidePaneKey = "aside" | "editor";
 type LayoutMode = "expanded" | "collapsed" | "fullCollapsed";
@@ -27,19 +30,43 @@ type PreviewPanel = NonNullable<
 const COLLAPSED_THRESHOLD = 1200;
 const FULL_COLLAPSED_THRESHOLD = 800;
 const LAYOUT_EXIT_BUFFER = 16;
+const COPY = {
+  statusUnsaved: "未保存",
+  statusDraft: "草稿",
+  statusPublished: "已发布",
+  saveAndUpdate: "保存并更新",
+  saveAndPublish: "保存并发布",
+  confirmDatasetChange: "切换数据集会清空当前查询配置和预览结果，是否继续？",
+  metricCreated: "指标创建成功",
+  selectDatasetFirst: "请先选择数据集",
+  addDimensionOrMetric: "请添加维度或指标",
+  sideFields: "字段",
+  sideEditor: "编辑",
+  collapse: "收起",
+  expand: "展开",
+  railOpen: "展开侧栏",
+  smartMode: "智能模式",
+  revertToDraft: "撤销为草稿",
+  run: "运行",
+  previewEmpty: "先选择数据集，再构建查询并运行预览",
+} as const;
+const PANEL_STATUS_LABELS = {
+  unsaved: COPY.statusUnsaved,
+  draft: COPY.statusDraft,
+  published: COPY.statusPublished,
+} as const;
 
 export const PanelPage = () => {
-  const { panelId } = useParams();
+  const { panelId: rawPanelId } = useParams();
+  const panelId = rawPanelId === "create" ? undefined : rawPanelId;
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [activePane, setActivePane] = useState<SidePaneKey>("aside");
-  const [desktopPreference, setDesktopPreference] = useState<
-    Exclude<LayoutMode, "fullCollapsed">
-  >("expanded");
+  const [desktopPreference, setDesktopPreference] =
+    useState<Exclude<LayoutMode, "fullCollapsed">>("expanded");
   const [isNarrowPaneOpen, setIsNarrowPaneOpen] = useState(false);
-
-  const { datasets, handleSelectDataset } = useDatasetSelector(navigate);
+  const [isDatasetDialogOpen, setIsDatasetDialogOpen] = useState(false);
 
   const {
     dropFields,
@@ -59,41 +86,82 @@ export const PanelPage = () => {
     handleRemoveFilter,
     handleUpdateFilter,
     handleEditorChange,
-    handleRun,
     title,
     titleConfig,
     handleTitleChange,
+    panelStatus,
+    selectedDataset,
+    selectDataset,
+    replaceDataset,
+    hasDataset,
+    hasQueryContent,
+    canRun,
+    buildDsl,
+    runPreview,
+    setPanelStatus,
   } = usePanelEditorState(panelId);
 
-  const { handleSave, handleSaveAs } = usePanelActions({
+  const activeDataset = selectedDataset ?? datasetData;
+
+  const {
+    datasets,
+    isLoading: isDatasetsLoading,
+    selectedDataset: pendingSelectedDataset,
+    selectedDatasetId,
+    handleSelectDataset: handlePendingDatasetSelect,
+    setSelectedDataset: setPendingSelectedDataset,
+  } = useDatasetSelector({
+    initialSelectedDatasetId: activeDataset?.id,
+  });
+
+  const {
+    handlePrimarySave,
+    handleRun,
+    handleRevertToDraft,
+    isSaving,
+    isRunning,
+    isReverting,
+  } = usePanelActions({
     panelId,
     panelData,
     queryData,
-    datasetData,
+    datasetData: activeDataset,
+    selectedDataset: activeDataset,
+    panelStatus,
     dropFields,
     dropMetrics,
     dropFilters,
     displayType,
     editorConfig,
-    handleRun,
+    buildDsl,
+    runPreview,
     navigate,
     title,
     titleConfig,
+    onStatusChange: (status) =>
+      setPanelStatus(
+        status === "published"
+          ? PanelStatus.PUBLISHED
+          : status === "draft"
+            ? PanelStatus.DRAFT
+            : "unsaved",
+      ),
   });
 
   const previewSpec = usePreviewSpec(displayType, editorConfig);
+  const isPublished = panelStatus === PanelStatus.PUBLISHED;
+  const panelStatusLabel = PANEL_STATUS_LABELS[panelStatus];
+  const primaryActionLabel = isPublished
+    ? COPY.saveAndUpdate
+    : COPY.saveAndPublish;
 
-  const onRun = () => {
-    if (!dropFields.length && !dropMetrics.length) {
-      toast.error("请添加维度或指标");
+  useEffect(() => {
+    if (!isDatasetDialogOpen) {
       return;
     }
-    handleRun();
-  };
 
-  const handleMetricCreated = () => {
-    toast.success("指标创建成功");
-  };
+    setPendingSelectedDataset(activeDataset);
+  }, [activeDataset, isDatasetDialogOpen, setPendingSelectedDataset]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -184,22 +252,89 @@ export const PanelPage = () => {
     setIsNarrowPaneOpen(false);
   };
 
-  const previewPanel: PreviewPanel | undefined = panelData
+  const handleConfirmDatasetSelection = () => {
+    if (!pendingSelectedDataset) {
+      return;
+    }
+
+    if (activeDataset?.id === pendingSelectedDataset.id) {
+      setIsDatasetDialogOpen(false);
+      return;
+    }
+
+    if (activeDataset && hasQueryContent) {
+      const confirmed = window.confirm(COPY.confirmDatasetChange);
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    if (activeDataset) {
+      replaceDataset(pendingSelectedDataset);
+    } else {
+      selectDataset(pendingSelectedDataset);
+    }
+
+    setIsDatasetDialogOpen(false);
+  };
+
+  const handleMetricCreated = () => {
+    toast.success(COPY.metricCreated);
+  };
+
+  const onPrimarySave = () => {
+    if (!hasDataset) {
+      toast.error(COPY.selectDatasetFirst);
+      return;
+    }
+
+    void handlePrimarySave();
+  };
+
+  const onRun = () => {
+    if (!hasDataset) {
+      toast.error(COPY.selectDatasetFirst);
+      return;
+    }
+
+    if (!canRun) {
+      toast.error(COPY.addDimensionOrMetric);
+      return;
+    }
+
+    void handleRun();
+  };
+
+  const onRevertToDraft = () => {
+    void handleRevertToDraft();
+  };
+
+  const previewPanel: PreviewPanel | undefined = activeDataset
     ? {
-        ...panelData,
+        id: panelData?.id ?? panelId ?? "__draft_panel__",
+        title,
+        titleConfig,
         type:
           displayType === "table" || displayType === "card"
             ? displayType
             : "chart",
-        config: previewSpec,
+        status: isPublished ? PanelStatus.PUBLISHED : PanelStatus.DRAFT,
+        queryId: panelData?.queryId ?? queryData?.id,
+        config:
+          displayType === "table" || displayType === "card" ? {} : previewSpec,
+        createdAt: panelData?.createdAt ?? new Date(),
+        updatedAt: panelData?.updatedAt ?? new Date(),
       }
     : undefined;
 
   const asideContent = (
     <Aside
-      fields={datasetData?.fields || []}
-      metrics={datasetData?.metrics || []}
-      datasetId={datasetData?.id}
+      fields={activeDataset?.fields || []}
+      metrics={activeDataset?.metrics || []}
+      datasetId={activeDataset?.id}
+      datasetName={activeDataset?.name}
+      hasDataset={hasDataset}
+      onOpenDatasetSelector={() => setIsDatasetDialogOpen(true)}
       onMetricCreated={handleMetricCreated}
     />
   );
@@ -214,32 +349,32 @@ export const PanelPage = () => {
     />
   );
 
-  return panelId ? (
+  return (
     <div ref={containerRef} className={styles.container}>
       {layoutMode === "expanded" ? (
         <>
           <aside className={styles.sidebar}>
             <div className={styles.sideHeader}>
-              <span className={styles.sideTitle}>字段</span>
+              <span className={styles.sideTitle}>{COPY.sideFields}</span>
               <button
                 type="button"
                 className={styles.sideAction}
                 onClick={() => handleCollapse("aside")}
               >
-                收起
+                {COPY.collapse}
               </button>
             </div>
             <div className={styles.sideContent}>{asideContent}</div>
           </aside>
           <aside className={styles.editor}>
             <div className={styles.sideHeader}>
-              <span className={styles.sideTitle}>编辑</span>
+              <span className={styles.sideTitle}>{COPY.sideEditor}</span>
               <button
                 type="button"
                 className={styles.sideAction}
                 onClick={() => handleCollapse("editor")}
               >
-                收起
+                {COPY.collapse}
               </button>
             </div>
             <div className={styles.sideContent}>{editorContent}</div>
@@ -254,7 +389,7 @@ export const PanelPage = () => {
                 className={styles.expandAction}
                 onClick={handleExpand}
               >
-                展开
+                {COPY.expand}
               </button>
             ) : null}
             <Segmented
@@ -262,8 +397,8 @@ export const PanelPage = () => {
               value={activePane}
               onChange={handlePaneChange}
               options={[
-                { label: "字段", value: "aside" },
-                { label: "编辑", value: "editor" },
+                { label: COPY.sideFields, value: "aside" },
+                { label: COPY.sideEditor, value: "editor" },
               ]}
             />
             {showCollapsedClose ? (
@@ -272,7 +407,7 @@ export const PanelPage = () => {
                 className={styles.closeRailAction}
                 onClick={handleCloseToRail}
               >
-                收起
+                {COPY.collapse}
               </button>
             ) : null}
           </div>
@@ -286,11 +421,11 @@ export const PanelPage = () => {
             type="button"
             className={styles.railButton}
             onClick={handleOpenFromRail}
-            aria-label="展开侧栏"
-            title="展开侧栏"
+            aria-label={COPY.railOpen}
+            title={COPY.railOpen}
           >
             <span className={styles.railButtonIcon} aria-hidden="true">
-              ⟩
+              {"<"}
             </span>
           </button>
         </aside>
@@ -298,12 +433,15 @@ export const PanelPage = () => {
       <main className={styles.main}>
         <header className={styles.mainHeader}>
           <div className={styles.titleArea}>
-            <EditableTitle
-              title={title}
-              titleConfig={titleConfig}
-              onTitleChange={handleTitleChange}
-            />
-            <div className={styles.smartMode}>智能模式</div>
+            <div className={styles.titleMeta}>
+              <EditableTitle
+                title={title}
+                titleConfig={titleConfig}
+                onTitleChange={handleTitleChange}
+              />
+              <span className={styles.statusBadge}>{panelStatusLabel}</span>
+            </div>
+            <div className={styles.smartMode}>{COPY.smartMode}</div>
           </div>
           <QueryZone
             onDropField={handleDropField}
@@ -318,29 +456,68 @@ export const PanelPage = () => {
             dropFilters={dropFilters}
           />
           <div className={styles.operations}>
-            <button className={styles.save} onClick={handleSave}>
-              保存
+            <button
+              className={styles.save}
+              onClick={onPrimarySave}
+              disabled={!hasDataset || isSaving || isRunning || isReverting}
+            >
+              {primaryActionLabel}
             </button>
-            <button className={styles.saveAs} onClick={handleSaveAs}>
-              另存为
-            </button>
-            <button className={styles.run} onClick={onRun}>
-              运行
+            {isPublished ? (
+              <button
+                className={styles.secondaryAction}
+                onClick={onRevertToDraft}
+                disabled={isSaving || isRunning || isReverting}
+              >
+                {COPY.revertToDraft}
+              </button>
+            ) : null}
+            <button
+              className={styles.run}
+              onClick={onRun}
+              disabled={!canRun || isSaving || isRunning || isReverting}
+            >
+              {COPY.run}
             </button>
           </div>
         </header>
 
         <main className={styles.mainContent}>
-          <SeedarPanel
-            showHeader={false}
-            panelId={panelId}
-            data={tempData}
-            panel={previewPanel}
-          />
+          {previewPanel ? (
+            <SeedarPanel
+              showHeader={false}
+              panelId={panelId ?? previewPanel.id}
+              data={tempData}
+              panel={previewPanel}
+            />
+          ) : (
+            <div className={styles.previewEmpty}>{COPY.previewEmpty}</div>
+          )}
         </main>
       </main>
+      <Dialog.Root
+        open={isDatasetDialogOpen}
+        onOpenChange={(open) => {
+          setIsDatasetDialogOpen(open);
+          if (open) {
+            setPendingSelectedDataset(activeDataset);
+          }
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Backdrop className={datasetSelectorStyles.dialogBackdrop} />
+          <Dialog.Popup className={datasetSelectorStyles.dialogPopup}>
+            <DatasetSelector
+              datasets={datasets}
+              isLoading={isDatasetsLoading}
+              selectedDatasetId={selectedDatasetId}
+              onSelectDataset={handlePendingDatasetSelect}
+              onConfirm={handleConfirmDatasetSelection}
+              onCancel={() => setIsDatasetDialogOpen(false)}
+            />
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
-  ) : (
-    <DatasetSelector datasets={datasets || []} onSelect={handleSelectDataset} />
   );
 };
