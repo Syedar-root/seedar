@@ -1,4 +1,7 @@
 import { SeedarPanel } from "#pkg/seedar/ui-react";
+import { Segmented } from "antd";
+import type { SegmentedValue } from "antd/es/segmented";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styles from "./styles/panel.module.scss";
 import { Aside } from "../components/aside";
@@ -14,9 +17,21 @@ import {
   usePreviewSpec,
 } from "../hooks";
 
+type SidePaneKey = "aside" | "editor";
+
+type PreviewPanel = NonNullable<React.ComponentProps<typeof SeedarPanel>["panel"]>;
+
+const ASIDE_MIN_WIDTH = 160;
+const MAIN_MIN_WIDTH = 520;
+const COLLAPSE_EXIT_BUFFER = 16;
+
 export const PanelPage = () => {
   const { panelId } = useParams();
   const navigate = useNavigate();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [activePane, setActivePane] = useState<SidePaneKey>("aside");
 
   const { datasets, handleSelectDataset } = useDatasetSelector(navigate);
 
@@ -74,25 +89,105 @@ export const PanelPage = () => {
     toast.success("指标创建成功");
   };
 
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) {
+      return;
+    }
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+      setContainerWidth(entry.contentRect.width);
+    });
+
+    resizeObserver.observe(element);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  const collapseThreshold = useMemo(() => ASIDE_MIN_WIDTH * 2 + MAIN_MIN_WIDTH, []);
+
+  useEffect(() => {
+    if (!containerWidth) {
+      return;
+    }
+
+    if (!isCollapsed && containerWidth <= collapseThreshold) {
+      setIsCollapsed(true);
+      return;
+    }
+
+    if (isCollapsed && containerWidth > collapseThreshold + COLLAPSE_EXIT_BUFFER) {
+      setIsCollapsed(false);
+    }
+  }, [collapseThreshold, containerWidth, isCollapsed]);
+
+  const handlePaneChange = (value: SegmentedValue) => {
+    if (value === "aside" || value === "editor") {
+      setActivePane(value);
+    }
+  };
+
+  const previewPanel: PreviewPanel | undefined = panelData
+    ? {
+        ...panelData,
+        type:
+          displayType === "table" || displayType === "card"
+            ? displayType
+            : "chart",
+        config: previewSpec,
+      }
+    : undefined;
+
+  const asideContent = (
+    <Aside
+      fields={datasetData?.fields || []}
+      metrics={datasetData?.metrics || []}
+      datasetId={datasetData?.id}
+      onMetricCreated={handleMetricCreated}
+    />
+  );
+
+  const editorContent = (
+    <PanelEditor
+      fields={dropFields}
+      metrics={dropMetrics}
+      config={editorConfig}
+      displayType={displayType}
+      onChange={handleEditorChange}
+    />
+  );
+
   return panelId ? (
-    <div className={styles.container}>
-      <aside className={styles.sidebar}>
-        <Aside
-          fields={datasetData?.fields || []}
-          metrics={datasetData?.metrics || []}
-          datasetId={datasetData?.id}
-          onMetricCreated={handleMetricCreated}
-        />
-      </aside>
-      <aside className={styles.editor}>
-        <PanelEditor
-          fields={dropFields}
-          metrics={dropMetrics}
-          config={editorConfig}
-          displayType={displayType}
-          onChange={handleEditorChange}
-        />
-      </aside>
+    <div ref={containerRef} className={styles.container}>
+      {isCollapsed ? (
+        <aside className={styles.collapsedPane}>
+          <div className={styles.collapsedSwitch}>
+            <Segmented
+              block
+              value={activePane}
+              onChange={handlePaneChange}
+              options={[
+                { label: "字段", value: "aside" },
+                { label: "编辑", value: "editor" },
+              ]}
+            />
+          </div>
+          <div className={styles.collapsedContent}>
+            {activePane === "aside" ? asideContent : editorContent}
+          </div>
+        </aside>
+      ) : (
+        <>
+          <aside className={styles.sidebar}>{asideContent}</aside>
+          <aside className={styles.editor}>{editorContent}</aside>
+        </>
+      )}
       <main className={styles.main}>
         <header className={styles.mainHeader}>
           <div className={styles.titleArea}>
@@ -133,18 +228,7 @@ export const PanelPage = () => {
             showHeader={false}
             panelId={panelId}
             data={tempData}
-            panel={
-              panelData
-                ? ({
-                    ...panelData,
-                    type:
-                      displayType === "table" || displayType === "card"
-                        ? displayType
-                        : "chart",
-                    config: previewSpec,
-                  } as any)
-                : undefined
-            }
+            panel={previewPanel}
           />
         </main>
       </main>

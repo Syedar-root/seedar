@@ -37,5 +37,6 @@ Thumbs.db
 commit_msg.txt
 
 .trae/
+.claude/
 
 **/assets/**/font/**
