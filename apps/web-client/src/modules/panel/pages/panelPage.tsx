@@ -19,11 +19,11 @@ import {
 
 type SidePaneKey = "aside" | "editor";
 type LayoutMode = "expanded" | "collapsed" | "fullCollapsed";
+type ViewportMode = "wide" | "medium" | "narrow";
 type PreviewPanel = NonNullable<
   React.ComponentProps<typeof SeedarPanel>["panel"]
 >;
 
-const ASIDE_MIN_WIDTH = 160;
 const COLLAPSED_THRESHOLD = 1200;
 const FULL_COLLAPSED_THRESHOLD = 800;
 const LAYOUT_EXIT_BUFFER = 16;
@@ -33,12 +33,11 @@ export const PanelPage = () => {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>("expanded");
   const [activePane, setActivePane] = useState<SidePaneKey>("aside");
-  const [manualLayoutMode, setManualLayoutMode] = useState<Exclude<
-    LayoutMode,
-    "fullCollapsed"
-  > | null>(null);
+  const [desktopPreference, setDesktopPreference] = useState<
+    Exclude<LayoutMode, "fullCollapsed">
+  >("expanded");
+  const [isNarrowPaneOpen, setIsNarrowPaneOpen] = useState(false);
 
   const { datasets, handleSelectDataset } = useDatasetSelector(navigate);
 
@@ -117,52 +116,46 @@ export const PanelPage = () => {
     };
   }, []);
 
-  const autoLayoutMode = useMemo<LayoutMode>(() => {
+  const viewportMode = useMemo<ViewportMode>(() => {
     if (containerWidth <= FULL_COLLAPSED_THRESHOLD) {
-      return "fullCollapsed";
+      return "narrow";
     }
 
     if (containerWidth <= COLLAPSED_THRESHOLD) {
-      return "collapsed";
+      return "medium";
     }
 
-    return "expanded";
+    return "wide";
   }, [containerWidth]);
 
   useEffect(() => {
-    if (!containerWidth) {
-      return;
+    if (viewportMode !== "narrow") {
+      setIsNarrowPaneOpen(false);
+    }
+  }, [viewportMode]);
+
+  const layoutMode = useMemo<LayoutMode>(() => {
+    if (viewportMode === "narrow") {
+      return isNarrowPaneOpen ? "collapsed" : "fullCollapsed";
     }
 
-    if (autoLayoutMode === "fullCollapsed") {
-      setLayoutMode("fullCollapsed");
-      return;
+    if (viewportMode === "medium") {
+      return "collapsed";
     }
 
-    if (manualLayoutMode === "collapsed") {
-      setLayoutMode("collapsed");
-      return;
+    if (desktopPreference === "collapsed") {
+      return "collapsed";
     }
 
-    if (manualLayoutMode === "expanded") {
-      if (containerWidth > COLLAPSED_THRESHOLD + LAYOUT_EXIT_BUFFER) {
-        setLayoutMode("expanded");
-        return;
-      }
-
-      setLayoutMode("collapsed");
-      return;
+    if (containerWidth > COLLAPSED_THRESHOLD + LAYOUT_EXIT_BUFFER) {
+      return "expanded";
     }
 
-    if (autoLayoutMode === "expanded") {
-      if (containerWidth > COLLAPSED_THRESHOLD + LAYOUT_EXIT_BUFFER) {
-        setLayoutMode("expanded");
-        return;
-      }
-    }
+    return "collapsed";
+  }, [containerWidth, desktopPreference, isNarrowPaneOpen, viewportMode]);
 
-    setLayoutMode(autoLayoutMode);
-  }, [autoLayoutMode, containerWidth, manualLayoutMode]);
+  const canExpand = viewportMode === "wide";
+  const showCollapsedClose = viewportMode === "narrow";
 
   const handlePaneChange = (value: SegmentedValue) => {
     if (value === "aside" || value === "editor") {
@@ -172,23 +165,23 @@ export const PanelPage = () => {
 
   const handleCollapse = (pane: SidePaneKey) => {
     setActivePane(pane);
-    setManualLayoutMode("collapsed");
-    setLayoutMode("collapsed");
+    setDesktopPreference("collapsed");
   };
 
   const handleExpand = () => {
-    setManualLayoutMode("expanded");
-    if (containerWidth > COLLAPSED_THRESHOLD + LAYOUT_EXIT_BUFFER) {
-      setLayoutMode("expanded");
+    if (!canExpand) {
       return;
     }
 
-    setLayoutMode("collapsed");
+    setDesktopPreference("expanded");
   };
 
   const handleOpenFromRail = () => {
-    setManualLayoutMode("collapsed");
-    setLayoutMode("collapsed");
+    setIsNarrowPaneOpen(true);
+  };
+
+  const handleCloseToRail = () => {
+    setIsNarrowPaneOpen(false);
   };
 
   const previewPanel: PreviewPanel | undefined = panelData
@@ -255,13 +248,15 @@ export const PanelPage = () => {
       ) : layoutMode === "collapsed" ? (
         <aside className={styles.collapsedPane}>
           <div className={styles.collapsedSwitchWrap}>
-            <button
-              type="button"
-              className={styles.expandAction}
-              onClick={handleExpand}
-            >
-              展开
-            </button>
+            {canExpand ? (
+              <button
+                type="button"
+                className={styles.expandAction}
+                onClick={handleExpand}
+              >
+                展开
+              </button>
+            ) : null}
             <Segmented
               block
               value={activePane}
@@ -271,6 +266,15 @@ export const PanelPage = () => {
                 { label: "编辑", value: "editor" },
               ]}
             />
+            {showCollapsedClose ? (
+              <button
+                type="button"
+                className={styles.closeRailAction}
+                onClick={handleCloseToRail}
+              >
+                收起
+              </button>
+            ) : null}
           </div>
           <div className={styles.collapsedContent}>
             {activePane === "aside" ? asideContent : editorContent}

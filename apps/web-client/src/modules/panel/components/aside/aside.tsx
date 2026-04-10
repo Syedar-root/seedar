@@ -41,7 +41,6 @@ export const Aside: React.FC<AsideProps> = ({
     () => fields.filter((f) => f.type === "number" || f.type === "decimal"),
     [fields],
   );
-
   const fieldItems = useMemo(
     () =>
       fields.map((field) => (

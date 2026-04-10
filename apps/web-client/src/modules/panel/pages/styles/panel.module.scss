@@ -44,6 +44,7 @@
 
 .sideAction,
 .expandAction,
+.closeRailAction,
 .railButton {
   border: 1px solid var(--border-base);
   border-radius: var(--radius-sm);
@@ -53,7 +54,8 @@
 }
 
 .sideAction,
-.expandAction {
+.expandAction,
+.closeRailAction {
   height: 28px;
   padding: 0 8px;
 }
@@ -85,6 +87,15 @@
   padding: 8px;
   border-bottom: 1px solid var(--border-base);
   background: var(--bg-base);
+
+  :global(.ant-segmented) {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.closeRailAction {
+  flex-shrink: 0;
 }
 
 .collapsedContent {

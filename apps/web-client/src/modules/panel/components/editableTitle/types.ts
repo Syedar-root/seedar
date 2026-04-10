@@ -1,7 +1,7 @@
-import type { TitleType } from "#pkg/seedar/ui-react";
+import type { SeedarTitleType } from "#pkg/seedar/ui-react";
 
 export interface TitleConfig {
-  type: TitleType;
+  type: SeedarTitleType;
   content: string;
   flagColor?: string;
   subtitle?: string;
