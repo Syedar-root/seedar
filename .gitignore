@@ -38,5 +38,6 @@ commit_msg.txt
 
 .trae/
 .claude/*
+.codex/*
 
 **/assets/**/font/**
