@@ -27,6 +27,7 @@ export enum ExprKind {
   Like = "Like",
   /** IS NULL 表达式，表示字段值是否为空 */
   IsNull = "IsNull",
+  PeriodComparison = "PeriodComparison",
 }
 
 /**
@@ -86,3 +87,34 @@ export type ComparisonOperator =
   | "<"
   | ">="
   | "<=";
+
+/**
+ * 鍚岀幆姣旇〃杈惧紡鏃堕棿鍋忕Щ绫诲瀷
+ */
+export enum PeriodOffsetType {
+  DAY_OVER_DAY = "day_over_day",
+  WEEK_OVER_WEEK = "week_over_week",
+  MONTH_OVER_MONTH = "month_over_month",
+  QUARTER_OVER_QUARTER = "quarter_over_quarter",
+  YEAR_OVER_YEAR = "year_over_year",
+}
+
+/**
+ * 璁＄畻妯″紡
+ */
+export enum ComparisonMode {
+  PERCENTAGE = "percentage",
+  ABSOLUTE = "absolute",
+}
+
+/**
+ * 鏃堕棿璁惧璁惧璁捐
+ */
+export interface TimeExpressionConfig {
+  currentStartExpr: string;
+  currentEndExpr: string;
+  comparisonStartExpr: string;
+  comparisonEndExpr: string;
+  useDateTrunc?: boolean;
+  dateFormatPattern?: string;
+}

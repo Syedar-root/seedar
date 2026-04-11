@@ -13,7 +13,8 @@ import {
   InExpr,
   BetweenExpr,
   LikeExpr,
-  IsNullExpr
+  IsNullExpr,
+  PeriodComparisonExpr,
 } from './ast';
 
 /**
@@ -46,6 +47,10 @@ export class ExprAnalyzer {
 
     // 指标引用表达式：完全聚合，引用的指标通常是已经聚合的结果
     if (expr instanceof MetricRefExpr) {
+      return AggLevel.Full;
+    }
+
+    if (expr instanceof PeriodComparisonExpr) {
       return AggLevel.Full;
     }
 
@@ -247,6 +252,10 @@ export class ExprAnalyzer {
         return fieldRef;
       }
 
+      if (currentExpr instanceof PeriodComparisonExpr) {
+        return currentExpr;
+      }
+
       // 二元运算表达式：递归处理左右操作数
       if (currentExpr instanceof BinaryExpr) {
         const newLeft = process(currentExpr.left);
@@ -308,5 +317,141 @@ export class ExprAnalyzer {
       }
     }
     return false;
+  }
+
+  static containsPeriodComparison(expr: Expr): boolean {
+    let found = false;
+    this.walk(expr, (currentExpr) => {
+      if (currentExpr instanceof PeriodComparisonExpr) {
+        found = true;
+      }
+    });
+    return found;
+  }
+
+  static assertNoNestedPeriodComparison(expr: Expr): void {
+    if (expr instanceof PeriodComparisonExpr) {
+      return;
+    }
+
+    this.walk(expr, (currentExpr, isRoot) => {
+      if (!isRoot && currentExpr instanceof PeriodComparisonExpr) {
+        throw new Error(
+          "V2.1 only supports PeriodComparisonExpr as a top-level metric",
+        );
+      }
+    });
+  }
+
+  static assertPeriodComparisonPlacement(spec: {
+    metrics?: unknown[];
+    filters?: unknown[];
+    dimensions?: unknown[];
+    orderBy?: Array<{ expr: unknown; dir?: unknown }>;
+  }): void {
+    for (const metric of spec.metrics || []) {
+      if (metric instanceof PeriodComparisonExpr) {
+        continue;
+      }
+      if (metric instanceof Expr) {
+        this.assertNoNestedPeriodComparison(metric);
+      }
+    }
+
+    for (const filter of spec.filters || []) {
+      if (filter instanceof Expr && this.containsPeriodComparison(filter)) {
+        throw new Error("V2.1 does not allow PeriodComparisonExpr inside filters");
+      }
+    }
+
+    for (const dimension of spec.dimensions || []) {
+      if (dimension instanceof Expr && this.containsPeriodComparison(dimension)) {
+        throw new Error("V2.1 does not allow PeriodComparisonExpr inside dimensions");
+      }
+    }
+
+    for (const order of spec.orderBy || []) {
+      if (order.expr instanceof Expr && this.containsPeriodComparison(order.expr)) {
+        throw new Error("V2.1 does not allow PeriodComparisonExpr inside orderBy expressions");
+      }
+    }
+  }
+
+  private static walk(
+    expr: Expr,
+    visit: (expr: Expr, isRoot: boolean) => void,
+    isRoot = true,
+  ): void {
+    visit(expr, isRoot);
+
+    if (expr instanceof AggExpr) {
+      this.walk(expr.arg, visit, false);
+      return;
+    }
+
+    if (expr instanceof PeriodComparisonExpr) {
+      this.walk(expr.baseMetric, visit, false);
+      this.walk(expr.timeField, visit, false);
+      return;
+    }
+
+    if (expr instanceof BinaryExpr) {
+      this.walk(expr.left, visit, false);
+      this.walk(expr.right, visit, false);
+      return;
+    }
+
+    if (expr instanceof UnaryExpr) {
+      this.walk(expr.operand, visit, false);
+      return;
+    }
+
+    if (expr instanceof CallExpr) {
+      expr.args.forEach((arg) => this.walk(arg, visit, false));
+      return;
+    }
+
+    if (expr instanceof ConditionalExpr) {
+      this.walk(expr.condition, visit, false);
+      this.walk(expr.consequent, visit, false);
+      this.walk(expr.alternate, visit, false);
+      return;
+    }
+
+    if (expr instanceof SelectExpr) {
+      expr.cases.forEach((caseItem) => {
+        if (caseItem.condition) {
+          this.walk(caseItem.condition, visit, false);
+        }
+        this.walk(caseItem.value, visit, false);
+      });
+      if (expr.defaultValue) {
+        this.walk(expr.defaultValue, visit, false);
+      }
+      return;
+    }
+
+    if (expr instanceof InExpr) {
+      this.walk(expr.expr, visit, false);
+      expr.values.forEach((value) => this.walk(value, visit, false));
+      return;
+    }
+
+    if (expr instanceof BetweenExpr) {
+      this.walk(expr.expr, visit, false);
+      this.walk(expr.low, visit, false);
+      this.walk(expr.high, visit, false);
+      return;
+    }
+
+    if (expr instanceof LikeExpr) {
+      this.walk(expr.expr, visit, false);
+      this.walk(expr.pattern, visit, false);
+      return;
+    }
+
+    if (expr instanceof IsNullExpr) {
+      this.walk(expr.expr, visit, false);
+    }
   }
 }

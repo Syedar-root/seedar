@@ -5,6 +5,8 @@ import {
   AggFuncName,
   BinaryOperator,
   ComparisonOperator,
+  PeriodOffsetType,
+  ComparisonMode,
 } from "./types";
 
 export abstract class Expr {
@@ -338,5 +340,57 @@ export class IsNullExpr extends Expr {
 
   clone(): IsNullExpr {
     return new IsNullExpr(this.expr.clone(), this.negated, this.meta);
+  }
+}
+
+export interface PeriodComparisonCustomRange {
+  current: { start: Date; end: Date };
+  comparison: { start: Date; end: Date };
+}
+
+export class PeriodComparisonExpr extends Expr {
+  public readonly baseMetric: Expr;
+  public readonly offsetType: PeriodOffsetType;
+  public readonly comparisonMode: ComparisonMode;
+  public readonly timeField: FieldRefExpr;
+  public readonly customTimeRange?: PeriodComparisonCustomRange;
+
+  constructor(
+    baseMetric: Expr,
+    offsetType: PeriodOffsetType,
+    comparisonMode: ComparisonMode,
+    timeField: FieldRefExpr,
+    customTimeRange?: PeriodComparisonCustomRange,
+    meta?: ExprMeta,
+  ) {
+    super(ExprKind.PeriodComparison, meta);
+    this.baseMetric = baseMetric;
+    this.offsetType = offsetType;
+    this.comparisonMode = comparisonMode;
+    this.timeField = timeField;
+    this.customTimeRange = customTimeRange;
+    this.aggLevel = AggLevel.Full;
+  }
+
+  clone(): PeriodComparisonExpr {
+    return new PeriodComparisonExpr(
+      this.baseMetric.clone(),
+      this.offsetType,
+      this.comparisonMode,
+      this.timeField.clone(),
+      this.customTimeRange
+        ? {
+            current: {
+              start: new Date(this.customTimeRange.current.start),
+              end: new Date(this.customTimeRange.current.end),
+            },
+            comparison: {
+              start: new Date(this.customTimeRange.comparison.start),
+              end: new Date(this.customTimeRange.comparison.end),
+            },
+          }
+        : undefined,
+      this.meta ? { ...this.meta } : undefined,
+    );
   }
 }
