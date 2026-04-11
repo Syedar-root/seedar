@@ -1,4 +1,4 @@
-﻿import { SeedarPanel } from "#pkg/seedar/ui-react";
+import { SeedarPanel } from "#pkg/seedar/ui-react";
 import { PanelStatus } from "#pkg/seedar/types";
 import { Dialog } from "@base-ui/react/dialog";
 import { Segmented } from "antd";
@@ -11,7 +11,10 @@ import { DatasetSelector } from "../components/datasetSelector";
 import datasetSelectorStyles from "../components/datasetSelector/datasetSelector.module.scss";
 import { EditableTitle } from "../components/editableTitle";
 import { PanelEditor } from "../components/panelEditor";
-import { QueryZone } from "../components/queryZone";
+import {
+  QueryZone,
+  type MetricWithPopConfig,
+} from "../components/queryZone/queryZone";
 import {
   useDatasetSelector,
   usePanelActions,
@@ -72,6 +75,7 @@ export const PanelPage = () => {
     dropFields,
     dropMetrics,
     dropFilters,
+    tempMetrics,
     displayType,
     editorConfig,
     tempData,
@@ -85,6 +89,8 @@ export const PanelPage = () => {
     handleDropFilter,
     handleRemoveFilter,
     handleUpdateFilter,
+    handleUpdateTempMetric,
+    handleRemoveTempMetric,
     handleEditorChange,
     title,
     titleConfig,
@@ -224,6 +230,18 @@ export const PanelPage = () => {
 
   const canExpand = viewportMode === "wide";
   const showCollapsedClose = viewportMode === "narrow";
+
+  // 标记哪些普通指标已配置了同环比
+  const metricsWithPopFlag = useMemo<MetricWithPopConfig[]>(
+    () =>
+      dropMetrics.map((metric) => ({
+        ...metric,
+        hasPopConfig: tempMetrics.some(
+          (tm) => tm.baseMetricId === Number(metric.id),
+        ),
+      })),
+    [dropMetrics, tempMetrics],
+  );
 
   const handlePaneChange = (value: SegmentedValue) => {
     if (value === "aside" || value === "editor") {
@@ -451,8 +469,11 @@ export const PanelPage = () => {
             onRemoveMetric={handleRemoveMetric}
             onRemoveFilter={handleRemoveFilter}
             onUpdateFilter={handleUpdateFilter}
+            onUpdateMetricPopConfig={handleUpdateTempMetric}
+            tempMetrics={tempMetrics}
+            onRemoveTempMetric={handleRemoveTempMetric}
             dropFields={dropFields}
-            dropMetrics={dropMetrics}
+            dropMetrics={metricsWithPopFlag}
             dropFilters={dropFilters}
           />
           <div className={styles.operations}>

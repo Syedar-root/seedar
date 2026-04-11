@@ -64,6 +64,8 @@ export const OPERATORS_BY_TYPE: Record<FieldType, OperatorOption[]> = {
     { value: "<", label: "之前" },
     { value: ">=", label: "不早于" },
     { value: "<=", label: "不晚于" },
+    { value: "between", label: "介于" },
+    { value: "not_between", label: "不介于" },
     { value: "recent_days", label: "最近N天" },
     { value: "recent_weeks", label: "最近N周" },
     { value: "recent_months", label: "最近N月" },
@@ -77,6 +79,8 @@ export const OPERATORS_BY_TYPE: Record<FieldType, OperatorOption[]> = {
     { value: "<", label: "之前" },
     { value: ">=", label: "不早于" },
     { value: "<=", label: "不晚于" },
+    { value: "between", label: "介于" },
+    { value: "not_between", label: "不介于" },
     { value: "recent_days", label: "最近N天" },
     { value: "recent_weeks", label: "最近N周" },
     { value: "recent_months", label: "最近N月" },
@@ -87,7 +91,11 @@ export const OPERATORS_BY_TYPE: Record<FieldType, OperatorOption[]> = {
 
 export const NO_VALUE_OPERATORS = ["is_null", "is_not_null"];
 
-export const TIME_RANGE_OPERATORS = ["recent_days", "recent_weeks", "recent_months"];
+export const TIME_RANGE_OPERATORS = [
+  "recent_days",
+  "recent_weeks",
+  "recent_months",
+];
 
 export const ARRAY_VALUE_OPERATORS = ["in", "not_in"];
 

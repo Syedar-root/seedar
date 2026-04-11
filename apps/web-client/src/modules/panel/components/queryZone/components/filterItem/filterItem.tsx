@@ -7,7 +7,7 @@ import {
   TIME_RANGE_OPERATORS,
   ARRAY_VALUE_OPERATORS,
   RANGE_VALUE_OPERATORS,
-} from "./types";
+} from "../../types";
 import { FieldType } from "#pkg/seedar/types";
 import { Select } from "@base-ui/react/select";
 import { Input } from "@base-ui/react/input";
@@ -60,7 +60,7 @@ export const FilterItem: React.FC<FilterItemProps> = ({
 
   const handleAddArrayValue = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
-    
+
     const value = inputValue.trim();
     if (!value) return;
 
@@ -74,7 +74,9 @@ export const FilterItem: React.FC<FilterItemProps> = ({
   const handleRemoveArrayValue = (index: number) => {
     const currentValues = Array.isArray(filter.value) ? filter.value : [];
     const newValues = currentValues.filter((_, i) => i !== index);
-    onUpdate(filter.id, { value: newValues.length > 0 ? newValues : undefined });
+    onUpdate(filter.id, {
+      value: newValues.length > 0 ? newValues : undefined,
+    });
   };
 
   const handleRangeChange = (key: "low" | "high", value: string) => {
@@ -118,6 +120,14 @@ export const FilterItem: React.FC<FilterItemProps> = ({
   const renderRangeInput = () => {
     if (!isRangeValue) return null;
 
+    // 时间类型使用日期范围选择
+    if (
+      filter.fieldType === FieldType.DATE ||
+      filter.fieldType === FieldType.DATETIME
+    ) {
+      return renderDateRangeInput();
+    }
+
     const rangeValue = (filter.value as { low?: number; high?: number }) || {};
 
     return (
@@ -136,6 +146,39 @@ export const FilterItem: React.FC<FilterItemProps> = ({
           value={rangeValue.high ?? ""}
           onChange={(e) => handleRangeChange("high", e.target.value)}
           placeholder="最大值"
+        />
+      </div>
+    );
+  };
+
+  const handleDateRangeChange = (key: "low" | "high", value: string) => {
+    const rangeValue = (filter.value as { low?: string; high?: string }) || {};
+    onUpdate(filter.id, {
+      value: { ...rangeValue, [key]: value },
+    });
+  };
+
+  const renderDateRangeInput = () => {
+    const rangeValue = (filter.value as { low?: string; high?: string }) || {};
+    const inputType =
+      filter.fieldType === FieldType.DATETIME ? "datetime-local" : "date";
+
+    return (
+      <div className={styles.rangeInput}>
+        <Input
+          type={inputType}
+          className={styles.rangeInputField}
+          value={rangeValue.low ?? ""}
+          onChange={(e) => handleDateRangeChange("low", e.target.value)}
+          placeholder="开始日期"
+        />
+        <span className={styles.rangeSeparator}>至</span>
+        <Input
+          type={inputType}
+          className={styles.rangeInputField}
+          value={rangeValue.high ?? ""}
+          onChange={(e) => handleDateRangeChange("high", e.target.value)}
+          placeholder="结束日期"
         />
       </div>
     );

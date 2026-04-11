@@ -5,9 +5,9 @@
  * - STOPPED: 停止状态
  */
 export enum QueryStatus {
-  DRAFT = 'draft',
-  ACTIVE = 'active',
-  STOPPED = 'stopped',
+  DRAFT = "draft",
+  ACTIVE = "active",
+  STOPPED = "stopped",
 }
 
 /**
