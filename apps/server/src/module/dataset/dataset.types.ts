@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 数据集类型枚举
  * - SEMANTIC：语义型
  * - WIDE：宽表型
@@ -60,7 +60,7 @@ export enum MetricType {
   AGGREGATE = 'aggregate', // 聚合指标
   POST_AGGREGATE = 'post_aggregate', // 后聚合指标
   ARITHMETIC = 'arithmetic', // 算术运算指标
-  PERIOD_OVER_PERIOD = 'period_over_period', // 同环比指标
+  PERIOD_OVER_PERIOD = 'period_over_period', // Legacy period-comparison metric metadata; V2.1 query execution prefers tempMetrics
 }
 
 /**
@@ -97,12 +97,12 @@ export enum PeriodOverPeriodType {
 }
 
 /**
- * 同环比计算模式枚举
+ * Period-comparison calculation mode metadata (used as an override/default for query-time tempMetrics)
  */
 export enum PeriodCalculationMode {
   PERCENTAGE = 'percentage', // 百分比
   ABSOLUTE = 'absolute', // 绝对值
-  BOTH = 'both', // 两者都返回
+  BOTH = 'both', // Legacy-only; V2.1 tempMetrics-driven PoP must not use BOTH
 }
 
 /**
@@ -224,6 +224,8 @@ export interface DatasetMetricResponse {
   rightMetricOperandFieldName?: string;
   baseMetricId?: number;
   baseMetricName?: string;
+  timeFieldId?: number;
+  timeFieldName?: string;
   timeDataSourceColumnId?: number;
   timeDataSourceColumnName?: string;
   periodType?: PeriodOverPeriodType;
@@ -257,3 +259,4 @@ export interface DatasetResponse {
   metrics: DatasetMetricResponse[];
   joins?: DatasetJoinResponse[];
 }
+

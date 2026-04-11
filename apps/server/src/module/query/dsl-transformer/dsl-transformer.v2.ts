@@ -1,9 +1,10 @@
-import {
+﻿import {
   FieldRefExpr,
   ComparisonExpr,
   LiteralExpr,
   AggExpr,
   BinaryExpr,
+  CallExpr,
   AggFuncName,
   BinaryOperator,
   ComparisonOperator,
@@ -16,6 +17,9 @@ import {
   BetweenExpr,
   LikeExpr,
   IsNullExpr,
+  PeriodComparisonExpr,
+  ComparisonMode,
+  PeriodOffsetType,
 } from '@metric-engine/core';
 import {
   DatasetResponse,
@@ -25,6 +29,8 @@ import {
   DatasetJoinResponse,
   MetricType,
   MetricAggregateFunction,
+  PeriodCalculationMode,
+  PeriodOverPeriodType,
 } from '@/module/dataset/dataset.types';
 import { QuerySpec, JoinSpec } from '@metric-engine/core';
 import { Operator, TimeFilter, TimeRange } from '@metric-engine/core';
@@ -55,6 +61,16 @@ export interface QueryDSL {
     op: string;
     value?: any;
     raw?: boolean;
+  }>;
+  tempMetrics?: Array<{
+    id: string;
+    type?: 'period_comparison';
+    alias?: string;
+    businessName?: string;
+    baseMetricId: number;
+    timeFieldId?: number;
+    periodType?: PeriodOverPeriodType;
+    calculationMode?: PeriodCalculationMode;
   }>;
   limit?: number;
   offset?: number;
@@ -157,6 +173,12 @@ export class DSLTransformerV2 {
     (datasetInfo.metrics || []).forEach((metric: DatasetMetricResponse) => {
       metricMap.set(metric.id, metric);
     });
+    const metricIdByName = new Map<string, number>(
+      (datasetInfo.metrics || []).map((metric: DatasetMetricResponse) => [
+        metric.name,
+        metric.id,
+      ]),
+    );
 
     (datasetInfo.joins || []).forEach((join: DatasetJoinResponse) => {
       joinMap.set(join.id, join);
@@ -176,6 +198,54 @@ export class DSLTransformerV2 {
     console.log('表map:', tableMap);
 
     const mainTableAlias = 't1';
+
+    const extractExpressionRefs = (
+      expression: string,
+    ): { fieldIds: number[]; metricIds: number[] } => {
+      const fieldIds: number[] = [];
+      const metricIds: number[] = [];
+
+      const collectIds = (source: string, pattern: RegExp): number[] => {
+        const collected: number[] = [];
+        let localMatch: RegExpExecArray | null;
+        while ((localMatch = pattern.exec(source)) !== null) {
+          const ids = localMatch[1]
+            .split(',')
+            .map((id) => parseInt(id, 10))
+            .filter((id) => !Number.isNaN(id));
+          collected.push(...ids);
+        }
+        return collected;
+      };
+
+      fieldIds.push(...collectIds(expression, /#F(\d+(?:,\d+)*)/g));
+      metricIds.push(...collectIds(expression, /#M(\d+(?:,\d+)*)/g));
+
+      return {
+        fieldIds: Array.from(new Set(fieldIds)),
+        metricIds: Array.from(new Set(metricIds)),
+      };
+    };
+
+    const tempMetrics = dsl.tempMetrics || [];
+
+    const periodTypeToOffsetType = (
+      periodType?: PeriodOverPeriodType,
+    ): PeriodOffsetType => {
+      switch (periodType) {
+        case PeriodOverPeriodType.DAY_OVER_DAY:
+          return PeriodOffsetType.DAY_OVER_DAY;
+        case PeriodOverPeriodType.WEEK_OVER_WEEK:
+          return PeriodOffsetType.WEEK_OVER_WEEK;
+        case PeriodOverPeriodType.QUARTER_OVER_QUARTER:
+          return PeriodOffsetType.QUARTER_OVER_QUARTER;
+        case PeriodOverPeriodType.YEAR_OVER_YEAR:
+          return PeriodOffsetType.YEAR_OVER_YEAR;
+        case PeriodOverPeriodType.MONTH_OVER_MONTH:
+        default:
+          return PeriodOffsetType.MONTH_OVER_MONTH;
+      }
+    };
 
     // ========================================================================
     // 第二阶段：收集依赖表ID
@@ -235,6 +305,17 @@ export class DSLTransformerV2 {
       const metric = metricMap.get(metricId);
       if (!metric) {
         throw new Error(`找不到指标: ${metricId}`);
+      }
+
+      if (metric.expression) {
+        const { fieldIds, metricIds } = extractExpressionRefs(
+          metric.expression,
+        );
+        fieldIds.forEach((fieldId) => collectFieldTableId(fieldId));
+        metricIds.forEach((refMetricId) =>
+          collectMetricTableIds(refMetricId, visited),
+        );
+        return;
       }
 
       if (metric.expression) {
@@ -302,6 +383,21 @@ export class DSLTransformerV2 {
     // 收集metrics中的表依赖
     (dsl.metrics || []).forEach((metricItem) => {
       collectMetricTableIds(metricItem.id);
+    });
+
+    tempMetrics.forEach((tempMetric) => {
+      collectMetricTableIds(tempMetric.baseMetricId);
+      const baseMetricInfo = metricMap.get(tempMetric.baseMetricId);
+      const effectiveTimeFieldId =
+        tempMetric.timeFieldId ?? baseMetricInfo?.timeFieldId;
+
+      if (!effectiveTimeFieldId) {
+        throw new Error(
+          `临时周期指标 ${tempMetric.id} 需要 timeFieldId 或基础指标的默认 timeFieldId。`,
+        );
+      }
+
+      collectFieldTableId(effectiveTimeFieldId);
     });
 
     // 收集filters中的表依赖
@@ -605,8 +701,11 @@ export class DSLTransformerV2 {
       console.log('原始表达式:', expression);
 
       // 先替换 #M 指标引用
-      result = result.replace(/#M([\d,]+)/g, (match, ids) => {
-        const idList = ids.split(',').map((id) => parseInt(id, 10));
+      result = result.replace(/#M(\d+(?:,\d+)*)/g, (_match, ids) => {
+        const idList = ids
+          .split(',')
+          .map((id: string) => parseInt(id, 10))
+          .filter((id: number) => !Number.isNaN(id));
         return idList
           .map((id) => {
             const metricInfo = metricMap.get(id);
@@ -619,8 +718,11 @@ export class DSLTransformerV2 {
       });
 
       // 再替换 #F 字段引用
-      result = result.replace(/#F([\d,]+)/g, (match, ids) => {
-        const idList = ids.split(',').map((id) => parseInt(id, 10));
+      result = result.replace(/#F(\d+(?:,\d+)*)/g, (_match, ids) => {
+        const idList = ids
+          .split(',')
+          .map((id: string) => parseInt(id, 10))
+          .filter((id: number) => !Number.isNaN(id));
         return idList
           .map((id) => {
             const fieldInfo = fieldMap.get(id);
@@ -633,8 +735,193 @@ export class DSLTransformerV2 {
           .join(', ');
       });
 
-      console.log('hcs result', result);
       return result;
+    };
+
+    const inlineMetricRefs = (expr: Expr, visited: Set<number>): Expr => {
+      if (expr instanceof MetricRefExpr) {
+        const metricId = metricIdByName.get(expr.metricName);
+        if (!metricId) {
+          throw new Error(`找不到指标: ${expr.metricName}`);
+        }
+        return buildMetricExpr(metricId, new Set(visited));
+      }
+
+      if (expr instanceof AggExpr) {
+        return new AggExpr(
+          expr.functionName,
+          inlineMetricRefs(expr.arg, visited),
+          expr.distinct,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof PeriodComparisonExpr) {
+        return new PeriodComparisonExpr(
+          inlineMetricRefs(expr.baseMetric, visited),
+          expr.offsetType,
+          expr.comparisonMode,
+          expr.timeField,
+          expr.customTimeRange,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof BinaryExpr) {
+        return new BinaryExpr(
+          expr.operator,
+          inlineMetricRefs(expr.left, visited),
+          inlineMetricRefs(expr.right, visited),
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof ComparisonExpr) {
+        return new ComparisonExpr(
+          expr.operator,
+          inlineMetricRefs(expr.left, visited),
+          inlineMetricRefs(expr.right, visited),
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof ConditionalExpr) {
+        return new ConditionalExpr(
+          inlineMetricRefs(expr.condition, visited),
+          inlineMetricRefs(expr.consequent, visited),
+          inlineMetricRefs(expr.alternate, visited),
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof SelectExpr) {
+        return new SelectExpr(
+          expr.cases.map((caseItem) => ({
+            condition: caseItem.condition
+              ? inlineMetricRefs(caseItem.condition, visited)
+              : undefined,
+            value: inlineMetricRefs(caseItem.value, visited),
+          })),
+          expr.defaultValue
+            ? inlineMetricRefs(expr.defaultValue, visited)
+            : undefined,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof CallExpr) {
+        return new CallExpr(
+          expr.functionName,
+          expr.args.map((arg) => inlineMetricRefs(arg, visited)),
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof InExpr) {
+        return new InExpr(
+          inlineMetricRefs(expr.expr, visited),
+          expr.values.map((value) => inlineMetricRefs(value, visited)),
+          expr.negated,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof BetweenExpr) {
+        return new BetweenExpr(
+          inlineMetricRefs(expr.expr, visited),
+          inlineMetricRefs(expr.low, visited),
+          inlineMetricRefs(expr.high, visited),
+          expr.negated,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof LikeExpr) {
+        return new LikeExpr(
+          inlineMetricRefs(expr.expr, visited),
+          inlineMetricRefs(expr.pattern, visited),
+          expr.negated,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof IsNullExpr) {
+        return new IsNullExpr(
+          inlineMetricRefs(expr.expr, visited),
+          expr.negated,
+          expr.meta,
+        );
+      }
+
+      return expr;
+    };
+
+    const applyCalculationModeOverride = (
+      expr: Expr,
+      metric: DatasetMetricResponse,
+    ): Expr => {
+      if (!(expr instanceof PeriodComparisonExpr) || !metric.calculationMode) {
+        return expr;
+      }
+
+      if (metric.calculationMode === PeriodCalculationMode.BOTH) {
+        throw new Error(
+          `Metric ${metric.name} uses calculationMode=both, which is not supported in V2.1. Please split it into two metrics.`,
+        );
+      }
+
+      const comparisonMode =
+        metric.calculationMode === PeriodCalculationMode.ABSOLUTE
+          ? ComparisonMode.ABSOLUTE
+          : ComparisonMode.PERCENTAGE;
+
+      return new PeriodComparisonExpr(
+        expr.baseMetric,
+        expr.offsetType,
+        comparisonMode,
+        expr.timeField,
+        expr.customTimeRange,
+        expr.meta,
+      );
+    };
+
+    const assertPeriodComparisonFilterSupport = (
+      metric: DatasetMetricResponse,
+      refs: { fieldIds: number[]; metricIds: number[] },
+    ) => {
+      if (
+        !metric.expression ||
+        !/^(MOM|YOY|WOW|QOQ|DOD)\s*\(/i.test(metric.expression.trim())
+      ) {
+        return;
+      }
+
+      if (refs.metricIds.length === 0) {
+        throw new Error(
+          `Metric ${metric.name} PoP expression must reference at least one #M metric id.`,
+        );
+      }
+
+      if (refs.fieldIds.length === 0) {
+        throw new Error(
+          `Metric ${metric.name} PoP expression must reference at least one #F field id.`,
+        );
+      }
+
+      const [timeFieldId] = refs.fieldIds;
+      const hasTimeFilter = (dsl.filters || []).some(
+        (filter) =>
+          filter.fieldId === timeFieldId &&
+          ['recent_days', 'recent_weeks', 'recent_months', 'between'].includes(
+            filter.op,
+          ),
+      );
+
+      if (!hasTimeFilter) {
+        throw new Error(
+          `Metric ${metric.name} PoP query requires a matching time filter for #F${timeFieldId}.`,
+        );
+      }
     };
 
     /**
@@ -659,6 +946,7 @@ export class DSLTransformerV2 {
       }
 
       visited.add(metric.id);
+      const refs = extractExpressionRefs(metric.expression);
 
       const processedExpr = preprocessExpression(metric.expression);
 
@@ -710,7 +998,24 @@ export class DSLTransformerV2 {
         defaultTable: mainTableAlias,
       };
 
-      return parseExpression(processedExpr, context);
+      context.metrics = new Map(
+        refs.metricIds.map((refMetricId) => {
+          const metricInfo = metricMap.get(refMetricId);
+          if (!metricInfo) {
+            throw new Error(`找不到指标: ${refMetricId}`);
+          }
+          return [
+            metricInfo.name,
+            new MetricRefExpr(metricInfo.name, { alias: metricInfo.name }),
+          ];
+        }),
+      );
+
+      const parsedExpr = parseExpression(processedExpr, context);
+      const inlinedExpr = inlineMetricRefs(parsedExpr, visited);
+      const finalExpr = applyCalculationModeOverride(inlinedExpr, metric);
+      assertPeriodComparisonFilterSupport(metric, refs);
+      return finalExpr;
     };
 
     /**
@@ -782,6 +1087,77 @@ export class DSLTransformerV2 {
             businessName: metric.businessName,
           });
       }
+    };
+
+    const buildTempMetricExpr = (
+      tempMetric: NonNullable<QueryDSL['tempMetrics']>[number],
+    ): PeriodComparisonExpr => {
+      if ((tempMetric.type || 'period_comparison') !== 'period_comparison') {
+        throw new Error(`不支持的临时指标类型: ${tempMetric.type}`);
+      }
+
+      const baseMetricInfo = metricMap.get(tempMetric.baseMetricId);
+      if (!baseMetricInfo) {
+        throw new Error(`找不到指标: ${tempMetric.baseMetricId}`);
+      }
+
+      const effectiveTimeFieldId =
+        tempMetric.timeFieldId ?? baseMetricInfo.timeFieldId;
+      if (!effectiveTimeFieldId) {
+        throw new Error(
+          `临时周期指标 ${tempMetric.id} 需要 timeFieldId 或基础指标的默认 timeFieldId。`,
+        );
+      }
+
+      const hasTimeFilter = (dsl.filters || []).some(
+        (filter) =>
+          filter.fieldId === effectiveTimeFieldId &&
+          ['recent_days', 'recent_weeks', 'recent_months', 'between'].includes(
+            filter.op,
+          ),
+      );
+      if (!hasTimeFilter) {
+        throw new Error(
+          `临时周期指标 ${tempMetric.id} 需要字段 #F${effectiveTimeFieldId} 的匹配时间过滤器。`,
+        );
+      }
+
+      const calculationMode =
+        tempMetric.calculationMode ?? baseMetricInfo.calculationMode;
+      if (calculationMode === PeriodCalculationMode.BOTH) {
+        throw new Error(
+          `临时周期指标 ${tempMetric.id} 使用 calculationMode=both，在 V2.1 中不支持。`,
+        );
+      }
+
+      const baseExpr = resolveMetric(tempMetric.baseMetricId);
+      if (baseExpr instanceof PeriodComparisonExpr) {
+        throw new Error(
+          `临时周期指标 ${tempMetric.id} 不能使用周期指标作为其基础指标。`,
+        );
+      }
+
+      const timeFieldExpr = resolveField(effectiveTimeFieldId);
+      const comparisonMode =
+        calculationMode === PeriodCalculationMode.ABSOLUTE
+          ? ComparisonMode.ABSOLUTE
+          : ComparisonMode.PERCENTAGE;
+
+      return new PeriodComparisonExpr(
+        baseExpr,
+        periodTypeToOffsetType(tempMetric.periodType),
+        comparisonMode,
+        timeFieldExpr,
+        undefined,
+        {
+          alias:
+            tempMetric.alias ?? baseMetricInfo.alias ?? baseMetricInfo.name,
+          businessName:
+            tempMetric.businessName ??
+            baseMetricInfo.businessName ??
+            baseMetricInfo.name,
+        },
+      );
     };
 
     const buildAggregateExpr = (metric: DatasetMetricResponse): AggExpr => {
@@ -949,13 +1325,7 @@ export class DSLTransformerV2 {
       const expr = resolveMetric(metricItem.id);
 
       if (metricItem.alias || metricInfo.businessName) {
-        if (expr instanceof AggExpr) {
-          expr.meta = expr.meta || {};
-          expr.meta.alias = metricItem.alias || metricInfo.name;
-          if (metricInfo.businessName) {
-            expr.meta.businessName = metricInfo.businessName;
-          }
-        } else if (expr instanceof BinaryExpr) {
+        if (expr instanceof Expr) {
           expr.meta = expr.meta || {};
           expr.meta.alias = metricItem.alias || metricInfo.name;
           if (metricInfo.businessName) {
@@ -966,6 +1336,10 @@ export class DSLTransformerV2 {
 
       return expr;
     });
+
+    const tempMetricExprs = tempMetrics.map((tempMetric) =>
+      buildTempMetricExpr(tempMetric),
+    );
 
     const filters = (dsl.filters || []).map((filter) => {
       const fieldExpr = resolveField(filter.fieldId);
@@ -1099,7 +1473,7 @@ export class DSLTransformerV2 {
       },
       joins,
       dimensions,
-      metrics,
+      metrics: [...metrics, ...tempMetricExprs],
       filters,
       limit: dsl.limit,
       offset: dsl.offset,
