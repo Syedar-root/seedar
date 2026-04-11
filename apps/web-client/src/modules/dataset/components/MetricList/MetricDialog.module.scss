@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+  // z-index: 1000;
 }
 
 .popup {
@@ -15,7 +15,7 @@
   width: 800px;
   max-height: 85vh;
   overflow-y: auto;
-  z-index: 1001;
+  // z-index: 1001;
 }
 
 .content {
@@ -160,4 +160,20 @@
 .errorText {
   color: var(--danger);
   font-size: var(--font-sm);
+}
+
+.fieldOptionLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: var(--spacing-xs);
+}
+
+.fieldOptionTable {
+  color: var(--text-secondary);
+  font-size: var(--font-xs);
+  background: var(--bg-elevated);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-base);
 }

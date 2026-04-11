@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Dialog } from "@base-ui/react/dialog";
+import { Select } from "@/core/components/ui/Select";
 import {
   DatasetFieldResponse,
   DatasetMetricResponse,
+  FieldType,
   MetricType,
 } from "#pkg/seedar/types";
 import styles from "./MetricDialog.module.scss";
@@ -32,7 +34,14 @@ export const MetricDialog: React.FC<MetricDialogProps> = ({
   );
   const [description, setDescription] = useState(editMetric?.description || "");
   const [expression, setExpression] = useState(editMetric?.expression || "");
+  const [timeFieldId, setTimeFieldId] = useState<string>(
+    editMetric?.timeFieldId?.toString() ?? "",
+  );
   const [error, setError] = useState<string | undefined>();
+
+  const timeFields = fields.filter(
+    (f) => f.type === FieldType.DATE || f.type === FieldType.DATETIME,
+  );
 
   const { toStorage } = useFormulaParser({
     fields: fields.map((f) => ({
@@ -55,11 +64,13 @@ export const MetricDialog: React.FC<MetricDialogProps> = ({
       setBusinessName(editMetric.businessName || "");
       setDescription(editMetric.description || "");
       setExpression(editMetric.expression || "");
+      setTimeFieldId(editMetric?.timeFieldId?.toString() ?? "");
     } else {
       setName("");
       setBusinessName("");
       setDescription("");
       setExpression("");
+      setTimeFieldId("");
     }
     setError(undefined);
   }, [editMetric, open]);
@@ -96,6 +107,7 @@ export const MetricDialog: React.FC<MetricDialogProps> = ({
       alias: businessName || name,
       metricType: MetricType.AGGREGATE,
       distinct: editMetric?.distinct || false,
+      timeFieldId: timeFieldId ? parseInt(timeFieldId, 10) : undefined,
     };
 
     onSave(metricData);
@@ -162,6 +174,28 @@ export const MetricDialog: React.FC<MetricDialogProps> = ({
                       placeholder="请输入描述（可选）"
                     />
                   </div>
+
+                  {timeFields.length > 0 && (
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>业务时间字段</label>
+                      <Select
+                        placeholder="请选择时间字段（可选）"
+                        value={timeFieldId}
+                        onChange={(value) => setTimeFieldId(value ?? "")}
+                        options={timeFields.map((field) => ({
+                          label: (
+                            <span className={styles.fieldOptionLabel}>
+                              <span>{field.businessName || field.name}</span>
+                              <span className={styles.fieldOptionTable}>
+                                来自: {field.tableName || "未知表"}
+                              </span>
+                            </span>
+                          ),
+                          value: field.id.toString(),
+                        }))}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className={styles.formulaSection}>
                   <FormulaEditor
