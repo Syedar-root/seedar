@@ -237,6 +237,10 @@ export const usePanelEditorState = (
     });
     setDropFilters(nextFilters);
 
+    const nextTempMetrics =
+      (queryData.dsl?.tempMetrics as TempMetricConfig[] | undefined) ?? [];
+    setTempMetrics(nextTempMetrics);
+
     hydratedQueryRef.current = queryData.id;
   }, [queryData, remoteDatasetData]);
 
