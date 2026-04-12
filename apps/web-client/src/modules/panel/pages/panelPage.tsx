@@ -52,6 +52,10 @@ const COPY = {
   smartMode: "智能模式",
   revertToDraft: "撤销为草稿",
   run: "运行",
+  copySql: "复制 SQL",
+  copySqlSuccess: "SQL 已复制到剪贴板",
+  copySqlUnavailable: "当前没有可复制的 SQL，请先运行查询",
+  copySqlFailed: "SQL 复制失败，请重试",
   previewEmpty: "先选择数据集，再构建查询并运行预览",
 } as const;
 const PANEL_STATUS_LABELS = {
@@ -344,6 +348,44 @@ export const PanelPage = () => {
     void handleRun();
   };
 
+  const onCopySql = () => {
+    const sql = tempData?.sql?.trim();
+    if (!sql) {
+      toast.error(COPY.copySqlUnavailable);
+      return;
+    }
+
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard
+        .writeText(sql)
+        .then(() => {
+          toast.success(COPY.copySqlSuccess);
+        })
+        .catch(() => {
+          toast.error(COPY.copySqlFailed);
+        });
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = sql;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    const copied = document.execCommand("copy");
+    document.body.removeChild(textarea);
+
+    if (copied) {
+      toast.success(COPY.copySqlSuccess);
+      return;
+    }
+
+    toast.error(COPY.copySqlFailed);
+  };
+
   const onRevertToDraft = () => {
     void handleRevertToDraft();
   };
@@ -520,6 +562,13 @@ export const PanelPage = () => {
               disabled={!canRun || isSaving || isRunning || isReverting}
             >
               {COPY.run}
+            </button>
+            <button
+              className={styles.secondaryAction}
+              onClick={onCopySql}
+              disabled={!tempData?.sql}
+            >
+              {COPY.copySql}
             </button>
           </div>
         </header>
