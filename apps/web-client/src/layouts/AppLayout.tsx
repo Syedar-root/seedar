@@ -5,55 +5,61 @@ import AIChatPreview from "@/core/components/business/AIChat";
 import { useAppStore } from "@/core/store";
 import styles from "./AppLayout.module.scss";
 import type { AppLayoutProps } from "./types";
-import { CSSTransition } from "react-transition-group";
-import { useRef } from "react";
-import "./anime.css";
+import { useAppLayoutSidebarController } from "./hooks";
 
 const AppLayout = (_props: AppLayoutProps) => {
   const isSeeMindOn = useAppStore((state) => state.isSeeMindOn);
-
-  const nodeRef = useRef<HTMLDivElement>(null);
+  const {
+    sidebarPanelRef,
+    isSidebarContentVisible,
+    isSidebarContentMounted,
+    recordSidebarWidth,
+  } = useAppLayoutSidebarController(isSeeMindOn);
 
   return (
     <div className={styles.layout}>
       <GlobalNavigation />
       <div className={styles.content}>
         <Group orientation="horizontal">
-          <Panel minSize={"50%"} defaultSize={70} style={{ flex: 1 }}>
+          <Panel
+            minSize={"50%"}
+            defaultSize={isSeeMindOn ? "70%" : "100%"}
+            style={{ flex: 1 }}
+          >
             <main className={styles.main}>
               <Outlet />
             </main>
           </Panel>
 
-          {isSeeMindOn && (
-            <Separator
-              className={styles.resizeHandle}
-              style={{
-                opacity: isSeeMindOn ? 1 : 0,
-                pointerEvents: isSeeMindOn ? "auto" : "none",
-              }}
-            />
-          )}
+          <Separator
+            className={styles.resizeHandle}
+            disabled={!isSeeMindOn}
+            style={{
+              opacity: isSeeMindOn ? 1 : 0,
+              pointerEvents: isSeeMindOn ? "auto" : "none",
+            }}
+          />
 
-          <CSSTransition
-            in={isSeeMindOn}
-            timeout={500}
-            classNames="sidebarTransition"
-            nodeRef={nodeRef}
+          <Panel
+            id="app-sidebar"
+            collapsible={true}
+            collapsedSize={0}
+            className={styles.sidebarPanel}
+            defaultSize={isSeeMindOn ? "30%" : "0%"}
+            minSize={"0%"}
+            panelRef={sidebarPanelRef}
+            onResize={recordSidebarWidth}
           >
-            <Panel
-              minSize={0}
-              defaultSize={isSeeMindOn ? 30 : 0}
-              style={{
-                width: isSeeMindOn ? "auto" : "0px",
-              }}
-              elementRef={nodeRef}
+            <aside
+              className={`${styles.sidebar} ${
+                isSidebarContentVisible
+                  ? styles.sidebarVisible
+                  : styles.sidebarHidden
+              }`}
             >
-              <aside className={styles.sidebar}>
-                <AIChatPreview />
-              </aside>
-            </Panel>
-          </CSSTransition>
+              {isSidebarContentMounted ? <AIChatPreview /> : null}
+            </aside>
+          </Panel>
         </Group>
       </div>
     </div>
