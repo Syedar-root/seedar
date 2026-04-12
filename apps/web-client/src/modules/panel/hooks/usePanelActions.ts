@@ -410,7 +410,8 @@ export const usePanelActions = ({
       }
 
       await runPreviewWithDsl(dsl);
-    } catch {
+    } catch (error) {
+      console.error("Run failed:", error);
       toast.error("Run failed. Please try again.");
     } finally {
       setIsRunningState(false);

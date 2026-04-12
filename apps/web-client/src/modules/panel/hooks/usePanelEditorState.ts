@@ -277,7 +277,9 @@ export const usePanelEditorState = (
         datasetId: datasetData.id,
         tableId: datasetData.mainTableId,
         // joins: datasetData.joins || [],
-        dimensions: dropFields.map((field) => Number(field.field.id)),
+        dimensions: dropFields.map((field) => ({
+          fieldId: Number(field.id),
+        })),
         metrics: dropMetrics.map((metric) => ({
           id: Number(metric.id),
           alias: metric.alias,

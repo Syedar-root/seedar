@@ -359,8 +359,8 @@ const AIChat: React.FC<AIChatProps> = ({
           )}
           {loading && (
             <DotsJumpLoading
-              size="medium"
-              speed={1}
+              size="small"
+              speed={0.5}
               color="var(--chat-color-primary)"
             />
           )}
