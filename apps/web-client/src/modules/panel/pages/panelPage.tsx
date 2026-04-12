@@ -40,6 +40,7 @@ const COPY = {
   saveAndUpdate: "保存并更新",
   saveAndPublish: "保存并发布",
   confirmDatasetChange: "切换数据集会清空当前查询配置和预览结果，是否继续？",
+  datasetLocked: "当前面板已绑定数据集，不能修改",
   metricCreated: "指标创建成功",
   selectDatasetFirst: "请先选择数据集",
   addDimensionOrMetric: "请添加维度或指标",
@@ -108,6 +109,7 @@ export const PanelPage = () => {
   } = usePanelEditorState(panelId);
 
   const activeDataset = selectedDataset ?? datasetData;
+  const isDatasetLocked = Boolean(activeDataset?.id);
 
   const {
     datasets,
@@ -275,6 +277,16 @@ export const PanelPage = () => {
       return;
     }
 
+    if (
+      isDatasetLocked &&
+      activeDataset?.id &&
+      pendingSelectedDataset.id !== activeDataset.id
+    ) {
+      toast.info(COPY.datasetLocked);
+      setIsDatasetDialogOpen(false);
+      return;
+    }
+
     if (activeDataset?.id === pendingSelectedDataset.id) {
       setIsDatasetDialogOpen(false);
       return;
@@ -294,6 +306,15 @@ export const PanelPage = () => {
     }
 
     setIsDatasetDialogOpen(false);
+  };
+
+  const handleOpenDatasetSelector = () => {
+    if (isDatasetLocked) {
+      toast.info(COPY.datasetLocked);
+      return;
+    }
+
+    setIsDatasetDialogOpen(true);
   };
 
   const handleMetricCreated = () => {
@@ -352,7 +373,8 @@ export const PanelPage = () => {
       datasetId={activeDataset?.id}
       datasetName={activeDataset?.name}
       hasDataset={hasDataset}
-      onOpenDatasetSelector={() => setIsDatasetDialogOpen(true)}
+      canChangeDataset={!isDatasetLocked}
+      onOpenDatasetSelector={handleOpenDatasetSelector}
       onMetricCreated={handleMetricCreated}
     />
   );
@@ -459,7 +481,6 @@ export const PanelPage = () => {
               />
               <span className={styles.statusBadge}>{panelStatusLabel}</span>
             </div>
-            <div className={styles.smartMode}>{COPY.smartMode}</div>
           </div>
           <QueryZone
             onDropField={handleDropField}
@@ -519,6 +540,11 @@ export const PanelPage = () => {
       <Dialog.Root
         open={isDatasetDialogOpen}
         onOpenChange={(open) => {
+          if (open && isDatasetLocked) {
+            toast.info(COPY.datasetLocked);
+            return;
+          }
+
           setIsDatasetDialogOpen(open);
           if (open) {
             setPendingSelectedDataset(activeDataset);

@@ -1,222 +1,145 @@
-.filterItem {
-  display: flex;
+﻿.filterItem {
+  display: inline-flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: 6px var(--spacing-md);
+  gap: 6px;
+  width: auto;
+  max-width: 360px;
+  padding: 4px 8px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-secondary);
   background: var(--bg-container);
-  font-size: var(--font-base);
-  font-weight: 500;
-  user-select: none;
+  font-size: var(--font-sm);
   color: var(--primary);
   transition: opacity var(--transition-base);
+}
 
-  &:hover {
-    opacity: 0.85;
-  }
+.filterItem:hover {
+  opacity: 0.92;
 }
 
 .name {
+  flex: 0 1 96px;
+  min-width: 56px;
+  max-width: 112px;
   font-weight: 600;
   color: var(--primary-active);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.operatorTrigger,
-.valueTrigger {
+.controls {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 220px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-base);
-  font-size: var(--font-sm);
-  background: var(--bg-base);
-  cursor: pointer;
-  outline: none;
-  transition: border-color var(--transition-base);
-  min-height: 28px;
-  color: var(--text-primary);
-
-  &:hover {
-    border-color: var(--border-hover);
-  }
-
-  &:focus {
-    border-color: var(--border-focus);
-  }
-
-  &[data-popup-open] {
-    border-color: var(--border-focus);
-  }
+  gap: 6px;
 }
 
-.positioner {
-  z-index: 1000;
-  min-width: max-content;
+.operatorSelect {
+  width: 96px;
 }
 
-.popup {
-  min-width: 120px;
-  background: var(--bg-base);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-base);
-  box-shadow: var(--shadow-md);
-  max-height: 256px;
-  overflow-y: auto;
+.valueWrapper {
+  flex: 1 1 110px;
+  min-width: 84px;
+  max-width: 124px;
+  display: flex;
+  align-items: center;
 }
 
-.list {
-  padding: var(--spacing-xs) 0;
-  margin: 0;
+.valueControl {
+  width: 100%;
+  min-width: 0;
 }
 
-.item {
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-sm);
-  cursor: pointer;
-  transition: background-color var(--transition-base);
+.compactValueBtn {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 8px !important;
+}
+
+.compactValueText {
+  display: inline-block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.popoverEditor {
+  width: 220px;
+  max-width: 60vw;
+}
+
+.popoverField {
+  width: 100%;
+}
+
+.timeRange {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  color: var(--text-primary);
-  background: transparent;
-  border: none;
-  text-align: left;
-
-  &:hover {
-    background: var(--bg-hover);
-  }
-
-  &[data-selected] {
-    background: var(--bg-selected);
-  }
+  gap: 4px;
 }
 
-.indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary);
+.inlineNumber {
+  flex: 0 1 68px;
+  min-width: 60px;
+}
+
+.timeUnit {
   flex-shrink: 0;
-}
-
-.valueInput {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-base);
-  font-size: var(--font-sm);
-  width: 100px;
-  outline: none;
-  transition: border-color var(--transition-base);
-  min-height: 28px;
-  background: var(--bg-base);
-  color: var(--text-primary);
-
-  &:hover {
-    border-color: var(--border-hover);
-  }
-
-  &:focus {
-    border-color: var(--border-focus);
-  }
-
-  &[type="number"] {
-    width: 60px;
-  }
-
-  &[type="date"],
-  &[type="datetime-local"] {
-    width: 140px;
-  }
+  color: var(--text-secondary);
+  font-size: var(--font-xs);
 }
 
 .removeBtn {
-  cursor: pointer;
-  color: var(--primary-active);
   flex-shrink: 0;
-  transition: opacity var(--transition-base);
-  opacity: 0.6;
-
-  &:hover {
-    opacity: 1;
-  }
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  color: var(--primary-active) !important;
+  opacity: 0.65;
 }
 
-.arrayInput {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  max-width: 200px;
+.removeBtn:hover {
+  opacity: 1;
 }
 
-.tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px 6px;
-  background: var(--bg-hover);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-xs);
-  color: var(--text-primary);
+:global(.ant-select.operatorSelect),
+:global(.ant-select.valueControl),
+:global(.ant-input.valueControl),
+:global(.ant-input-number.valueControl),
+:global(.ant-input-number.inlineNumber),
+:global(.ant-picker.valueControl),
+:global(.ant-picker.popoverField) {
+  width: 100%;
 }
 
-.tagRemove {
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity var(--transition-base);
-
-  &:hover {
-    opacity: 1;
-  }
-}
-
-.arrayInputField {
-  padding: 2px 6px;
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-xs);
-  width: 80px;
-  outline: none;
-  background: var(--bg-base);
-  color: var(--text-primary);
-
-  &:focus {
-    border-color: var(--border-focus);
-  }
-}
-
-.rangeInput {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.rangeInputField {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--border-base);
-  border-radius: var(--radius-base);
-  font-size: var(--font-sm);
-  width: 60px;
-  outline: none;
-  transition: border-color var(--transition-base);
-  min-height: 28px;
-  background: var(--bg-base);
-  color: var(--text-primary);
-
-  &:hover {
-    border-color: var(--border-hover);
+@media (max-width: 1280px) {
+  .filterItem {
+    max-width: 320px;
   }
 
-  &:focus {
-    border-color: var(--border-focus);
+  .name {
+    max-width: 88px;
   }
-}
 
-.rangeSeparator {
-  color: var(--text-secondary);
-  font-size: var(--font-sm);
+  .controls {
+    max-width: 198px;
+  }
+
+  .operatorSelect {
+    flex-basis: 84px;
+    min-width: 78px;
+  }
+
+  .valueWrapper {
+    min-width: 78px;
+    max-width: 112px;
+  }
 }

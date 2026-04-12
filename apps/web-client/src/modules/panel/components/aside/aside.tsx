@@ -15,6 +15,7 @@ const COPY = {
   datasetHintEmpty:
     "\u5148\u9009\u62e9\u4e00\u4e2a\u6570\u636e\u96c6\uff0c\u518d\u62d6\u62fd\u5b57\u6bb5\u548c\u6307\u6807\u6784\u5efa\u67e5\u8be2",
   datasetActionChange: "\u66f4\u6362\u6570\u636e\u96c6",
+  datasetActionLocked: "\u6570\u636e\u96c6\u5df2\u9501\u5b9a",
   datasetActionSelect: "\u9009\u62e9\u6570\u636e\u96c6",
   sidebarDesc: "\u9009\u62e9\u5b57\u6bb5\u548c\u6307\u6807\uff0c\u6784\u5efa\u67e5\u8be2",
   sidebarHint: "\u62d6\u62fd\u5230\u53f3\u4fa7\u533a\u57df\u5373\u53ef\u4f7f\u7528",
@@ -33,6 +34,7 @@ interface AsideProps {
   datasetId?: number;
   datasetName?: string;
   hasDataset: boolean;
+  canChangeDataset?: boolean;
   onOpenDatasetSelector: () => void;
   onMetricCreated?: () => void;
 }
@@ -44,6 +46,7 @@ export const Aside: React.FC<AsideProps> = ({
   datasetId,
   datasetName,
   hasDataset,
+  canChangeDataset = true,
   onOpenDatasetSelector,
   onMetricCreated,
 }) => {
@@ -135,8 +138,13 @@ export const Aside: React.FC<AsideProps> = ({
           type="button"
           className={styles.datasetAction}
           onClick={onOpenDatasetSelector}
+          disabled={hasDataset && !canChangeDataset}
         >
-          {hasDataset ? COPY.datasetActionChange : COPY.datasetActionSelect}
+          {hasDataset
+            ? canChangeDataset
+              ? COPY.datasetActionChange
+              : COPY.datasetActionLocked
+            : COPY.datasetActionSelect}
         </button>
       </div>
 
