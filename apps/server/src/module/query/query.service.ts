@@ -7,7 +7,7 @@ import { CreateQueryRequest } from './dto/create-query.request';
 import { UpdateQueryRequest } from './dto/update-query.request';
 import { ExecuteQueryResponse } from './dto/execute-query.response';
 import { QueryStatus } from './query-status.enum';
-import { DSLTransformer, QueryDSL } from './dsl-transformer/dsl-transformer';
+import { DSLTransformer } from './dsl-transformer/dsl-transformer';
 import {
   KnexQueryBuilder,
   QueryAdapter,
@@ -23,7 +23,10 @@ import { MySqlConfig } from '@/module/datasource/datasource.types';
 import { DataSourceType } from '@/module/datasource/datasource.types';
 import { DatasetResponse } from '@/module/dataset/dataset.types';
 import { LoggerService } from '@/logger/logger.service';
-import { DSLTransformerV2 } from './dsl-transformer/dsl-transformer.v2';
+import {
+  DSLTransformerV2,
+  QueryDSL,
+} from './dsl-transformer/dsl-transformer.v2';
 
 @Injectable()
 export class QueryService {

@@ -77,6 +77,7 @@ export const PanelPage = () => {
   const [isDatasetDialogOpen, setIsDatasetDialogOpen] = useState(false);
 
   const {
+    dimensionItems,
     dropFields,
     dropMetrics,
     dropFilters,
@@ -94,6 +95,8 @@ export const PanelPage = () => {
     handleDropFilter,
     handleRemoveFilter,
     handleUpdateFilter,
+    handleAddDerivedDimension,
+    handleUpdateDerivedDimension,
     handleUpdateTempMetric,
     handleRemoveTempMetric,
     handleEditorChange,
@@ -423,7 +426,7 @@ export const PanelPage = () => {
 
   const editorContent = (
     <PanelEditor
-      fields={dropFields}
+      fields={dimensionItems}
       metrics={dropMetrics}
       config={editorConfig}
       displayType={displayType}
@@ -535,9 +538,12 @@ export const PanelPage = () => {
             onUpdateMetricPopConfig={handleUpdateTempMetric}
             tempMetrics={tempMetrics}
             onRemoveTempMetric={handleRemoveTempMetric}
-            dropFields={dropFields}
+            onAddDerivedDimension={handleAddDerivedDimension}
+            onUpdateDerivedDimension={handleUpdateDerivedDimension}
+            dropFields={dimensionItems}
             dropMetrics={metricsWithPopFlag}
             dropFilters={dropFilters}
+            availableFields={activeDataset?.fields || []}
           />
           <div className={styles.operations}>
             <button

@@ -22,6 +22,10 @@ import {
   ComparisonMode,
   AggExpr,
   FieldRefExpr,
+  CallExpr,
+  ConditionalExpr,
+  ComparisonExpr,
+  LiteralExpr,
 } from '@metric-engine/core';
 
 describe('Dynamic Join Selection', () => {
@@ -292,6 +296,228 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins.length).toBe(1);
       expect(result.joins[0].table).toBe('customers');
     });
+
+    it('should keep backward compatibility for object dimensions with alias', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [{ fieldId: 1, alias: 'order_id_alias' }],
+        metrics: [{ id: 1 }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.dimensions).toHaveLength(1);
+      const [dimensionExpr] = result.dimensions as FieldRefExpr[];
+      expect(dimensionExpr).toBeInstanceOf(FieldRefExpr);
+      expect(dimensionExpr.meta?.alias).toBe('order_id_alias');
+    });
+
+    it('should build time_grain derived dimension as CallExpr with metadata', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [
+          {
+            derivedKind: 'time_grain' as const,
+            fieldId: 1,
+            grain: 'month' as const,
+            alias: 'month_bucket',
+          },
+        ],
+        metrics: [{ id: 1 }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      const [dimensionExpr] = result.dimensions as CallExpr[];
+      expect(dimensionExpr).toBeInstanceOf(CallExpr);
+      expect(dimensionExpr.functionName).toBe('TIME_GRAIN');
+      expect(dimensionExpr.args[0]).toBeInstanceOf(FieldRefExpr);
+      expect(dimensionExpr.args[1]).toBeInstanceOf(LiteralExpr);
+      expect((dimensionExpr.args[1] as LiteralExpr).value).toBe('month');
+      expect(dimensionExpr.meta?.alias).toBe('month_bucket');
+      expect(dimensionExpr.meta?.businessName).toBe('month_bucket');
+    });
+
+    it('should build bucket derived dimension as ConditionalExpr chain', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [
+          {
+            derivedKind: 'bucket' as const,
+            fieldId: 4,
+            ranges: [
+              { lt: 20, label: '差' },
+              { lt: 50, label: '一般' },
+            ],
+            defaultLabel: '好',
+            alias: 'quality_bucket',
+          },
+        ],
+        metrics: [{ id: 1 }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      const [dimensionExpr] = result.dimensions as ConditionalExpr[];
+      expect(dimensionExpr).toBeInstanceOf(ConditionalExpr);
+      expect(dimensionExpr.meta?.alias).toBe('quality_bucket');
+      expect(dimensionExpr.condition).toBeInstanceOf(ComparisonExpr);
+      expect((dimensionExpr.condition as ComparisonExpr).operator).toBe('<');
+    });
+
+    it('should build mapping derived dimension as first-match ConditionalExpr chain', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [
+          {
+            derivedKind: 'mapping' as const,
+            fieldId: 4,
+            rules: [
+              { in: [100, 200], label: 'high' },
+              { in: [50], label: 'mid' },
+            ],
+            defaultLabel: 'low',
+            alias: 'amount_level',
+          },
+        ],
+        metrics: [{ id: 1 }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      const [dimensionExpr] = result.dimensions as ConditionalExpr[];
+      expect(dimensionExpr).toBeInstanceOf(ConditionalExpr);
+      expect(dimensionExpr.meta?.alias).toBe('amount_level');
+      expect((dimensionExpr.condition as ComparisonExpr).operator).toBe('=');
+    });
+
+    it('should build expression derived dimension and keep alias metadata', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [
+          {
+            derivedKind: 'expression' as const,
+            expression: '#F1',
+            alias: 'order_id_expr',
+          },
+        ],
+        metrics: [{ id: 1 }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      const [dimensionExpr] = result.dimensions as FieldRefExpr[];
+      expect(dimensionExpr).toBeInstanceOf(FieldRefExpr);
+      expect(dimensionExpr.meta?.alias).toBe('order_id_expr');
+      expect(dimensionExpr.meta?.businessName).toBe('order_id_expr');
+    });
+
+    it('should collect joins from derived dimensions on non-main table', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [
+          {
+            derivedKind: 'time_grain' as const,
+            fieldId: 6,
+            grain: 'day' as const,
+            alias: 'customer_day',
+          },
+        ],
+        metrics: [{ id: 1 }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.joins).toHaveLength(1);
+      expect(result.joins[0].table).toBe('customers');
+    });
+
+    it('should reject derived dimensions without alias', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [
+          {
+            derivedKind: 'time_grain' as const,
+            fieldId: 1,
+            grain: 'month' as const,
+          },
+        ],
+        metrics: [{ id: 1 }],
+      };
+
+      expect(() =>
+        DSLTransformerV2.transform(dsl as any, mockDatasetInfo, mockTables),
+      ).toThrow(/alias/i);
+    });
+
+    it('should reject unsupported derivedKind', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [
+          {
+            derivedKind: 'unknown_kind',
+            fieldId: 1,
+            alias: 'invalid_kind',
+          },
+        ],
+        metrics: [{ id: 1 }],
+      };
+
+      expect(() =>
+        DSLTransformerV2.transform(dsl as any, mockDatasetInfo, mockTables),
+      ).toThrow(/derivedKind/i);
+    });
+
+    it('should reject expression derived dimension with #M refs', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [
+          {
+            derivedKind: 'expression' as const,
+            expression: '#M1 + #F1',
+            alias: 'invalid_expression',
+          },
+        ],
+        metrics: [{ id: 1 }],
+      };
+
+      expect(() =>
+        DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables),
+      ).toThrow(/#M/i);
+    });
   });
 
   describe('V1 Transformer', () => {
@@ -397,12 +623,7 @@ describe('Period Comparison Expressions', () => {
       tempMetricOverrides: Partial<TempMetricDSL>;
     }> = {},
   ) => {
-    const {
-      filters,
-      tempMetrics,
-      tempMetricOverrides,
-      ...rest
-    } = overrides;
+    const { filters, tempMetrics, tempMetricOverrides, ...rest } = overrides;
 
     const defaultFilters = [
       { fieldId: timeFieldId, op: 'recent_days', value: 30 },
@@ -421,14 +642,12 @@ describe('Period Comparison Expressions', () => {
       tableId: 1,
       metrics: [],
       filters: filters ?? defaultFilters,
-      tempMetrics:
-        tempMetrics ??
-        [
-          {
-            ...defaultTempMetric,
-            ...(tempMetricOverrides ?? {}),
-          },
-        ],
+      tempMetrics: tempMetrics ?? [
+        {
+          ...defaultTempMetric,
+          ...(tempMetricOverrides ?? {}),
+        },
+      ],
       ...rest,
     };
   };
@@ -479,8 +698,18 @@ describe('Period Comparison Expressions', () => {
       datasource: { id: 1, name: 'Main', type: 'mysql' },
       mainTable: { id: 1, tableName: 'orders', datasetName: 'Orders' },
       tables: [
-        { id: 1, datasourceTableId: 1, tableName: 'orders', datasetName: 'Orders' },
-        { id: 2, datasourceTableId: 2, tableName: 'order_dates', datasetName: 'Order Dates' },
+        {
+          id: 1,
+          datasourceTableId: 1,
+          tableName: 'orders',
+          datasetName: 'Orders',
+        },
+        {
+          id: 2,
+          datasourceTableId: 2,
+          tableName: 'order_dates',
+          datasetName: 'Order Dates',
+        },
       ] as DatasetTableResponse[],
       fields: [
         {
@@ -544,7 +773,11 @@ describe('Period Comparison Expressions', () => {
   });
 
   it('should parse MOM(#M,#F) into PeriodComparisonExpr', () => {
-    const result = DSLTransformerV2.transform(createDsl(), mockDatasetInfo, mockTables);
+    const result = DSLTransformerV2.transform(
+      createDsl(),
+      mockDatasetInfo,
+      mockTables,
+    );
     expect(result.metrics.length).toBe(1);
     const [expr] = result.metrics as PeriodComparisonExpr[];
     expect(expr).toBeInstanceOf(PeriodComparisonExpr);
@@ -556,8 +789,14 @@ describe('Period Comparison Expressions', () => {
   });
 
   it('should collect joins for referenced metric and time field tables', () => {
-    const result = DSLTransformerV2.transform(createDsl(), mockDatasetInfo, mockTables);
-    expect(result.joins.some((join) => join.table === 'order_dates')).toBe(true);
+    const result = DSLTransformerV2.transform(
+      createDsl(),
+      mockDatasetInfo,
+      mockTables,
+    );
+    expect(result.joins.some((join) => join.table === 'order_dates')).toBe(
+      true,
+    );
   });
 
   it('should respect calculationMode absolute override', () => {
@@ -592,11 +831,15 @@ describe('Period Comparison Expressions', () => {
     const dsl = createDsl({ filters: [{ fieldId: 3, op: '=', value: 100 }] });
     expect(() =>
       DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables),
-    ).toThrow(/time\s*filter/i);
+    ).toThrow(/time\s*filter|时间过滤器/i);
   });
 
   it('should derive the period comparison metric from the base aggregate', () => {
-    const result = DSLTransformerV2.transform(createDsl(), mockDatasetInfo, mockTables);
+    const result = DSLTransformerV2.transform(
+      createDsl(),
+      mockDatasetInfo,
+      mockTables,
+    );
     const expr = result.metrics[0] as PeriodComparisonExpr;
     expect(expr.baseMetric).toBeInstanceOf(AggExpr);
     expect((expr.baseMetric as AggExpr).functionName).toBe('SUM');

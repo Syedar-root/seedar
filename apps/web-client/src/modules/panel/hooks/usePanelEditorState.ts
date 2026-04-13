@@ -10,12 +10,17 @@ import {
   QueryDSL,
   PeriodOverPeriodType,
   PeriodCalculationMode,
+  type BaseDimensionDSL,
+  type DatasetFieldResponse,
   type DatasetResponse,
+  type DerivedDimensionDSL,
   type ExecuteQueryResponse,
   type PanelResponse,
+  type QueryDimensionDSL,
   type QueryResponse,
+  type TimeGrainDimensionDSL,
 } from "#pkg/seedar/types";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TitleConfig } from "../components/editableTitle";
 import type { DragItem } from "../components/dndHelper/dragZone/dragZone";
 import {
@@ -24,11 +29,24 @@ import {
   type DisplayPanelType,
   type PanelEditorConfig,
 } from "../components/panelEditor";
-import type { FilterItem } from "../components/queryZone/types";
 import type { PeriodOverPeriodConfig } from "../components/queryZone/queryZone";
+import type { FilterItem } from "../components/queryZone/types";
 
 type LocalPanelStatus = "unsaved" | PanelStatus.DRAFT | PanelStatus.PUBLISHED;
 type QueryDsl = QueryDSL;
+type PanelDimensionDsl = Exclude<QueryDimensionDSL, number>;
+
+export type DerivedDimensionInput = DerivedDimensionDSL;
+
+export interface DimensionItem extends DragItem {
+  id: string | number;
+  name: string;
+  businessName?: string;
+  isDerived: boolean;
+  derivedKind?: DerivedDimensionInput["derivedKind"];
+  fieldType?: FieldType;
+  dimensionDsl: PanelDimensionDsl;
+}
 
 // 计算模式中文标签映射
 const CALCULATION_MODE_LABELS: Record<PeriodCalculationMode, string> = {
@@ -50,6 +68,7 @@ export interface TempMetricConfig {
 }
 
 interface UsePanelEditorStateReturn {
+  dimensionItems: DimensionItem[];
   dropFields: DragItem[];
   dropMetrics: DragItem[];
   dropFilters: FilterItem[];
@@ -82,6 +101,11 @@ interface UsePanelEditorStateReturn {
   handleUpdateFilter: (
     id: string | number,
     updates: Partial<FilterItem>,
+  ) => void;
+  handleAddDerivedDimension: (dimension: DerivedDimensionInput) => void;
+  handleUpdateDerivedDimension: (
+    dimensionItemId: string | number,
+    dimension: DerivedDimensionInput,
   ) => void;
   handleUpdateTempMetric: (
     metricId: string | number,
@@ -121,10 +145,216 @@ const mapPanelTypeToDisplayType = (
   return "line";
 };
 
+const VALID_TIME_GRAINS = ["day", "week", "month", "quarter", "year"];
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object";
+
+const asNumber = (value: unknown): number | undefined => {
+  if (typeof value === "number" && !Number.isNaN(value)) {
+    return value;
+  }
+  return undefined;
+};
+
+const asString = (value: unknown): string | undefined => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const next = value.trim();
+  return next.length > 0 ? next : undefined;
+};
+
+const asPrimitiveArray = (
+  value: unknown,
+): Array<string | number | boolean> | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const next = value.filter(
+    (entry): entry is string | number | boolean =>
+      typeof entry === "string" ||
+      typeof entry === "number" ||
+      typeof entry === "boolean",
+  );
+
+  return next.length > 0 ? next : undefined;
+};
+
+const parseDimensionDsl = (value: unknown): PanelDimensionDsl | undefined => {
+  if (typeof value === "number" && !Number.isNaN(value)) {
+    return { fieldId: value };
+  }
+
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const derivedKind = value.derivedKind;
+
+  if (derivedKind === undefined) {
+    const fieldId = asNumber(value.fieldId);
+    if (fieldId === undefined) {
+      return undefined;
+    }
+
+    return {
+      fieldId,
+      alias: asString(value.alias),
+    };
+  }
+
+  if (typeof derivedKind !== "string") {
+    return undefined;
+  }
+
+  const alias = asString(value.alias);
+  if (!alias) {
+    return undefined;
+  }
+
+  if (derivedKind === "time_grain") {
+    const fieldId = asNumber(value.fieldId);
+    const grain = asString(value.grain);
+    if (
+      fieldId === undefined ||
+      !grain ||
+      !VALID_TIME_GRAINS.includes(grain)
+    ) {
+      return undefined;
+    }
+
+    return {
+      derivedKind: "time_grain",
+      fieldId,
+      grain: grain as TimeGrainDimensionDSL["grain"],
+      alias,
+    } as DerivedDimensionInput;
+  }
+
+  if (derivedKind === "bucket") {
+    const fieldId = asNumber(value.fieldId);
+    if (fieldId === undefined || !Array.isArray(value.ranges)) {
+      return undefined;
+    }
+
+    const ranges = value.ranges
+      .map((range) => {
+        if (!isRecord(range)) {
+          return undefined;
+        }
+
+        const lt = asNumber(range.lt);
+        const label = asString(range.label);
+
+        if (lt === undefined || !label) {
+          return undefined;
+        }
+
+        return { lt, label };
+      })
+      .filter(
+        (
+          range,
+        ): range is {
+          lt: number;
+          label: string;
+        } => Boolean(range),
+      );
+
+    if (ranges.length === 0) {
+      return undefined;
+    }
+
+    return {
+      derivedKind: "bucket",
+      fieldId,
+      ranges,
+      defaultLabel: asString(value.defaultLabel),
+      alias,
+    };
+  }
+
+  if (derivedKind === "mapping") {
+    const fieldId = asNumber(value.fieldId);
+    if (fieldId === undefined || !Array.isArray(value.rules)) {
+      return undefined;
+    }
+
+    const rules = value.rules
+      .map((rule) => {
+        if (!isRecord(rule)) {
+          return undefined;
+        }
+
+        const valueList = asPrimitiveArray(rule.in);
+        const label = asString(rule.label);
+
+        if (!valueList || !label) {
+          return undefined;
+        }
+
+        return { in: valueList, label };
+      })
+      .filter(
+        (
+          rule,
+        ): rule is {
+          in: Array<string | number | boolean>;
+          label: string;
+        } => Boolean(rule),
+      );
+
+    if (rules.length === 0) {
+      return undefined;
+    }
+
+    return {
+      derivedKind: "mapping",
+      fieldId,
+      rules,
+      defaultLabel: asString(value.defaultLabel),
+      alias,
+    };
+  }
+
+  if (derivedKind === "expression") {
+    const expression = asString(value.expression);
+    if (!expression) {
+      return undefined;
+    }
+
+    return {
+      derivedKind: "expression",
+      expression,
+      alias,
+    };
+  }
+
+  return undefined;
+};
+
+const isDerivedDimensionDsl = (
+  value: PanelDimensionDsl,
+): value is DerivedDimensionInput =>
+  typeof (value as DerivedDimensionInput).derivedKind === "string";
+
+const getFieldById = (
+  fields: DatasetFieldResponse[],
+  fieldId: number | undefined,
+): DatasetFieldResponse | undefined => {
+  if (fieldId === undefined) {
+    return undefined;
+  }
+
+  return fields.find((field) => field.id === fieldId);
+};
+
 export const usePanelEditorState = (
   panelId?: string,
 ): UsePanelEditorStateReturn => {
-  const [dropFields, setDropFields] = useState<DragItem[]>([]);
+  const [dimensionItems, setDimensionItems] = useState<DimensionItem[]>([]);
   const [dropMetrics, setDropMetrics] = useState<DragItem[]>([]);
   const [dropFilters, setDropFilters] = useState<FilterItem[]>([]);
   const [tempMetrics, setTempMetrics] = useState<TempMetricConfig[]>([]);
@@ -144,6 +374,7 @@ export const usePanelEditorState = (
   );
 
   const hydratedQueryRef = useRef<string | undefined>();
+  const derivedDimensionSeedRef = useRef(0);
 
   const { data: panelData } = usePanel(panelId ?? "", !!panelId);
   const queryId = panelData?.queryId;
@@ -154,6 +385,105 @@ export const usePanelEditorState = (
     mutateAsync: executeTempQueryAsync,
     isPending: isPreviewRunning,
   } = useExecuteTempQuery();
+
+  const nextDerivedDimensionId = useCallback(() => {
+    derivedDimensionSeedRef.current += 1;
+    return `derived_dimension_${derivedDimensionSeedRef.current}_${Date.now()}`;
+  }, []);
+
+  const buildBaseDimensionItem = useCallback(
+    (
+      dimensionDsl: BaseDimensionDSL,
+      datasetFields: DatasetFieldResponse[],
+      id?: string | number,
+    ): DimensionItem => {
+      const sourceField = getFieldById(datasetFields, dimensionDsl.fieldId);
+      const alias = asString(dimensionDsl.alias);
+      const fallbackName = `field_${dimensionDsl.fieldId}`;
+
+      return {
+        id: id ?? dimensionDsl.fieldId,
+        name: sourceField?.name || fallbackName,
+        businessName: alias || sourceField?.businessName || sourceField?.name || fallbackName,
+        fieldType: sourceField?.type,
+        isDerived: false,
+        dimensionDsl: {
+          fieldId: dimensionDsl.fieldId,
+          alias,
+        },
+      };
+    },
+    [],
+  );
+
+  const buildDerivedDimensionItem = useCallback(
+    (
+      dimensionDsl: DerivedDimensionInput,
+      datasetFields: DatasetFieldResponse[],
+      id?: string | number,
+    ): DimensionItem => {
+      const fieldId = "fieldId" in dimensionDsl ? dimensionDsl.fieldId : undefined;
+      const sourceField = getFieldById(datasetFields, fieldId);
+
+      return {
+        id: id ?? nextDerivedDimensionId(),
+        name: dimensionDsl.alias,
+        businessName: dimensionDsl.alias,
+        fieldType: sourceField?.type,
+        isDerived: true,
+        derivedKind: dimensionDsl.derivedKind,
+        dimensionDsl,
+      };
+    },
+    [nextDerivedDimensionId],
+  );
+
+  const hydrateDimensions = useCallback(
+    (
+      dimensions: QueryDsl["dimensions"] | undefined,
+      dataset: DatasetResponse,
+    ): DimensionItem[] => {
+      if (!Array.isArray(dimensions)) {
+        return [];
+      }
+
+      return dimensions
+        .map((dimension, index) => {
+          const parsed = parseDimensionDsl(dimension);
+          if (!parsed) {
+            return undefined;
+          }
+
+          if (isDerivedDimensionDsl(parsed)) {
+            return buildDerivedDimensionItem(
+              parsed,
+              dataset.fields,
+              `derived_dimension_${index}_${parsed.derivedKind}_${parsed.alias}`,
+            );
+          }
+
+          return buildBaseDimensionItem(parsed, dataset.fields);
+        })
+        .filter((dimension): dimension is DimensionItem => Boolean(dimension));
+    },
+    [buildBaseDimensionItem, buildDerivedDimensionItem],
+  );
+
+  const serializeDimensions = useCallback(
+    (dimensions: DimensionItem[]): PanelDimensionDsl[] => {
+      return dimensions.map((dimension) => {
+        if (dimension.isDerived && isDerivedDimensionDsl(dimension.dimensionDsl)) {
+          return dimension.dimensionDsl;
+        }
+
+        return {
+          fieldId: (dimension.dimensionDsl as BaseDimensionDSL).fieldId,
+          alias: asString((dimension.dimensionDsl as BaseDimensionDSL).alias),
+        };
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!panelId) {
@@ -200,13 +530,7 @@ export const usePanelEditorState = (
     }
 
     setSelectedDataset(remoteDatasetData);
-    const nextFields = (
-      (queryData.dsl?.dimensions as number[] | undefined) ?? []
-    )
-      .map((id) => remoteDatasetData.fields.find((field) => field.id === id))
-      .filter((field): field is NonNullable<typeof field> => Boolean(field))
-      .map((field) => ({ ...field }) as DragItem);
-    setDropFields(nextFields);
+    setDimensionItems(hydrateDimensions(queryData.dsl?.dimensions, remoteDatasetData));
 
     const nextMetrics = (
       (queryData.dsl?.metrics as Array<{ id: number }> | undefined) ?? []
@@ -242,12 +566,17 @@ export const usePanelEditorState = (
     setTempMetrics(nextTempMetrics);
 
     hydratedQueryRef.current = queryData.id;
-  }, [queryData, remoteDatasetData]);
+  }, [hydrateDimensions, queryData, remoteDatasetData]);
 
   const datasetData = selectedDataset ?? remoteDatasetData;
 
+  const dropFields = useMemo<DragItem[]>(
+    () => dimensionItems.map((dimension) => ({ ...dimension })),
+    [dimensionItems],
+  );
+
   const resetForDatasetChange = useCallback(() => {
-    setDropFields([]);
+    setDimensionItems([]);
     setDropMetrics([]);
     setDropFilters([]);
     setTempMetrics([]);
@@ -277,9 +606,7 @@ export const usePanelEditorState = (
         datasetId: datasetData.id,
         tableId: datasetData.mainTableId,
         // joins: datasetData.joins || [],
-        dimensions: dropFields.map((field) => ({
-          fieldId: Number(field.id),
-        })),
+        dimensions: serializeDimensions(dimensionItems),
         metrics: dropMetrics.map((metric) => ({
           id: Number(metric.id),
           alias: metric.alias,
@@ -292,15 +619,22 @@ export const usePanelEditorState = (
         tempMetrics: tempMetrics.length > 0 ? tempMetrics : undefined,
       };
     },
-    [datasetData, dropFields, dropMetrics, dropFilters, tempMetrics],
+    [
+      datasetData,
+      dimensionItems,
+      dropMetrics,
+      dropFilters,
+      serializeDimensions,
+      tempMetrics,
+    ],
   );
 
   const hasDataset = Boolean(datasetData);
   const hasQueryContent = Boolean(
-    dropFields.length || dropMetrics.length || dropFilters.length || tempData,
+    dimensionItems.length || dropMetrics.length || dropFilters.length || tempData,
   );
   const canRun =
-    hasDataset && (dropFields.length > 0 || dropMetrics.length > 0);
+    hasDataset && (dimensionItems.length > 0 || dropMetrics.length > 0);
 
   const runPreview = useCallback(
     async (dsl?: QueryDsl): Promise<ExecuteQueryResponse | undefined> => {
@@ -323,22 +657,89 @@ export const usePanelEditorState = (
         return;
       }
 
-      setDropFields((previous) => {
-        if (previous.some((entry) => entry.id === item.id)) {
+      const fieldId = Number(item.id);
+      if (Number.isNaN(fieldId)) {
+        return;
+      }
+
+      setDimensionItems((previous) => {
+        if (
+          previous.some(
+            (entry) =>
+              !entry.isDerived &&
+              (entry.dimensionDsl as BaseDimensionDSL).fieldId === fieldId,
+          )
+        ) {
           return previous;
         }
-        const field = datasetData.fields.find((entry) => entry.id === item.id);
-        return field ? [...previous, field] : previous;
+
+        const field = datasetData.fields.find((entry) => entry.id === fieldId);
+        if (!field) {
+          return previous;
+        }
+
+        const nextItem = buildBaseDimensionItem(
+          { fieldId: field.id, alias: undefined },
+          datasetData.fields,
+        );
+
+        return [...previous, nextItem];
       });
     },
-    [datasetData],
+    [buildBaseDimensionItem, datasetData],
   );
 
   const handleRemoveField = useCallback((item: DragItem) => {
-    setDropFields((previous) =>
+    setDimensionItems((previous) =>
       previous.filter((entry) => entry.id !== item.id),
     );
   }, []);
+
+  const handleAddDerivedDimension = useCallback(
+    (dimension: DerivedDimensionInput) => {
+      if (!datasetData) {
+        return;
+      }
+
+      setDimensionItems((previous) => [
+        ...previous,
+        buildDerivedDimensionItem(
+          {
+            ...dimension,
+            alias: dimension.alias.trim(),
+          },
+          datasetData.fields,
+        ),
+      ]);
+    },
+    [buildDerivedDimensionItem, datasetData],
+  );
+
+  const handleUpdateDerivedDimension = useCallback(
+    (dimensionItemId: string | number, dimension: DerivedDimensionInput) => {
+      if (!datasetData) {
+        return;
+      }
+
+      setDimensionItems((previous) =>
+        previous.map((entry) => {
+          if (entry.id !== dimensionItemId || !entry.isDerived) {
+            return entry;
+          }
+
+          return buildDerivedDimensionItem(
+            {
+              ...dimension,
+              alias: dimension.alias.trim(),
+            },
+            datasetData.fields,
+            entry.id,
+          );
+        }),
+      );
+    },
+    [buildDerivedDimensionItem, datasetData],
+  );
 
   const handleDropMetric = useCallback(
     (item: DragItem) => {
@@ -427,7 +828,7 @@ export const usePanelEditorState = (
   );
 
   // 根据字段ID获取字段信息
-  const getFieldById = useCallback(
+  const getDatasetFieldById = useCallback(
     (fieldId: number) => {
       if (!datasetData) return undefined;
       return datasetData.fields.find((field) => field.id === fieldId);
@@ -488,7 +889,7 @@ export const usePanelEditorState = (
 
       // 根据指标的 timeFieldId 添加时间字段筛选
       if (fullMetric?.timeFieldId) {
-        const timeField = getFieldById(fullMetric.timeFieldId);
+        const timeField = getDatasetFieldById(fullMetric.timeFieldId);
         if (timeField) {
           setDropFilters((previous) => {
             const existingFilter = previous.find(
@@ -510,7 +911,7 @@ export const usePanelEditorState = (
         }
       }
     },
-    [dropMetrics, getPeriodTypeLabel, datasetData, getFieldById],
+    [datasetData, dropMetrics, getDatasetFieldById, getPeriodTypeLabel],
   );
 
   // 删除临时指标
@@ -556,6 +957,7 @@ export const usePanelEditorState = (
   }, [buildDsl, canRun, executeTempQuery, queryData?.dsl]);
 
   return {
+    dimensionItems,
     dropFields,
     dropMetrics,
     dropFilters,
@@ -586,6 +988,8 @@ export const usePanelEditorState = (
     handleDropFilter,
     handleRemoveFilter,
     handleUpdateFilter,
+    handleAddDerivedDimension,
+    handleUpdateDerivedDimension,
     handleUpdateTempMetric,
     handleRemoveTempMetric,
     handleEditorChange,

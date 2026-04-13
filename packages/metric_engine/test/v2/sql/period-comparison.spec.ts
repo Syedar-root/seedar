@@ -42,8 +42,6 @@ describe("PeriodComparison SQL builder", () => {
 
     const result = builder.build(spec);
 
-    console.log("hcs result.sql", result.sql);
-
     expect(result.sql).toContain("WITH current_metrics AS");
     expect(result.sql).toContain("comparison_metrics AS");
     expect(result.sql).toContain("dimension_keys AS (");

@@ -30,12 +30,20 @@ export const DatasetDetailPage = () => {
   const updateMutation = useUpdateDataset();
   const queryClient = useQueryClient();
 
+  const normalizeMetricPayload = (metric: DatasetMetricResponse) => ({
+    ...metric,
+    timeFieldId:
+      metric.timeFieldId !== undefined
+        ? String(metric.timeFieldId)
+        : undefined,
+  });
+
   const handleAddMetric = (metric: DatasetMetricResponse) => {
     updateMutation.mutate(
       {
         dataSetId: datasetId,
         metrics: {
-          added: [metric],
+          added: [normalizeMetricPayload(metric)],
         },
       },
       {
@@ -56,7 +64,7 @@ export const DatasetDetailPage = () => {
       {
         dataSetId: datasetId,
         metrics: {
-          updated: [{ ...metric, id: metricId }],
+          updated: [{ ...normalizeMetricPayload(metric), id: metricId }],
         },
       },
       {

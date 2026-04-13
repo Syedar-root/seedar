@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   DisplayPanelType,
   PanelEditorConfig,
@@ -31,6 +31,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
   const [currentConfig, setCurrentConfig] = useState<PanelEditorConfig>(
     config || { color: DEFAULT_COLORS },
   );
+  const hasInitializedOptionsRef = useRef(false);
 
   useEffect(() => {
     setCurrentType(displayType);
@@ -54,6 +55,52 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
     () => getConfigComponents(currentType),
     [currentType],
   );
+
+  const availableFieldValues = useMemo(() => {
+    return new Set(
+      [...fields, ...metrics]
+        .map((item) => item.businessName || item.name)
+        .filter((value): value is string => Boolean(value)),
+    );
+  }, [fields, metrics]);
+
+  useEffect(() => {
+    if (!hasInitializedOptionsRef.current) {
+      if (availableFieldValues.size === 0) {
+        // 首次加载字段/指标尚未回填时，不要误清空已有配置
+        return;
+      }
+      hasInitializedOptionsRef.current = true;
+    }
+
+    const mappedKeys: Array<keyof PanelEditorConfig> = [
+      "xField",
+      "yField",
+      "seriesField",
+      "categoryField",
+      "valueField",
+      "sizeField",
+    ];
+
+    const invalidPatch: Partial<PanelEditorConfig> = {};
+    let hasInvalidValue = false;
+
+    mappedKeys.forEach((key) => {
+      const value = currentConfig[key];
+      if (typeof value === "string" && value && !availableFieldValues.has(value)) {
+        invalidPatch[key] = undefined;
+        hasInvalidValue = true;
+      }
+    });
+
+    if (!hasInvalidValue) {
+      return;
+    }
+
+    const nextConfig = { ...currentConfig, ...invalidPatch };
+    setCurrentConfig(nextConfig);
+    onChange(currentType, nextConfig);
+  }, [availableFieldValues, currentConfig, currentType, onChange]);
 
   return (
     <ScrollArea className={styles.editor}>

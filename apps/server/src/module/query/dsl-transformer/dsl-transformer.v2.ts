@@ -51,7 +51,7 @@ import { Operator, TimeFilter, TimeRange } from '@metric-engine/core';
 export interface QueryDSL {
   datasetId: number;
   tableId: number;
-  dimensions?: Array<number | { fieldId: number; alias?: string }>;
+  dimensions?: QueryDimensionDSL[];
   metrics?: Array<{
     id: number;
     alias?: string;
@@ -75,6 +75,61 @@ export interface QueryDSL {
   limit?: number;
   offset?: number;
 }
+
+export type TimeGrain = 'day' | 'week' | 'month' | 'quarter' | 'year';
+
+export type BaseDimensionDSL = {
+  fieldId: number;
+  alias?: string;
+  derivedKind?: undefined;
+};
+
+export type TimeGrainDimensionDSL = {
+  derivedKind: 'time_grain';
+  fieldId: number;
+  grain: TimeGrain;
+  alias: string;
+};
+
+export type BucketRangeDSL = {
+  lt: number;
+  label: string;
+};
+
+export type BucketDimensionDSL = {
+  derivedKind: 'bucket';
+  fieldId: number;
+  ranges: BucketRangeDSL[];
+  defaultLabel?: string;
+  alias: string;
+};
+
+export type MappingRuleDSL = {
+  in: Array<string | number | boolean>;
+  label: string;
+};
+
+export type MappingDimensionDSL = {
+  derivedKind: 'mapping';
+  fieldId: number;
+  rules: MappingRuleDSL[];
+  defaultLabel?: string;
+  alias: string;
+};
+
+export type ExpressionDimensionDSL = {
+  derivedKind: 'expression';
+  expression: string;
+  alias: string;
+};
+
+export type DerivedDimensionDSL =
+  | TimeGrainDimensionDSL
+  | BucketDimensionDSL
+  | MappingDimensionDSL
+  | ExpressionDimensionDSL;
+
+export type QueryDimensionDSL = number | BaseDimensionDSL | DerivedDimensionDSL;
 
 /**
  * DSL转换器V2版本
@@ -371,13 +426,49 @@ export class DSLTransformerV2 {
       }
     };
 
+    const collectDimensionTableIds = (dimension: QueryDimensionDSL) => {
+      if (typeof dimension === 'number') {
+        collectFieldTableId(dimension);
+        return;
+      }
+
+      if (dimension.derivedKind === undefined) {
+        collectFieldTableId(dimension.fieldId);
+        return;
+      }
+
+      if (!dimension.alias?.trim()) {
+        throw new Error(
+          `dimensions 中 derivedKind=${dimension.derivedKind} 的维度必须提供 alias`,
+        );
+      }
+
+      switch (dimension.derivedKind) {
+        case 'time_grain':
+        case 'bucket':
+        case 'mapping':
+          collectFieldTableId(dimension.fieldId);
+          return;
+        case 'expression': {
+          const refs = extractExpressionRefs(dimension.expression);
+          if (refs.metricIds.length > 0) {
+            throw new Error(
+              `derivedKind=expression 维度不支持 #M 指标引用: ${refs.metricIds.join(', ')}`,
+            );
+          }
+          refs.fieldIds.forEach((fieldId) => collectFieldTableId(fieldId));
+          return;
+        }
+        default:
+          throw new Error(
+            `不支持的 derivedKind: ${(dimension as { derivedKind: string }).derivedKind}`,
+          );
+      }
+    };
+
     // 收集dimensions中的表依赖
     (dsl.dimensions || []).forEach((dim) => {
-      if (typeof dim === 'number') {
-        collectFieldTableId(dim);
-      } else {
-        collectFieldTableId(dim.fieldId);
-      }
+      collectDimensionTableIds(dim);
     });
 
     // 收集metrics中的表依赖
@@ -678,18 +769,6 @@ export class DSLTransformerV2 {
       );
     };
 
-    // 构建dimensions
-    const dimensions = (dsl.dimensions || []).map((dim) => {
-      if (typeof dim === 'number') {
-        return resolveField(dim);
-      } else {
-        const fieldExpr = resolveField(dim.fieldId);
-        fieldExpr.meta = fieldExpr.meta || {};
-        fieldExpr.meta.alias = dim.alias || undefined;
-        return fieldExpr;
-      }
-    });
-
     /**
      * 预处理表达式：将 #F 和 #M 替换为实际字段/指标名
      * #F100,200,300 表示字段ID列表
@@ -736,6 +815,104 @@ export class DSLTransformerV2 {
       });
 
       return result;
+    };
+
+    const buildBucketDimensionExpr = (
+      fieldExpr: FieldRefExpr,
+      ranges: BucketRangeDSL[],
+      defaultLabel?: string,
+    ): Expr => {
+      let branch: Expr = new LiteralExpr(defaultLabel ?? null);
+
+      for (let i = ranges.length - 1; i >= 0; i -= 1) {
+        const currentRange = ranges[i];
+        branch = new ConditionalExpr(
+          new ComparisonExpr('<', fieldExpr, new LiteralExpr(currentRange.lt)),
+          new LiteralExpr(currentRange.label),
+          branch,
+        );
+      }
+
+      return branch;
+    };
+
+    const buildMappingDimensionExpr = (
+      fieldExpr: FieldRefExpr,
+      rules: MappingRuleDSL[],
+      defaultLabel?: string,
+    ): Expr => {
+      let branch: Expr = new LiteralExpr(defaultLabel ?? null);
+      const flattenedRules = rules.flatMap((rule) =>
+        rule.in.map((value) => ({ value, label: rule.label })),
+      );
+
+      for (let i = flattenedRules.length - 1; i >= 0; i -= 1) {
+        const currentRule = flattenedRules[i];
+        branch = new ConditionalExpr(
+          new ComparisonExpr(
+            '=',
+            fieldExpr,
+            new LiteralExpr(currentRule.value),
+          ),
+          new LiteralExpr(currentRule.label),
+          branch,
+        );
+      }
+
+      return branch;
+    };
+
+    const buildExpressionDimensionExpr = (
+      dimension: ExpressionDimensionDSL,
+    ): Expr => {
+      const refs = extractExpressionRefs(dimension.expression);
+      if (refs.metricIds.length > 0) {
+        throw new Error(
+          `derivedKind=expression 维度不支持 #M 指标引用: ${refs.metricIds.join(', ')}`,
+        );
+      }
+
+      const processedExpr = preprocessExpression(dimension.expression);
+      const context = {
+        tables: new Map([
+          [
+            mainTableAlias,
+            { name: mainTableInfo.tableName, alias: mainTableAlias },
+          ],
+        ]),
+        fields: new Map(
+          Array.from(fieldMap.values())
+            .filter((f) => {
+              const fieldTableInfo = tableMap.get(f.tableId);
+              return fieldTableInfo && requiredTableIds.has(fieldTableInfo.id);
+            })
+            .map((f) => {
+              const fieldTableInfo = tableMap.get(f.tableId);
+              const fieldTableAlias = fieldTableInfo
+                ? getTableAlias(fieldTableInfo.id)
+                : mainTableAlias;
+              return [
+                f.name,
+                {
+                  name: f.name,
+                  tableName: fieldTableInfo?.tableName || '',
+                  tableAlias: fieldTableAlias,
+                },
+              ];
+            }),
+        ),
+        metrics: new Map<string, Expr>(),
+        defaultTable: mainTableAlias,
+      };
+
+      const expr = parseExpression(processedExpr, context);
+      expr.meta = {
+        ...(expr.meta || {}),
+        alias: dimension.alias,
+        businessName: dimension.alias,
+      };
+
+      return expr;
     };
 
     const inlineMetricRefs = (expr: Expr, visited: Set<number>): Expr => {
@@ -1316,6 +1493,71 @@ export class DSLTransformerV2 {
       );
     };
 
+    const buildDimensionExpr = (dimension: QueryDimensionDSL): Expr => {
+      if (typeof dimension === 'number') {
+        return resolveField(dimension);
+      }
+
+      if (dimension.derivedKind === undefined) {
+        const fieldExpr = resolveField(dimension.fieldId);
+        fieldExpr.meta = fieldExpr.meta || {};
+        fieldExpr.meta.alias = dimension.alias || undefined;
+        return fieldExpr;
+      }
+
+      if (!dimension.alias?.trim()) {
+        throw new Error(
+          `dimensions 中 derivedKind=${dimension.derivedKind} 的维度必须提供 alias`,
+        );
+      }
+
+      let derivedExpr: Expr;
+      switch (dimension.derivedKind) {
+        case 'time_grain':
+          derivedExpr = new CallExpr(
+            'TIME_GRAIN',
+            [resolveField(dimension.fieldId), new LiteralExpr(dimension.grain)],
+            {
+              alias: dimension.alias,
+              businessName: dimension.alias,
+            },
+          );
+          break;
+        case 'bucket':
+          derivedExpr = buildBucketDimensionExpr(
+            resolveField(dimension.fieldId),
+            dimension.ranges,
+            dimension.defaultLabel,
+          );
+          break;
+        case 'mapping':
+          derivedExpr = buildMappingDimensionExpr(
+            resolveField(dimension.fieldId),
+            dimension.rules,
+            dimension.defaultLabel,
+          );
+          break;
+        case 'expression':
+          derivedExpr = buildExpressionDimensionExpr(dimension);
+          break;
+        default:
+          throw new Error(
+            `不支持的 derivedKind: ${(dimension as { derivedKind: string }).derivedKind}`,
+          );
+      }
+
+      derivedExpr.meta = {
+        ...(derivedExpr.meta || {}),
+        alias: dimension.alias,
+        businessName: dimension.alias,
+      };
+      return derivedExpr;
+    };
+
+    const dimensions = (dsl.dimensions || []).map((dimension) =>
+      buildDimensionExpr(dimension),
+    );
+
     const metrics = (dsl.metrics || []).map((metricItem) => {
       const metricInfo = metricMap.get(metricItem.id);
       if (!metricInfo) {
@@ -1483,7 +1725,7 @@ export class DSLTransformerV2 {
   private static parseCaseCondition(
     caseCondition: string,
     defaultExpr: FieldRefExpr,
-    fieldMap: Map<number, DatasetFieldResponse>,
+    _fieldMap: Map<number, DatasetFieldResponse>,
     defaultTableAlias: string,
   ): ConditionalExpr {
     const eqMatch = caseCondition.match(/^(\w+)\s*=\s*'([^']+)'$/);

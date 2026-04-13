@@ -1,0 +1,188 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(28, 28, 28, 0.4);
+  animation: fadeIn 150ms ease;
+}
+
+.container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(720px, 92vw);
+  max-height: 88vh;
+  overflow: auto;
+  background-color: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: scaleIn 200ms ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  margin: 0;
+  padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-md);
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-base);
+}
+
+.content {
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.formLabel {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.labelRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hintIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  cursor: help;
+  line-height: 0;
+}
+
+.required {
+  color: var(--danger);
+  margin-left: 4px;
+}
+
+.select,
+.input,
+.textarea {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-base);
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  background: var(--bg-base);
+}
+
+.selectControl {
+  width: 100%;
+}
+
+.lockedField {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px dashed var(--border-base);
+  border-radius: var(--radius-base);
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.ruleList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.ruleRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.inlineAction {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-base);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.addRuleButton {
+  width: fit-content;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-base);
+  color: var(--primary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.errorText {
+  color: var(--danger);
+  font-size: var(--font-sm);
+}
+
+.footer {
+  padding: var(--spacing-md) var(--spacing-xl) var(--spacing-lg);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  border-top: 1px solid var(--border-base);
+}
+
+.cancelButton {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--text-primary);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-base);
+  cursor: pointer;
+}
+
+.saveButton {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--text-inverse);
+  background-color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-base);
+  cursor: pointer;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

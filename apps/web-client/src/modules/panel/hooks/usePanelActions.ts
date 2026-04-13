@@ -12,6 +12,7 @@ import type {
   ExecuteQueryResponse,
   PanelResponse,
   PanelType,
+  QueryDimensionDSL,
   QueryDSL,
   QueryResponse,
 } from "#pkg/seedar/types";
@@ -172,7 +173,18 @@ export const usePanelActions = ({
         datasetId: effectiveDataset.id,
         tableId: effectiveDataset.mainTableId,
         // joins: effectiveDataset.joins || [],
-        dimensions: dropFields.map((field) => Number(field.id)),
+        dimensions: dropFields.map((field) => {
+          const dimensionDsl = (
+            field as DragItem & { dimensionDsl?: QueryDimensionDSL }
+          ).dimensionDsl;
+          if (dimensionDsl) {
+            return dimensionDsl;
+          }
+          return {
+            fieldId: Number(field.id),
+            alias: field.alias,
+          };
+        }),
         metrics: dropMetrics.map((metric) => ({
           id: Number(metric.id),
           alias: metric.alias,
