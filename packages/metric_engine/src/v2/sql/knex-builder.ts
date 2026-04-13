@@ -1,7 +1,9 @@
 import { Knex } from "knex";
 import { QuerySpec, SQLResult, JoinSpec } from "./types";
-import { Expr, AggLevel } from "../expr";
+import { Expr, AggLevel, PeriodComparisonExpr } from "../expr";
 import { DatabaseDialect } from "../../core/types";
+import { ExprAnalyzer } from "../expr/analyzer";
+import { PeriodComparisonBuilder } from "./period-comparison-builder";
 
 /**
  * Knex 查询构建器类
@@ -28,6 +30,16 @@ export class KnexQueryBuilder {
    * @returns SQLResult - 包含 SQL 语句和参数绑定的结果对象
    */
   build(spec: QuerySpec): SQLResult {
+    ExprAnalyzer.assertPeriodComparisonPlacement(spec);
+
+    if (
+      spec.metrics?.some(
+        (metric) => metric instanceof PeriodComparisonExpr,
+      )
+    ) {
+      return new PeriodComparisonBuilder(this.knex).build(spec);
+    }
+
     // 检查是否需要使用 CTE（公共表表达式）
     if (this.needsCTE(spec)) {
       // 如果需要 CTE，使用带 CTE 的构建方法
@@ -429,6 +441,12 @@ export class KnexQueryBuilder {
    * @returns string - 转换后的 SQL 表达式字符串
    */
   private buildExprWithAlias(expr: any, aliasMap: Map<string, string>): string {
+    if (expr instanceof PeriodComparisonExpr) {
+      throw new Error(
+        "PeriodComparisonExpr must be handled by PeriodComparisonBuilder",
+      );
+    }
+
     // 如果是字段引用，替换为 CTE 别名
     if (expr.getQualifiedName && typeof expr.getQualifiedName === "function") {
       const qualifiedName = expr.getQualifiedName();
@@ -609,7 +627,10 @@ export class KnexQueryBuilder {
     if (spec.metrics && spec.metrics.length > 0) {
       for (const metric of spec.metrics) {
         // 检查指标是否为 Expr 实例且聚合层级为 Partial
-        if (metric instanceof Expr && metric.aggLevel === AggLevel.Partial) {
+        if (
+          metric instanceof Expr &&
+          ExprAnalyzer.getAggLevel(metric) === AggLevel.Partial
+        ) {
           return true;
         }
       }
@@ -640,6 +661,12 @@ export class KnexQueryBuilder {
    * @returns string - SQL 表达式字符串
    */
   private buildExpr(expr: any): string {
+    if (expr instanceof PeriodComparisonExpr) {
+      throw new Error(
+        "PeriodComparisonExpr must be handled by PeriodComparisonBuilder",
+      );
+    }
+
     // 如果表达式有 getQualifiedName 方法（字段引用）
     if (expr.getQualifiedName && typeof expr.getQualifiedName === "function") {
       return expr.getQualifiedName();

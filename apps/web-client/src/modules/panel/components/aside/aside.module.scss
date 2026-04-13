@@ -61,6 +61,13 @@
   background: var(--bg-hover);
 }
 
+.datasetAction:disabled {
+  cursor: not-allowed;
+  color: var(--text-disabled);
+  background: var(--bg-base);
+  border-color: var(--border-secondary);
+}
+
 .sidebarHeader {
   display: flex;
   flex-direction: column;

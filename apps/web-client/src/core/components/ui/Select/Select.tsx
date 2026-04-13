@@ -4,7 +4,7 @@ import { CheckIcon, ChevronsUpDown } from "lucide-react";
 import clsx from "clsx";
 
 export interface SelectOption {
-  label: string;
+  label: string | React.ReactNode;
   value: string;
 }
 
@@ -67,7 +67,7 @@ export const Select = ({
             <BaseSelect.List className={styles.List}>
               {allOptions.map(({ label, value }) => (
                 <BaseSelect.Item
-                  key={label}
+                  key={value}
                   value={value}
                   className={styles.Item}
                 >

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -7,6 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Dataset } from './dataset.entity';
+import { DatasetField } from './dataset-field.entity';
 import { DatasourceColumn } from '../../datasource/entities/datasource-column.entity';
 import {
   MetricType,
@@ -152,7 +153,7 @@ export class DatasetMetric {
   @JoinColumn({ name: 'right_metric_operand' })
   rightMetricOperandField: DatasetMetric;
 
-  // ==================== 同环比指标配置 ====================
+  // ==================== Period-comparison metadata (legacy fields + default time field for tempMetrics) ====================
 
   /** 同环比 - 原始指标ID */
   @Column({ name: 'base_metric_id', type: 'int', nullable: true })
@@ -162,6 +163,15 @@ export class DatasetMetric {
   @ManyToOne(() => DatasetMetric, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'base_metric_id' })
   baseMetric: DatasetMetric;
+
+  /** 指标默认业务时间字段ID（DatasetField.id） */
+  @Column({ name: 'time_field_id', type: 'int', nullable: true })
+  timeFieldId: number;
+
+  /** 指标默认业务时间字段 */
+  @ManyToOne(() => DatasetField, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'time_field_id' })
+  timeField: DatasetField;
 
   /** 同环比 - 时间字段ID */
   @Column({ name: 'time_data_source_column_id', type: 'int', nullable: true })
@@ -192,7 +202,7 @@ export class DatasetMetric {
 
   // ==================== 表达式指标配置 ====================
 
-  /** 表达式指标 - 公式字符串 */
+  /** Generic metric expression formula string; V2.1 period comparison is generated from query tempMetrics instead of being stored here */
   @Column({ name: 'expression', type: 'varchar', length: 1000, nullable: true })
   expression: string;
 
@@ -200,3 +210,4 @@ export class DatasetMetric {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
+

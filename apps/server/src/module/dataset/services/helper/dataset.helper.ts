@@ -14,6 +14,7 @@ import {
   AddTable,
   UpdateTable,
 } from '../../dto/update-dataset.req';
+import { MetricType, PeriodCalculationMode } from '../../dataset.types';
 import { DatasourceColumn } from '@/module/datasource/entities/datasource-column.entity';
 import { ExceptionFactory } from '@/common/exceptions';
 
@@ -31,22 +32,86 @@ function parseExpressionIds(expression: string): {
   const metricIds: number[] = [];
 
   // 匹配字段: #F10,20,30 或 #F10
-  const fieldPattern = /#F([\d,]+)/g;
+  const fieldPattern = /#F(\d+(?:,\d+)*)/g;
   let match;
   while ((match = fieldPattern.exec(expression)) !== null) {
-    const ids = match[1].split(',').map((id) => parseInt(id, 10));
+    const ids = match[1]
+      .split(',')
+      .map((id) => parseInt(id, 10))
+      .filter((id) => !Number.isNaN(id));
     fieldIds.push(...ids);
   }
 
   // 匹配指标: #M100,200 或 #M100
-  const metricPattern = /#M([\d,]+)/g;
+  const metricPattern = /#M(\d+(?:,\d+)*)/g;
   while ((match = metricPattern.exec(expression)) !== null) {
-    const ids = match[1].split(',').map((id) => parseInt(id, 10));
+    const ids = match[1]
+      .split(',')
+      .map((id) => parseInt(id, 10))
+      .filter((id) => !Number.isNaN(id));
     metricIds.push(...ids);
   }
 
   return { fieldIds, metricIds };
 }
+
+/**
+ * Legacy period-comparison metrics may still carry expression metadata, but
+ * V2.1 query execution should prefer tempMetrics plus DatasetMetric.timeFieldId.
+ * Fields such as baseMetricId / periodType / calculationMode remain
+ * auxiliary defaults for query-time construction.
+ */
+type MetricLike = Partial<AddMetric> &
+  Partial<UpdateMetric> & {
+    id?: number;
+    metricType?: MetricType;
+    expression?: string;
+  };
+
+type ExpressionReferences = ReturnType<typeof parseExpressionIds>;
+
+const describeMetric = (
+  metric: MetricLike,
+): string => {
+  if (metric.name) {
+    return `"${metric.name}"`;
+  }
+  if (metric.alias) {
+    return `"${metric.alias}"`;
+  }
+  if (metric.id) {
+    return `metric #${metric.id}`;
+  }
+  return 'new period-comparison metric';
+};
+
+const isExpressionDrivenPopMetric = (
+  metric: MetricLike,
+): boolean =>
+  metric.metricType === MetricType.PERIOD_OVER_PERIOD && Boolean(metric.expression);
+
+const validateExpressionDrivenPopMetric = (
+  metric: MetricLike,
+  expressionRefs: ExpressionReferences | null,
+) => {
+  if (
+    !expressionRefs ||
+    expressionRefs.fieldIds.length === 0 ||
+    expressionRefs.metricIds.length === 0
+  ) {
+    ExceptionFactory.badRequest(
+      `${describeMetric(metric)} must reference both #M and #F when using legacy expression-based PoP metadata.`,
+    );
+  }
+
+  if (metric.calculationMode === PeriodCalculationMode.BOTH) {
+    ExceptionFactory.badRequest(
+      `Calculation mode "both" is not supported for expression-driven PoP metrics like ${describeMetric(
+        metric,
+      )}; please pick "percentage" or "absolute" instead.`,
+    );
+  }
+};
 
 /**
  * 实体操作动作
@@ -227,6 +292,7 @@ export const metricManager: IEntityManager<AddMetric, UpdateMetric> = {
       const validColIds: number[] = [];
       const validMetricIds: number[] = [];
       const validFieldIds: number[] = [];
+      const metricExpressionRefs = new Map<Partial<AddMetric>, ExpressionReferences | null>();
 
       console.log('指标参数:', metrics);
 
@@ -237,12 +303,17 @@ export const metricManager: IEntityManager<AddMetric, UpdateMetric> = {
           continue;
         }
 
+        let expressionRefs: ExpressionReferences | null = null;
+
         // 收集需要验证的数据源列ID
         if (metric.dataSourceColumnId) {
           validColIds.push(metric.dataSourceColumnId);
         }
         if (metric.timeDataSourceColumnId) {
           validColIds.push(metric.timeDataSourceColumnId);
+        }
+        if (metric.timeFieldId) {
+          validFieldIds.push(metric.timeFieldId);
         }
 
         // 收集需要验证的指标ID
@@ -262,12 +333,18 @@ export const metricManager: IEntityManager<AddMetric, UpdateMetric> = {
         // 解析 expression 中的 #F 和 #M 引用
         // #F 引用的字段ID 记录到 validFieldIds，用于验证 DatasetField
         if (metric.expression) {
-          const { fieldIds, metricIds } = parseExpressionIds(metric.expression);
-          validFieldIds.push(...fieldIds);
-          validMetricIds.push(...metricIds);
-          console.log('expression 中引用的字段ID:', fieldIds);
-          console.log('expression 中引用的指标ID:', metricIds);
+          expressionRefs = parseExpressionIds(metric.expression);
+          validFieldIds.push(...expressionRefs.fieldIds);
+          validMetricIds.push(...expressionRefs.metricIds);
+          console.log('expression 中引用的字段ID:', expressionRefs.fieldIds);
+          console.log('expression 中引用的指标ID:', expressionRefs.metricIds);
         }
+
+        if (isExpressionDrivenPopMetric(metric)) {
+          validateExpressionDrivenPopMetric(metric, expressionRefs);
+        }
+
+        metricExpressionRefs.set(metric, expressionRefs);
       }
 
       if (
@@ -392,16 +469,23 @@ export const metricManager: IEntityManager<AddMetric, UpdateMetric> = {
           );
         }
 
+        const expressionRefs = metricExpressionRefs.get(metric) ?? null;
+
         // 验证 expression 中引用的 DatasetField（#F 引用）
-        if (metric.expression) {
-          const { fieldIds } = parseExpressionIds(metric.expression);
-          for (const fieldId of fieldIds) {
+        if (expressionRefs) {
+          for (const fieldId of expressionRefs.fieldIds) {
             if (!fieldMap.has(fieldId)) {
               warnings.push(
                 `expression 中引用的字段 ${fieldId} 不存在或不属于当前数据集`,
               );
             }
           }
+        }
+
+        if (metric.timeFieldId && !fieldMap.has(metric.timeFieldId)) {
+          warnings.push(
+            `指标默认业务时间字段 ${metric.timeFieldId} 不存在或不属于当前数据集`,
+          );
         }
 
         // 创建 DatasetMetric
@@ -422,6 +506,19 @@ export const metricManager: IEntityManager<AddMetric, UpdateMetric> = {
   async update(manager: EntityManager, metrics?: Partial<UpdateMetric>[]) {
     if (metrics && metrics.length > 0) {
       for (const metric of metrics) {
+        if (!metric) {
+          continue;
+        }
+
+        let expressionRefs: ExpressionReferences | null = null;
+        if (metric.expression) {
+          expressionRefs = parseExpressionIds(metric.expression);
+        }
+
+        if (isExpressionDrivenPopMetric(metric)) {
+          validateExpressionDrivenPopMetric(metric, expressionRefs);
+        }
+
         if (metric.id) {
           await manager.update(DatasetMetric, metric.id, metric);
         }

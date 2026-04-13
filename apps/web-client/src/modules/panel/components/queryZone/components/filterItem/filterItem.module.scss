@@ -1,0 +1,145 @@
+﻿.filterItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  max-width: 360px;
+  padding: 4px 8px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-container);
+  font-size: var(--font-sm);
+  color: var(--primary);
+  transition: opacity var(--transition-base);
+}
+
+.filterItem:hover {
+  opacity: 0.92;
+}
+
+.name {
+  flex: 0 1 96px;
+  min-width: 56px;
+  max-width: 112px;
+  font-weight: 600;
+  color: var(--primary-active);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.controls {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 220px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.operatorSelect {
+  width: 96px;
+}
+
+.valueWrapper {
+  flex: 1 1 110px;
+  min-width: 84px;
+  max-width: 124px;
+  display: flex;
+  align-items: center;
+}
+
+.valueControl {
+  width: 100%;
+  min-width: 0;
+}
+
+.compactValueBtn {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 8px !important;
+}
+
+.compactValueText {
+  display: inline-block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.popoverEditor {
+  width: 220px;
+  max-width: 60vw;
+}
+
+.popoverField {
+  width: 100%;
+}
+
+.timeRange {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inlineNumber {
+  flex: 0 1 68px;
+  min-width: 60px;
+}
+
+.timeUnit {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-xs);
+}
+
+.removeBtn {
+  flex-shrink: 0;
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  color: var(--primary-active) !important;
+  opacity: 0.65;
+}
+
+.removeBtn:hover {
+  opacity: 1;
+}
+
+:global(.ant-select.operatorSelect),
+:global(.ant-select.valueControl),
+:global(.ant-input.valueControl),
+:global(.ant-input-number.valueControl),
+:global(.ant-input-number.inlineNumber),
+:global(.ant-picker.valueControl),
+:global(.ant-picker.popoverField) {
+  width: 100%;
+}
+
+@media (max-width: 1280px) {
+  .filterItem {
+    max-width: 320px;
+  }
+
+  .name {
+    max-width: 88px;
+  }
+
+  .controls {
+    max-width: 198px;
+  }
+
+  .operatorSelect {
+    flex-basis: 84px;
+    min-width: 78px;
+  }
+
+  .valueWrapper {
+    min-width: 78px;
+    max-width: 112px;
+  }
+}

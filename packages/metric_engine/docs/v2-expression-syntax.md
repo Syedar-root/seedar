@@ -232,3 +232,227 @@ paid_at IS NOT NULL
 - SQL 风格 CASE WHEN（只支持三元运算符）
 - AND/OR 组合条件（需通过多个 filter 实现）
 - 表达式字符串解析 IN/BETWEEN/LIKE/IS NULL（需直接构造 AST 对象）
+---
+
+## V2.1 同环比补充
+
+以下内容描述的是当前已经实现并通过测试的 V2.1 同环比能力。
+
+### 1. 新增的表达式类型
+
+V2 AST 当前新增：
+
+```typescript
+ExprKind.PeriodComparison
+PeriodOffsetType
+ComparisonMode
+PeriodComparisonExpr
+```
+
+其中：
+
+```typescript
+enum PeriodOffsetType {
+  DAY_OVER_DAY
+  WEEK_OVER_WEEK
+  MONTH_OVER_MONTH
+  QUARTER_OVER_QUARTER
+  YEAR_OVER_YEAR
+}
+
+enum ComparisonMode {
+  PERCENTAGE
+  ABSOLUTE
+}
+```
+
+说明：
+
+- 当前只支持 `PERCENTAGE` 和 `ABSOLUTE`
+- `BOTH` 当前不支持
+
+### 2. 新增的字符串语法
+
+`parseExpression()` 当前支持以下同环比函数：
+
+```javascript
+MOM(baseMetric, timeField)
+YOY(baseMetric, timeField)
+WOW(baseMetric, timeField)
+QOQ(baseMetric, timeField)
+DOD(baseMetric, timeField)
+```
+
+示例：
+
+```javascript
+MOM(SUM(amount), order_date)
+YOY(AVG(revenue), sale_date)
+WOW(COUNT(order_id), created_at)
+QOQ(MAX(cost), accounting_date)
+DOD(MIN(balance), biz_date)
+```
+
+说明：
+
+- 第二个参数必须是显式字段引用
+- 字符串函数当前默认生成 `ComparisonMode.PERCENTAGE`
+- 如果要生成 `ABSOLUTE`，需要直接构造 `PeriodComparisonExpr`
+
+### 3. 当前支持的 SQL 执行能力
+
+`KnexQueryBuilder` 当前已经支持在 `QuerySpec.metrics` 顶层执行 `PeriodComparisonExpr`。
+
+当前支持：
+
+- 无维度卡片型同环比
+- 有维度分组的同环比
+- 普通指标 + 同环比指标混合查询
+- 多个同环比指标同时出现
+
+多个同环比指标同时出现时，必须共享：
+
+- 相同的 `timeField`
+- 相同的 `offsetType`
+
+否则会直接报错。
+
+### 4. 时间过滤条件的要求
+
+同环比 planner 当前会：
+
+- 继承所有非目标时间字段的过滤条件
+- 只替换目标时间字段上的时间 filter
+
+也就是说：
+
+- `status = 'paid'` 这类业务过滤条件会同时保留在 current / comparison
+- 目标时间字段上的时间窗口会在 comparison 分支中被平移替换
+
+当前支持从以下过滤条件中识别 PoP 时间窗口：
+
+```typescript
+TIME_FILTER(...)
+BetweenExpr(...)
+```
+
+#### 支持的 `TIME_FILTER` range
+
+```typescript
+recent_days
+recent_weeks
+recent_months
+CUSTOM_DATE_RANGE
+```
+
+示例：
+
+```typescript
+new CallExpr("TIME_FILTER", [
+  new FieldRefExpr("order_date", "orders", "o"),
+  new LiteralExpr("recent_months"),
+  new LiteralExpr(1),
+]);
+```
+
+或：
+
+```typescript
+new CallExpr("TIME_FILTER", [
+  new FieldRefExpr("order_date", "orders", "o"),
+  new LiteralExpr("CUSTOM_DATE_RANGE"),
+  new LiteralExpr(0),
+  new LiteralExpr("2026-04-01"),
+  new LiteralExpr("2026-05-01"),
+]);
+```
+
+示例：
+
+```typescript
+new BetweenExpr(
+  new FieldRefExpr("order_date", "orders", "o"),
+  new LiteralExpr("2026-04-01"),
+  new LiteralExpr("2026-05-01")
+);
+```
+
+当前不支持把下面这种普通比较表达式自动识别为 PoP 时间窗口：
+
+```typescript
+order_date >= '2026-04-01'
+order_date < '2026-05-01'
+```
+
+### 5. 当前明确不支持的同环比用法
+
+以下写法当前不支持：
+
+```javascript
+MOM(SUM(amount))
+MOM(SUM(amount), 'order_date')
+MOM(YOY(SUM(amount), order_date), order_date)
+MOM(SUM(amount), order_date) / 2
+```
+
+原因分别是：
+
+- 缺少显式 `timeField`
+- 第二个参数不是字段引用
+- 不支持嵌套同环比
+- 不支持把同环比作为其他表达式的子表达式
+
+### 6. Placement 限制
+
+当前 `PeriodComparisonExpr` 只允许出现在：
+
+```typescript
+QuerySpec.metrics
+```
+
+并且必须是顶层 metric。
+
+当前不允许出现在：
+
+- `filters`
+- `dimensions`
+- `orderBy` 的表达式对象里
+- 其他 metric 的子表达式里
+
+如果要按同环比结果排序，应使用输出 alias，而不是直接把 `PeriodComparisonExpr` 放进 `orderBy.expr`。
+
+示例：
+
+```typescript
+orderBy: [{ expr: "sales_mom_pct", dir: "desc" }]
+```
+
+### 7. AST 直接构造示例
+
+```typescript
+import {
+  AggExpr,
+  FieldRefExpr,
+  PeriodComparisonExpr,
+  PeriodOffsetType,
+  ComparisonMode,
+} from "@metric-engine/core";
+
+const salesMomPct = new PeriodComparisonExpr(
+  new AggExpr("SUM", new FieldRefExpr("amount", "orders", "o")),
+  PeriodOffsetType.MONTH_OVER_MONTH,
+  ComparisonMode.PERCENTAGE,
+  new FieldRefExpr("order_date", "orders", "o"),
+  undefined,
+  { alias: "sales_mom_pct", businessName: "销售额月环比(%)" },
+);
+
+const salesMomAbs = new PeriodComparisonExpr(
+  new AggExpr("SUM", new FieldRefExpr("amount", "orders", "o")),
+  PeriodOffsetType.MONTH_OVER_MONTH,
+  ComparisonMode.ABSOLUTE,
+  new FieldRefExpr("order_date", "orders", "o"),
+  undefined,
+  { alias: "sales_mom_abs", businessName: "销售额月环比差值" },
+);
+```

@@ -1,9 +1,10 @@
 import * as jsep from "jsep";
 import {
-  ExprKind,
   AggFuncName,
   BinaryOperator,
   ComparisonOperator,
+  PeriodOffsetType,
+  ComparisonMode,
 } from "./types";
 import {
   Expr,
@@ -14,7 +15,10 @@ import {
   CallExpr,
   AggExpr,
   ComparisonExpr,
+  PeriodComparisonExpr,
+  ConditionalExpr,
 } from "./ast";
+import { ExprAnalyzer } from "./analyzer";
 
 /**
  * 解析上下文接口
@@ -44,6 +48,14 @@ const AGGREGATE_FUNCTIONS = new Set<string>([
   "DISTINCT_COUNT",
 ]);
 
+const PERIOD_FUNCTION_TO_OFFSET: Record<string, PeriodOffsetType> = {
+  MOM: PeriodOffsetType.MONTH_OVER_MONTH,
+  YOY: PeriodOffsetType.YEAR_OVER_YEAR,
+  WOW: PeriodOffsetType.WEEK_OVER_WEEK,
+  QOQ: PeriodOffsetType.QUARTER_OVER_QUARTER,
+  DOD: PeriodOffsetType.DAY_OVER_DAY,
+};
+
 /**
  * 表达式解析器类
  * 使用 jsep 库将表达式字符串解析为 Expr AST
@@ -69,7 +81,10 @@ export class ExprParser {
   parse(expression: string): Expr {
     // 使用 jsep 解析表达式字符串，生成 AST
     // jsep 是一个命名空间导出，需要作为函数调用
-    const parseFn = (jsep as any).default || jsep;
+    const parseModule = jsep as unknown as {
+      default?: (expression: string) => jsep.Expression;
+    };
+    const parseFn = parseModule.default ?? (jsep as unknown as (expression: string) => jsep.Expression);
     const ast = parseFn(expression);
     // 将 jsep AST 转换为我们的 Expr AST
     return this.transform(ast);
@@ -208,6 +223,28 @@ export class ExprParser {
 
     // 判断是否为聚合函数
     const upperFunctionName = functionName.toUpperCase();
+    const offsetType = PERIOD_FUNCTION_TO_OFFSET[upperFunctionName];
+    if (offsetType) {
+      if (args.length !== 2) {
+        throw new Error(`${functionName} requires exactly 2 arguments: baseMetric and timeField`);
+      }
+
+      const [baseMetric, timeField] = args;
+      if (!(timeField instanceof FieldRefExpr)) {
+        throw new Error(`${functionName} second argument must be a time field reference`);
+      }
+      if (ExprAnalyzer.containsPeriodComparison(baseMetric)) {
+        throw new Error(`${functionName} does not support nested period comparison expressions`);
+      }
+
+      return new PeriodComparisonExpr(
+        baseMetric,
+        offsetType,
+        ComparisonMode.PERCENTAGE,
+        timeField,
+      );
+    }
+
     if (AGGREGATE_FUNCTIONS.has(upperFunctionName)) {
       // 聚合函数只接受一个参数
       if (args.length !== 1) {
@@ -312,7 +349,6 @@ export class ExprParser {
 
     // 导入 ConditionalExpr
     // 由于循环依赖问题，这里使用动态导入或延迟处理
-    const { ConditionalExpr } = require("./ast");
     return new ConditionalExpr(condition, consequent, alternate);
   }
 

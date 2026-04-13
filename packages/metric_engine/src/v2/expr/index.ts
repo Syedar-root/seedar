@@ -12,4 +12,7 @@
 
 export * from './types';
 export * from './ast';
+export * from './analyzer';
 export { ExprParser, ParseContext, createParser, parseExpression } from './parser';
+export { PeriodComparisonExpr } from './ast';
+export { PeriodOffsetType, ComparisonMode, TimeExpressionConfig } from './types';

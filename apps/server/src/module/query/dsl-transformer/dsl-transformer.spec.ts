@@ -9,8 +9,20 @@ import {
   MetricType,
   MetricAggregateFunction,
   JoinType,
+  PeriodOverPeriodType,
+  PeriodCalculationMode,
 } from '../../dataset/dataset.types';
-import { InExpr, BetweenExpr, LikeExpr, IsNullExpr } from '@metric-engine/core';
+import {
+  InExpr,
+  BetweenExpr,
+  LikeExpr,
+  IsNullExpr,
+  PeriodComparisonExpr,
+  PeriodOffsetType,
+  ComparisonMode,
+  AggExpr,
+  FieldRefExpr,
+} from '@metric-engine/core';
 
 describe('Dynamic Join Selection', () => {
   let mockDatasetInfo: DatasetResponse;
@@ -358,6 +370,252 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins.length).toBe(1);
       expect(result.joins[0].rightTable.name).toBe('customers');
     });
+  });
+});
+
+describe('Period Comparison Expressions', () => {
+  let mockDatasetInfo: DatasetResponse;
+  let mockTables: any[];
+  type TestDatasetMetricResponse = DatasetMetricResponse & {
+    timeFieldId?: number;
+  };
+  type TempMetricDSL = {
+    id: string;
+    alias?: string;
+    baseMetricId: number;
+    timeFieldId?: number;
+    periodType?: PeriodOverPeriodType;
+    calculationMode?: PeriodCalculationMode;
+  };
+  let baseMetric: TestDatasetMetricResponse;
+  const timeFieldId = 5;
+
+  const createDsl = (
+    overrides: Partial<{
+      filters: Array<{ fieldId: number; op: string; value?: any }>;
+      tempMetrics: TempMetricDSL[];
+      tempMetricOverrides: Partial<TempMetricDSL>;
+    }> = {},
+  ) => {
+    const {
+      filters,
+      tempMetrics,
+      tempMetricOverrides,
+      ...rest
+    } = overrides;
+
+    const defaultFilters = [
+      { fieldId: timeFieldId, op: 'recent_days', value: 30 },
+    ];
+    const defaultTempMetric: TempMetricDSL = {
+      id: 'temp-pop',
+      alias: 'amount_mom',
+      baseMetricId: baseMetric?.id ?? 0,
+      timeFieldId,
+      periodType: PeriodOverPeriodType.MONTH_OVER_MONTH,
+      calculationMode: PeriodCalculationMode.PERCENTAGE,
+    };
+
+    return {
+      datasetId: 1,
+      tableId: 1,
+      metrics: [],
+      filters: filters ?? defaultFilters,
+      tempMetrics:
+        tempMetrics ??
+        [
+          {
+            ...defaultTempMetric,
+            ...(tempMetricOverrides ?? {}),
+          },
+        ],
+      ...rest,
+    };
+  };
+
+  beforeEach(() => {
+    const createMockTable = (name: string, fieldNames: string[]) => {
+      const table = {
+        name,
+        alias: name,
+        fields: fieldNames.map((fname) => ({ name: fname, type: 'string' })),
+        getField: jest.fn((fname: string) => {
+          const field = fieldNames.includes(fname)
+            ? { name: fname, type: 'string' }
+            : null;
+          return field;
+        }),
+        withAlias: jest.fn((alias: string) => {
+          const cloned = createMockTable(name, fieldNames);
+          cloned.alias = alias;
+          return cloned;
+        }),
+      };
+      return table;
+    };
+
+    mockTables = [
+      createMockTable('orders', ['id', 'order_date_id', 'amount']),
+      createMockTable('order_dates', ['id', 'day']),
+    ];
+
+    baseMetric = {
+      id: 1,
+      name: 'total_amount',
+      businessName: 'Total Amount',
+      metricType: MetricType.AGGREGATE,
+      aggregateFunction: MetricAggregateFunction.SUM,
+      dataSourceColumnId: 3,
+      timeFieldId,
+      distinct: false,
+    } as TestDatasetMetricResponse;
+
+    mockDatasetInfo = {
+      id: 1,
+      name: 'Period Comparison Dataset',
+      description: 'Dataset for period comparison tests',
+      type: 'semantic' as any,
+      status: 'active' as any,
+      datasource: { id: 1, name: 'Main', type: 'mysql' },
+      mainTable: { id: 1, tableName: 'orders', datasetName: 'Orders' },
+      tables: [
+        { id: 1, datasourceTableId: 1, tableName: 'orders', datasetName: 'Orders' },
+        { id: 2, datasourceTableId: 2, tableName: 'order_dates', datasetName: 'Order Dates' },
+      ] as DatasetTableResponse[],
+      fields: [
+        {
+          id: 1,
+          tableId: 1,
+          name: 'id',
+          businessName: 'Order ID',
+          type: 'number' as any,
+          datasourceColumnId: 1,
+          isPrimaryKey: true,
+        } as DatasetFieldResponse,
+        {
+          id: 2,
+          tableId: 1,
+          name: 'order_date_id',
+          businessName: 'Order Date ID',
+          type: 'number' as any,
+          datasourceColumnId: 2,
+          isPrimaryKey: false,
+        } as DatasetFieldResponse,
+        {
+          id: 3,
+          tableId: 1,
+          name: 'amount',
+          businessName: 'Amount',
+          type: 'number' as any,
+          datasourceColumnId: 3,
+          isPrimaryKey: false,
+        } as DatasetFieldResponse,
+        {
+          id: 4,
+          tableId: 2,
+          name: 'id',
+          businessName: 'Date ID',
+          type: 'number' as any,
+          datasourceColumnId: 4,
+          isPrimaryKey: true,
+        } as DatasetFieldResponse,
+        {
+          id: 5,
+          tableId: 2,
+          name: 'day',
+          businessName: 'Day',
+          type: 'date' as any,
+          datasourceColumnId: 5,
+          isPrimaryKey: false,
+        } as DatasetFieldResponse,
+      ],
+      metrics: [baseMetric],
+      joins: [
+        {
+          id: 1,
+          joinType: JoinType.INNER,
+          leftTableId: 1,
+          leftField: '2',
+          rightTableId: 2,
+          rightField: '4',
+        },
+      ] as DatasetJoinResponse[],
+    } as DatasetResponse;
+  });
+
+  it('should parse MOM(#M,#F) into PeriodComparisonExpr', () => {
+    const result = DSLTransformerV2.transform(createDsl(), mockDatasetInfo, mockTables);
+    expect(result.metrics.length).toBe(1);
+    const [expr] = result.metrics as PeriodComparisonExpr[];
+    expect(expr).toBeInstanceOf(PeriodComparisonExpr);
+    expect(expr.offsetType).toBe(PeriodOffsetType.MONTH_OVER_MONTH);
+    expect(expr.comparisonMode).toBe(ComparisonMode.PERCENTAGE);
+    expect(expr.timeField.fieldName).toBe('day');
+    expect(expr.timeField.tableAlias).toBeDefined();
+    expect(expr.baseMetric).toBeInstanceOf(AggExpr);
+  });
+
+  it('should collect joins for referenced metric and time field tables', () => {
+    const result = DSLTransformerV2.transform(createDsl(), mockDatasetInfo, mockTables);
+    expect(result.joins.some((join) => join.table === 'order_dates')).toBe(true);
+  });
+
+  it('should respect calculationMode absolute override', () => {
+    const result = DSLTransformerV2.transform(
+      createDsl({
+        tempMetricOverrides: {
+          calculationMode: PeriodCalculationMode.ABSOLUTE,
+        },
+      }),
+      mockDatasetInfo,
+      mockTables,
+    );
+    const [expr] = result.metrics as PeriodComparisonExpr[];
+    expect(expr.comparisonMode).toBe(ComparisonMode.ABSOLUTE);
+  });
+
+  it('should reject calculationMode both', () => {
+    expect(() =>
+      DSLTransformerV2.transform(
+        createDsl({
+          tempMetricOverrides: {
+            calculationMode: PeriodCalculationMode.BOTH,
+          },
+        }),
+        mockDatasetInfo,
+        mockTables,
+      ),
+    ).toThrow(/calculationMode.*both/i);
+  });
+
+  it('should reject missing matching time filter', () => {
+    const dsl = createDsl({ filters: [{ fieldId: 3, op: '=', value: 100 }] });
+    expect(() =>
+      DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables),
+    ).toThrow(/time\s*filter/i);
+  });
+
+  it('should derive the period comparison metric from the base aggregate', () => {
+    const result = DSLTransformerV2.transform(createDsl(), mockDatasetInfo, mockTables);
+    const expr = result.metrics[0] as PeriodComparisonExpr;
+    expect(expr.baseMetric).toBeInstanceOf(AggExpr);
+    expect((expr.baseMetric as AggExpr).functionName).toBe('SUM');
+    expect((expr.baseMetric as AggExpr).arg).toBeInstanceOf(FieldRefExpr);
+  });
+
+  it('should reject temp metrics without an effective timeFieldId', () => {
+    baseMetric.timeFieldId = undefined;
+    expect(() =>
+      DSLTransformerV2.transform(
+        createDsl({
+          tempMetricOverrides: {
+            timeFieldId: undefined,
+          },
+        }),
+        mockDatasetInfo,
+        mockTables,
+      ),
+    ).toThrow(/timeFieldId/i);
   });
 });
 

@@ -210,6 +210,7 @@ export interface DatasetMetricResponse {
   aggregateFunction?: MetricAggregateFunction;
   distinct: boolean;
   aggregateCondition?: AggregateConditionConfig;
+  timeFieldId?: number;
   leftOperand?: number;
   leftOperandFieldName?: string;
   rowOperator?: MetricOperator;

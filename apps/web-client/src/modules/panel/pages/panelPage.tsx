@@ -1,4 +1,4 @@
-﻿import { SeedarPanel } from "#pkg/seedar/ui-react";
+import { SeedarPanel } from "#pkg/seedar/ui-react";
 import { PanelStatus } from "#pkg/seedar/types";
 import { Dialog } from "@base-ui/react/dialog";
 import { Segmented } from "antd";
@@ -11,7 +11,10 @@ import { DatasetSelector } from "../components/datasetSelector";
 import datasetSelectorStyles from "../components/datasetSelector/datasetSelector.module.scss";
 import { EditableTitle } from "../components/editableTitle";
 import { PanelEditor } from "../components/panelEditor";
-import { QueryZone } from "../components/queryZone";
+import {
+  QueryZone,
+  type MetricWithPopConfig,
+} from "../components/queryZone/queryZone";
 import {
   useDatasetSelector,
   usePanelActions,
@@ -37,6 +40,7 @@ const COPY = {
   saveAndUpdate: "保存并更新",
   saveAndPublish: "保存并发布",
   confirmDatasetChange: "切换数据集会清空当前查询配置和预览结果，是否继续？",
+  datasetLocked: "当前面板已绑定数据集，不能修改",
   metricCreated: "指标创建成功",
   selectDatasetFirst: "请先选择数据集",
   addDimensionOrMetric: "请添加维度或指标",
@@ -48,6 +52,10 @@ const COPY = {
   smartMode: "智能模式",
   revertToDraft: "撤销为草稿",
   run: "运行",
+  copySql: "复制 SQL",
+  copySqlSuccess: "SQL 已复制到剪贴板",
+  copySqlUnavailable: "当前没有可复制的 SQL，请先运行查询",
+  copySqlFailed: "SQL 复制失败，请重试",
   previewEmpty: "先选择数据集，再构建查询并运行预览",
 } as const;
 const PANEL_STATUS_LABELS = {
@@ -72,6 +80,7 @@ export const PanelPage = () => {
     dropFields,
     dropMetrics,
     dropFilters,
+    tempMetrics,
     displayType,
     editorConfig,
     tempData,
@@ -85,6 +94,8 @@ export const PanelPage = () => {
     handleDropFilter,
     handleRemoveFilter,
     handleUpdateFilter,
+    handleUpdateTempMetric,
+    handleRemoveTempMetric,
     handleEditorChange,
     title,
     titleConfig,
@@ -102,6 +113,7 @@ export const PanelPage = () => {
   } = usePanelEditorState(panelId);
 
   const activeDataset = selectedDataset ?? datasetData;
+  const isDatasetLocked = Boolean(activeDataset?.id);
 
   const {
     datasets,
@@ -225,6 +237,18 @@ export const PanelPage = () => {
   const canExpand = viewportMode === "wide";
   const showCollapsedClose = viewportMode === "narrow";
 
+  // 标记哪些普通指标已配置了同环比
+  const metricsWithPopFlag = useMemo<MetricWithPopConfig[]>(
+    () =>
+      dropMetrics.map((metric) => ({
+        ...metric,
+        hasPopConfig: tempMetrics.some(
+          (tm) => tm.baseMetricId === Number(metric.id),
+        ),
+      })),
+    [dropMetrics, tempMetrics],
+  );
+
   const handlePaneChange = (value: SegmentedValue) => {
     if (value === "aside" || value === "editor") {
       setActivePane(value);
@@ -257,6 +281,16 @@ export const PanelPage = () => {
       return;
     }
 
+    if (
+      isDatasetLocked &&
+      activeDataset?.id &&
+      pendingSelectedDataset.id !== activeDataset.id
+    ) {
+      toast.info(COPY.datasetLocked);
+      setIsDatasetDialogOpen(false);
+      return;
+    }
+
     if (activeDataset?.id === pendingSelectedDataset.id) {
       setIsDatasetDialogOpen(false);
       return;
@@ -276,6 +310,15 @@ export const PanelPage = () => {
     }
 
     setIsDatasetDialogOpen(false);
+  };
+
+  const handleOpenDatasetSelector = () => {
+    if (isDatasetLocked) {
+      toast.info(COPY.datasetLocked);
+      return;
+    }
+
+    setIsDatasetDialogOpen(true);
   };
 
   const handleMetricCreated = () => {
@@ -303,6 +346,44 @@ export const PanelPage = () => {
     }
 
     void handleRun();
+  };
+
+  const onCopySql = () => {
+    const sql = tempData?.sql?.trim();
+    if (!sql) {
+      toast.error(COPY.copySqlUnavailable);
+      return;
+    }
+
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard
+        .writeText(sql)
+        .then(() => {
+          toast.success(COPY.copySqlSuccess);
+        })
+        .catch(() => {
+          toast.error(COPY.copySqlFailed);
+        });
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = sql;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    const copied = document.execCommand("copy");
+    document.body.removeChild(textarea);
+
+    if (copied) {
+      toast.success(COPY.copySqlSuccess);
+      return;
+    }
+
+    toast.error(COPY.copySqlFailed);
   };
 
   const onRevertToDraft = () => {
@@ -334,7 +415,8 @@ export const PanelPage = () => {
       datasetId={activeDataset?.id}
       datasetName={activeDataset?.name}
       hasDataset={hasDataset}
-      onOpenDatasetSelector={() => setIsDatasetDialogOpen(true)}
+      canChangeDataset={!isDatasetLocked}
+      onOpenDatasetSelector={handleOpenDatasetSelector}
       onMetricCreated={handleMetricCreated}
     />
   );
@@ -441,7 +523,6 @@ export const PanelPage = () => {
               />
               <span className={styles.statusBadge}>{panelStatusLabel}</span>
             </div>
-            <div className={styles.smartMode}>{COPY.smartMode}</div>
           </div>
           <QueryZone
             onDropField={handleDropField}
@@ -451,8 +532,11 @@ export const PanelPage = () => {
             onRemoveMetric={handleRemoveMetric}
             onRemoveFilter={handleRemoveFilter}
             onUpdateFilter={handleUpdateFilter}
+            onUpdateMetricPopConfig={handleUpdateTempMetric}
+            tempMetrics={tempMetrics}
+            onRemoveTempMetric={handleRemoveTempMetric}
             dropFields={dropFields}
-            dropMetrics={dropMetrics}
+            dropMetrics={metricsWithPopFlag}
             dropFilters={dropFilters}
           />
           <div className={styles.operations}>
@@ -479,6 +563,13 @@ export const PanelPage = () => {
             >
               {COPY.run}
             </button>
+            <button
+              className={styles.secondaryAction}
+              onClick={onCopySql}
+              disabled={!tempData?.sql}
+            >
+              {COPY.copySql}
+            </button>
           </div>
         </header>
 
@@ -498,6 +589,11 @@ export const PanelPage = () => {
       <Dialog.Root
         open={isDatasetDialogOpen}
         onOpenChange={(open) => {
+          if (open && isDatasetLocked) {
+            toast.info(COPY.datasetLocked);
+            return;
+          }
+
           setIsDatasetDialogOpen(open);
           if (open) {
             setPendingSelectedDataset(activeDataset);

@@ -12,6 +12,7 @@ import type {
   ExecuteQueryResponse,
   PanelResponse,
   PanelType,
+  QueryDSL,
   QueryResponse,
 } from "#pkg/seedar/types";
 import type { NavigateFunction } from "react-router-dom";
@@ -25,7 +26,7 @@ import type {
 import type { FilterItem } from "../components/queryZone/types";
 
 type PanelWorkflowStatus = "unsaved" | "draft" | "published";
-type QueryDsl = Record<string, unknown>;
+type QueryDsl = QueryDSL;
 
 interface PersistedPanelPayload {
   panelId: string;
@@ -150,7 +151,12 @@ export const usePanelActions = ({
       return "draft";
     }
     return "unsaved";
-  }, [effectivePanelId, panelData?.status, panelStatus, persistedState?.status]);
+  }, [
+    effectivePanelId,
+    panelData?.status,
+    panelStatus,
+    persistedState?.status,
+  ]);
 
   const primaryActionLabel =
     effectiveStatus === "published" ? "Save and update" : "Save and publish";
@@ -165,9 +171,12 @@ export const usePanelActions = ({
         ...(baseDsl ?? {}),
         datasetId: effectiveDataset.id,
         tableId: effectiveDataset.mainTableId,
-        joins: effectiveDataset.joins || [],
-        dimensions: dropFields.map((field) => field.id),
-        metrics: dropMetrics,
+        // joins: effectiveDataset.joins || [],
+        dimensions: dropFields.map((field) => Number(field.id)),
+        metrics: dropMetrics.map((metric) => ({
+          id: Number(metric.id),
+          alias: metric.alias,
+        })),
         filters: dropFilters.map((filter) => ({
           fieldId: filter.fieldId,
           op: filter.op,
@@ -205,12 +214,16 @@ export const usePanelActions = ({
   );
 
   const ensurePanelPersisted = useCallback(
-    async (
-      options: { publishAfterCreate: boolean },
-    ): Promise<PersistedPanelPayload> => {
-      const dsl = resolveDsl((queryData?.dsl as QueryDsl | undefined) ?? undefined);
+    async (options: {
+      publishAfterCreate: boolean;
+    }): Promise<PersistedPanelPayload> => {
+      const dsl = resolveDsl(
+        (queryData?.dsl as QueryDsl | undefined) ?? undefined,
+      );
       if (!dsl) {
-        throw new Error("No dataset selected or dataset metadata is incomplete.");
+        throw new Error(
+          "No dataset selected or dataset metadata is incomplete.",
+        );
       }
 
       if (effectivePanelId && effectiveQueryId) {
@@ -295,7 +308,9 @@ export const usePanelActions = ({
       setIsSavingState(true);
       const panelType = toPanelType(displayType);
       const panelConfig = getPanelConfig(displayType, editorConfig);
-      const dsl = resolveDsl((queryData?.dsl as QueryDsl | undefined) ?? undefined);
+      const dsl = resolveDsl(
+        (queryData?.dsl as QueryDsl | undefined) ?? undefined,
+      );
 
       if (!dsl) {
         toast.error("Please select a dataset first.");
@@ -367,16 +382,18 @@ export const usePanelActions = ({
     onStatusChange,
     queryData?.dsl,
     resolveDsl,
-      title,
-      titleConfig,
-      updatePanelAsync,
-      updateQueryAsync,
-    ]);
+    title,
+    titleConfig,
+    updatePanelAsync,
+    updateQueryAsync,
+  ]);
 
   const handleRun = useCallback(async () => {
     try {
       setIsRunningState(true);
-      const dsl = resolveDsl((queryData?.dsl as QueryDsl | undefined) ?? undefined);
+      const dsl = resolveDsl(
+        (queryData?.dsl as QueryDsl | undefined) ?? undefined,
+      );
 
       if (!dsl) {
         toast.error("Please select a dataset first.");
@@ -393,7 +410,8 @@ export const usePanelActions = ({
       }
 
       await runPreviewWithDsl(dsl);
-    } catch {
+    } catch (error) {
+      console.error("Run failed:", error);
       toast.error("Run failed. Please try again.");
     } finally {
       setIsRunningState(false);

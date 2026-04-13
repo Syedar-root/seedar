@@ -1,4 +1,4 @@
-import { DatasetType, JoinType } from './dataset.types';
+import { DatasetType, JoinType } from "./dataset.types";
 
 /**
  * 实体操作请求
@@ -125,6 +125,11 @@ export type AddMetric = {
   timeDataSourceColumnId?: number;
   periodType?: string;
   calculationMode?: string;
+
+  /**
+   * 时间字段 ID（关联到 dataset_fields 表的主键 ID）,用于同环比计算的 业务时间字段
+   */
+  timeFieldId?: string;
 };
 
 /**
@@ -151,6 +156,11 @@ export type UpdateMetric = {
   timeDataSourceColumnId?: number;
   periodType?: string;
   calculationMode?: string;
+
+  /**
+   * 时间字段 ID（关联到 dataset_fields 表的主键 ID）,用于同环比计算的 业务时间字段
+   */
+  timeFieldId?: string;
 };
 
 /**
