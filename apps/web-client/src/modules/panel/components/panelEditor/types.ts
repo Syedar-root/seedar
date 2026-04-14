@@ -1,5 +1,8 @@
 import type { DragItem } from "../dndHelper/dragZone/dragZone";
-import type { PanelType } from "#pkg/seedar/types";
+import type {
+  PanelFormattingConfig,
+  PanelSimpleFormattingRule,
+} from "#pkg/seedar/types";
 
 export type DisplayPanelType =
   | "table"
@@ -38,6 +41,7 @@ export interface PanelEditorConfig {
   color?: string[];
   label?: LabelConfig;
   legends?: LegendConfig;
+  formatting?: PanelFormattingConfig;
 }
 
 export interface ConfigPanelProps {
@@ -79,24 +83,24 @@ export const DEFAULT_COLORS = [
 ];
 
 export const FIELD_LABELS: Record<string, string> = {
-  xField: "X轴字段",
-  yField: "Y轴字段",
-  seriesField: "系列字段",
-  categoryField: "分类字段",
-  valueField: "数值字段",
-  sizeField: "大小字段",
+  xField: "X field",
+  yField: "Y field",
+  seriesField: "Series field",
+  categoryField: "Category field",
+  valueField: "Value field",
+  sizeField: "Size field",
 };
 
 export const LEGEND_ORIENT_OPTIONS: { value: LegendOrient; label: string }[] = [
-  { value: "top", label: "上" },
-  { value: "bottom", label: "下" },
-  { value: "left", label: "左" },
-  { value: "right", label: "右" },
+  { value: "top", label: "Top" },
+  { value: "bottom", label: "Bottom" },
+  { value: "left", label: "Left" },
+  { value: "right", label: "Right" },
 ];
 
 export const LEGEND_LAYOUT_OPTIONS: { value: LegendLayout; label: string }[] = [
-  { value: "horizontal", label: "水平" },
-  { value: "vertical", label: "垂直" },
+  { value: "horizontal", label: "Horizontal" },
+  { value: "vertical", label: "Vertical" },
 ];
 
 export const DEFAULT_LEGENDS_CONFIG: LegendConfig = {
@@ -104,3 +108,28 @@ export const DEFAULT_LEGENDS_CONFIG: LegendConfig = {
   orient: "top",
   layout: "horizontal",
 };
+
+export const DEFAULT_PANEL_FORMATTING_CONFIG: PanelFormattingConfig = {
+  version: 3,
+  nullText: "--",
+  locale: {
+    mode: "browser",
+    value: null,
+  },
+  timeZone: {
+    mode: "browser",
+    value: null,
+  },
+  rules: [],
+};
+
+export const SIMPLE_FORMAT_KIND_OPTIONS: Array<{
+  value: PanelSimpleFormattingRule["kind"];
+  label: string;
+}> = [
+  { value: "number", label: "数字" },
+  { value: "percent", label: "百分比" },
+  { value: "currency", label: "货币" },
+  { value: "date", label: "日期" },
+  { value: "datetime", label: "日期时间" },
+];

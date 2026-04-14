@@ -6,6 +6,10 @@ import {
 } from "#pkg/seedar/ui-react";
 import {
   FieldType,
+  type PanelFormattingConfig,
+  type PanelFormattingRole,
+  type PanelFormattingTarget,
+  type PanelSimpleFormattingRule,
   PanelStatus,
   QueryDSL,
   PeriodOverPeriodType,
@@ -26,11 +30,16 @@ import type { DragItem } from "../components/dndHelper/dragZone/dragZone";
 import {
   DEFAULT_COLORS,
   DEFAULT_LEGENDS_CONFIG,
+  DEFAULT_PANEL_FORMATTING_CONFIG,
   type DisplayPanelType,
   type PanelEditorConfig,
 } from "../components/panelEditor";
 import type { PeriodOverPeriodConfig } from "../components/queryZone/queryZone";
 import type { FilterItem } from "../components/queryZone/types";
+import {
+  isSameFormattingTarget,
+  toSimpleFormattingConfig,
+} from "../utils/formatting";
 
 type LocalPanelStatus = "unsaved" | PanelStatus.DRAFT | PanelStatus.PUBLISHED;
 type QueryDsl = QueryDSL;
@@ -115,6 +124,11 @@ interface UsePanelEditorStateReturn {
   handleEditorChange: (
     type: DisplayPanelType,
     config: PanelEditorConfig,
+  ) => void;
+  handleSaveItemFormatting: (rule: PanelSimpleFormattingRule) => void;
+  handleRemoveItemFormatting: (
+    target: PanelFormattingTarget,
+    role: PanelFormattingRole,
   ) => void;
   handleRun: () => void;
   title: string;
@@ -362,6 +376,7 @@ export const usePanelEditorState = (
   const [editorConfig, setEditorConfig] = useState<PanelEditorConfig>({
     color: DEFAULT_COLORS,
     legends: DEFAULT_LEGENDS_CONFIG,
+    formatting: DEFAULT_PANEL_FORMATTING_CONFIG,
   });
   const [tempData, setTempData] = useState<ExecuteQueryResponse>();
   const [title, setTitle] = useState("Untitled Panel");
@@ -517,6 +532,7 @@ export const usePanelEditorState = (
       ...panelConfig,
       color: panelConfig.color || DEFAULT_COLORS,
       legends: panelConfig.legends || DEFAULT_LEGENDS_CONFIG,
+      formatting: panelConfig.formatting || DEFAULT_PANEL_FORMATTING_CONFIG,
     });
   }, [panelData]);
 
@@ -929,6 +945,57 @@ export const usePanelEditorState = (
     [],
   );
 
+  const handleSaveItemFormatting = useCallback(
+    (rule: PanelSimpleFormattingRule) => {
+      setEditorConfig((previous) => {
+        const nextFormatting = toSimpleFormattingConfig(previous.formatting);
+        const nextRules = [...nextFormatting.rules];
+        const targetIndex = nextRules.findIndex((currentRule) =>
+          isSameFormattingTarget(
+            currentRule.target,
+            currentRule.role,
+            rule.target,
+            rule.role,
+          ),
+        );
+
+        if (targetIndex >= 0) {
+          nextRules[targetIndex] = rule;
+        } else {
+          nextRules.push(rule);
+        }
+
+        return {
+          ...previous,
+          formatting: {
+            ...nextFormatting,
+            rules: nextRules,
+          },
+        };
+      });
+    },
+    [],
+  );
+
+  const handleRemoveItemFormatting = useCallback(
+    (target: PanelFormattingTarget, role: PanelFormattingRole) => {
+      setEditorConfig((previous) => {
+        const nextFormatting = toSimpleFormattingConfig(previous.formatting);
+
+        return {
+          ...previous,
+          formatting: {
+            ...nextFormatting,
+            rules: nextFormatting.rules.filter(
+              (rule) => !isSameFormattingTarget(rule.target, rule.role, target, role),
+            ),
+          },
+        };
+      });
+    },
+    [],
+  );
+
   const handleTitleChange = useCallback(
     (nextTitle: string, nextTitleConfig?: TitleConfig) => {
       setTitle(nextTitle);
@@ -993,6 +1060,8 @@ export const usePanelEditorState = (
     handleUpdateTempMetric,
     handleRemoveTempMetric,
     handleEditorChange,
+    handleSaveItemFormatting,
+    handleRemoveItemFormatting,
     handleRun,
     title,
     titleConfig,

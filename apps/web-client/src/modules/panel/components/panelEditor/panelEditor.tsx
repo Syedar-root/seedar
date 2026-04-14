@@ -5,6 +5,7 @@ import {
   ChartType,
   CHART_FIELD_CONFIGS,
   DEFAULT_COLORS,
+  DEFAULT_PANEL_FORMATTING_CONFIG,
 } from "./types";
 import { TypeSelector } from "./components/typeSelector/typeSelector";
 import { getConfigComponents } from "./configRegistry";
@@ -29,13 +30,18 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 }) => {
   const [currentType, setCurrentType] = useState<DisplayPanelType>(displayType);
   const [currentConfig, setCurrentConfig] = useState<PanelEditorConfig>(
-    config || { color: DEFAULT_COLORS },
+    config || { color: DEFAULT_COLORS, formatting: DEFAULT_PANEL_FORMATTING_CONFIG },
   );
   const hasInitializedOptionsRef = useRef(false);
 
   useEffect(() => {
     setCurrentType(displayType);
-    setCurrentConfig(config || { color: DEFAULT_COLORS });
+    setCurrentConfig(
+      config || {
+        color: DEFAULT_COLORS,
+        formatting: DEFAULT_PANEL_FORMATTING_CONFIG,
+      },
+    );
   }, [displayType, config]);
 
   const handleTypeChange = (type: DisplayPanelType) => {
@@ -125,6 +131,7 @@ function resetConfigForType(
 ): PanelEditorConfig {
   const baseConfig: PanelEditorConfig = {
     color: prevConfig.color || DEFAULT_COLORS,
+    formatting: prevConfig.formatting || DEFAULT_PANEL_FORMATTING_CONFIG,
   };
 
   if (type === "table" || type === "card") {

@@ -100,6 +100,8 @@ export const PanelPage = () => {
     handleUpdateTempMetric,
     handleRemoveTempMetric,
     handleEditorChange,
+    handleSaveItemFormatting,
+    handleRemoveItemFormatting,
     title,
     titleConfig,
     handleTitleChange,
@@ -405,7 +407,9 @@ export const PanelPage = () => {
         status: isPublished ? PanelStatus.PUBLISHED : PanelStatus.DRAFT,
         queryId: panelData?.queryId ?? queryData?.id,
         config:
-          displayType === "table" || displayType === "card" ? {} : previewSpec,
+          displayType === "table" || displayType === "card"
+            ? editorConfig
+            : previewSpec,
         createdAt: panelData?.createdAt ?? new Date(),
         updatedAt: panelData?.updatedAt ?? new Date(),
       }
@@ -540,6 +544,9 @@ export const PanelPage = () => {
             onRemoveTempMetric={handleRemoveTempMetric}
             onAddDerivedDimension={handleAddDerivedDimension}
             onUpdateDerivedDimension={handleUpdateDerivedDimension}
+            formatting={editorConfig.formatting}
+            onSaveItemFormatting={handleSaveItemFormatting}
+            onRemoveItemFormatting={handleRemoveItemFormatting}
             dropFields={dimensionItems}
             dropMetrics={metricsWithPopFlag}
             dropFilters={dropFilters}

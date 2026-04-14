@@ -116,6 +116,31 @@ export interface ExecuteTempQueryRequest {
   dsl: QueryDSL;
 }
 
+export type QueryColumnMappingRole = "dimension" | "metric";
+
+export type QueryColumnMappingTargetKind =
+  | "field"
+  | "metric"
+  | "derived_dimension"
+  | "temp_metric"
+  | "unknown";
+
+export interface QueryColumnMappingTarget {
+  kind: QueryColumnMappingTargetKind;
+  datasetId?: number;
+  id?: string;
+  key?: string;
+}
+
+export interface QueryColumnMapping {
+  alias: string;
+  type: QueryColumnMappingRole;
+  displayName: string;
+  businessName?: string;
+  index?: number;
+  target?: QueryColumnMappingTarget;
+}
+
 /**
  * 执行查询响应接口
  */
@@ -126,5 +151,5 @@ export interface ExecuteQueryResponse {
     rows: any[];
   };
   executionTime: number;
-  columnMappings?: any[];
+  columnMappings?: QueryColumnMapping[];
 }

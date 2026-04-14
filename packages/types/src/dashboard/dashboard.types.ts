@@ -1,3 +1,5 @@
+import type { PanelFormattingConfig } from "./panel-formatting.types";
+
 export enum PanelType {
   CHART = "chart",
   TABLE = "table",
@@ -40,13 +42,17 @@ export interface PanelResponse {
   type: PanelType;
   status: PanelStatus;
   queryId?: string;
-  config?: Record<string, any>;
+  config?: PanelConfig;
   titleConfig?: Record<string, any>;
   width?: number;
   height?: number;
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type PanelConfig = Record<string, any> & {
+  formatting?: PanelFormattingConfig;
+};
 
 export interface DashboardResponse {
   id: string;

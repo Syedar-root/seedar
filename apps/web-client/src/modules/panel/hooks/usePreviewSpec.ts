@@ -36,6 +36,10 @@ export const usePreviewSpec = (
       };
     }
 
+    if (editorConfig.formatting) {
+      baseSpec.formatting = editorConfig.formatting;
+    }
+
     const fieldConfig = CHART_FIELD_CONFIGS[displayType as ChartType];
     if (fieldConfig) {
       const allFields = [...fieldConfig.required, ...fieldConfig.optional];

@@ -86,7 +86,7 @@ const getPanelConfig = (
   editorConfig: PanelEditorConfig,
 ) => {
   if (displayType === "table" || displayType === "card") {
-    return {};
+    return { ...editorConfig };
   }
 
   return { ...editorConfig, type: displayType };

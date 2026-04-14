@@ -1,7 +1,11 @@
-import { ExecuteQueryResponse } from "#pkg/seedar/ui-core";
+import type {
+  ExecuteQueryResponse,
+  PanelFormattingConfig,
+} from "#pkg/seedar/types";
 import { ISpec, VChart } from "@visactor/react-vchart";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useExecuteQuery } from "../../hooks";
+import { applyFormattingToQueryData } from "../formatting/formatting";
 import { transformData } from "./transformer";
 
 export interface ChartProps {
@@ -11,39 +15,74 @@ export interface ChartProps {
   data?: ExecuteQueryResponse;
 }
 
-export const Chart: React.FC<ChartProps> = (props) => {
-  const { vchartProps = {}, spec: propSpec, queryId, data } = props;
+export const Chart: React.FC<ChartProps> = ({
+  vchartProps = {},
+  spec: propSpec,
+  queryId,
+  data,
+}) => {
   const spec = propSpec ?? { type: "bar" };
   const { mutate: executeQuery } = useExecuteQuery();
-
   const [rawData, setRawData] = useState<ExecuteQueryResponse>();
   const [specOption, setSpecOption] = useState<ISpec>({
     ...spec,
     autoFit: true,
   });
 
-  // 仅在 queryId 变化时执行查询
   useEffect(() => {
     if (data) {
       setRawData(data);
       return;
     }
-    if (!queryId) return;
+
+    if (!queryId) {
+      return;
+    }
+
     executeQuery(queryId, {
-      onSuccess: (data) => {
-        setRawData(data);
+      onSuccess: (queryData) => {
+        setRawData(queryData);
       },
     });
-  }, [queryId, executeQuery, data]);
+  }, [data, executeQuery, queryId]);
 
-  // 仅在 rawData 或 spec 变化时转换数据
   useEffect(() => {
-    if (!rawData || !spec) return;
-    const transformed = transformData(rawData, spec);
-    if (!transformed) return;
+    if (!rawData || !spec) {
+      return;
+    }
+
+    const runtimeSpec = {
+      ...(spec as unknown as Record<string, unknown>),
+    } as Record<string, unknown>;
+    const formatting = runtimeSpec.formatting as
+      | PanelFormattingConfig
+      | undefined;
+    delete runtimeSpec.formatting;
+
+    const formattedData = applyFormattingToQueryData(rawData, formatting, {
+      preserveMetricNumber: true,
+      surface: "table_cell",
+    });
+
+    const transformed = transformData(
+      formattedData,
+      runtimeSpec as unknown as ISpec,
+    );
+    if (!transformed) {
+      return;
+    }
+
     setSpecOption(transformed);
   }, [rawData, spec]);
 
-  if (!specOption.data) return null;
-  else return <VChart spec={specOption} {...vchartProps} />;
+  const resolvedSpec = useMemo(
+    () => ({ ...specOption, autoFit: true }),
+    [specOption],
+  );
+
+  if (!resolvedSpec.data) {
+    return null;
+  }
+
+  return <VChart spec={resolvedSpec} {...vchartProps} />;
 };

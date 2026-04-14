@@ -1,5 +1,10 @@
 import type { ConfigPanelProps } from "../../types";
 
-export const TableConfigPanel: React.FC<ConfigPanelProps> = () => {
+export const TableConfigPanel: React.FC<ConfigPanelProps> = ({
+  fields: _fields,
+  metrics: _metrics,
+  config: _config,
+  onChange: _onChange,
+}) => {
   return null;
 };

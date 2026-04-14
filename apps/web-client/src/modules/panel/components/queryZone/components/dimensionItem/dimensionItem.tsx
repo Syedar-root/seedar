@@ -1,4 +1,4 @@
-import { Menu } from "@base-ui/react";
+﻿import { Menu } from "@base-ui/react";
 import { Check, ChevronDownIcon, X } from "lucide-react";
 import styles from "./dimensionItem.module.scss";
 import type { DimensionItem as DimensionItemType } from "../../../../hooks/usePanelEditorState";
@@ -6,14 +6,18 @@ import type { DimensionItem as DimensionItemType } from "../../../../hooks/usePa
 interface DimensionItemProps {
   dimension: DimensionItemType;
   hasDerivedConfig: boolean;
+  hasFormattingConfig?: boolean;
   onOpenConfig: (dimension: DimensionItemType) => void;
+  onOpenFormattingDialog: (dimension: DimensionItemType) => void;
   onRemove: (dimension: DimensionItemType) => void;
 }
 
 export const DimensionItem = ({
   dimension,
   hasDerivedConfig,
+  hasFormattingConfig,
   onOpenConfig,
+  onOpenFormattingDialog,
   onRemove,
 }: DimensionItemProps) => {
   return (
@@ -46,6 +50,20 @@ export const DimensionItem = ({
                 </span>
                 <span className={styles.CheckboxItemText}>衍生维度</span>
               </Menu.Item>
+              <Menu.Item
+                onClick={() => onOpenFormattingDialog(dimension)}
+                className={styles.CheckboxItem}
+              >
+                <span className={styles.CheckboxItemIndicator}>
+                  {hasFormattingConfig && (
+                    <Check
+                      className={styles.CheckboxItemIndicatorIcon}
+                      size={12}
+                    />
+                  )}
+                </span>
+                <span className={styles.CheckboxItemText}>格式化</span>
+              </Menu.Item>
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>
@@ -61,3 +79,4 @@ export const DimensionItem = ({
     </div>
   );
 };
+
