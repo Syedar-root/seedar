@@ -98,14 +98,14 @@ export const CHART_FIELD_CONFIGS: Record<ChartType, ChartFieldConfig> = {
 };
 
 export const DEFAULT_COLORS = [
-  "#5470c6",
-  "#91cc75",
-  "#fac858",
-  "#ee6666",
-  "#73c0de",
-  "#3ba272",
-  "#fc8452",
-  "#9a60b4",
+  "#5d7a8c",
+  "#6b8e4e",
+  "#c4842a",
+  "#b85450",
+  "#8b7355",
+  "#6b8a8a",
+  "#a67c52",
+  "#7a6b8a",
 ];
 
 export const FIELD_LABELS: Record<string, string> = {
