@@ -44,13 +44,11 @@ export const MetricItem = ({
         <Menu.Portal>
           <Menu.Positioner className={styles.menuPositioner} sideOffset={8}>
             <Menu.Popup className={styles.Popup}>
-              <Menu.Arrow className={styles.Arrow}>
-                <ChevronDownIcon size={12} />
-              </Menu.Arrow>
               <Menu.Item
                 onClick={handlePopDialog}
                 className={styles.CheckboxItem}
               >
+                <span className={styles.CheckboxItemText}>同比/环比</span>
                 <span className={styles.CheckboxItemIndicator}>
                   {hasPopConfig && (
                     <Check
@@ -59,12 +57,12 @@ export const MetricItem = ({
                     />
                   )}
                 </span>
-                <span className={styles.CheckboxItemText}>同比/环比</span>
               </Menu.Item>
               <Menu.Item
                 onClick={handleFormattingDialog}
                 className={styles.CheckboxItem}
               >
+                <span className={styles.CheckboxItemText}>格式化</span>
                 <span className={styles.CheckboxItemIndicator}>
                   {hasFormattingConfig && (
                     <Check
@@ -73,7 +71,6 @@ export const MetricItem = ({
                     />
                   )}
                 </span>
-                <span className={styles.CheckboxItemText}>格式化</span>
               </Menu.Item>
             </Menu.Popup>
           </Menu.Positioner>
@@ -83,4 +80,3 @@ export const MetricItem = ({
     </div>
   );
 };
-

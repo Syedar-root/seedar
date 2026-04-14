@@ -33,13 +33,11 @@ export const DimensionItem = ({
         <Menu.Portal>
           <Menu.Positioner className={styles.menuPositioner} sideOffset={8}>
             <Menu.Popup className={styles.Popup}>
-              <Menu.Arrow className={styles.Arrow}>
-                <ChevronDownIcon size={12} />
-              </Menu.Arrow>
               <Menu.Item
                 onClick={() => onOpenConfig(dimension)}
                 className={styles.CheckboxItem}
               >
+                <span className={styles.CheckboxItemText}>衍生维度</span>
                 <span className={styles.CheckboxItemIndicator}>
                   {hasDerivedConfig && (
                     <Check
@@ -48,12 +46,12 @@ export const DimensionItem = ({
                     />
                   )}
                 </span>
-                <span className={styles.CheckboxItemText}>衍生维度</span>
               </Menu.Item>
               <Menu.Item
                 onClick={() => onOpenFormattingDialog(dimension)}
                 className={styles.CheckboxItem}
               >
+                <span className={styles.CheckboxItemText}>格式化</span>
                 <span className={styles.CheckboxItemIndicator}>
                   {hasFormattingConfig && (
                     <Check
@@ -62,7 +60,6 @@ export const DimensionItem = ({
                     />
                   )}
                 </span>
-                <span className={styles.CheckboxItemText}>格式化</span>
               </Menu.Item>
             </Menu.Popup>
           </Menu.Positioner>
@@ -79,4 +76,3 @@ export const DimensionItem = ({
     </div>
   );
 };
-

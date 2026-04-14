@@ -110,6 +110,7 @@
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .CheckboxItemIndicatorIcon {
@@ -118,4 +119,5 @@
 
 .CheckboxItemText {
   flex: 1;
+  min-width: 0;
 }
