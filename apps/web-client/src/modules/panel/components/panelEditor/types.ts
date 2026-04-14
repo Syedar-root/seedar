@@ -68,6 +68,8 @@ export interface PanelEditorConfig {
   legends?: LegendConfig;
   axis?: AxisConfig;
   formatting?: PanelFormattingConfig;
+  isAdvancedSpecMode?: boolean;
+  advancedSpec?: Record<string, unknown>;
 }
 
 export interface ConfigPanelProps {

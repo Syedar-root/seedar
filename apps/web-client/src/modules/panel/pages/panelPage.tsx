@@ -438,6 +438,10 @@ export const PanelPage = () => {
     />
   );
 
+  console.log("hcs editorConfig", editorConfig);
+  console.log("hcs previewSpec", previewSpec);
+  console.log("hcs tempData", tempData);
+
   return (
     <div ref={containerRef} className={styles.container}>
       {layoutMode === "expanded" ? (

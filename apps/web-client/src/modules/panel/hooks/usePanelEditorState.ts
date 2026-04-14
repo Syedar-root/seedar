@@ -31,9 +31,16 @@ import {
   DEFAULT_COLORS,
   DEFAULT_LEGENDS_CONFIG,
   DEFAULT_PANEL_FORMATTING_CONFIG,
+  type ChartType,
   type DisplayPanelType,
   type PanelEditorConfig,
 } from "../components/panelEditor";
+import {
+  CHART_EDITOR_ADVANCED_SPEC_KEY,
+  CHART_EDITOR_MODE_ADVANCED,
+  CHART_EDITOR_MODE_KEY,
+  SUPPORTED_CHART_SPEC_TYPES,
+} from "../components/panelEditor/chartSpec";
 import type { PeriodOverPeriodConfig } from "../components/queryZone/queryZone";
 import type { FilterItem } from "../components/queryZone/types";
 import {
@@ -151,9 +158,13 @@ const mapPanelTypeToDisplayType = (
     return "card";
   }
 
-  const panelConfig = panelData.config as PanelEditorConfig | undefined;
-  if (panelConfig?.type) {
-    return panelConfig.type as DisplayPanelType;
+  const panelConfig = panelData.config as Record<string, unknown> | undefined;
+  const configType = panelConfig?.type;
+  if (
+    typeof configType === "string" &&
+    SUPPORTED_CHART_SPEC_TYPES.includes(configType as ChartType)
+  ) {
+    return configType as DisplayPanelType;
   }
 
   return "line";
@@ -163,6 +174,32 @@ const VALID_TIME_GRAINS = ["day", "week", "month", "quarter", "year"];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object";
+
+const VISUAL_CHART_SPEC_KEYS = new Set<string>([
+  "type",
+  "color",
+  "label",
+  "legends",
+  "axes",
+  "line",
+  "direction",
+  "xField",
+  "yField",
+  "seriesField",
+  "categoryField",
+  "valueField",
+  "sizeField",
+  "formatting",
+]);
+
+const stripChartEditorMeta = (
+  value: Record<string, unknown>,
+): Record<string, unknown> => {
+  const next = { ...value };
+  delete next[CHART_EDITOR_MODE_KEY];
+  delete next[CHART_EDITOR_ADVANCED_SPEC_KEY];
+  return next;
+};
 
 const asNumber = (value: unknown): number | undefined => {
   if (typeof value === "number" && !Number.isNaN(value)) {
@@ -528,8 +565,47 @@ export const usePanelEditorState = (
     setDisplayType(mapPanelTypeToDisplayType(panelData));
     const panelConfig =
       (panelData.config as PanelEditorConfig | undefined) ?? {};
+    const rawChartSpec = (panelData.config as Record<string, unknown>) ?? {};
+    const cleanedRawChartSpec = stripChartEditorMeta(rawChartSpec);
+    const rawChartType = rawChartSpec.type;
+    const hasCustomChartType =
+      panelData.type === "chart" &&
+      typeof rawChartType === "string" &&
+      !SUPPORTED_CHART_SPEC_TYPES.includes(rawChartType as ChartType);
+
+    const persistedMode = rawChartSpec[CHART_EDITOR_MODE_KEY];
+    const persistedAdvancedSpec = rawChartSpec[CHART_EDITOR_ADVANCED_SPEC_KEY];
+    const hasPersistedAdvancedMode =
+      panelData.type === "chart" &&
+      persistedMode === CHART_EDITOR_MODE_ADVANCED &&
+      isRecord(persistedAdvancedSpec);
+
+    const hasUnknownVisualKeys =
+      panelData.type === "chart" &&
+      Object.keys(cleanedRawChartSpec).some(
+        (key) => !VISUAL_CHART_SPEC_KEYS.has(key),
+      );
+
+    const shouldUseAdvancedMode =
+      hasPersistedAdvancedMode || hasCustomChartType || hasUnknownVisualKeys;
+
+    const advancedSpec = hasPersistedAdvancedMode
+      ? stripChartEditorMeta(persistedAdvancedSpec as Record<string, unknown>)
+      : cleanedRawChartSpec;
+
+    const sanitizedPanelConfig = { ...panelConfig } as Record<string, unknown>;
+    delete sanitizedPanelConfig[CHART_EDITOR_MODE_KEY];
+    delete sanitizedPanelConfig[CHART_EDITOR_ADVANCED_SPEC_KEY];
+
     setEditorConfig({
-      ...panelConfig,
+      ...(sanitizedPanelConfig as PanelEditorConfig),
+      ...(hasCustomChartType ? { type: "line" as ChartType } : {}),
+      ...(shouldUseAdvancedMode
+        ? {
+            isAdvancedSpecMode: true,
+            advancedSpec,
+          }
+        : {}),
       color: panelConfig.color || DEFAULT_COLORS,
       legends: panelConfig.legends || DEFAULT_LEGENDS_CONFIG,
       formatting: panelConfig.formatting || DEFAULT_PANEL_FORMATTING_CONFIG,

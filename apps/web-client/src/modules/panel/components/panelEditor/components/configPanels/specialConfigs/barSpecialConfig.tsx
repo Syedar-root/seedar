@@ -15,6 +15,10 @@ export const BarSpecialConfig: React.FC<ConfigPanelProps> = ({
   config,
   onChange,
 }) => {
+  if (config.isAdvancedSpecMode) {
+    return null;
+  }
+
   const value = config.direction || "vertical";
 
   return (

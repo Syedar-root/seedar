@@ -24,6 +24,7 @@ import type {
   DisplayPanelType,
   PanelEditorConfig,
 } from "../components/panelEditor/types";
+import { buildPersistedChartConfig } from "../components/panelEditor/chartSpec";
 import type { FilterItem } from "../components/queryZone/types";
 
 type PanelWorkflowStatus = "unsaved" | "draft" | "published";
@@ -89,7 +90,9 @@ const getPanelConfig = (
     return { ...editorConfig };
   }
 
-  return { ...editorConfig, type: displayType };
+  return buildPersistedChartConfig(displayType, editorConfig) ?? {
+    type: displayType,
+  };
 };
 
 export const usePanelActions = ({

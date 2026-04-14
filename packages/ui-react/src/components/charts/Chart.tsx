@@ -3,10 +3,14 @@ import type {
   PanelFormattingConfig,
 } from "#pkg/seedar/types";
 import { ISpec, VChart } from "@visactor/react-vchart";
+import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 import { useEffect, useMemo, useState } from "react";
 import { useExecuteQuery } from "../../hooks";
 import { applyFormattingToQueryData } from "../formatting/formatting";
 import { transformData } from "./transformer";
+
+const CHART_EDITOR_MODE_KEY = "__seedarEditorMode";
+const CHART_EDITOR_ADVANCED_SPEC_KEY = "__seedarAdvancedSpec";
 
 export interface ChartProps {
   vchartProps?: React.ComponentProps<typeof VChart>;
@@ -14,6 +18,29 @@ export interface ChartProps {
   queryId?: string;
   data?: ExecuteQueryResponse;
 }
+
+const ChartErrorFallback: React.FC<FallbackProps> = ({ error }) => (
+  <div
+    style={{
+      width: "100%",
+      height: "100%",
+      minHeight: 120,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 12,
+      borderRadius: 6,
+      border: "1px solid rgba(128,128,128,0.25)",
+      color: "var(--text-secondary)",
+      background: "var(--bg-elevated)",
+      fontSize: 12,
+      textAlign: "center",
+    }}
+  >
+    Chart render failed. Please check whether the Spec matches the chart type.
+    {error?.message ? ` (${error.message})` : ""}
+  </div>
+);
 
 export const Chart: React.FC<ChartProps> = ({
   vchartProps = {},
@@ -58,6 +85,8 @@ export const Chart: React.FC<ChartProps> = ({
       | PanelFormattingConfig
       | undefined;
     delete runtimeSpec.formatting;
+    delete runtimeSpec[CHART_EDITOR_MODE_KEY];
+    delete runtimeSpec[CHART_EDITOR_ADVANCED_SPEC_KEY];
 
     const formattedData = applyFormattingToQueryData(rawData, formatting, {
       preserveMetricNumber: true,
@@ -68,6 +97,7 @@ export const Chart: React.FC<ChartProps> = ({
       formattedData,
       runtimeSpec as unknown as ISpec,
     );
+
     if (!transformed) {
       return;
     }
@@ -79,10 +109,21 @@ export const Chart: React.FC<ChartProps> = ({
     () => ({ ...specOption, autoFit: true }),
     [specOption],
   );
+  const boundaryResetKey = useMemo(() => JSON.stringify(spec), [spec]);
 
   if (!resolvedSpec.data) {
     return null;
   }
 
-  return <VChart spec={resolvedSpec} {...vchartProps} />;
+  return (
+    <ErrorBoundary
+      FallbackComponent={ChartErrorFallback}
+      onError={(error) => {
+        console.error("[Chart] render failed:", error);
+      }}
+      resetKeys={[boundaryResetKey]}
+    >
+      <VChart spec={resolvedSpec} {...vchartProps} />
+    </ErrorBoundary>
+  );
 };

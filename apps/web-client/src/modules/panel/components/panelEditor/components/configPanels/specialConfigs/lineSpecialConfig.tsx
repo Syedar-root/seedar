@@ -7,6 +7,10 @@ export const LineSpecialConfig: React.FC<ConfigPanelProps> = ({
   config,
   onChange,
 }) => {
+  if (config.isAdvancedSpecMode) {
+    return null;
+  }
+
   return (
     <div className={styles.specialConfig}>
       <div className={styles.title}>折线图专属配置</div>
