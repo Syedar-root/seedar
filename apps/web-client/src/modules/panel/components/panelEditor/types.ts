@@ -15,6 +15,7 @@ export type DisplayPanelType =
   | "radar";
 
 export type ChartType = "line" | "bar" | "area" | "pie" | "scatter" | "radar";
+export type BarDirection = "vertical" | "horizontal";
 
 export interface LabelConfig {
   visible: boolean;
@@ -30,6 +31,28 @@ export interface LegendConfig {
   title?: string;
 }
 
+export type AxisScaleType = "linear" | "log";
+
+export interface AxisItemConfig {
+  visible: boolean;
+  labelVisible: boolean;
+  tickVisible: boolean;
+  gridVisible: boolean;
+  scaleType?: AxisScaleType;
+  logBase?: number;
+  min?: number;
+  max?: number;
+  nice?: boolean;
+  labelRotate?: number;
+  title?: string;
+  zero?: boolean;
+}
+
+export interface AxisConfig {
+  x: AxisItemConfig;
+  y: AxisItemConfig;
+}
+
 export interface PanelEditorConfig {
   type?: ChartType;
   xField?: string;
@@ -38,9 +61,12 @@ export interface PanelEditorConfig {
   categoryField?: string;
   valueField?: string;
   sizeField?: string;
+  smooth?: boolean;
+  direction?: BarDirection;
   color?: string[];
   label?: LabelConfig;
   legends?: LegendConfig;
+  axis?: AxisConfig;
   formatting?: PanelFormattingConfig;
 }
 
@@ -83,12 +109,12 @@ export const DEFAULT_COLORS = [
 ];
 
 export const FIELD_LABELS: Record<string, string> = {
-  xField: "X field",
-  yField: "Y field",
-  seriesField: "Series field",
-  categoryField: "Category field",
-  valueField: "Value field",
-  sizeField: "Size field",
+  xField: "X字段/指标",
+  yField: "Y字段/指标",
+  seriesField: "系列字段/指标",
+  categoryField: "分类字段/指标",
+  valueField: "值字段/指标",
+  sizeField: "大小字段/指标",
 };
 
 export const LEGEND_ORIENT_OPTIONS: { value: LegendOrient; label: string }[] = [
@@ -103,11 +129,43 @@ export const LEGEND_LAYOUT_OPTIONS: { value: LegendLayout; label: string }[] = [
   { value: "vertical", label: "Vertical" },
 ];
 
+export const BAR_DIRECTION_OPTIONS: { value: BarDirection; label: string }[] = [
+  { value: "vertical", label: "纵向柱状图" },
+  { value: "horizontal", label: "横向柱状图" },
+];
+
 export const DEFAULT_LEGENDS_CONFIG: LegendConfig = {
   visible: false,
   orient: "top",
   layout: "horizontal",
 };
+
+export const CARTESIAN_CHART_TYPES: ChartType[] = [
+  "line",
+  "bar",
+  "area",
+  "scatter",
+];
+
+export const createDefaultAxisConfig = (): AxisConfig => ({
+  x: {
+    visible: true,
+    labelVisible: true,
+    tickVisible: true,
+    gridVisible: false,
+    scaleType: "linear",
+    nice: true,
+  },
+  y: {
+    visible: true,
+    labelVisible: true,
+    tickVisible: true,
+    gridVisible: true,
+    scaleType: "linear",
+    nice: true,
+    zero: true,
+  },
+});
 
 export const DEFAULT_PANEL_FORMATTING_CONFIG: PanelFormattingConfig = {
   version: 3,

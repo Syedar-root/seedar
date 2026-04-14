@@ -12,6 +12,16 @@ interface DimensionItemProps {
   onRemove: (dimension: DimensionItemType) => void;
 }
 
+const DERIVEDKIND_MAP: Record<
+  "time_grain" | "bucket" | "mapping" | "expression",
+  string
+> = {
+  time_grain: "时间粒度",
+  bucket: "分桶",
+  mapping: "映射",
+  expression: "表达式",
+};
+
 export const DimensionItem = ({
   dimension,
   hasDerivedConfig,
@@ -26,27 +36,31 @@ export const DimensionItem = ({
         <Menu.Trigger className={styles.trigger}>
           {dimension.businessName || dimension.name}
           {dimension.isDerived && dimension.derivedKind ? (
-            <span className={styles.derivedTag}>{dimension.derivedKind}</span>
+            <span className={styles.derivedTag}>
+              {DERIVEDKIND_MAP[dimension.derivedKind]}
+            </span>
           ) : null}
           <ChevronDownIcon className={styles.chevronIcon} size={12} />
         </Menu.Trigger>
         <Menu.Portal>
           <Menu.Positioner className={styles.menuPositioner} sideOffset={8}>
             <Menu.Popup className={styles.Popup}>
-              <Menu.Item
-                onClick={() => onOpenConfig(dimension)}
-                className={styles.CheckboxItem}
-              >
-                <span className={styles.CheckboxItemText}>衍生维度</span>
-                <span className={styles.CheckboxItemIndicator}>
-                  {hasDerivedConfig && (
-                    <Check
-                      className={styles.CheckboxItemIndicatorIcon}
-                      size={12}
-                    />
-                  )}
-                </span>
-              </Menu.Item>
+              {!dimension.isDerived && (
+                <Menu.Item
+                  onClick={() => onOpenConfig(dimension)}
+                  className={styles.CheckboxItem}
+                >
+                  <span className={styles.CheckboxItemText}>衍生维度</span>
+                  {/* <span className={styles.CheckboxItemIndicator}>
+                    {hasDerivedConfig && (
+                      <Check
+                        className={styles.CheckboxItemIndicatorIcon}
+                        size={12}
+                      />
+                    )}
+                  </span> */}
+                </Menu.Item>
+              )}
               <Menu.Item
                 onClick={() => onOpenFormattingDialog(dimension)}
                 className={styles.CheckboxItem}

@@ -23,14 +23,14 @@ export const FieldMapper: React.FC<FieldMapperProps> = ({
 }) => {
   const fieldOptions: ComboboxOptionGroup[] = [
     {
-      label: "Dimensions",
+      label: "维度",
       options: fields.map((item) => ({
         label: item.businessName || item.name,
         value: item.businessName || item.name,
       })),
     },
     {
-      label: "Metrics",
+      label: "指标",
       options: metrics.map((item) => ({
         label: item.businessName || item.name,
         value: item.businessName || item.name,
@@ -51,13 +51,11 @@ export const FieldMapper: React.FC<FieldMapperProps> = ({
         </label>
         <Combobox
           value={currentValue || null}
-          onChange={(value) =>
-            onChange({ [fieldKey]: value || undefined })
-          }
+          onChange={(value) => onChange({ [fieldKey]: value || undefined })}
           options={fieldOptions}
-          placeholder="Select field"
-          searchPlaceholder="Search fields"
-          emptyText="No matching fields"
+          placeholder="请选择字段/指标"
+          searchPlaceholder="搜索字段/指标"
+          emptyText="没有匹配的字段/指标"
         />
       </div>
     );
@@ -65,7 +63,7 @@ export const FieldMapper: React.FC<FieldMapperProps> = ({
 
   return (
     <div className={styles.fieldMapper}>
-      <div className={styles.title}>Field Mapping</div>
+      <div className={styles.title}>字段映射</div>
       <div className={styles.fields}>
         {fieldConfig.required.map((field) => renderSelect(field, true))}
         {fieldConfig.optional.map((field) => renderSelect(field, false))}

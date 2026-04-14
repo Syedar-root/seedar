@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
+  CARTESIAN_CHART_TYPES,
   DisplayPanelType,
   PanelEditorConfig,
   ChartType,
@@ -30,7 +31,10 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 }) => {
   const [currentType, setCurrentType] = useState<DisplayPanelType>(displayType);
   const [currentConfig, setCurrentConfig] = useState<PanelEditorConfig>(
-    config || { color: DEFAULT_COLORS, formatting: DEFAULT_PANEL_FORMATTING_CONFIG },
+    config || {
+      color: DEFAULT_COLORS,
+      formatting: DEFAULT_PANEL_FORMATTING_CONFIG,
+    },
   );
   const hasInitializedOptionsRef = useRef(false);
 
@@ -93,7 +97,11 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 
     mappedKeys.forEach((key) => {
       const value = currentConfig[key];
-      if (typeof value === "string" && value && !availableFieldValues.has(value)) {
+      if (
+        typeof value === "string" &&
+        value &&
+        !availableFieldValues.has(value)
+      ) {
         invalidPatch[key] = undefined;
         hasInvalidValue = true;
       }
@@ -109,7 +117,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
   }, [availableFieldValues, currentConfig, currentType, onChange]);
 
   return (
-    <ScrollArea className={styles.editor}>
+    <ScrollArea className={styles.editor} contentStyle={{ minWidth: "none" }}>
       <TypeSelector value={currentType} onChange={handleTypeChange} />
 
       {configComponents.map((Component, index) => (
@@ -145,6 +153,18 @@ function resetConfigForType(
     ...baseConfig,
     type: type as ChartType,
   };
+
+  if (prevConfig.axis && CARTESIAN_CHART_TYPES.includes(type as ChartType)) {
+    newConfig.axis = prevConfig.axis;
+  }
+
+  if (type === "line" && typeof prevConfig.smooth === "boolean") {
+    newConfig.smooth = prevConfig.smooth;
+  }
+
+  if (type === "bar" && prevConfig.direction) {
+    newConfig.direction = prevConfig.direction;
+  }
 
   fieldConfig.required.forEach((field) => {
     const key = field as keyof PanelEditorConfig;
