@@ -12,6 +12,7 @@ import type {
   ExecuteQueryResponse,
   PanelResponse,
   PanelType,
+  QueryDimensionDSL,
   QueryDSL,
   QueryResponse,
 } from "#pkg/seedar/types";
@@ -23,6 +24,7 @@ import type {
   DisplayPanelType,
   PanelEditorConfig,
 } from "../components/panelEditor/types";
+import { buildPersistedChartConfig } from "../components/panelEditor/chartSpec";
 import type { FilterItem } from "../components/queryZone/types";
 
 type PanelWorkflowStatus = "unsaved" | "draft" | "published";
@@ -85,10 +87,12 @@ const getPanelConfig = (
   editorConfig: PanelEditorConfig,
 ) => {
   if (displayType === "table" || displayType === "card") {
-    return {};
+    return { ...editorConfig };
   }
 
-  return { ...editorConfig, type: displayType };
+  return buildPersistedChartConfig(displayType, editorConfig) ?? {
+    type: displayType,
+  };
 };
 
 export const usePanelActions = ({
@@ -172,7 +176,18 @@ export const usePanelActions = ({
         datasetId: effectiveDataset.id,
         tableId: effectiveDataset.mainTableId,
         // joins: effectiveDataset.joins || [],
-        dimensions: dropFields.map((field) => Number(field.id)),
+        dimensions: dropFields.map((field) => {
+          const dimensionDsl = (
+            field as DragItem & { dimensionDsl?: QueryDimensionDSL }
+          ).dimensionDsl;
+          if (dimensionDsl) {
+            return dimensionDsl;
+          }
+          return {
+            fieldId: Number(field.id),
+            alias: field.alias,
+          };
+        }),
         metrics: dropMetrics.map((metric) => ({
           id: Number(metric.id),
           alias: metric.alias,

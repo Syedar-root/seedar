@@ -1,0 +1,174 @@
+.Control {
+  width: 100%;
+}
+
+.InputGroup {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  transition:
+    border-color var(--transition-base),
+    background-color var(--transition-base);
+
+  &:hover {
+    border-color: var(--border-hover);
+  }
+
+  &:focus-visible,
+  &:focus-within,
+  &[data-popup-open] {
+    outline: none;
+    border-color: var(--primary);
+  }
+}
+
+.Input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px var(--spacing-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--font-base);
+  outline: none;
+
+  &::placeholder {
+    color: var(--text-tertiary);
+  }
+}
+
+.ActionButtons {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 6px;
+}
+
+.Clear {
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-tertiary);
+  transition:
+    color var(--transition-base),
+    background-color var(--transition-base);
+
+  &:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+}
+
+.Trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition:
+    color var(--transition-base),
+    background-color var(--transition-base),
+    transform var(--transition-base);
+
+  &:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  &[data-popup-open] {
+    color: var(--text-primary);
+    transform: rotate(180deg);
+  }
+}
+
+.Positioner {
+  z-index: 1000;
+  width: var(--anchor-width);
+}
+
+.Popup {
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
+}
+
+.List {
+  max-height: 240px;
+  padding: var(--spacing-xs) 0;
+  overflow-y: auto;
+}
+
+.Group {
+  display: flex;
+  flex-direction: column;
+}
+
+.GroupLabel {
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-xs);
+  color: var(--text-tertiary);
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
+.Item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
+  outline: none;
+
+  &:hover,
+  &[data-highlighted] {
+    background: var(--bg-hover);
+  }
+
+  &[data-selected] {
+    color: var(--primary);
+    background: var(--primary-light);
+  }
+}
+
+.ItemText {
+  flex: 1;
+  min-width: 0;
+}
+
+.ItemIndicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+}
+
+.Empty {
+  padding: var(--spacing-md);
+  color: var(--text-tertiary);
+  font-size: var(--font-sm);
+}

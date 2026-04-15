@@ -1,5 +1,8 @@
 import type { DragItem } from "../dndHelper/dragZone/dragZone";
-import type { PanelType } from "#pkg/seedar/types";
+import type {
+  PanelFormattingConfig,
+  PanelSimpleFormattingRule,
+} from "#pkg/seedar/types";
 
 export type DisplayPanelType =
   | "table"
@@ -12,6 +15,7 @@ export type DisplayPanelType =
   | "radar";
 
 export type ChartType = "line" | "bar" | "area" | "pie" | "scatter" | "radar";
+export type BarDirection = "vertical" | "horizontal";
 
 export interface LabelConfig {
   visible: boolean;
@@ -27,6 +31,28 @@ export interface LegendConfig {
   title?: string;
 }
 
+export type AxisScaleType = "linear" | "log";
+
+export interface AxisItemConfig {
+  visible: boolean;
+  labelVisible: boolean;
+  tickVisible: boolean;
+  gridVisible: boolean;
+  scaleType?: AxisScaleType;
+  logBase?: number;
+  min?: number;
+  max?: number;
+  nice?: boolean;
+  labelRotate?: number;
+  title?: string;
+  zero?: boolean;
+}
+
+export interface AxisConfig {
+  x: AxisItemConfig;
+  y: AxisItemConfig;
+}
+
 export interface PanelEditorConfig {
   type?: ChartType;
   xField?: string;
@@ -35,9 +61,15 @@ export interface PanelEditorConfig {
   categoryField?: string;
   valueField?: string;
   sizeField?: string;
+  smooth?: boolean;
+  direction?: BarDirection;
   color?: string[];
   label?: LabelConfig;
   legends?: LegendConfig;
+  axis?: AxisConfig;
+  formatting?: PanelFormattingConfig;
+  isAdvancedSpecMode?: boolean;
+  advancedSpec?: Record<string, unknown>;
 }
 
 export interface ConfigPanelProps {
@@ -68,35 +100,40 @@ export const CHART_FIELD_CONFIGS: Record<ChartType, ChartFieldConfig> = {
 };
 
 export const DEFAULT_COLORS = [
-  "#5470c6",
-  "#91cc75",
-  "#fac858",
-  "#ee6666",
-  "#73c0de",
-  "#3ba272",
-  "#fc8452",
-  "#9a60b4",
+  "#5d7a8c",
+  "#6b8e4e",
+  "#c4842a",
+  "#b85450",
+  "#8b7355",
+  "#6b8a8a",
+  "#a67c52",
+  "#7a6b8a",
 ];
 
 export const FIELD_LABELS: Record<string, string> = {
-  xField: "X轴字段",
-  yField: "Y轴字段",
-  seriesField: "系列字段",
-  categoryField: "分类字段",
-  valueField: "数值字段",
-  sizeField: "大小字段",
+  xField: "X字段/指标",
+  yField: "Y字段/指标",
+  seriesField: "系列字段/指标",
+  categoryField: "分类字段/指标",
+  valueField: "值字段/指标",
+  sizeField: "大小字段/指标",
 };
 
 export const LEGEND_ORIENT_OPTIONS: { value: LegendOrient; label: string }[] = [
-  { value: "top", label: "上" },
-  { value: "bottom", label: "下" },
-  { value: "left", label: "左" },
-  { value: "right", label: "右" },
+  { value: "top", label: "Top" },
+  { value: "bottom", label: "Bottom" },
+  { value: "left", label: "Left" },
+  { value: "right", label: "Right" },
 ];
 
 export const LEGEND_LAYOUT_OPTIONS: { value: LegendLayout; label: string }[] = [
-  { value: "horizontal", label: "水平" },
-  { value: "vertical", label: "垂直" },
+  { value: "horizontal", label: "Horizontal" },
+  { value: "vertical", label: "Vertical" },
+];
+
+export const BAR_DIRECTION_OPTIONS: { value: BarDirection; label: string }[] = [
+  { value: "vertical", label: "纵向柱状图" },
+  { value: "horizontal", label: "横向柱状图" },
 ];
 
 export const DEFAULT_LEGENDS_CONFIG: LegendConfig = {
@@ -104,3 +141,55 @@ export const DEFAULT_LEGENDS_CONFIG: LegendConfig = {
   orient: "top",
   layout: "horizontal",
 };
+
+export const CARTESIAN_CHART_TYPES: ChartType[] = [
+  "line",
+  "bar",
+  "area",
+  "scatter",
+];
+
+export const createDefaultAxisConfig = (): AxisConfig => ({
+  x: {
+    visible: true,
+    labelVisible: true,
+    tickVisible: true,
+    gridVisible: false,
+    scaleType: "linear",
+    nice: true,
+  },
+  y: {
+    visible: true,
+    labelVisible: true,
+    tickVisible: true,
+    gridVisible: true,
+    scaleType: "linear",
+    nice: true,
+    zero: true,
+  },
+});
+
+export const DEFAULT_PANEL_FORMATTING_CONFIG: PanelFormattingConfig = {
+  version: 3,
+  nullText: "--",
+  locale: {
+    mode: "browser",
+    value: null,
+  },
+  timeZone: {
+    mode: "browser",
+    value: null,
+  },
+  rules: [],
+};
+
+export const SIMPLE_FORMAT_KIND_OPTIONS: Array<{
+  value: PanelSimpleFormattingRule["kind"];
+  label: string;
+}> = [
+  { value: "number", label: "数字" },
+  { value: "percent", label: "百分比" },
+  { value: "currency", label: "货币" },
+  { value: "date", label: "日期" },
+  { value: "datetime", label: "日期时间" },
+];

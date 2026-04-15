@@ -456,3 +456,141 @@ const salesMomAbs = new PeriodComparisonExpr(
   { alias: "sales_mom_abs", businessName: "销售额月环比差值" },
 );
 ```
+
+---
+
+## V2.2 衍生维度补充
+
+以下内容描述的是 V2.2 新增并已实现的“衍生维度（derived dimension）”能力。
+
+### 1. 能力概览
+
+V2.2 支持在 `QuerySpec.dimensions` 中使用表达式维度（不仅限于字段引用），覆盖以下场景：
+
+- 时间粒度转换（`time_grain` / `TIME_GRAIN`）
+- 分段（`bucket`，编译为 `ConditionalExpr` 链）
+- 映射（`mapping`，编译为 `ConditionalExpr` 链）
+- 自定义表达式维度（`expression`）
+
+说明：
+
+- 旧写法（普通字段维度）保持兼容，不受影响。
+- 非字段维度必须提供 alias（即 `meta.alias`），否则会报错。
+
+### 2. 业务层 DSL 形态（DSLTransformerV2）
+
+`dimensions` 支持以下输入形态（判别字段为 `derivedKind`）：
+
+```typescript
+type QueryDimensionDSL =
+  | number
+  | { fieldId: number; alias?: string; derivedKind?: undefined }
+  | { derivedKind: "time_grain"; fieldId: number; grain: "day" | "week" | "month" | "quarter" | "year"; alias: string }
+  | { derivedKind: "bucket"; fieldId: number; ranges: Array<{ lt: number; label: string }>; defaultLabel?: string; alias: string }
+  | { derivedKind: "mapping"; fieldId: number; rules: Array<{ in: Array<string | number | boolean>; label: string }>; defaultLabel?: string; alias: string }
+  | { derivedKind: "expression"; expression: string; alias: string };
+```
+
+约束：
+
+- `derivedKind !== undefined` 时，`alias` 必填。
+- `derivedKind = "expression"` 时仅允许 `#F` 字段引用，不允许 `#M` 指标引用。
+
+### 3. `TIME_GRAIN` SQL 生成规则
+
+V2.2 在 `KnexQueryBuilder` 中内置了 `TIME_GRAIN(fieldExpr, grain)` 的方言映射：
+
+#### MySQL
+
+- `day` / `date` -> `DATE(field)`
+- `week` -> `DATE_FORMAT(field, '%x-%v')`
+- `month` -> `DATE_FORMAT(field, '%Y-%m')`
+- `quarter` -> `CONCAT(YEAR(field), '-Q', QUARTER(field))`
+- `year` -> `YEAR(field)`
+
+#### PostgreSQL
+
+- `DATE_TRUNC('day' | 'week' | 'month' | 'quarter' | 'year', field)`
+
+#### ClickHouse
+
+- `day` -> `toDate(field)`
+- `week` -> `toStartOfWeek(field)`
+- `month` -> `toStartOfMonth(field)`
+- `quarter` -> `toStartOfQuarter(field)`
+- `year` -> `toStartOfYear(field)`
+
+说明：
+
+- `TIME_GRAIN` 参数必须是两个：`fieldExpr` 和 `grain`。
+- `grain` 非法会抛出明确错误。
+
+### 4. 查询构建行为（V2.2）
+
+表达式维度在以下路径已支持：
+
+- `buildSimple`：`SELECT / GROUP BY / ORDER BY`
+- `buildWithCTE`：`SELECT / GROUP BY / ORDER BY`
+
+重要约束：
+
+- 表达式维度在 SQL 构建阶段需要 alias。
+- 字段维度仍可不写 alias（保持历史行为）。
+
+### 5. bucket 与 mapping 语义
+
+`bucket` 与 `mapping` 都会编译为 `ConditionalExpr` 链（`CASE WHEN`）：
+
+- 命中策略：首条匹配优先
+- `defaultLabel` 存在：使用默认值
+- `defaultLabel` 不存在：返回 `NULL`
+
+### 6. 示例
+
+#### 示例 A：time_grain 维度
+
+```typescript
+const monthDim = new CallExpr(
+  "TIME_GRAIN",
+  [
+    new FieldRefExpr("created_at", "orders", "o"),
+    new LiteralExpr("month"),
+  ],
+  { alias: "order_month", businessName: "下单月份" },
+);
+```
+
+#### 示例 B：bucket 维度（金额分段）
+
+```typescript
+const amountBucket = new ConditionalExpr(
+  new ComparisonExpr("<", new FieldRefExpr("amount", "orders", "o"), new LiteralExpr(20)),
+  new LiteralExpr("差"),
+  new ConditionalExpr(
+    new ComparisonExpr("<", new FieldRefExpr("amount", "orders", "o"), new LiteralExpr(50)),
+    new LiteralExpr("一般"),
+    new LiteralExpr("好"),
+  ),
+  { alias: "amount_bucket", businessName: "金额分段" },
+);
+```
+
+#### 示例 C：mapping 维度（状态映射）
+
+```typescript
+const statusLevel = new ConditionalExpr(
+  new ComparisonExpr("=", new FieldRefExpr("status", "orders", "o"), new LiteralExpr("A")),
+  new LiteralExpr("高"),
+  new ConditionalExpr(
+    new ComparisonExpr("=", new FieldRefExpr("status", "orders", "o"), new LiteralExpr("B")),
+    new LiteralExpr("中"),
+    new LiteralExpr("低"),
+  ),
+  { alias: "status_level", businessName: "状态等级" },
+);
+```
+
+### 7. 兼容性说明
+
+- 未使用 `derivedKind` 的历史请求无需修改，行为与 V2.1 保持一致。
+- V2.1 同环比（`PeriodComparisonExpr`）能力与约束不变。

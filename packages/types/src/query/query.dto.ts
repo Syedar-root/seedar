@@ -4,10 +4,65 @@ import { QueryStatus } from "./query.types";
 /**
  * QueryDSL 类型定义
  */
+export type TimeGrain = "day" | "week" | "month" | "quarter" | "year";
+
+export type BaseDimensionDSL = {
+  fieldId: number;
+  alias?: string;
+  derivedKind?: undefined;
+};
+
+export type TimeGrainDimensionDSL = {
+  derivedKind: "time_grain";
+  fieldId: number;
+  grain: TimeGrain;
+  alias: string;
+};
+
+export type BucketRangeDSL = {
+  lt: number;
+  label: string;
+};
+
+export type BucketDimensionDSL = {
+  derivedKind: "bucket";
+  fieldId: number;
+  ranges: BucketRangeDSL[];
+  defaultLabel?: string;
+  alias: string;
+};
+
+export type MappingRuleDSL = {
+  in: Array<string | number | boolean>;
+  label: string;
+};
+
+export type MappingDimensionDSL = {
+  derivedKind: "mapping";
+  fieldId: number;
+  rules: MappingRuleDSL[];
+  defaultLabel?: string;
+  alias: string;
+};
+
+export type ExpressionDimensionDSL = {
+  derivedKind: "expression";
+  expression: string;
+  alias: string;
+};
+
+export type DerivedDimensionDSL =
+  | TimeGrainDimensionDSL
+  | BucketDimensionDSL
+  | MappingDimensionDSL
+  | ExpressionDimensionDSL;
+
+export type QueryDimensionDSL = number | BaseDimensionDSL | DerivedDimensionDSL;
+
 export interface QueryDSL {
   datasetId: number;
   tableId: number;
-  dimensions?: Array<number | { fieldId: number; alias?: string }>;
+  dimensions?: QueryDimensionDSL[];
   metrics?: Array<{
     id: number;
     alias?: string;
@@ -61,6 +116,31 @@ export interface ExecuteTempQueryRequest {
   dsl: QueryDSL;
 }
 
+export type QueryColumnMappingRole = "dimension" | "metric";
+
+export type QueryColumnMappingTargetKind =
+  | "field"
+  | "metric"
+  | "derived_dimension"
+  | "temp_metric"
+  | "unknown";
+
+export interface QueryColumnMappingTarget {
+  kind: QueryColumnMappingTargetKind;
+  datasetId?: number;
+  id?: string;
+  key?: string;
+}
+
+export interface QueryColumnMapping {
+  alias: string;
+  type: QueryColumnMappingRole;
+  displayName: string;
+  businessName?: string;
+  index?: number;
+  target?: QueryColumnMappingTarget;
+}
+
 /**
  * 执行查询响应接口
  */
@@ -71,5 +151,5 @@ export interface ExecuteQueryResponse {
     rows: any[];
   };
   executionTime: number;
-  columnMappings?: any[];
+  columnMappings?: QueryColumnMapping[];
 }

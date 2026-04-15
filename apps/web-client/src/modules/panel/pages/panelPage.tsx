@@ -77,6 +77,7 @@ export const PanelPage = () => {
   const [isDatasetDialogOpen, setIsDatasetDialogOpen] = useState(false);
 
   const {
+    dimensionItems,
     dropFields,
     dropMetrics,
     dropFilters,
@@ -94,9 +95,13 @@ export const PanelPage = () => {
     handleDropFilter,
     handleRemoveFilter,
     handleUpdateFilter,
+    handleAddDerivedDimension,
+    handleUpdateDerivedDimension,
     handleUpdateTempMetric,
     handleRemoveTempMetric,
     handleEditorChange,
+    handleSaveItemFormatting,
+    handleRemoveItemFormatting,
     title,
     titleConfig,
     handleTitleChange,
@@ -402,7 +407,9 @@ export const PanelPage = () => {
         status: isPublished ? PanelStatus.PUBLISHED : PanelStatus.DRAFT,
         queryId: panelData?.queryId ?? queryData?.id,
         config:
-          displayType === "table" || displayType === "card" ? {} : previewSpec,
+          displayType === "table" || displayType === "card"
+            ? editorConfig
+            : previewSpec,
         createdAt: panelData?.createdAt ?? new Date(),
         updatedAt: panelData?.updatedAt ?? new Date(),
       }
@@ -423,13 +430,17 @@ export const PanelPage = () => {
 
   const editorContent = (
     <PanelEditor
-      fields={dropFields}
+      fields={dimensionItems}
       metrics={dropMetrics}
       config={editorConfig}
       displayType={displayType}
       onChange={handleEditorChange}
     />
   );
+
+  console.log("hcs editorConfig", editorConfig);
+  console.log("hcs previewSpec", previewSpec);
+  console.log("hcs tempData", tempData);
 
   return (
     <div ref={containerRef} className={styles.container}>
@@ -535,9 +546,15 @@ export const PanelPage = () => {
             onUpdateMetricPopConfig={handleUpdateTempMetric}
             tempMetrics={tempMetrics}
             onRemoveTempMetric={handleRemoveTempMetric}
-            dropFields={dropFields}
+            onAddDerivedDimension={handleAddDerivedDimension}
+            onUpdateDerivedDimension={handleUpdateDerivedDimension}
+            formatting={editorConfig.formatting}
+            onSaveItemFormatting={handleSaveItemFormatting}
+            onRemoveItemFormatting={handleRemoveItemFormatting}
+            dropFields={dimensionItems}
             dropMetrics={metricsWithPopFlag}
             dropFilters={dropFilters}
+            availableFields={activeDataset?.fields || []}
           />
           <div className={styles.operations}>
             <button

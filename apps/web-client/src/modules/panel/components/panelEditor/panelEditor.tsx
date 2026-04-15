@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
+  CARTESIAN_CHART_TYPES,
   DisplayPanelType,
   PanelEditorConfig,
   ChartType,
   CHART_FIELD_CONFIGS,
   DEFAULT_COLORS,
+  DEFAULT_PANEL_FORMATTING_CONFIG,
 } from "./types";
 import { TypeSelector } from "./components/typeSelector/typeSelector";
 import { getConfigComponents } from "./configRegistry";
@@ -29,12 +31,21 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 }) => {
   const [currentType, setCurrentType] = useState<DisplayPanelType>(displayType);
   const [currentConfig, setCurrentConfig] = useState<PanelEditorConfig>(
-    config || { color: DEFAULT_COLORS },
+    config || {
+      color: DEFAULT_COLORS,
+      formatting: DEFAULT_PANEL_FORMATTING_CONFIG,
+    },
   );
+  const hasInitializedOptionsRef = useRef(false);
 
   useEffect(() => {
     setCurrentType(displayType);
-    setCurrentConfig(config || { color: DEFAULT_COLORS });
+    setCurrentConfig(
+      config || {
+        color: DEFAULT_COLORS,
+        formatting: DEFAULT_PANEL_FORMATTING_CONFIG,
+      },
+    );
   }, [displayType, config]);
 
   const handleTypeChange = (type: DisplayPanelType) => {
@@ -55,8 +66,58 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
     [currentType],
   );
 
+  const availableFieldValues = useMemo(() => {
+    return new Set(
+      [...fields, ...metrics]
+        .map((item) => item.businessName || item.name)
+        .filter((value): value is string => Boolean(value)),
+    );
+  }, [fields, metrics]);
+
+  useEffect(() => {
+    if (!hasInitializedOptionsRef.current) {
+      if (availableFieldValues.size === 0) {
+        // 首次加载字段/指标尚未回填时，不要误清空已有配置
+        return;
+      }
+      hasInitializedOptionsRef.current = true;
+    }
+
+    const mappedKeys: Array<keyof PanelEditorConfig> = [
+      "xField",
+      "yField",
+      "seriesField",
+      "categoryField",
+      "valueField",
+      "sizeField",
+    ];
+
+    const invalidPatch: Partial<PanelEditorConfig> = {};
+    let hasInvalidValue = false;
+
+    mappedKeys.forEach((key) => {
+      const value = currentConfig[key];
+      if (
+        typeof value === "string" &&
+        value &&
+        !availableFieldValues.has(value)
+      ) {
+        invalidPatch[key] = undefined;
+        hasInvalidValue = true;
+      }
+    });
+
+    if (!hasInvalidValue) {
+      return;
+    }
+
+    const nextConfig = { ...currentConfig, ...invalidPatch };
+    setCurrentConfig(nextConfig);
+    onChange(currentType, nextConfig);
+  }, [availableFieldValues, currentConfig, currentType, onChange]);
+
   return (
-    <ScrollArea className={styles.editor}>
+    <ScrollArea className={styles.editor} contentStyle={{ minWidth: "none" }}>
       <TypeSelector value={currentType} onChange={handleTypeChange} />
 
       {configComponents.map((Component, index) => (
@@ -78,6 +139,7 @@ function resetConfigForType(
 ): PanelEditorConfig {
   const baseConfig: PanelEditorConfig = {
     color: prevConfig.color || DEFAULT_COLORS,
+    formatting: prevConfig.formatting || DEFAULT_PANEL_FORMATTING_CONFIG,
   };
 
   if (type === "table" || type === "card") {
@@ -91,6 +153,18 @@ function resetConfigForType(
     ...baseConfig,
     type: type as ChartType,
   };
+
+  if (prevConfig.axis && CARTESIAN_CHART_TYPES.includes(type as ChartType)) {
+    newConfig.axis = prevConfig.axis;
+  }
+
+  if (type === "line" && typeof prevConfig.smooth === "boolean") {
+    newConfig.smooth = prevConfig.smooth;
+  }
+
+  if (type === "bar" && prevConfig.direction) {
+    newConfig.direction = prevConfig.direction;
+  }
 
   fieldConfig.required.forEach((field) => {
     const key = field as keyof PanelEditorConfig;

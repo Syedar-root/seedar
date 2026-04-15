@@ -5,9 +5,13 @@ import { ConfigService } from '@nestjs/config';
 import { Query } from './entities/query.entity';
 import { CreateQueryRequest } from './dto/create-query.request';
 import { UpdateQueryRequest } from './dto/update-query.request';
-import { ExecuteQueryResponse } from './dto/execute-query.response';
+import {
+  ExecuteQueryResponse,
+  type QueryColumnMapping,
+  type QueryColumnMappingTarget,
+} from './dto/execute-query.response';
 import { QueryStatus } from './query-status.enum';
-import { DSLTransformer, QueryDSL } from './dsl-transformer/dsl-transformer';
+import { DSLTransformer } from './dsl-transformer/dsl-transformer';
 import {
   KnexQueryBuilder,
   QueryAdapter,
@@ -23,7 +27,11 @@ import { MySqlConfig } from '@/module/datasource/datasource.types';
 import { DataSourceType } from '@/module/datasource/datasource.types';
 import { DatasetResponse } from '@/module/dataset/dataset.types';
 import { LoggerService } from '@/logger/logger.service';
-import { DSLTransformerV2 } from './dsl-transformer/dsl-transformer.v2';
+import {
+  DSLTransformerV2,
+  QueryDSL,
+  QueryDimensionDSL,
+} from './dsl-transformer/dsl-transformer.v2';
 
 @Injectable()
 export class QueryService {
@@ -163,16 +171,24 @@ export class QueryService {
         rawRows = [];
       }
 
-      const columnMappings = (sqlResult as any).columnMappings || [];
+      const rawColumnMappings = this.normalizeColumnMappings(
+        (sqlResult as any).columnMappings,
+      );
+      const columnMappings = this.buildColumnMappings(
+        dsl,
+        datasetId,
+        rawColumnMappings,
+        rawRows,
+      );
 
       let header: string[];
       let columnAliases: string[];
 
       if (columnMappings.length > 0) {
         header = columnMappings.map(
-          (mapping: any) => mapping.businessName || mapping.displayName,
+          (mapping) => mapping.businessName || mapping.displayName,
         );
-        columnAliases = columnMappings.map((mapping: any) => mapping.alias);
+        columnAliases = columnMappings.map((mapping) => mapping.alias);
       } else {
         header = Object.keys(rawRows[0] || {});
         columnAliases = header;
@@ -180,8 +196,9 @@ export class QueryService {
 
       const rows = rawRows.map((row: Record<string, unknown>) => {
         return columnAliases.map((alias: string) => {
-          const value = row[alias.split('.').at(-1) || alias];
-          return typeof value === 'number' ? value : String(value);
+          const key = alias.split('.').at(-1) || alias;
+          const value = row[key] ?? row[alias];
+          return value ?? null;
         });
       });
 
@@ -192,9 +209,146 @@ export class QueryService {
           rows,
         },
         executionTime,
+        columnMappings,
       };
     } finally {
       await knexConnection.destroy();
+    }
+  }
+
+  private normalizeColumnMappings(value: unknown): QueryColumnMapping[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    const normalized: QueryColumnMapping[] = [];
+
+    value.forEach((item, index) => {
+      if (!item || typeof item !== 'object') {
+        return;
+      }
+
+      const entry = item as Record<string, unknown>;
+      const alias =
+        typeof entry.alias === 'string' ? entry.alias : `column_${index + 1}`;
+      const type =
+        entry.type === 'dimension' || entry.type === 'metric'
+          ? entry.type
+          : 'dimension';
+      const displayName =
+        typeof entry.displayName === 'string' && entry.displayName.trim()
+          ? entry.displayName
+          : alias;
+      const businessName =
+        typeof entry.businessName === 'string' && entry.businessName.trim()
+          ? entry.businessName
+          : undefined;
+
+      normalized.push({
+        alias,
+        type,
+        displayName,
+        businessName,
+        index,
+      });
+    });
+
+    return normalized;
+  }
+
+  private buildColumnMappings(
+    dsl: QueryDSL,
+    datasetId: number,
+    rawColumnMappings: QueryColumnMapping[],
+    rawRows: unknown[],
+  ): QueryColumnMapping[] {
+    const expectedTargets: QueryColumnMappingTarget[] = [
+      ...(dsl.dimensions || []).map((dimension, index) =>
+        this.buildDimensionTarget(dimension, datasetId, index),
+      ),
+      ...(dsl.metrics || []).map((metric) => ({
+        kind: 'metric' as const,
+        datasetId,
+        id: String(metric.id),
+      })),
+      ...(dsl.tempMetrics || []).map((tempMetric) => ({
+        kind: 'temp_metric' as const,
+        datasetId,
+        id: tempMetric.id,
+        key: `${tempMetric.baseMetricId}:${tempMetric.periodType || 'month_over_month'}:${tempMetric.calculationMode || 'percentage'}`,
+      })),
+    ];
+
+    if (rawColumnMappings.length > 0) {
+      return rawColumnMappings.map((mapping, index) => ({
+        ...mapping,
+        index,
+        target: expectedTargets[index] || mapping.target,
+      }));
+    }
+
+    const fallbackAliases = Object.keys((rawRows[0] as Record<string, unknown>) || {});
+    return fallbackAliases.map((alias, index) => ({
+      alias,
+      type: expectedTargets[index]?.kind === 'metric' ? 'metric' : 'dimension',
+      displayName: alias,
+      businessName: alias,
+      index,
+      target: expectedTargets[index] || { kind: 'unknown', datasetId },
+    }));
+  }
+
+  private buildDimensionTarget(
+    dimension: QueryDimensionDSL,
+    datasetId: number,
+    index: number,
+  ): QueryColumnMappingTarget {
+    if (typeof dimension === 'number') {
+      return { kind: 'field', datasetId, id: String(dimension) };
+    }
+
+    if (!dimension || typeof dimension !== 'object') {
+      return { kind: 'unknown', datasetId, key: `dimension:${index}` };
+    }
+
+    if (!('derivedKind' in dimension) || dimension.derivedKind === undefined) {
+      const fieldId =
+        'fieldId' in dimension ? (dimension.fieldId as number | undefined) : undefined;
+      return {
+        kind: 'field',
+        datasetId,
+        id: fieldId !== undefined ? String(fieldId) : undefined,
+      };
+    }
+
+    const key = this.buildDerivedDimensionKey(dimension, index);
+    return { kind: 'derived_dimension', datasetId, key };
+  }
+
+  private buildDerivedDimensionKey(
+    dimension: Exclude<QueryDimensionDSL, number>,
+    index: number,
+  ): string {
+    const alias =
+      'alias' in dimension && typeof dimension.alias === 'string'
+        ? dimension.alias
+        : `dimension_${index + 1}`;
+
+    if (!('derivedKind' in dimension) || !dimension.derivedKind) {
+      return `base:${alias}`;
+    }
+
+    switch (dimension.derivedKind) {
+      case 'time_grain':
+        return `time_grain:${dimension.fieldId}:${dimension.grain}:${alias}`;
+      case 'bucket':
+        return `bucket:${dimension.fieldId}:${alias}`;
+      case 'mapping':
+        return `mapping:${dimension.fieldId}:${alias}`;
+      case 'expression':
+      return `expression:${alias}`;
+      default:
+        return `${(dimension as { derivedKind: string }).derivedKind}:${alias}`;
     }
   }
 

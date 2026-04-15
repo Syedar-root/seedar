@@ -1,6 +1,6 @@
 import { IsObject, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import type { QueryDSL } from '../dsl-transformer/dsl-transformer';
+import type { QueryDSL } from '../dsl-transformer/dsl-transformer.v2';
 
 export class ExecuteTempQueryRequest {
   @IsObject()

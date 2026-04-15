@@ -33,9 +33,7 @@ export class KnexQueryBuilder {
     ExprAnalyzer.assertPeriodComparisonPlacement(spec);
 
     if (
-      spec.metrics?.some(
-        (metric) => metric instanceof PeriodComparisonExpr,
-      )
+      spec.metrics?.some((metric) => metric instanceof PeriodComparisonExpr)
     ) {
       return new PeriodComparisonBuilder(this.knex).build(spec);
     }
@@ -71,17 +69,24 @@ export class KnexQueryBuilder {
     // 添加 SELECT 列
     // 维度字段直接添加到选择列表
     if (spec.dimensions && spec.dimensions.length > 0) {
-      spec.dimensions.forEach((dim) => {
+      spec.dimensions.forEach((dim, index) => {
         // 确定 SQL 列名：优先使用 alias，其次用字段名
-        const sqlAlias = dim.meta?.alias || dim.getQualifiedName();
+        const isFieldDim = this.isFieldRefExpr(dim);
         // 确定显示名：优先使用 businessName，其次用 alias
+        const expressionSql = isFieldDim
+          ? dim?.getQualifiedName()
+          : this.buildExpr(dim);
+        const dimensionAlias = isFieldDim
+          ? dim.meta?.alias
+          : this.requireExpressionDimensionAlias(dim, index);
+        const sqlAlias = dimensionAlias || expressionSql;
         const displayName =
-          dim.meta?.businessName || dim.meta?.alias || dim.getQualifiedName();
+          dim.meta?.businessName || dimensionAlias || expressionSql;
 
-        if (dim.meta?.alias) {
-          qb.select(`${dim.getQualifiedName()} as ${dim.meta.alias}`);
+        if (dimensionAlias) {
+          qb.select(this.knex.raw(`${expressionSql} as ??`, [dimensionAlias]));
         } else {
-          qb.select(dim.getQualifiedName());
+          qb.select(expressionSql);
         }
         columnMappings.push({
           alias: sqlAlias,
@@ -150,10 +155,13 @@ export class KnexQueryBuilder {
 
     // 添加 GROUP BY 分组
     if (spec.dimensions && spec.dimensions.length > 0) {
-      const groupByColumns = spec.dimensions.map((dim) =>
-        dim.getQualifiedName(),
-      );
-      qb.groupBy(groupByColumns);
+      spec.dimensions.forEach((dim) => {
+        if (this.isFieldRefExpr(dim)) {
+          qb.groupBy(dim.getQualifiedName());
+          return;
+        }
+        qb.groupByRaw(this.buildExpr(dim));
+      });
     }
 
     // 添加 ORDER BY 排序
@@ -237,18 +245,46 @@ export class KnexQueryBuilder {
     // 构建 CTE 的 SELECT 列
     // CTE 必须包含：维度字段 + 指标引用的所有字段
     const cteSelectItems: any[] = [];
+    const dimensionSelectAliases: string[] = [];
+    const dimensionExprAliasMap = new Map<unknown, string>();
+
+    const addFieldRefToCTE = (qualifiedName: string): void => {
+      if (fieldAliasSet.has(qualifiedName)) {
+        return;
+      }
+      const alias = `column_${colIdx}`;
+      columnAliasMap.set(qualifiedName, alias);
+      cteSelectItems.push(this.knex.raw(`${qualifiedName} AS ??`, [alias]));
+      fieldAliasSet.add(qualifiedName);
+      colIdx++;
+    };
 
     // 1. 添加维度字段
     if (spec.dimensions && spec.dimensions.length > 0) {
-      spec.dimensions.forEach((dim) => {
-        const qualifiedName = dim.getQualifiedName();
-        if (!fieldAliasSet.has(qualifiedName)) {
-          const alias = `column_${colIdx}`;
-          columnAliasMap.set(qualifiedName, alias);
-          cteSelectItems.push(this.knex.raw(`${qualifiedName} AS ??`, [alias]));
-          fieldAliasSet.add(qualifiedName);
-          colIdx++;
+      spec.dimensions.forEach((dim, index) => {
+        if (this.isFieldRefExpr(dim)) {
+          const qualifiedName = dim.getQualifiedName();
+          addFieldRefToCTE(qualifiedName);
+          const cteAlias = columnAliasMap.get(qualifiedName) || qualifiedName;
+          dimensionSelectAliases.push(cteAlias);
+          dimensionExprAliasMap.set(dim, cteAlias);
+          return;
         }
+
+        this.requireExpressionDimensionAlias(dim, index);
+        const expressionSql = this.buildExpr(dim);
+        const cteAlias = `column_${colIdx}`;
+        cteSelectItems.push(
+          this.knex.raw(`${expressionSql} AS ??`, [cteAlias]),
+        );
+        colIdx++;
+        dimensionSelectAliases.push(cteAlias);
+        dimensionExprAliasMap.set(dim, cteAlias);
+
+        const dimFields = this.extractFieldsFromExpr(dim);
+        dimFields.forEach((fieldRef) => {
+          addFieldRefToCTE(fieldRef.getQualifiedName());
+        });
       });
     }
 
@@ -257,16 +293,7 @@ export class KnexQueryBuilder {
       spec.metrics.forEach((metric) => {
         const metricFields = this.extractFieldsFromExpr(metric);
         metricFields.forEach((fieldRef) => {
-          const qualifiedName = fieldRef.getQualifiedName();
-          if (!fieldAliasSet.has(qualifiedName)) {
-            const alias = `column_${colIdx}`;
-            columnAliasMap.set(qualifiedName, alias);
-            cteSelectItems.push(
-              this.knex.raw(`${qualifiedName} AS ??`, [alias]),
-            );
-            fieldAliasSet.add(qualifiedName);
-            colIdx++;
-          }
+          addFieldRefToCTE(fieldRef.getQualifiedName());
         });
       });
     }
@@ -290,17 +317,19 @@ export class KnexQueryBuilder {
     // 添加外层 SELECT 列
     // 维度使用 CTE 列别名
     if (spec.dimensions && spec.dimensions.length > 0) {
-      spec.dimensions.forEach((dim) => {
-        const qualifiedName = dim.getQualifiedName();
-        const cteAlias = columnAliasMap.get(qualifiedName);
+      spec.dimensions.forEach((dim, index) => {
+        const cteAlias = dimensionSelectAliases[index];
         // 确定 SQL 列名：优先使用 alias
-        const sqlAlias = dim.meta?.alias || cteAlias;
+        const dimensionAlias = this.isFieldRefExpr(dim)
+          ? dim.meta?.alias
+          : this.requireExpressionDimensionAlias(dim, index);
+        const sqlAlias = dimensionAlias || cteAlias;
         // 确定显示名：优先使用 businessName
         const displayName =
-          dim.meta?.businessName || dim.meta?.alias || cteAlias;
+          dim.meta?.businessName || dimensionAlias || cteAlias;
 
-        if (dim.meta?.alias) {
-          qb.select(`${cteAlias} as ${dim.meta.alias}`);
+        if (dimensionAlias) {
+          qb.select(`${cteAlias} as ${dimensionAlias}`);
         } else {
           qb.select(cteAlias);
         }
@@ -334,11 +363,7 @@ export class KnexQueryBuilder {
 
     // 添加 GROUP BY（使用 CTE 列别名）
     if (spec.dimensions && spec.dimensions.length > 0) {
-      const groupByColumns = spec.dimensions.map((dim) => {
-        const qualifiedName = dim.getQualifiedName();
-        return columnAliasMap.get(qualifiedName) || qualifiedName;
-      });
-      qb.groupBy(groupByColumns);
+      qb.groupBy(dimensionSelectAliases);
     }
 
     // 添加 ORDER BY
@@ -349,7 +374,9 @@ export class KnexQueryBuilder {
           orderExpr = order.expr;
         } else {
           // 将排序表达式中的字段引用替换为 CTE 列别名
-          orderExpr = this.buildExprWithAlias(order.expr, columnAliasMap);
+          orderExpr =
+            dimensionExprAliasMap.get(order.expr) ||
+            this.buildExprWithAlias(order.expr, columnAliasMap);
         }
         qb.orderBy(orderExpr, order.dir);
       });
@@ -475,6 +502,12 @@ export class KnexQueryBuilder {
 
     // 处理普通函数调用
     if (expr.functionName && expr.args) {
+      if (expr.functionName === "TIME_GRAIN") {
+        return this.buildTimeGrainSQL(expr.args, (arg) =>
+          this.buildExprWithAlias(arg, aliasMap),
+        );
+      }
+
       const argsStr = expr.args
         .map((arg: any) => this.buildExprWithAlias(arg, aliasMap))
         .join(", ");
@@ -488,8 +521,8 @@ export class KnexQueryBuilder {
 
       // 转换运算符：== -> =, <> -> !=
       let sqlOperator = expr.operator;
-      if (sqlOperator === '==') {
-        sqlOperator = '=';
+      if (sqlOperator === "==") {
+        sqlOperator = "=";
       }
 
       // 给二元运算添加括号，避免 SQL 解析问题
@@ -503,7 +536,11 @@ export class KnexQueryBuilder {
     }
 
     // 处理条件表达式 (ConditionalExpr)
-    if (expr.condition !== undefined && expr.consequent !== undefined && expr.alternate !== undefined) {
+    if (
+      expr.condition !== undefined &&
+      expr.consequent !== undefined &&
+      expr.alternate !== undefined
+    ) {
       const condStr = this.buildExprWithAlias(expr.condition, aliasMap);
       const consStr = this.buildExprWithAlias(expr.consequent, aliasMap);
       const altStr = this.buildExprWithAlias(expr.alternate, aliasMap);
@@ -516,15 +553,25 @@ export class KnexQueryBuilder {
     }
 
     // 处理 IN 表达式 (InExpr)
-    if (expr.values !== undefined && Array.isArray(expr.values) && expr.expr !== undefined) {
+    if (
+      expr.values !== undefined &&
+      Array.isArray(expr.values) &&
+      expr.expr !== undefined
+    ) {
       const leftStr = this.buildExprWithAlias(expr.expr, aliasMap);
-      const valuesStr = expr.values.map((v: any) => this.buildExprWithAlias(v, aliasMap)).join(", ");
+      const valuesStr = expr.values
+        .map((v: any) => this.buildExprWithAlias(v, aliasMap))
+        .join(", ");
       const op = expr.negated ? "NOT IN" : "IN";
       return `${leftStr} ${op} (${valuesStr})`;
     }
 
     // 处理 BETWEEN 表达式 (BetweenExpr)
-    if (expr.low !== undefined && expr.high !== undefined && expr.expr !== undefined) {
+    if (
+      expr.low !== undefined &&
+      expr.high !== undefined &&
+      expr.expr !== undefined
+    ) {
       const exprStr = this.buildExprWithAlias(expr.expr, aliasMap);
       const lowStr = this.buildExprWithAlias(expr.low, aliasMap);
       const highStr = this.buildExprWithAlias(expr.high, aliasMap);
@@ -533,7 +580,11 @@ export class KnexQueryBuilder {
     }
 
     // 处理 LIKE 表达式 (LikeExpr)
-    if (expr.pattern !== undefined && expr.expr !== undefined && expr.values === undefined) {
+    if (
+      expr.pattern !== undefined &&
+      expr.expr !== undefined &&
+      expr.values === undefined
+    ) {
       const leftStr = this.buildExprWithAlias(expr.expr, aliasMap);
       const patternStr = this.buildExprWithAlias(expr.pattern, aliasMap);
       const op = expr.negated ? "NOT LIKE" : "LIKE";
@@ -541,7 +592,13 @@ export class KnexQueryBuilder {
     }
 
     // 处理 IS NULL 表达式 (IsNullExpr)
-    if (expr.negated !== undefined && expr.expr !== undefined && expr.values === undefined && expr.pattern === undefined && expr.low === undefined) {
+    if (
+      expr.negated !== undefined &&
+      expr.expr !== undefined &&
+      expr.values === undefined &&
+      expr.pattern === undefined &&
+      expr.low === undefined
+    ) {
       const exprStr = this.buildExprWithAlias(expr.expr, aliasMap);
       return expr.negated ? `${exprStr} IS NOT NULL` : `${exprStr} IS NULL`;
     }
@@ -614,6 +671,100 @@ export class KnexQueryBuilder {
     const metricSQL = this.buildExprWithAlias(metric, aliasMap);
     // 使用 raw 避免 Knex 给带括号的表达式添加反引号
     qb.select(this.knex.raw(`${metricSQL} as ??`, [alias]));
+  }
+
+  private isFieldRefExpr(expr: any): boolean {
+    return !!(expr && typeof expr.getQualifiedName === "function");
+  }
+
+  private requireExpressionDimensionAlias(expr: any, index: number): string {
+    const alias = expr?.meta?.alias;
+    if (typeof alias !== "string" || alias.trim().length === 0) {
+      throw new Error(
+        `Expression dimension at index ${index} requires meta.alias`,
+      );
+    }
+    return alias;
+  }
+
+  private buildTimeGrainSQL(
+    args: any[],
+    renderArg: (arg: any) => string,
+  ): string {
+    if (args.length !== 2) {
+      throw new Error(
+        "TIME_GRAIN requires exactly 2 arguments: fieldExpr, grain",
+      );
+    }
+
+    const fieldExpr = renderArg(args[0]);
+    const grain = this.normalizeTimeGrain(args[1]);
+
+    if (DatabaseDialect.isClickHouse()) {
+      switch (grain) {
+        case "day":
+          return `toDate(${fieldExpr})`;
+        case "week":
+          return `toStartOfWeek(${fieldExpr})`;
+        case "month":
+          return `toStartOfMonth(${fieldExpr})`;
+        case "quarter":
+          return `toStartOfQuarter(${fieldExpr})`;
+        case "year":
+          return `toStartOfYear(${fieldExpr})`;
+      }
+    }
+
+    if (DatabaseDialect.isPostgres()) {
+      return `DATE_TRUNC('${grain}', ${fieldExpr})`;
+    }
+
+    switch (grain) {
+      case "day":
+        return `DATE(${fieldExpr})`;
+      case "week":
+        return `DATE_FORMAT(${fieldExpr}, '%x-%v')`;
+      case "month":
+        return `DATE_FORMAT(${fieldExpr}, '%Y-%m')`;
+      case "quarter":
+        return `CONCAT(YEAR(${fieldExpr}), '-Q', QUARTER(${fieldExpr}))`;
+      case "year":
+        return `YEAR(${fieldExpr})`;
+      default:
+        throw new Error(`Invalid TIME_GRAIN grain: ${grain}`);
+    }
+  }
+
+  private normalizeTimeGrain(
+    grainArg: any,
+  ): "day" | "week" | "month" | "quarter" | "year" {
+    const rawValue = grainArg?.value ?? grainArg;
+    if (typeof rawValue !== "string") {
+      throw new Error(
+        "Invalid TIME_GRAIN grain: grain must be a string literal",
+      );
+    }
+
+    const normalized = rawValue.toLowerCase();
+    if (normalized === "day" || normalized === "date") {
+      return "day";
+    }
+    if (normalized === "week") {
+      return "week";
+    }
+    if (normalized === "month") {
+      return "month";
+    }
+    if (normalized === "quarter") {
+      return "quarter";
+    }
+    if (normalized === "year") {
+      return "year";
+    }
+
+    throw new Error(
+      `Invalid TIME_GRAIN grain: ${rawValue}. Supported grains: day, date, week, month, quarter, year`,
+    );
   }
 
   /**
@@ -702,6 +853,9 @@ export class KnexQueryBuilder {
       if (expr.functionName === "TIME_FILTER") {
         return this.buildTimeFilterSQL(expr.args);
       }
+      if (expr.functionName === "TIME_GRAIN") {
+        return this.buildTimeGrainSQL(expr.args, (arg) => this.buildExpr(arg));
+      }
 
       const argsStr = expr.args
         .map((arg: any) => this.buildExpr(arg))
@@ -733,8 +887,8 @@ export class KnexQueryBuilder {
 
       // 转换运算符：== -> =, <> -> !=
       let sqlOperator = expr.operator;
-      if (sqlOperator === '==') {
-        sqlOperator = '=';
+      if (sqlOperator === "==") {
+        sqlOperator = "=";
       }
 
       return `${leftStr} ${sqlOperator} ${rightStr}`;
@@ -747,7 +901,11 @@ export class KnexQueryBuilder {
     }
 
     // 处理条件表达式 (ConditionalExpr)
-    if (expr.condition !== undefined && expr.consequent !== undefined && expr.alternate !== undefined) {
+    if (
+      expr.condition !== undefined &&
+      expr.consequent !== undefined &&
+      expr.alternate !== undefined
+    ) {
       const condStr = this.buildExpr(expr.condition);
       const consStr = this.buildExpr(expr.consequent);
       const altStr = this.buildExpr(expr.alternate);
@@ -760,15 +918,25 @@ export class KnexQueryBuilder {
     }
 
     // 处理 IN 表达式 (InExpr)
-    if (expr.values !== undefined && Array.isArray(expr.values) && expr.expr !== undefined) {
+    if (
+      expr.values !== undefined &&
+      Array.isArray(expr.values) &&
+      expr.expr !== undefined
+    ) {
       const leftStr = this.buildExpr(expr.expr);
-      const valuesStr = expr.values.map((v: any) => this.buildExpr(v)).join(", ");
+      const valuesStr = expr.values
+        .map((v: any) => this.buildExpr(v))
+        .join(", ");
       const op = expr.negated ? "NOT IN" : "IN";
       return `${leftStr} ${op} (${valuesStr})`;
     }
 
     // 处理 BETWEEN 表达式 (BetweenExpr)
-    if (expr.low !== undefined && expr.high !== undefined && expr.expr !== undefined) {
+    if (
+      expr.low !== undefined &&
+      expr.high !== undefined &&
+      expr.expr !== undefined
+    ) {
       const exprStr = this.buildExpr(expr.expr);
       const lowStr = this.buildExpr(expr.low);
       const highStr = this.buildExpr(expr.high);
@@ -777,7 +945,11 @@ export class KnexQueryBuilder {
     }
 
     // 处理 LIKE 表达式 (LikeExpr)
-    if (expr.pattern !== undefined && expr.expr !== undefined && expr.values === undefined) {
+    if (
+      expr.pattern !== undefined &&
+      expr.expr !== undefined &&
+      expr.values === undefined
+    ) {
       const leftStr = this.buildExpr(expr.expr);
       const patternStr = this.buildExpr(expr.pattern);
       const op = expr.negated ? "NOT LIKE" : "LIKE";
@@ -785,7 +957,13 @@ export class KnexQueryBuilder {
     }
 
     // 处理 IS NULL 表达式 (IsNullExpr)
-    if (expr.negated !== undefined && expr.expr !== undefined && expr.values === undefined && expr.pattern === undefined && expr.low === undefined) {
+    if (
+      expr.negated !== undefined &&
+      expr.expr !== undefined &&
+      expr.values === undefined &&
+      expr.pattern === undefined &&
+      expr.low === undefined
+    ) {
       const exprStr = this.buildExpr(expr.expr);
       return expr.negated ? `${exprStr} IS NOT NULL` : `${exprStr} IS NULL`;
     }

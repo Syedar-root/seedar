@@ -2,6 +2,7 @@ import { forwardRef, useMemo } from "react";
 import { GridPanel, GridPanelProps } from "../gridPanel/gridPanel";
 import { Chart } from "../../charts";
 import { ListTable } from "../../table";
+import { MetricCard } from "../../card";
 import { Title } from "./components/title";
 import { ExecuteQueryResponse, PanelResponse } from "#pkg/seedar/types";
 import { usePanel } from "../../../hooks";
@@ -34,7 +35,22 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
         return <Chart spec={config as ISpec} queryId={queryId} data={data} />;
       }
       if (panelType === "table") {
-        return <ListTable queryId={queryId} data={data} />;
+        return (
+          <ListTable
+            queryId={queryId}
+            data={data}
+            formatting={(config as { formatting?: any })?.formatting}
+          />
+        );
+      }
+      if (panelType === "card") {
+        return (
+          <MetricCard
+            queryId={queryId}
+            data={data}
+            formatting={(config as { formatting?: any })?.formatting}
+          />
+        );
       }
       if (panelType === "text") {
         return <div>{config?.content}</div>;
