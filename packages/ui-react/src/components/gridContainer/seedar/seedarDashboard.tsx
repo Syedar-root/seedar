@@ -1,6 +1,7 @@
 import { GridContainer } from "../gridContainter";
 import { SeedarPanel } from "./seedarPanel";
 import { SeedarDashboardContext } from "./seedarDashboardContext";
+import { LayoutEditorToolbar } from "./components/layoutEditorToolbar";
 import {
   Triggers,
   SaveTrigger,
@@ -11,9 +12,18 @@ import {
 } from "./seedarDashboardTriggers";
 import { useDashboardActions } from "../../../hooks";
 import type { Layouts } from "#pkg/seedar/types";
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollArea } from "../../common/ScrollArea";
 import styles from "./seedarDashboadrd.module.css";
+import type { AddPanelScope, SeedarBreakpoint } from "./const";
+import { BREAKPOINT_ORDER } from "./const";
+import {
+  copyBreakpointLayout,
+  findNearestConfiguredBreakpoint,
+  getConfiguredBreakpoints,
+  getDefaultLockedCanvasWidth,
+  resolvePanelTargetBreakpoints,
+} from "./layoutEditor";
 
 interface SeedarDashboardProps {
   dashboardId: string;
@@ -41,14 +51,104 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
   footer,
   panelHeaderExtra,
 }) => {
-  const { data, actions, state } = useDashboardActions(dashboardId, autoUpdate);
+  const {
+    data,
+    actions: dashboardActions,
+    state: dashboardState,
+  } = useDashboardActions(dashboardId, autoUpdate);
+  const [activeBreakpoint, setActiveBreakpoint] =
+    useState<SeedarBreakpoint>("lg");
+  const [lockedCanvasWidth, setLockedCanvasWidth] = useState(
+    getDefaultLockedCanvasWidth("lg"),
+  );
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [containerBreakpoint, setContainerBreakpoint] =
+    useState<SeedarBreakpoint>("lg");
+  const [effectiveGridWidth, setEffectiveGridWidth] = useState(
+    getDefaultLockedCanvasWidth("lg"),
+  );
+  const hasEditedBreakpointRef = useRef(false);
+  const configuredBreakpoints = useMemo(
+    () => getConfiguredBreakpoints(dashboardState.localLayout),
+    [dashboardState.localLayout],
+  );
+  const activeBreakpointSource = useMemo(
+    () =>
+      findNearestConfiguredBreakpoint(dashboardState.localLayout, activeBreakpoint),
+    [activeBreakpoint, dashboardState.localLayout],
+  );
+  const effectiveActiveBreakpoint =
+    mode === "view" ? containerBreakpoint : activeBreakpoint;
 
-  if (state.isLoading || state.isError || !data) {
+  useEffect(() => {
+    hasEditedBreakpointRef.current = false;
+  }, [dashboardId]);
+
+  useEffect(() => {
+    if (!hasEditedBreakpointRef.current && containerWidth > 0) {
+      setActiveBreakpoint(containerBreakpoint);
+      setLockedCanvasWidth(getDefaultLockedCanvasWidth(containerBreakpoint));
+    }
+  }, [containerBreakpoint, containerWidth]);
+
+  if (dashboardState.isLoading || dashboardState.isError || !data) {
     return null;
   }
 
   const handleLayoutChange = (newLayouts: Layouts) => {
-    actions.updateLayout(newLayouts);
+    dashboardActions.updateLayout(newLayouts);
+  };
+
+  const handleAddPanel = (
+    panelId: string,
+    options?: {
+      defaultSize?: { w: number; h: number };
+      scope?: AddPanelScope;
+    },
+  ) => {
+    dashboardActions.addPanel(panelId, {
+      defaultSize: options?.defaultSize,
+      targetBreakpoints: resolvePanelTargetBreakpoints({
+        scope: options?.scope || "active",
+        activeBreakpoint: effectiveActiveBreakpoint,
+        configuredBreakpoints,
+      }),
+    });
+  };
+
+  const handleCopyActiveBreakpointToOthers = () => {
+    dashboardActions.updateLayout(
+      copyBreakpointLayout(
+        dashboardState.localLayout,
+        effectiveActiveBreakpoint,
+        BREAKPOINT_ORDER.filter(
+          (breakpoint) => breakpoint !== effectiveActiveBreakpoint,
+        ),
+      ),
+    );
+  };
+
+  const actions = {
+    ...dashboardActions,
+    addPanel: handleAddPanel,
+    setActiveBreakpoint: (breakpoint: SeedarBreakpoint) => {
+      hasEditedBreakpointRef.current = true;
+      setActiveBreakpoint(breakpoint);
+      setLockedCanvasWidth(getDefaultLockedCanvasWidth(breakpoint));
+    },
+    setLockedCanvasWidth,
+    copyActiveBreakpointToOthers: handleCopyActiveBreakpointToOthers,
+  };
+
+  const state = {
+    ...dashboardState,
+    activeBreakpoint: effectiveActiveBreakpoint,
+    containerBreakpoint,
+    containerWidth,
+    effectiveGridWidth,
+    lockedCanvasWidth,
+    configuredBreakpoints,
+    activeBreakpointSource,
   };
 
   return (
@@ -57,13 +157,21 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
     >
       <div className={styles.seedarDashboard}>
         {header}
+        <LayoutEditorToolbar />
         {children}
         <ScrollArea style={{ paddingBottom: "2rem" }}>
           <GridContainer
             key={dashboardId}
-            layouts={state.localLayout}
+            layouts={dashboardState.localLayout}
             onLayoutChange={handleLayoutChange}
             mode={mode}
+            activeBreakpoint={effectiveActiveBreakpoint}
+            lockedCanvasWidth={lockedCanvasWidth}
+            onMetricsChange={({ containerWidth, containerBreakpoint, effectiveGridWidth }) => {
+              setContainerWidth(containerWidth);
+              setContainerBreakpoint(containerBreakpoint);
+              setEffectiveGridWidth(effectiveGridWidth);
+            }}
           >
             {data.panels.map((panel) => (
               <SeedarPanel

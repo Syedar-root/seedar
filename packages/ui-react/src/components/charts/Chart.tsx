@@ -123,7 +123,16 @@ export const Chart: React.FC<ChartProps> = ({
       }}
       resetKeys={[boundaryResetKey]}
     >
-      <VChart spec={resolvedSpec} {...vchartProps} />
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          minHeight: 0,
+          overflow: "hidden",
+        }}
+      >
+        <VChart spec={{ ...resolvedSpec }} {...vchartProps} />
+      </div>
     </ErrorBoundary>
   );
 };

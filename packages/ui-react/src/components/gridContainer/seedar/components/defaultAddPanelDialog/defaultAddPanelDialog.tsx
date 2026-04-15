@@ -6,7 +6,8 @@ import styles from "./defaultAddPanelDialog.module.css";
 import { SeedarPanel } from "../../seedarPanel";
 import { Radio, RadioGroup } from "@base-ui/react";
 import clsx from "clsx";
-import { DEFAULT_W, DEFAULT_H } from "../../const";
+import { DEFAULT_W, DEFAULT_H, type AddPanelScope } from "../../const";
+import { getBreakpointSummaryLabel } from "../../layoutEditor";
 
 interface DefaultAddPanelDialogProps {
   onClose: () => void;
@@ -15,15 +16,19 @@ interface DefaultAddPanelDialogProps {
 export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
   onClose,
 }) => {
-  const { actions, state } = useSeedarDashboardContext();
+  const { actions, data, state } = useSeedarDashboardContext();
   const { data: panels, isLoading } = usePanels();
   const [selectedPanelId, setSelectedPanelId] = React.useState<string>("");
+  const [scope, setScope] = React.useState<AddPanelScope>("active");
 
   const handlePanelSelect = useCallback(() => {
     if (!selectedPanelId) return;
-    actions.addPanel(selectedPanelId, { w: DEFAULT_W, h: DEFAULT_H });
+    actions.addPanel(selectedPanelId, {
+      defaultSize: { w: DEFAULT_W, h: DEFAULT_H },
+      scope,
+    });
     onClose();
-  }, [actions, selectedPanelId, onClose]);
+  }, [actions, onClose, scope, selectedPanelId]);
 
   const id = React.useId();
 
@@ -34,7 +39,7 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
     return panels.map((panel) => (
       <div key={panel.id} className={styles.panelItem}>
         <div className={styles.panelItemHeader}>
-          {state.localLayout?.lg?.some((item) => item.i === panel.id) ? (
+          {data?.panels.some((item) => item.id === panel.id) ? (
             <span className={styles.addedText}>已添加</span>
           ) : (
             <Radio.Root value={panel.id} className={styles.Radio}>
@@ -56,7 +61,7 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
         </div>
       </div>
     ));
-  }, [isLoading, panels, state.localLayout]);
+  }, [data?.panels, isLoading, panels]);
 
   return (
     <Dialog.Portal>
@@ -74,6 +79,46 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
           >
             {panelList}
           </RadioGroup>
+
+          <div className={styles.scopeSection}>
+            <div className={styles.scopeTitle}>添加范围</div>
+            <div className={styles.scopeOptions}>
+              <button
+                type="button"
+                className={clsx(
+                  styles.scopeButton,
+                  scope === "active" && styles.scopeButtonActive,
+                )}
+                onClick={() => setScope("active")}
+              >
+                仅当前断点
+              </button>
+              <button
+                type="button"
+                className={clsx(
+                  styles.scopeButton,
+                  scope === "configured" && styles.scopeButtonActive,
+                )}
+                onClick={() => setScope("configured")}
+              >
+                已配置断点
+              </button>
+              <button
+                type="button"
+                className={clsx(
+                  styles.scopeButton,
+                  scope === "all" && styles.scopeButtonActive,
+                )}
+                onClick={() => setScope("all")}
+              >
+                全部断点
+              </button>
+            </div>
+            <p className={styles.scopeHint}>
+              当前正在编辑 {getBreakpointSummaryLabel(state.activeBreakpoint)}。
+              “仅当前断点”不会再默认回填全部预设断点。
+            </p>
+          </div>
 
           <div className={styles.actions}>
             <button

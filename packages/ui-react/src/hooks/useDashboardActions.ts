@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   useDashboard,
   useUpdateDashboard,
@@ -8,16 +8,27 @@ import {
 } from "./useDashboard";
 import type {
   DashboardResponse,
-  UpdateDashboardRequest,
   Layouts,
-  LayoutItem,
+  UpdateDashboardRequest,
 } from "#pkg/seedar/types";
+import type { SeedarBreakpoint } from "../components/gridContainer/seedar/const";
+import { BREAKPOINT_ORDER } from "../components/gridContainer/seedar/const";
+import {
+  addPanelToBreakpoints,
+  normalizeLayouts,
+  removePanelFromBreakpoints,
+} from "../components/gridContainer/seedar/layoutEditor";
+
+interface AddPanelOptions {
+  defaultSize?: { w: number; h: number };
+  targetBreakpoints?: SeedarBreakpoint[];
+}
 
 interface UseDashboardActionsReturn {
   data: DashboardResponse | undefined;
   actions: {
     updateDashboard: (data: UpdateDashboardRequest) => void;
-    addPanel: (panelId: string) => void;
+    addPanel: (panelId: string, options?: AddPanelOptions) => void;
     removePanel: (panelId: string) => void;
     updateLayout: (layout: Layouts) => void;
     saveLayout: () => void;
@@ -79,29 +90,21 @@ export const useDashboardActions = (
 
   const handleUpdateLayout = (layout: Layouts) => {
     // 验证是否有重复的 i
-    const breakpoints = ["lg", "md", "sm", "xs", "xxs"] as const;
-    breakpoints.forEach((b) => {
-      if (layout[b]) {
-        const seen = new Map<string, LayoutItem>();
-        layout[b].forEach((item) => {
-          seen.set(item.i, item);
-        });
-        layout[b] = Array.from(seen.values());
-      }
-    });
+    const normalizedLayout = normalizeLayouts(layout);
 
     if (autoUpdate) {
       updateLayout.mutate(
-        { id: dashboardId, layout },
+        { id: dashboardId, layout: normalizedLayout },
         {
-          onSuccess: (data) => {
-            setLocalLayout(data.layout || {});
+          onSuccess: (response) => {
+            setLocalLayout(response.layout || {});
           },
         },
       );
-    } else {
-      setLocalLayout(layout);
+      return;
     }
+
+    setLocalLayout(normalizedLayout);
   };
 
   const handleSaveLayout = () => {
@@ -115,54 +118,22 @@ export const useDashboardActions = (
     }
   };
 
-  const handleOpenAddPanelDialog = () => {
-    setIsAddPanelDialogOpen(true);
-  };
-
-  const handleCloseAddPanelDialog = () => {
-    setIsAddPanelDialogOpen(false);
-  };
-
-  const handleAddPanel = (
-    panelId: string,
-    defaultSize?: { w: number; h: number },
-  ) => {
+  const handleAddPanel = (panelId: string, options?: AddPanelOptions) => {
     addPanel.mutate(
       { id: dashboardId, panelId },
       {
         onSuccess: () => {
-          const defaultWidth = defaultSize?.w || 6;
-          const defaultHeight = defaultSize?.h || 4;
-
-          const newLayoutItem = {
-            i: panelId,
-            x: 0,
-            y: 0,
-            w: defaultWidth,
-            h: defaultHeight,
-            minW: 3,
-            minH: 3,
-          };
-
-          const updatedLayout: Layouts = {};
-          const breakpoints = ["lg", "md", "sm", "xs", "xxs"] as const;
-
-          breakpoints.forEach((breakpoint) => {
-            const currentItems = localLayout[breakpoint] || [];
-            const maxY =
-              currentItems.length > 0
-                ? Math.max(...currentItems.map((item) => item.y + item.h))
-                : 0;
-            updatedLayout[breakpoint] = [
-              ...currentItems,
-              {
-                ...newLayoutItem,
-                y: maxY,
-              },
-            ];
-          });
-
-          handleUpdateLayout(updatedLayout);
+          handleUpdateLayout(
+            addPanelToBreakpoints({
+              layouts: localLayout,
+              panelId,
+              breakpoints:
+                options?.targetBreakpoints?.length
+                  ? options.targetBreakpoints
+                  : BREAKPOINT_ORDER,
+              defaultSize: options?.defaultSize || { w: 6, h: 4 },
+            }),
+          );
         },
       },
     );
@@ -173,17 +144,7 @@ export const useDashboardActions = (
       { id: dashboardId, panelId },
       {
         onSuccess: () => {
-          const updatedLayout: Layouts = {};
-          const breakpoints = ["lg", "md", "sm", "xs", "xxs"] as const;
-
-          breakpoints.forEach((breakpoint) => {
-            const currentItems = localLayout[breakpoint] || [];
-            updatedLayout[breakpoint] = currentItems.filter(
-              (item) => item.i !== panelId,
-            );
-          });
-
-          handleUpdateLayout(updatedLayout);
+          handleUpdateLayout(removePanelFromBreakpoints(localLayout, panelId));
         },
       },
     );
@@ -199,12 +160,12 @@ export const useDashboardActions = (
       updateLayout: handleUpdateLayout,
       saveLayout: handleSaveLayout,
       cancelChanges: handleCancelChanges,
-      openAddPanelDialog: handleOpenAddPanelDialog,
-      closeAddPanelDialog: handleCloseAddPanelDialog,
+      openAddPanelDialog: () => setIsAddPanelDialogOpen(true),
+      closeAddPanelDialog: () => setIsAddPanelDialogOpen(false),
     },
     state: {
       isLoading: isPending,
-      isError: isError,
+      isError,
       isUpdatingDashboard: updateDashboard.isPending,
       isAddingPanel: addPanel.isPending,
       isRemovingPanel: removePanel.isPending,

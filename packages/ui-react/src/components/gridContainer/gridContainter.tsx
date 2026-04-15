@@ -1,22 +1,37 @@
-import {
-  getCompactor,
-  noCompactor,
-  Responsive,
-  useContainerWidth,
-} from "react-grid-layout";
+import { noCompactor, Responsive, useContainerWidth } from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
 import type { LayoutItem, Layouts } from "#pkg/seedar/types";
 import { useEffect, useMemo } from "react";
 import { usePreventTextSelection } from "#pkg/seedar/ui-react";
 import { useAutoScroll } from "#pkg/seedar/ui-react";
 
-import { MARGIN, COLS } from "./seedar/const";
+import styles from "./gridContainter.module.css";
+import {
+  BREAKPOINTS,
+  BREAKPOINT_LABELS,
+  COLS,
+  MARGIN,
+  type SeedarBreakpoint,
+} from "./seedar/const";
+import {
+  getBreakpointByWidth,
+  getEffectiveGridWidth,
+  getMaterializedBreakpointLayout,
+  updateBreakpointLayout,
+} from "./seedar/layoutEditor";
 
 interface GridContainerProps {
   layouts: Layouts;
   onLayoutChange?: (layouts: Layouts) => void;
   mode?: "edit" | "view";
   children: React.ReactNode;
+  activeBreakpoint: SeedarBreakpoint;
+  lockedCanvasWidth: number;
+  onMetricsChange?: (metrics: {
+    containerWidth: number;
+    containerBreakpoint: SeedarBreakpoint;
+    effectiveGridWidth: number;
+  }) => void;
 }
 
 export const GridContainer: React.FC<GridContainerProps> = ({
@@ -24,6 +39,9 @@ export const GridContainer: React.FC<GridContainerProps> = ({
   onLayoutChange,
   mode = "edit",
   children,
+  activeBreakpoint,
+  lockedCanvasWidth,
+  onMetricsChange,
 }) => {
   const { width, containerRef, mounted } = useContainerWidth();
   const {
@@ -36,17 +54,17 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     stop: stopAutoScroll,
   } = useAutoScroll();
 
-  const currentCols =
-    width >= 1200
-      ? COLS.lg
-      : width >= 996
-        ? COLS.md
-        : width >= 768
-          ? COLS.sm
-          : width >= 480
-            ? COLS.xs
-            : COLS.xxs;
-  const rowHeight = (width - MARGIN * (currentCols - 1)) / currentCols;
+  const containerBreakpoint = getBreakpointByWidth(width);
+  const effectiveGridWidth = getEffectiveGridWidth({
+    activeBreakpoint,
+    containerWidth: width,
+    mode,
+    lockedCanvasWidth,
+  });
+  const renderedBreakpoint = getBreakpointByWidth(effectiveGridWidth);
+  const currentCols = COLS[renderedBreakpoint];
+  const rowHeight =
+    (effectiveGridWidth - MARGIN * (currentCols - 1)) / currentCols;
 
   const myCompactor = {
     ...noCompactor,
@@ -58,6 +76,14 @@ export const GridContainer: React.FC<GridContainerProps> = ({
       findScrollViewport(containerRef.current);
     }
   }, [containerRef, findScrollViewport]);
+
+  useEffect(() => {
+    onMetricsChange?.({
+      containerWidth: width,
+      containerBreakpoint,
+      effectiveGridWidth,
+    });
+  }, [containerBreakpoint, effectiveGridWidth, onMetricsChange, width]);
 
   const handleDragStart = () => {
     enablePreventTextSelection();
@@ -73,12 +99,13 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     disablePreventTextSelection();
     stopAutoScroll();
     if (mode === "edit" && onLayoutChange) {
-      const newLayouts = { ...layouts };
-      const currentBreakpoint = Object.keys(COLS).find(
-        (key) => COLS[key as keyof typeof COLS] === currentCols,
+      onLayoutChange(
+        updateBreakpointLayout(
+          layouts,
+          activeBreakpoint,
+          layout as LayoutItem[],
+        ),
       );
-      newLayouts[currentBreakpoint!] = layout as LayoutItem[];
-      onLayoutChange(newLayouts);
     }
   };
 
@@ -86,17 +113,19 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     disablePreventTextSelection();
     stopAutoScroll();
     if (mode === "edit" && onLayoutChange) {
-      const newLayouts = { ...layouts };
-      const currentBreakpoint = Object.keys(COLS).find(
-        (key) => COLS[key as keyof typeof COLS] === currentCols,
+      onLayoutChange(
+        updateBreakpointLayout(
+          layouts,
+          activeBreakpoint,
+          layout as LayoutItem[],
+        ),
       );
-      newLayouts[currentBreakpoint!] = layout as LayoutItem[];
-      onLayoutChange(newLayouts);
     }
   };
 
   const enhancedLayouts = useMemo(() => {
-    const enhanced: Layouts = {};
+    const enhanced: Layouts = { ...layouts };
+
     Object.keys(layouts).forEach((breakpoint) => {
       enhanced[breakpoint] = layouts[breakpoint]?.map((item) => ({
         ...item,
@@ -104,31 +133,69 @@ export const GridContainer: React.FC<GridContainerProps> = ({
         isResizable: mode === "edit",
       }));
     });
+
+    enhanced[activeBreakpoint] = getMaterializedBreakpointLayout(
+      layouts,
+      activeBreakpoint,
+    ).map((item) => ({
+      ...item,
+      isDraggable: mode === "edit",
+      isResizable: mode === "edit",
+    }));
+
     return enhanced;
-  }, [layouts, mode]);
+  }, [activeBreakpoint, layouts, mode]);
 
   return (
     containerRef && (
-      <div
-        style={{ overflow: "hidden", userSelect: "none" }}
-        ref={containerRef as React.RefObject<HTMLDivElement>}
-      >
+      <div className={styles.viewport}>
+        <div
+          aria-hidden="true"
+          className={styles.measure}
+          ref={containerRef as React.RefObject<HTMLDivElement>}
+        />
         {mounted && (
-          <Responsive
-            layouts={enhancedLayouts}
-            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={COLS}
-            margin={[MARGIN, MARGIN]}
-            rowHeight={rowHeight}
-            width={width}
-            compactor={myCompactor}
-            onDragStart={handleDragStart}
-            onResizeStart={handleResizeStart}
-            onDragStop={handleDragStop}
-            onResizeStop={handleResizeStop}
-          >
-            {children}
-          </Responsive>
+          <>
+            <div className={styles.metaBar}>
+              <span className={styles.metaChip}>
+                编辑 {activeBreakpoint.toUpperCase()} ·{" "}
+                {BREAKPOINT_LABELS[activeBreakpoint]}
+              </span>
+              <span className={styles.metaChip}>
+                容器 {Math.round(width)}px · {containerBreakpoint.toUpperCase()}
+              </span>
+              <span className={styles.metaChip}>
+                画布 {Math.round(effectiveGridWidth)}px
+              </span>
+            </div>
+            <div className={styles.frame}>
+              <div
+                className={styles.canvas}
+                style={
+                  {
+                    width: mode === "edit" ? effectiveGridWidth : "100%",
+                    "--grid-columns": currentCols,
+                  } as React.CSSProperties
+                }
+              >
+                <Responsive
+                  layouts={enhancedLayouts}
+                  breakpoints={BREAKPOINTS}
+                  cols={COLS}
+                  margin={[MARGIN, MARGIN]}
+                  rowHeight={rowHeight}
+                  width={effectiveGridWidth}
+                  compactor={myCompactor}
+                  onDragStart={handleDragStart}
+                  onResizeStart={handleResizeStart}
+                  onDragStop={handleDragStop}
+                  onResizeStop={handleResizeStop}
+                >
+                  {children}
+                </Responsive>
+              </div>
+            </div>
+          </>
         )}
       </div>
     )

@@ -124,6 +124,52 @@
   gap: 8px;
 }
 
+.scopeSection {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.scopeTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.scopeOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.scopeButton {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.scopeButtonActive {
+  border-color: #0f172a;
+  background: #0f172a;
+  color: white;
+}
+
+.scopeHint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
 .actionsButton {
   padding: 8px 16px;
   border-radius: 4px;
