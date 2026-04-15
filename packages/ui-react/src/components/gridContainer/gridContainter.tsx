@@ -11,6 +11,7 @@ import {
   BREAKPOINT_LABELS,
   COLS,
   MARGIN,
+  CONTAINER_PADDING,
   type SeedarBreakpoint,
 } from "./seedar/const";
 import {
@@ -183,6 +184,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
                   breakpoints={BREAKPOINTS}
                   cols={COLS}
                   margin={[MARGIN, MARGIN]}
+                  containerPadding={[CONTAINER_PADDING, CONTAINER_PADDING]}
                   rowHeight={rowHeight}
                   width={effectiveGridWidth}
                   compactor={myCompactor}
