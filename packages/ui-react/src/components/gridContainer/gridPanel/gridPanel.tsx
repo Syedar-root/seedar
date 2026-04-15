@@ -5,7 +5,7 @@ import styles from "./gridPanel.module.css";
 export interface GridPanelProps {
   panelId: string | number;
   key: string | number;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   content?: React.ReactNode;
   title?: React.ReactNode;
   showHeader?: boolean;
@@ -36,6 +36,8 @@ export const GridPanel = forwardRef<HTMLDivElement, GridPanelProps>(
     },
     ref,
   ) => {
+    const hasFooter = React.Children.count(children) > 0;
+
     return (
       <div
         ref={ref}
@@ -62,7 +64,9 @@ export const GridPanel = forwardRef<HTMLDivElement, GridPanelProps>(
             {content}
           </div>
         )}
-        <div className={styles["grid-panel-footer"]}>{children}</div>
+        {hasFooter ? (
+          <div className={styles["grid-panel-footer"]}>{children}</div>
+        ) : null}
       </div>
     );
   },

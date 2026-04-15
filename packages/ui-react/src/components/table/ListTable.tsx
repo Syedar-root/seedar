@@ -1,9 +1,9 @@
-import { ListTable as VListTable } from '@visactor/react-vtable';
-import { useEffect, useMemo, useState } from 'react';
-import type { PanelFormattingConfig } from '#pkg/seedar/types';
-import type { ExecuteQueryResponse } from '#pkg/seedar/types';
-import { useExecuteQuery } from '../../hooks';
-import { applyFormattingToQueryData } from '../formatting/formatting';
+import { ListTable as VListTable } from "@visactor/react-vtable";
+import { useEffect, useMemo, useState } from "react";
+import type { PanelFormattingConfig } from "#pkg/seedar/types";
+import type { ExecuteQueryResponse } from "#pkg/seedar/types";
+import { useExecuteQuery } from "../../hooks";
+import { applyFormattingToQueryData } from "../formatting/formatting";
 
 export interface ListTableProps {
   vtableProps?: React.ComponentProps<typeof VListTable>;
@@ -16,8 +16,8 @@ interface TableTransformResult {
   columns: Array<{
     title: string;
     field: string;
-    width: 'auto';
-    headerStyle: { textAlign: 'left' };
+    width: "auto";
+    headerStyle: { textAlign: "left" };
     fieldFormat: (record: Record<string, unknown>) => string | number;
   }>;
   records: Array<Record<string, unknown>>;
@@ -28,7 +28,7 @@ const transformData = (
   formatting?: PanelFormattingConfig,
 ): TableTransformResult => {
   const effectiveData = applyFormattingToQueryData(data, formatting, {
-    surface: 'table_cell',
+    surface: "table_cell",
   });
 
   const headers = effectiveData.results?.header || [];
@@ -40,10 +40,10 @@ const transformData = (
     return {
       title: header,
       field,
-      width: 'auto' as const,
-      headerStyle: { textAlign: 'left' as const },
+      width: "auto" as const,
+      headerStyle: { textAlign: "left" as const },
       fieldFormat: (record: Record<string, unknown>) =>
-        (record[field] as string | number) ?? '',
+        (record[field] as string | number) ?? "",
     };
   });
 
@@ -93,6 +93,7 @@ export const ListTable: React.FC<ListTableProps> = ({
 
     executeQuery(queryId, {
       onSuccess: (queryData) => {
+        console.log("hcs queryData", queryData);
         const transformed = transformData(queryData, formatting);
         setTableOption((prev) => ({
           ...prev,
@@ -113,8 +114,8 @@ export const ListTable: React.FC<ListTableProps> = ({
   return (
     <div
       style={{
-        width: '100%',
-        height: '100%',
+        width: "100%",
+        height: "100%",
       }}
     >
       <VListTable option={option} />

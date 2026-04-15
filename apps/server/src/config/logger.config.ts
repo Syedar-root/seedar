@@ -58,6 +58,15 @@ const fileFormat = winston.format.combine(
   }),
 );
 
+// JSON 格式
+const jsonFormat = winston.format.combine(
+  winston.format.timestamp({
+    format: 'YYYY-MM-DD HH:mm:ss.SSS',
+  }),
+  winston.format.errors({ stack: true }),
+  winston.format.json(),
+);
+
 export const winstonConfig = (configService?: any) => ({
   level: configService?.get('LOG_LEVEL') || 'debug',
   format: customFormat,
@@ -83,6 +92,15 @@ export const winstonConfig = (configService?: any) => ({
       filename: path.join(process.cwd(), 'logs', 'error.log'),
       level: 'error',
       format: fileFormat,
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
+      tailable: true,
+    }),
+
+    // JSON 格式日志文件
+    new winston.transports.File({
+      filename: path.join(process.cwd(), 'logs', 'app.json.log'),
+      format: jsonFormat,
       maxsize: 5242880, // 5MB
       maxFiles: 5,
       tailable: true,
