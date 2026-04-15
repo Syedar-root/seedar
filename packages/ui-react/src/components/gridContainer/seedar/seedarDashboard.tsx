@@ -13,6 +13,7 @@ import { useDashboardActions } from "../../../hooks";
 import type { Layouts } from "#pkg/seedar/types";
 import { useEffect } from "react";
 import { ScrollArea } from "../../common/ScrollArea";
+import styles from "./seedarDashboadrd.module.css";
 
 interface SeedarDashboardProps {
   dashboardId: string;
@@ -54,26 +55,28 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
     <SeedarDashboardContext.Provider
       value={{ dashboardId, data, actions, state, mode }}
     >
-      {header}
-      {children}
-      <ScrollArea style={{ paddingBottom: "2rem" }}>
-        <GridContainer
-          key={dashboardId}
-          layouts={state.localLayout}
-          onLayoutChange={handleLayoutChange}
-          mode={mode}
-        >
-          {data.panels.map((panel) => (
-            <SeedarPanel
-              key={panel.id}
-              panelId={panel.id}
-              panel={panel}
-              headerExtra={panelHeaderExtra}
-            />
-          ))}
-        </GridContainer>
-      </ScrollArea>
-      {footer}
+      <div className={styles.seedarDashboard}>
+        {header}
+        {children}
+        <ScrollArea style={{ paddingBottom: "2rem" }}>
+          <GridContainer
+            key={dashboardId}
+            layouts={state.localLayout}
+            onLayoutChange={handleLayoutChange}
+            mode={mode}
+          >
+            {data.panels.map((panel) => (
+              <SeedarPanel
+                key={panel.id}
+                panelId={panel.id}
+                panel={panel}
+                headerExtra={panelHeaderExtra}
+              />
+            ))}
+          </GridContainer>
+        </ScrollArea>
+        {footer}
+      </div>
     </SeedarDashboardContext.Provider>
   );
 };
