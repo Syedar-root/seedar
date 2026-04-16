@@ -1,194 +1,117 @@
-import React from "react";
-import { useSeedarDashboardContext } from "./context/SeedarDashboardContext";
-import { DefaultAddPanelDialog } from "./components/DefaultAddPanelDialog";
+﻿import React from "react";
 import { Dialog } from "@base-ui/react/dialog";
 
-export { DefaultAddPanelDialog };
+import { DefaultAddPanelDialog } from "./components/DefaultAddPanelDialog";
+import {
+  useAddPanelTriggerRenderProps,
+  useCancelTriggerRenderProps,
+  useRemovePanelTriggerRenderProps,
+  useSaveTriggerRenderProps,
+} from "./hooks/useSeedarDashboardTriggerRenderProps.hook";
+import type {
+  AddPanelTriggerProps,
+  CancelTriggerProps,
+  RemovePanelTriggerProps,
+  SaveTriggerProps,
+  TriggersProps,
+} from "./SeedarDashboardTriggers.types";
+import {
+  DEFAULT_ADD_PANEL_TRIGGER_LABEL,
+  DEFAULT_CANCEL_TRIGGER_LABEL,
+  DEFAULT_REMOVE_PANEL_TRIGGER_LABEL,
+  DEFAULT_SAVE_TRIGGER_LABEL,
+} from "./utils/getSeedarDashboardTriggerLabel";
 
-interface TriggersProps {
-  children: React.ReactNode;
-}
+export { DefaultAddPanelDialog };
 
 export const Triggers: React.FC<TriggersProps> = ({ children }) => {
   return <div className="seedar-dashboard-triggers">{children}</div>;
 };
 
-interface SaveTriggerRenderProps {
-  onClick: () => void;
-  disabled: boolean;
-  isSaving: boolean;
-  hasUnsavedChanges: boolean;
-}
-
-interface SaveTriggerProps {
-  children?:
-    | React.ReactNode
-    | ((props: SaveTriggerRenderProps) => React.ReactNode);
-}
-
 export const SaveTrigger: React.FC<SaveTriggerProps> = ({ children }) => {
-  const { actions, state, mode } = useSeedarDashboardContext();
+  const renderProps = useSaveTriggerRenderProps();
 
-  if (mode === 'view') {
+  if (!renderProps) {
     return null;
   }
-
-  const handleClick = () => {
-    if (!state.isSavingLayout && state.hasUnsavedChanges) {
-      actions.saveLayout();
-    }
-  };
-
-  const renderProps: SaveTriggerRenderProps = {
-    onClick: handleClick,
-    disabled: !state.hasUnsavedChanges || state.isSavingLayout,
-    isSaving: state.isSavingLayout,
-    hasUnsavedChanges: state.hasUnsavedChanges,
-  };
 
   if (typeof children === "function") {
     return <>{children(renderProps)}</>;
   }
 
   return (
-    <button onClick={handleClick} disabled={renderProps.disabled}>
-      {children || "保存布局"}
+    <button onClick={renderProps.onClick} disabled={renderProps.disabled}>
+      {children || DEFAULT_SAVE_TRIGGER_LABEL}
     </button>
   );
 };
-
-interface CancelTriggerRenderProps {
-  onClick: () => void;
-  disabled: boolean;
-  hasUnsavedChanges: boolean;
-}
-
-interface CancelTriggerProps {
-  children?:
-    | React.ReactNode
-    | ((props: CancelTriggerRenderProps) => React.ReactNode);
-}
 
 export const CancelTrigger: React.FC<CancelTriggerProps> = ({ children }) => {
-  const { actions, state, mode } = useSeedarDashboardContext();
+  const renderProps = useCancelTriggerRenderProps();
 
-  if (mode === 'view') {
+  if (!renderProps) {
     return null;
   }
-
-  const handleClick = () => {
-    if (state.hasUnsavedChanges) {
-      actions.cancelChanges();
-    }
-  };
-
-  const renderProps: CancelTriggerRenderProps = {
-    onClick: handleClick,
-    disabled: !state.hasUnsavedChanges,
-    hasUnsavedChanges: state.hasUnsavedChanges,
-  };
 
   if (typeof children === "function") {
     return <>{children(renderProps)}</>;
   }
 
   return (
-    <button onClick={handleClick} disabled={renderProps.disabled}>
-      {children || "取消"}
+    <button onClick={renderProps.onClick} disabled={renderProps.disabled}>
+      {children || DEFAULT_CANCEL_TRIGGER_LABEL}
     </button>
   );
 };
-
-interface RemovePanelTriggerRenderProps {
-  onClick: () => void;
-  disabled: boolean;
-  isRemoving: boolean;
-}
-
-interface RemovePanelTriggerProps {
-  panelId: string;
-  children?:
-    | React.ReactNode
-    | ((props: RemovePanelTriggerRenderProps) => React.ReactNode);
-}
 
 export const RemovePanelTrigger: React.FC<RemovePanelTriggerProps> = ({
   panelId,
   children,
 }) => {
-  const { actions, state, mode } = useSeedarDashboardContext();
+  const renderProps = useRemovePanelTriggerRenderProps(panelId);
 
-  if (mode === 'view') {
+  if (!renderProps) {
     return null;
   }
-
-  const handleClick = () => {
-    if (!state.isRemovingPanel) {
-      actions.removePanel(panelId);
-    }
-  };
-
-  const renderProps: RemovePanelTriggerRenderProps = {
-    onClick: handleClick,
-    disabled: state.isRemovingPanel,
-    isRemoving: state.isRemovingPanel,
-  };
 
   if (typeof children === "function") {
     return <>{children(renderProps)}</>;
   }
 
   return (
-    <button onClick={handleClick} disabled={renderProps.disabled}>
-      {children || "移除 Panel"}
+    <button onClick={renderProps.onClick} disabled={renderProps.disabled}>
+      {children || DEFAULT_REMOVE_PANEL_TRIGGER_LABEL}
     </button>
   );
 };
-
-interface AddPanelTriggerRenderProps {
-  onClick: () => void;
-}
-
-interface AddPanelTriggerProps {
-  children?:
-    | React.ReactNode
-    | ((props: AddPanelTriggerRenderProps) => React.ReactNode);
-  panelsDialog?: (props: { onClose: () => void }) => React.ReactNode;
-}
 
 export const AddPanelTrigger: React.FC<AddPanelTriggerProps> = ({
   children,
   panelsDialog,
 }) => {
-  const { actions, state, mode } = useSeedarDashboardContext();
+  const renderProps = useAddPanelTriggerRenderProps();
 
-  if (mode === 'view') {
+  if (!renderProps) {
     return null;
   }
-
-  const handleClick = () => {
-    actions.openAddPanelDialog();
-  };
-
-  const renderProps: AddPanelTriggerRenderProps = {
-    onClick: handleClick,
-  };
 
   return (
     <>
       {typeof children === "function" ? (
-        children(renderProps)
+        children({ onClick: renderProps.onClick })
       ) : (
-        <div onClick={handleClick}>{children || "添加 Panel"}</div>
+        <div onClick={renderProps.onClick}>
+          {children || DEFAULT_ADD_PANEL_TRIGGER_LABEL}
+        </div>
       )}
       <Dialog.Root
-        open={state.isAddPanelDialogOpen}
-        onOpenChange={(open) => !open && actions.closeAddPanelDialog()}
+        open={renderProps.isDialogOpen}
+        onOpenChange={(open) => !open && renderProps.onClose()}
       >
         {panelsDialog ? (
-          panelsDialog({ onClose: actions.closeAddPanelDialog })
+          panelsDialog({ onClose: renderProps.onClose })
         ) : (
-          <DefaultAddPanelDialog onClose={actions.closeAddPanelDialog} />
+          <DefaultAddPanelDialog onClose={renderProps.onClose} />
         )}
       </Dialog.Root>
     </>
