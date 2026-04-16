@@ -24,17 +24,23 @@ export const FieldMapper: React.FC<FieldMapperProps> = ({
   const fieldOptions: ComboboxOptionGroup[] = [
     {
       label: "维度",
-      options: fields.map((item) => ({
-        label: item.businessName || item.name,
-        value: item.businessName || item.name,
-      })),
+      options: fields.map((item) => {
+        const displayValue = item.businessName ?? item.name ?? String(item.id);
+        return {
+          label: displayValue,
+          value: displayValue,
+        };
+      }),
     },
     {
       label: "指标",
-      options: metrics.map((item) => ({
-        label: item.businessName || item.name,
-        value: item.businessName || item.name,
-      })),
+      options: metrics.map((item) => {
+        const displayValue = item.businessName ?? item.name ?? String(item.id);
+        return {
+          label: displayValue,
+          value: displayValue,
+        };
+      }),
     },
   ];
 

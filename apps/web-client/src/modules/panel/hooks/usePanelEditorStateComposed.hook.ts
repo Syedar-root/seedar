@@ -1,0 +1,290 @@
+import {
+  useDataset,
+  useExecuteTempQuery,
+  usePanel,
+  useQuery,
+} from "#pkg/seedar/ui-react";
+import { PanelStatus } from "#pkg/seedar/types";
+import { useCallback, useMemo, useRef, useState } from "react";
+import type {
+  DatasetResponse,
+  ExecuteQueryResponse,
+  PanelFormattingRole,
+  PanelFormattingTarget,
+  PanelResponse,
+  PanelSimpleFormattingRule,
+  QueryResponse,
+} from "#pkg/seedar/types";
+import {
+  DEFAULT_COLORS,
+  DEFAULT_LEGENDS_CONFIG,
+  DEFAULT_PANEL_FORMATTING_CONFIG,
+  type DisplayPanelType,
+  type PanelEditorConfig,
+} from "../components/panelEditor";
+import type {
+  DragItem,
+  DerivedDimensionInput,
+  DimensionItem,
+  FilterItem,
+  LocalPanelStatus,
+  PeriodOverPeriodConfig,
+  QueryDsl,
+  TempMetricConfig,
+  TitleConfig,
+} from "../types";
+import { usePanelEditorHydration } from "./usePanelEditorHydration.hook";
+import { usePanelEditorMutations } from "./usePanelEditorMutations.hook";
+
+// Canonical implementation of panel editor state orchestration.
+export type { DerivedDimensionInput, DimensionItem, TempMetricConfig };
+
+interface UsePanelEditorStateReturn {
+  dimensionItems: DimensionItem[];
+  dropFields: DragItem[];
+  dropMetrics: DragItem[];
+  dropFilters: FilterItem[];
+  tempMetrics: TempMetricConfig[];
+  displayType: DisplayPanelType;
+  editorConfig: PanelEditorConfig;
+  tempData: ExecuteQueryResponse | undefined;
+  panelData: PanelResponse | undefined;
+  queryData: QueryResponse | undefined;
+  datasetData: DatasetResponse | undefined;
+  selectedDataset: DatasetResponse | undefined;
+  panelStatus: LocalPanelStatus;
+  hasDataset: boolean;
+  hasQueryContent: boolean;
+  canRun: boolean;
+  isPreviewRunning: boolean;
+  selectDataset: (dataset: DatasetResponse) => void;
+  replaceDataset: (dataset: DatasetResponse) => void;
+  setPanelStatus: (status: LocalPanelStatus) => void;
+  setTempData: (data: ExecuteQueryResponse | undefined) => void;
+  buildDsl: (baseDsl?: QueryDsl) => QueryDsl | undefined;
+  resetForDatasetChange: () => void;
+  runPreview: (dsl?: QueryDsl) => Promise<ExecuteQueryResponse | undefined>;
+  handleDropField: (item: DragItem) => void;
+  handleRemoveField: (item: DragItem) => void;
+  handleDropMetric: (item: DragItem) => void;
+  handleRemoveMetric: (item: DragItem) => void;
+  handleDropFilter: (item: DragItem) => void;
+  handleRemoveFilter: (id: string | number) => void;
+  handleUpdateFilter: (
+    id: string | number,
+    updates: Partial<FilterItem>,
+  ) => void;
+  handleAddDerivedDimension: (dimension: DerivedDimensionInput) => void;
+  handleUpdateDerivedDimension: (
+    dimensionItemId: string | number,
+    dimension: DerivedDimensionInput,
+  ) => void;
+  handleUpdateTempMetric: (
+    metricId: string | number,
+    config: PeriodOverPeriodConfig | undefined,
+  ) => void;
+  handleRemoveTempMetric: (tempMetricId: string) => void;
+  handleEditorChange: (
+    type: DisplayPanelType,
+    config: PanelEditorConfig,
+  ) => void;
+  handleSaveItemFormatting: (rule: PanelSimpleFormattingRule) => void;
+  handleRemoveItemFormatting: (
+    target: PanelFormattingTarget,
+    role: PanelFormattingRole,
+  ) => void;
+  handleRun: () => void;
+  title: string;
+  titleConfig?: TitleConfig;
+  handleTitleChange: (title: string, titleConfig?: TitleConfig) => void;
+}
+
+export const usePanelEditorState = (
+  panelId?: string,
+): UsePanelEditorStateReturn => {
+  const [dimensionItems, setDimensionItems] = useState<DimensionItem[]>([]);
+  const [dropMetrics, setDropMetrics] = useState<DragItem[]>([]);
+  const [dropFilters, setDropFilters] = useState<FilterItem[]>([]);
+  const [tempMetrics, setTempMetrics] = useState<TempMetricConfig[]>([]);
+  const [displayType, setDisplayType] = useState<DisplayPanelType>("table");
+  const [editorConfig, setEditorConfig] = useState<PanelEditorConfig>({
+    color: DEFAULT_COLORS,
+    legends: DEFAULT_LEGENDS_CONFIG,
+    formatting: DEFAULT_PANEL_FORMATTING_CONFIG,
+  });
+  const [tempData, setTempData] = useState<ExecuteQueryResponse>();
+  const [title, setTitle] = useState("Untitled Panel");
+  const [titleConfig, setTitleConfig] = useState<TitleConfig | undefined>();
+  const [selectedDataset, setSelectedDataset] = useState<
+    DatasetResponse | undefined
+  >();
+  const [panelStatus, setPanelStatus] = useState<LocalPanelStatus>(
+    panelId ? PanelStatus.DRAFT : "unsaved",
+  );
+
+  const hydratedQueryRef = useRef<string | undefined>();
+  const derivedDimensionSeedRef = useRef(0);
+
+  const { data: panelData } = usePanel(panelId ?? "", !!panelId);
+  const queryId = panelData?.queryId;
+  const { data: queryData } = useQuery(queryId ?? "");
+  const { data: remoteDatasetData } = useDataset(queryData?.datasetId ?? 0);
+  const {
+    mutate: executeTempQuery,
+    mutateAsync: executeTempQueryAsync,
+    isPending: isPreviewRunning,
+  } = useExecuteTempQuery();
+
+  usePanelEditorHydration({
+    panelId,
+    panelData,
+    queryData,
+    remoteDatasetData,
+    hydratedQueryRef,
+    setPanelStatus,
+    setTitle,
+    setTitleConfig,
+    setDisplayType,
+    setEditorConfig,
+    setSelectedDataset,
+    setDimensionItems,
+    setDropMetrics,
+    setDropFilters,
+    setTempMetrics,
+  });
+
+  const datasetData = selectedDataset ?? remoteDatasetData;
+
+  const nextDerivedDimensionId = useCallback(() => {
+    derivedDimensionSeedRef.current += 1;
+    return `derived_dimension_${derivedDimensionSeedRef.current}_${Date.now()}`;
+  }, []);
+
+  const {
+    resetForDatasetChange,
+    selectDataset,
+    replaceDataset,
+    buildDsl,
+    handleDropField,
+    handleRemoveField,
+    handleDropMetric,
+    handleRemoveMetric,
+    handleDropFilter,
+    handleRemoveFilter,
+    handleUpdateFilter,
+    handleAddDerivedDimension,
+    handleUpdateDerivedDimension,
+    handleUpdateTempMetric,
+    handleRemoveTempMetric,
+    handleEditorChange,
+    handleSaveItemFormatting,
+    handleRemoveItemFormatting,
+    handleTitleChange,
+  } = usePanelEditorMutations({
+    datasetData,
+    dimensionItems,
+    dropMetrics,
+    dropFilters,
+    tempMetrics,
+    setSelectedDataset,
+    setDimensionItems,
+    setDropMetrics,
+    setDropFilters,
+    setTempMetrics,
+    setTempData,
+    setDisplayType,
+    setEditorConfig,
+    setTitle,
+    setTitleConfig,
+    nextDerivedDimensionId,
+  });
+
+  const dropFields = useMemo<DragItem[]>(
+    () => dimensionItems.map((dimension) => ({ ...dimension })),
+    [dimensionItems],
+  );
+
+  const hasDataset = Boolean(datasetData);
+  const hasQueryContent = Boolean(
+    dimensionItems.length || dropMetrics.length || dropFilters.length || tempData,
+  );
+  const canRun =
+    hasDataset && (dimensionItems.length > 0 || dropMetrics.length > 0);
+
+  const runPreview = useCallback(
+    async (dsl?: QueryDsl): Promise<ExecuteQueryResponse | undefined> => {
+      const targetDsl =
+        dsl ?? buildDsl((queryData?.dsl as QueryDsl | undefined) ?? undefined);
+      if (!targetDsl) {
+        return undefined;
+      }
+
+      const data = await executeTempQueryAsync(targetDsl);
+      setTempData(data);
+      return data;
+    },
+    [buildDsl, executeTempQueryAsync, queryData?.dsl],
+  );
+
+  const handleRun = useCallback(() => {
+    if (!canRun) {
+      return;
+    }
+
+    const dsl = buildDsl((queryData?.dsl as QueryDsl | undefined) ?? undefined);
+    if (!dsl) {
+      return;
+    }
+
+    executeTempQuery(dsl, {
+      onSuccess: (data) => {
+        setTempData(data);
+      },
+    });
+  }, [buildDsl, canRun, executeTempQuery, queryData?.dsl]);
+
+  return {
+    dimensionItems,
+    dropFields,
+    dropMetrics,
+    dropFilters,
+    tempMetrics,
+    displayType,
+    editorConfig,
+    tempData,
+    panelData,
+    queryData,
+    datasetData,
+    selectedDataset,
+    panelStatus,
+    hasDataset,
+    hasQueryContent,
+    canRun,
+    isPreviewRunning,
+    selectDataset,
+    replaceDataset,
+    setPanelStatus,
+    setTempData,
+    buildDsl,
+    resetForDatasetChange,
+    runPreview,
+    handleDropField,
+    handleRemoveField,
+    handleDropMetric,
+    handleRemoveMetric,
+    handleDropFilter,
+    handleRemoveFilter,
+    handleUpdateFilter,
+    handleAddDerivedDimension,
+    handleUpdateDerivedDimension,
+    handleUpdateTempMetric,
+    handleRemoveTempMetric,
+    handleEditorChange,
+    handleSaveItemFormatting,
+    handleRemoveItemFormatting,
+    handleRun,
+    title,
+    titleConfig,
+    handleTitleChange,
+  };
+};
