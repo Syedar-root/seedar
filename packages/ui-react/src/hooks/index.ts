@@ -1,4 +1,4 @@
-export { useChartTheme } from "./useChartTheme";
+export { useChartTheme } from "./ui/useChartTheme";
 
 export {
   useDatasourceApi,
@@ -7,7 +7,7 @@ export {
   useDashboardApi,
   usePanelApi,
   useAiApi,
-} from "./useApi";
+} from "./api/useApi";
 
 export {
   useDatasources,
@@ -15,7 +15,7 @@ export {
   useCreateDatasource,
   useUpdateDatasource,
   useDeleteDatasource,
-} from "./useDatasource";
+} from "./api/useDatasource";
 
 export {
   useDatasets,
@@ -23,7 +23,7 @@ export {
   useCreateDataset,
   useUpdateDataset,
   useDeleteDataset,
-} from "./useDataset";
+} from "./api/useDataset";
 
 export {
   useQueries,
@@ -33,7 +33,7 @@ export {
   useDeleteQuery,
   useExecuteQuery,
   useExecuteTempQuery,
-} from "./useQuery";
+} from "./api/useQuery";
 
 export {
   useDashboards,
@@ -44,11 +44,9 @@ export {
   useUpdateLayout,
   useAddPanel,
   useRemovePanel,
-} from "./useDashboard";
+} from "./api/useDashboard";
 
-export { useDashboardActions } from "./useDashboardActions";
-
-export { useSeedarDashboardContext } from "../components/gridContainer/seedar/seedarDashboardContext";
+export { useDashboardActions } from "./api/useDashboardActions";
 
 export {
   usePanels,
@@ -56,11 +54,11 @@ export {
   useCreatePanel,
   useUpdatePanel,
   useDeletePanel,
-} from "./usePanel";
+} from "./api/usePanel";
 
-export { usePreventTextSelection } from "./usePreventTextSelection";
+export { usePreventTextSelection } from "./ui/usePreventTextSelection";
 
-export { useAutoScroll } from "./useAutoScroll";
+export { useAutoScroll } from "./ui/useAutoScroll";
 
 export {
   useAis,
@@ -72,4 +70,4 @@ export {
   useCreateAiSession,
   useUpdateAiSession,
   useAiChat,
-} from "./useAi";
+} from "./api/useAi";
