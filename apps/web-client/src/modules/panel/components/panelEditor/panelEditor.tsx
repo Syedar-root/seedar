@@ -140,6 +140,7 @@ function resetConfigForType(
   const baseConfig: PanelEditorConfig = {
     color: prevConfig.color || DEFAULT_COLORS,
     formatting: prevConfig.formatting || DEFAULT_PANEL_FORMATTING_CONFIG,
+    card: prevConfig.card,
   };
 
   if (type === "table" || type === "card") {

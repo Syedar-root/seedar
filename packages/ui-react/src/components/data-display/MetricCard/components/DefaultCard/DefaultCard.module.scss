@@ -1,0 +1,100 @@
+@use "../../../../styles/variables" as *;
+
+.default-card {
+  height: 100%;
+}
+
+.card-content {
+  display: flex;
+  align-items: flex-start;
+  gap: $mc-space-lg;
+  min-height: 104px;
+  padding-block: $mc-space-md;
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding-top: $mc-space-xs;
+
+  svg {
+    color: $mc-color-text-tertiary;
+  }
+}
+
+.statistic-wrapper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $mc-space-xs;
+}
+
+.title-text {
+  color: $mc-color-text-secondary;
+  font-size: $mc-font-size-sm;
+  line-height: 1.4;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.value-row {
+  display: flex;
+  align-items: baseline;
+  gap: $mc-space-xs;
+  flex-wrap: wrap;
+}
+
+.prefix-text,
+.suffix-text {
+  color: $mc-color-text-secondary;
+  font-size: $mc-font-size-lg;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.value-text {
+  color: $mc-color-text-primary;
+  font-size: $mc-font-size-2xl;
+  line-height: 1.15;
+  font-weight: 600;
+  font-feature-settings: "tnum", "lnum";
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.trend-section {
+  display: inline-flex;
+  align-items: center;
+  gap: $mc-space-xs;
+  margin-top: $mc-space-sm;
+  font-size: $mc-font-size-xs;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.trend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.trend-divider {
+  margin: 0 $mc-space-xs;
+  color: $mc-color-text-tertiary;
+}
+
+.trend-section[data-direction="up"] {
+  color: $mc-color-trend-up-soft;
+}
+
+.trend-section[data-direction="down"] {
+  color: $mc-color-trend-down-soft;
+}

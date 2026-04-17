@@ -1,0 +1,136 @@
+@use "../../../../styles/variables" as *;
+
+.progress-card {
+  --progress-color: #6366f1;
+  --progress-value: 0%;
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: $mc-space-xl;
+  min-height: 176px;
+}
+
+.header-section {
+  display: flex;
+  align-items: center;
+  gap: $mc-space-md;
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: $mc-radius-md;
+  background-color: color-mix(in srgb, var(--progress-color) 12%, $mc-color-bg);
+  color: var(--progress-color);
+}
+
+.title-text {
+  color: $mc-color-text-primary;
+  font-size: $mc-font-size-md;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.value-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: $mc-space-lg;
+}
+
+.value-group {
+  display: flex;
+  align-items: baseline;
+  gap: $mc-space-xs;
+  flex-wrap: wrap;
+}
+
+.prefix,
+.suffix {
+  color: $mc-color-text-primary;
+  font-size: $mc-font-size-xl;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.value-number {
+  color: $mc-color-text-primary;
+  font-size: $mc-font-size-3xl;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+
+.progress-percent {
+  color: var(--progress-color);
+  font-size: $mc-font-size-lg;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.progress-section {
+  margin-top: -$mc-space-md;
+}
+
+.progress-track {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: $mc-radius-full;
+  background-color: $mc-color-border-soft;
+}
+
+.progress-fill {
+  width: var(--progress-value);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--progress-color) 88%, $mc-color-bg) 0%,
+    var(--progress-color) 100%
+  );
+  transition: width $mc-transition-normal;
+}
+
+.meta-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: $mc-space-md;
+  border-top: 1px solid $mc-color-border-softer;
+}
+
+.meta-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-item:last-child {
+  align-items: flex-end;
+}
+
+.meta-divider {
+  width: 1px;
+  height: 24px;
+  background-color: $mc-color-border-soft;
+}
+
+.meta-label {
+  color: $mc-color-text-secondary;
+  font-size: $mc-font-size-xs;
+  line-height: 1.4;
+}
+
+.meta-value {
+  color: $mc-color-text-primary;
+  font-size: $mc-font-size-md;
+  font-weight: 600;
+  line-height: 1.3;
+}

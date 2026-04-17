@@ -37,6 +37,7 @@ export const useSeedarPanelContent = ({
           queryId={descriptor.queryId}
           data={data}
           formatting={descriptor.formatting}
+          config={descriptor.config}
         />
       );
     }

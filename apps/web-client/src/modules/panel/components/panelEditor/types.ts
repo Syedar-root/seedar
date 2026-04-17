@@ -16,6 +16,7 @@ export type DisplayPanelType =
 
 export type ChartType = "line" | "bar" | "area" | "pie" | "scatter" | "radar";
 export type BarDirection = "vertical" | "horizontal";
+export type TrendDirection = "up" | "down" | "none";
 
 export interface LabelConfig {
   visible: boolean;
@@ -53,6 +54,25 @@ export interface AxisConfig {
   y: AxisItemConfig;
 }
 
+export type MetricCardVariant = "default" | "withLineChart" | "withProgress";
+
+export interface CardPanelConfig {
+  variant?: MetricCardVariant;
+  title?: string;
+  prefix?: string;
+  suffix?: string;
+  width?: string | number;
+  trendDirection?: TrendDirection;
+  changeRate?: string;
+  changeValue?: string;
+  chartColor?: string;
+  chartSmooth?: boolean;
+  progressTarget?: number;
+  progressTargetLabel?: string;
+  progressRemainingLabel?: string;
+  progressColor?: string;
+}
+
 export interface PanelEditorConfig {
   type?: ChartType;
   xField?: string;
@@ -68,6 +88,7 @@ export interface PanelEditorConfig {
   legends?: LegendConfig;
   axis?: AxisConfig;
   formatting?: PanelFormattingConfig;
+  card?: CardPanelConfig;
   isAdvancedSpecMode?: boolean;
   advancedSpec?: Record<string, unknown>;
 }
@@ -83,6 +104,28 @@ export interface ChartFieldConfig {
   required: string[];
   optional: string[];
 }
+
+export const METRIC_CARD_VARIANT_OPTIONS: Array<{
+  value: MetricCardVariant;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "default",
+    label: "基础卡片",
+    description: "聚焦展示单个核心指标",
+  },
+  {
+    value: "withLineChart",
+    label: "趋势卡片",
+    description: "在卡片中附带一条小型趋势线",
+  },
+  {
+    value: "withProgress",
+    label: "进度卡片",
+    description: "展示当前值相对于目标值的完成情况",
+  },
+];
 
 export const CHART_FIELD_CONFIGS: Record<ChartType, ChartFieldConfig> = {
   line: { required: ["xField", "yField"], optional: ["seriesField"] },

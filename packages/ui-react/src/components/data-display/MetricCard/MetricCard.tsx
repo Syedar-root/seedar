@@ -1,33 +1,51 @@
-import styles from './MetricCard.module.css';
+import type { ComponentType } from "react";
 
+import { DefaultCard, LineChartCard, ProgressCard } from "./components";
 import { useMetricCardData } from "./hooks/useMetricCardData.hook";
-import type { MetricCardProps } from "./types";
+import { cardRegistry } from "./utils";
+import type {
+  MetricCardProps,
+  MetricCardResolvedProps,
+} from "./types";
 
-export const MetricCard: React.FC<MetricCardProps> = ({
-  queryId,
-  data,
-  formatting,
-}) => {
-  const cardData = useMetricCardData({
-    queryId,
-    data,
-    formatting,
-  });
+cardRegistry.registerDefault("default", {
+  component: DefaultCard as ComponentType<MetricCardResolvedProps>,
+});
+cardRegistry.register("withLineChart", {
+  component: LineChartCard as ComponentType<MetricCardResolvedProps>,
+});
+cardRegistry.register("withProgress", {
+  component: ProgressCard as ComponentType<MetricCardResolvedProps>,
+});
 
-  if (!cardData) {
+export const MetricCard: React.FC<MetricCardProps> = (props) => {
+  const resolvedProps = useMetricCardData(props);
+
+  if (!resolvedProps) {
     return null;
   }
 
-  return (
-    <div className={styles.card}>
-      <div className={styles.title}>{cardData.title}</div>
-      <div className={styles.value}>{String(cardData.value)}</div>
-      {cardData.subTitle ? (
-        <div className={styles.subRow}>
-          <span className={styles.subTitle}>{cardData.subTitle}</span>
-          <span className={styles.subValue}>{String(cardData.subValue ?? "")}</span>
-        </div>
-      ) : null}
-    </div>
-  );
+  const config = cardRegistry.get(resolvedProps.variant ?? "default");
+  if (!config) {
+    return null;
+  }
+
+  const CardComponent = config.component;
+
+  return <CardComponent {...config.defaultProps} {...resolvedProps} />;
+};
+
+export const registerCardType = (
+  type: string,
+  component: ComponentType<MetricCardResolvedProps>,
+  defaultProps?: Partial<MetricCardResolvedProps>,
+) => {
+  cardRegistry.register(type, {
+    component,
+    defaultProps,
+  });
+};
+
+export const getRegisteredCardTypes = () => {
+  return cardRegistry.getAllTypes();
 };

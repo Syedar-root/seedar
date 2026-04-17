@@ -5,6 +5,7 @@ import type {
   PanelResponse,
 } from "#pkg/seedar/types";
 import type { ISpec } from "@visactor/vchart";
+import type { MetricCardPanelConfig } from "../../data-display/MetricCard";
 
 import type { GridPanelProps } from "../../layout/GridPanel";
 
@@ -28,6 +29,7 @@ export type PanelContentDescriptor =
       kind: "card";
       queryId?: string;
       formatting?: PanelFormattingConfig;
+      config?: MetricCardPanelConfig;
     }
   | { kind: "text"; content?: ReactNode }
   | { kind: "empty" };
