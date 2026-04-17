@@ -1,4 +1,4 @@
-import { SeedarPanel } from "#pkg/seedar/ui-react";
+import { MetricCard, SeedarPanel } from "#pkg/seedar/ui-react";
 import { PanelStatus } from "#pkg/seedar/types";
 import { Dialog } from "@base-ui/react/dialog";
 import { Segmented } from "antd";
@@ -438,10 +438,6 @@ export const PanelPage = () => {
     />
   );
 
-  console.log("hcs editorConfig", editorConfig);
-  console.log("hcs previewSpec", previewSpec);
-  console.log("hcs tempData", tempData);
-
   return (
     <div ref={containerRef} className={styles.container}>
       {layoutMode === "expanded" ? (
@@ -592,12 +588,24 @@ export const PanelPage = () => {
 
         <main className={styles.mainContent}>
           {previewPanel ? (
-            <SeedarPanel
-              showHeader={false}
-              panelId={panelId ?? previewPanel.id}
-              data={tempData}
-              panel={previewPanel}
-            />
+            displayType === "card" ? (
+              <div className={styles.cardPreviewShell}>
+                <MetricCard
+                  className={styles.cardPreviewCard}
+                  queryId={previewPanel.queryId}
+                  data={tempData}
+                  formatting={editorConfig.formatting}
+                  config={editorConfig.card}
+                />
+              </div>
+            ) : (
+              <SeedarPanel
+                showHeader={false}
+                panelId={panelId ?? previewPanel.id}
+                data={tempData}
+                panel={previewPanel}
+              />
+            )
           ) : (
             <div className={styles.previewEmpty}>{COPY.previewEmpty}</div>
           )}

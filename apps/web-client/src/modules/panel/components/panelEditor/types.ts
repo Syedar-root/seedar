@@ -59,6 +59,11 @@ export type MetricCardVariant = "default" | "withLineChart" | "withProgress";
 export interface CardPanelConfig {
   variant?: MetricCardVariant;
   title?: string;
+  valueField?: string;
+  changeValueField?: string;
+  chartXField?: string;
+  chartYField?: string;
+  progressTargetField?: string;
   prefix?: string;
   suffix?: string;
   width?: string | number;

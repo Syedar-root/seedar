@@ -16,6 +16,11 @@ export interface ChartDataPoint {
 export interface MetricCardPanelConfig {
   variant?: MetricCardVariant;
   title?: string;
+  valueField?: string;
+  changeValueField?: string;
+  chartXField?: string;
+  chartYField?: string;
+  progressTargetField?: string;
   prefix?: string;
   suffix?: string;
   width?: string | number;
@@ -100,6 +105,7 @@ export interface CardTypeConfig {
 export type CardTypeRegistry = Map<string, CardTypeConfig>;
 
 export interface MetricCardDerivedData {
+  rows: unknown[][];
   title?: string;
   value?: number | string;
   secondaryTitle?: string;

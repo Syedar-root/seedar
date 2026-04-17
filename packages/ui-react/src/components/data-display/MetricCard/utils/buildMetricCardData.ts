@@ -73,12 +73,86 @@ const toDisplayValue = (value: unknown): string | number | undefined => {
   return value === undefined || value === null ? undefined : String(value);
 };
 
+const normalizeFieldKey = (value: string | undefined) =>
+  value?.trim().toLowerCase() ?? "";
+
+const getMappingCandidates = (mapping: QueryColumnMapping): string[] =>
+  [
+    mapping.businessName,
+    mapping.displayName,
+    mapping.alias,
+  ]
+    .filter((item): item is string => Boolean(item))
+    .map((item) => item.trim().toLowerCase());
+
+const findMappingByFieldKey = (
+  mappings: QueryColumnMapping[],
+  fieldKey?: string,
+): QueryColumnMapping | undefined => {
+  const normalizedFieldKey = normalizeFieldKey(fieldKey);
+  if (!normalizedFieldKey) {
+    return undefined;
+  }
+
+  return mappings.find((mapping) =>
+    getMappingCandidates(mapping).includes(normalizedFieldKey),
+  );
+};
+
+const getRowValueByMapping = (
+  row: unknown[] | undefined,
+  mapping: QueryColumnMapping | undefined,
+  mappings: QueryColumnMapping[],
+): unknown => {
+  if (!row || !mapping) {
+    return undefined;
+  }
+
+  const index = getMappingIndex(mapping, mappings);
+  if (index < 0) {
+    return undefined;
+  }
+
+  return row[index];
+};
+
+const buildChartData = (params: {
+  rows: unknown[][];
+  mappings: QueryColumnMapping[];
+  xMapping?: QueryColumnMapping;
+  yMapping?: QueryColumnMapping;
+}): ChartDataPoint[] => {
+  const { rows, mappings, xMapping, yMapping } = params;
+
+  return rows
+    .map((row, index) => {
+      const rawXValue = getRowValueByMapping(row, xMapping, mappings);
+      const xValue =
+        typeof rawXValue === "string" || typeof rawXValue === "number"
+          ? rawXValue
+          : index + 1;
+      const yValue = parseNumericValue(getRowValueByMapping(row, yMapping, mappings));
+
+      if (yValue === undefined) {
+        return undefined;
+      }
+
+      return {
+        x: xValue,
+        y: yValue,
+      };
+    })
+    .filter((item): item is ChartDataPoint => Boolean(item));
+};
+
 const buildDerivedData = ({
   formatting,
   rawData,
+  config,
 }: {
   formatting?: PanelFormattingConfig;
   rawData?: ExecuteQueryResponse;
+  config?: MetricCardPanelConfig;
 }): MetricCardDerivedData | undefined => {
   if (!rawData) {
     return undefined;
@@ -95,45 +169,38 @@ const buildDerivedData = ({
   const dimensionMappings = mappings.filter(
     (mapping) => mapping.type === "dimension",
   );
-  const primaryMapping = metricMappings[0] || mappings[0];
-  const secondaryMapping = metricMappings[1];
-  const xMapping = dimensionMappings[0];
+  const fallbackValueMapping = metricMappings[0] || mappings[0];
+  const fallbackSecondaryMapping = metricMappings[1];
+  const valueMapping =
+    findMappingByFieldKey(mappings, config?.valueField) ?? fallbackValueMapping;
+  const secondaryMapping =
+    findMappingByFieldKey(mappings, config?.changeValueField) ??
+    fallbackSecondaryMapping;
+  const chartXMapping =
+    findMappingByFieldKey(mappings, config?.chartXField) ?? dimensionMappings[0];
+  const chartYMapping =
+    findMappingByFieldKey(mappings, config?.chartYField) ?? valueMapping;
 
-  if (!primaryMapping) {
+  if (!valueMapping) {
     return undefined;
   }
 
-  const primaryIndex = getMappingIndex(primaryMapping, mappings);
-  const secondaryIndex = getMappingIndex(secondaryMapping, mappings);
-  const xIndex = getMappingIndex(xMapping, mappings);
-
-  const chartData: ChartDataPoint[] = rows
-    .map((row, index) => {
-      const xValue =
-        xIndex >= 0 ? (row[xIndex] as string | number | undefined) : index + 1;
-      const yValue = parseNumericValue(row[primaryIndex]);
-
-      if ((typeof xValue !== "string" && typeof xValue !== "number") || yValue === undefined) {
-        return undefined;
-      }
-
-      return {
-        x: xValue,
-        y: yValue,
-      };
-    })
-    .filter((item): item is ChartDataPoint => Boolean(item));
-
+  const chartData = buildChartData({
+    rows,
+    mappings,
+    xMapping: chartXMapping,
+    yMapping: chartYMapping,
+  });
   const lastChartPoint = chartData[chartData.length - 1];
 
   return {
-    title: primaryMapping.businessName || primaryMapping.displayName,
-    value: toDisplayValue(firstRow[primaryIndex]),
+    rows,
+    title: valueMapping.businessName || valueMapping.displayName,
+    value: toDisplayValue(getRowValueByMapping(firstRow, valueMapping, mappings)),
     secondaryTitle: secondaryMapping
       ? secondaryMapping.businessName || secondaryMapping.displayName
       : undefined,
-    secondaryValue:
-      secondaryIndex >= 0 ? toDisplayValue(firstRow[secondaryIndex]) : undefined,
+    secondaryValue: getRowValueByMapping(firstRow, secondaryMapping, mappings),
     chartData,
     chartHighlightKeys: lastChartPoint ? [lastChartPoint.x] : [],
     mappings,
@@ -147,16 +214,50 @@ const resolveVariant = (
 
 const resolveTrendDirection = (
   props: MetricCardProps,
-  config?: MetricCardPanelConfig,
-): TrendDirection => props.trendDirection ?? config?.trendDirection ?? "none";
-
-const resolveProgressTarget = (
-  props: MetricCardProps,
   config: MetricCardPanelConfig | undefined,
   derivedData: MetricCardDerivedData | undefined,
-) => {
+): TrendDirection => {
+  if (props.trendDirection) {
+    return props.trendDirection;
+  }
+
+  if (config?.trendDirection && config.trendDirection !== "none") {
+    return config.trendDirection;
+  }
+
+  const numericChangeValue = parseNumericValue(derivedData?.secondaryValue);
+  if (numericChangeValue === undefined || numericChangeValue === 0) {
+    return config?.trendDirection ?? "none";
+  }
+
+  return numericChangeValue > 0 ? "up" : "down";
+};
+
+const resolveProgressTarget = (params: {
+  props: MetricCardProps;
+  config?: MetricCardPanelConfig;
+  derivedData?: MetricCardDerivedData;
+}): number => {
+  const { props, config, derivedData } = params;
   if (typeof props.target === "number" && Number.isFinite(props.target)) {
     return props.target;
+  }
+
+  const mappedTarget = parseNumericValue(
+    (() => {
+      const targetMapping = findMappingByFieldKey(
+        derivedData?.mappings ?? [],
+        config?.progressTargetField,
+      );
+      return getRowValueByMapping(
+        derivedData?.rows[0],
+        targetMapping,
+        derivedData?.mappings ?? [],
+      );
+    })(),
+  );
+  if (mappedTarget !== undefined) {
+    return mappedTarget;
   }
 
   if (
@@ -174,21 +275,62 @@ const resolveProgressTarget = (
   return DEFAULT_PROGRESS_TARGET;
 };
 
-const resolveBaseProps = (
-  props: MetricCardProps,
-  config: MetricCardPanelConfig | undefined,
-  derivedData: MetricCardDerivedData | undefined,
-) => {
+const resolveDisplayValue = (params: {
+  props: MetricCardProps;
+  config?: MetricCardPanelConfig;
+  derivedData?: MetricCardDerivedData;
+  variant: string;
+}): string | number => {
+  const { props, config, derivedData, variant } = params;
+  if (props.value !== undefined) {
+    return props.value;
+  }
+
+  if (variant !== "withLineChart") {
+    return derivedData?.value ?? "--";
+  }
+
+  const explicitValueMapping = findMappingByFieldKey(
+    derivedData?.mappings ?? [],
+    config?.valueField,
+  );
+  const shouldUseChartTail =
+    !explicitValueMapping ||
+    normalizeFieldKey(config?.valueField) === normalizeFieldKey(config?.chartYField);
+
+  if (shouldUseChartTail) {
+    const lastChartPoint = derivedData?.chartData[derivedData.chartData.length - 1];
+    if (lastChartPoint) {
+      return lastChartPoint.y;
+    }
+  }
+
+  return derivedData?.value ?? "--";
+};
+
+const resolveBaseProps = (params: {
+  props: MetricCardProps;
+  config?: MetricCardPanelConfig;
+  derivedData?: MetricCardDerivedData;
+  variant: string;
+}) => {
+  const { props, config, derivedData, variant } = params;
+
   return {
     title: props.title ?? config?.title ?? derivedData?.title ?? "--",
-    value: props.value ?? derivedData?.value ?? "--",
+    value: resolveDisplayValue({
+      props,
+      config,
+      derivedData,
+      variant,
+    }),
     icon: props.icon,
     suffix: props.suffix ?? config?.suffix,
     prefix: props.prefix ?? config?.prefix,
     loading: props.loading,
     onClick: props.onClick,
     className: props.className,
-    trendDirection: resolveTrendDirection(props, config),
+    trendDirection: resolveTrendDirection(props, config, derivedData),
     changeRate: props.changeRate ?? config?.changeRate,
     changeValue:
       props.changeValue ??
@@ -211,15 +353,25 @@ export const buildMetricCardData = ({
   const derivedData = buildDerivedData({
     formatting,
     rawData: data,
+    config,
   });
-  const baseProps = resolveBaseProps(props, config, derivedData);
+  const baseProps = resolveBaseProps({
+    props,
+    config,
+    derivedData,
+    variant,
+  });
 
   if (!baseProps.title || baseProps.value === undefined) {
     return undefined;
   }
 
   if (variant === "withProgress") {
-    const resolvedTarget = resolveProgressTarget(props, config, derivedData);
+    const resolvedTarget = resolveProgressTarget({
+      props,
+      config,
+      derivedData,
+    });
 
     return {
       ...baseProps,
