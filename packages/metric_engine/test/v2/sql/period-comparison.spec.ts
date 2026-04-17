@@ -1,4 +1,6 @@
 import {
+  BetweenExpr,
+  CallExpr,
   ComparisonExpr,
   FieldRefExpr,
   LiteralExpr,
@@ -90,6 +92,41 @@ describe("PeriodComparison SQL builder", () => {
 
     expect(() => builder.build(spec)).toThrow(
       /Missing time filter for period comparison field/,
+    );
+  });
+
+  it("aligns comparison time-grain dimensions back onto the current period axis", () => {
+    const builder = createTestBuilder("pg");
+    const timeField = createTimeField();
+    const periodMetric = createPeriodComparisonMetric({
+      alias: "period_diff",
+      comparisonMode: ComparisonMode.ABSOLUTE,
+      offsetType: PeriodOffsetType.DAY_OVER_DAY,
+      timeField,
+    });
+
+    const spec = createBaseSpec();
+    spec.dimensions.push(
+      new CallExpr("TIME_GRAIN", [timeField, new LiteralExpr("day")], {
+        alias: "created_day",
+      }),
+    );
+    spec.metrics.push(periodMetric);
+    spec.filters.push(
+      new BetweenExpr(
+        timeField,
+        new LiteralExpr("2026-03-22"),
+        new LiteralExpr("2026-03-23"),
+      ),
+    );
+
+    const result = builder.build(spec);
+
+    expect(result.sql).toContain(
+      "SELECT created_day + INTERVAL '1 day' AS created_day FROM comparison_metrics",
+    );
+    expect(result.sql).toContain(
+      "LEFT JOIN comparison_metrics cp ON dk.created_day = cp.created_day + INTERVAL '1 day'",
     );
   });
 });
