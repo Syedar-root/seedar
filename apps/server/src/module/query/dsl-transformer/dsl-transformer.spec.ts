@@ -348,6 +348,77 @@ describe('Dynamic Join Selection', () => {
       expect(dimensionExpr.meta?.businessName).toBe('month_bucket');
     });
 
+    it('should build orderBy for selected dimensions and metrics', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        metrics: [{ id: 1 }],
+        orderBy: [
+          { fieldId: 1, dir: 'asc' as const },
+          { metricId: 1, dir: 'desc' as const },
+        ],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.orderBy).toEqual([
+        { expr: 't1.id', dir: 'asc' },
+        { expr: 'total_amount', dir: 'desc' },
+      ]);
+    });
+
+    it('should require alias when one field maps to multiple selected dimensions', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [
+          1,
+          {
+            derivedKind: 'time_grain' as const,
+            fieldId: 1,
+            grain: 'month' as const,
+            alias: 'month_bucket',
+          },
+        ],
+        metrics: [{ id: 1 }],
+        orderBy: [{ fieldId: 1, dir: 'asc' as const }],
+      };
+
+      expect(() =>
+        DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables),
+      ).toThrow(/多个维度.*alias/i);
+    });
+
+    it('should support alias-based orderBy for derived dimensions', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [
+          {
+            derivedKind: 'time_grain' as const,
+            fieldId: 1,
+            grain: 'month' as const,
+            alias: 'month_bucket',
+          },
+        ],
+        metrics: [{ id: 1 }],
+        orderBy: [{ alias: 'month_bucket', dir: 'desc' as const }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.orderBy).toEqual([{ expr: 'month_bucket', dir: 'desc' }]);
+    });
+
     it('should build bucket derived dimension as ConditionalExpr chain', () => {
       const dsl = {
         datasetId: 1,
@@ -621,6 +692,13 @@ describe('Period Comparison Expressions', () => {
       filters: Array<{ fieldId: number; op: string; value?: any }>;
       tempMetrics: TempMetricDSL[];
       tempMetricOverrides: Partial<TempMetricDSL>;
+      orderBy: Array<{
+        fieldId?: number;
+        metricId?: number;
+        tempMetricId?: string;
+        alias?: string;
+        dir?: 'asc' | 'desc';
+      }>;
     }> = {},
   ) => {
     const { filters, tempMetrics, tempMetricOverrides, ...rest } = overrides;
@@ -844,6 +922,18 @@ describe('Period Comparison Expressions', () => {
     expect(expr.baseMetric).toBeInstanceOf(AggExpr);
     expect((expr.baseMetric as AggExpr).functionName).toBe('SUM');
     expect((expr.baseMetric as AggExpr).arg).toBeInstanceOf(FieldRefExpr);
+  });
+
+  it('should build orderBy for selected temp metrics', () => {
+    const result = DSLTransformerV2.transform(
+      createDsl({
+        orderBy: [{ tempMetricId: 'temp-pop', dir: 'desc' }],
+      }),
+      mockDatasetInfo,
+      mockTables,
+    );
+
+    expect(result.orderBy).toEqual([{ expr: 'amount_mom', dir: 'desc' }]);
   });
 
   it('should reject temp metrics without an effective timeFieldId', () => {
