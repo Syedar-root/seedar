@@ -432,6 +432,7 @@ export const PanelPage = () => {
     <PanelEditor
       fields={dimensionItems}
       metrics={dropMetrics}
+      tempMetrics={tempMetrics}
       config={editorConfig}
       displayType={displayType}
       onChange={handleEditorChange}

@@ -6,6 +6,7 @@ import type {
 
 import { applyFormattingToQueryData } from "../../../../utils/formatting/applyQueryFormatting";
 import type {
+  CardValuePickMode,
   ChartDataPoint,
   MetricCardDerivedData,
   MetricCardPanelConfig,
@@ -21,7 +22,10 @@ const DEFAULT_PROGRESS_TARGET = 100;
 const normalizeMappings = (
   result?: ExecuteQueryResponse,
 ): QueryColumnMapping[] => {
-  if (Array.isArray(result?.columnMappings) && result.columnMappings.length > 0) {
+  if (
+    Array.isArray(result?.columnMappings) &&
+    result.columnMappings.length > 0
+  ) {
     return result.columnMappings;
   }
 
@@ -77,11 +81,7 @@ const normalizeFieldKey = (value: string | undefined) =>
   value?.trim().toLowerCase() ?? "";
 
 const getMappingCandidates = (mapping: QueryColumnMapping): string[] =>
-  [
-    mapping.businessName,
-    mapping.displayName,
-    mapping.alias,
-  ]
+  [mapping.businessName, mapping.displayName, mapping.alias]
     .filter((item): item is string => Boolean(item))
     .map((item) => item.trim().toLowerCase());
 
@@ -116,6 +116,59 @@ const getRowValueByMapping = (
   return row[index];
 };
 
+const getLastMappedValue = (
+  rows: unknown[][],
+  mapping: QueryColumnMapping | undefined,
+  mappings: QueryColumnMapping[],
+): unknown => {
+  if (!mapping || rows.length === 0) {
+    return undefined;
+  }
+
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const value = getRowValueByMapping(rows[index], mapping, mappings);
+    if (value !== undefined && value !== null && value !== "") {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
+const getFirstMappedValue = (
+  rows: unknown[][],
+  mapping: QueryColumnMapping | undefined,
+  mappings: QueryColumnMapping[],
+): unknown => {
+  if (!mapping || rows.length === 0) {
+    return undefined;
+  }
+
+  for (let index = 0; index < rows.length; index += 1) {
+    const value = getRowValueByMapping(rows[index], mapping, mappings);
+    if (value !== undefined && value !== null && value !== "") {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
+const getMappedValueByMode = (params: {
+  rows: unknown[][];
+  mapping: QueryColumnMapping | undefined;
+  mappings: QueryColumnMapping[];
+  mode?: CardValuePickMode;
+}): unknown => {
+  const { rows, mapping, mappings, mode = "last" } = params;
+
+  if (mode === "first") {
+    return getFirstMappedValue(rows, mapping, mappings);
+  }
+
+  return getLastMappedValue(rows, mapping, mappings);
+};
+
 const buildChartData = (params: {
   rows: unknown[][];
   mappings: QueryColumnMapping[];
@@ -131,7 +184,9 @@ const buildChartData = (params: {
         typeof rawXValue === "string" || typeof rawXValue === "number"
           ? rawXValue
           : index + 1;
-      const yValue = parseNumericValue(getRowValueByMapping(row, yMapping, mappings));
+      const yValue = parseNumericValue(
+        getRowValueByMapping(row, yMapping, mappings),
+      );
 
       if (yValue === undefined) {
         return undefined;
@@ -163,13 +218,15 @@ const buildDerivedData = ({
   });
 
   const rows = formattedData.results?.rows || [];
-  const firstRow = rows[0] || [];
   const mappings = normalizeMappings(formattedData);
-  const metricMappings = mappings.filter((mapping) => mapping.type === "metric");
+  const metricMappings = mappings.filter(
+    (mapping) => mapping.type === "metric",
+  );
   const dimensionMappings = mappings.filter(
     (mapping) => mapping.type === "dimension",
   );
-  const fallbackValueMapping = metricMappings[0] || mappings[0];
+  const fallbackValueMapping =
+    metricMappings[metricMappings.length - 1] || mappings[mappings.length - 1];
   const fallbackSecondaryMapping = metricMappings[1];
   const valueMapping =
     findMappingByFieldKey(mappings, config?.valueField) ?? fallbackValueMapping;
@@ -177,7 +234,8 @@ const buildDerivedData = ({
     findMappingByFieldKey(mappings, config?.changeValueField) ??
     fallbackSecondaryMapping;
   const chartXMapping =
-    findMappingByFieldKey(mappings, config?.chartXField) ?? dimensionMappings[0];
+    findMappingByFieldKey(mappings, config?.chartXField) ??
+    dimensionMappings[0];
   const chartYMapping =
     findMappingByFieldKey(mappings, config?.chartYField) ?? valueMapping;
 
@@ -196,11 +254,23 @@ const buildDerivedData = ({
   return {
     rows,
     title: valueMapping.businessName || valueMapping.displayName,
-    value: toDisplayValue(getRowValueByMapping(firstRow, valueMapping, mappings)),
+    value: toDisplayValue(
+      getMappedValueByMode({
+        rows,
+        mapping: valueMapping,
+        mappings,
+        mode: config?.valuePickMode,
+      }),
+    ),
     secondaryTitle: secondaryMapping
       ? secondaryMapping.businessName || secondaryMapping.displayName
       : undefined,
-    secondaryValue: getRowValueByMapping(firstRow, secondaryMapping, mappings),
+    secondaryValue: getMappedValueByMode({
+      rows,
+      mapping: secondaryMapping,
+      mappings,
+      mode: config?.valuePickMode,
+    }),
     chartData,
     chartHighlightKeys: lastChartPoint ? [lastChartPoint.x] : [],
     mappings,
@@ -243,23 +313,6 @@ const resolveProgressTarget = (params: {
     return props.target;
   }
 
-  const mappedTarget = parseNumericValue(
-    (() => {
-      const targetMapping = findMappingByFieldKey(
-        derivedData?.mappings ?? [],
-        config?.progressTargetField,
-      );
-      return getRowValueByMapping(
-        derivedData?.rows[0],
-        targetMapping,
-        derivedData?.mappings ?? [],
-      );
-    })(),
-  );
-  if (mappedTarget !== undefined) {
-    return mappedTarget;
-  }
-
   if (
     typeof config?.progressTarget === "number" &&
     Number.isFinite(config.progressTarget)
@@ -296,10 +349,12 @@ const resolveDisplayValue = (params: {
   );
   const shouldUseChartTail =
     !explicitValueMapping ||
-    normalizeFieldKey(config?.valueField) === normalizeFieldKey(config?.chartYField);
+    normalizeFieldKey(config?.valueField) ===
+      normalizeFieldKey(config?.chartYField);
 
   if (shouldUseChartTail) {
-    const lastChartPoint = derivedData?.chartData[derivedData.chartData.length - 1];
+    const lastChartPoint =
+      derivedData?.chartData[derivedData.chartData.length - 1];
     if (lastChartPoint) {
       return lastChartPoint.y;
     }
@@ -333,12 +388,12 @@ const resolveBaseProps = (params: {
     trendDirection: resolveTrendDirection(props, config, derivedData),
     changeRate: props.changeRate ?? config?.changeRate,
     changeValue:
-      props.changeValue ??
-      config?.changeValue ??
       (typeof derivedData?.secondaryValue === "string" ||
       typeof derivedData?.secondaryValue === "number"
         ? String(derivedData.secondaryValue)
-        : undefined),
+        : undefined) ??
+      props.changeValue ??
+      config?.changeValue,
     width: props.width ?? config?.width,
   };
 };

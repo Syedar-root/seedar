@@ -7,6 +7,7 @@ import type { ComponentType, ReactNode } from "react";
 
 export type TrendDirection = "up" | "down" | "none";
 export type MetricCardVariant = "default" | "withLineChart" | "withProgress";
+export type CardValuePickMode = "first" | "last";
 
 export interface ChartDataPoint {
   x: string | number;
@@ -17,10 +18,10 @@ export interface MetricCardPanelConfig {
   variant?: MetricCardVariant;
   title?: string;
   valueField?: string;
+  valuePickMode?: CardValuePickMode;
   changeValueField?: string;
   chartXField?: string;
   chartYField?: string;
-  progressTargetField?: string;
   prefix?: string;
   suffix?: string;
   width?: string | number;

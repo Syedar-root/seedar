@@ -12,11 +12,13 @@ import { TypeSelector } from "./components/typeSelector/typeSelector";
 import { getConfigComponents } from "./configRegistry";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import type { DragItem } from "../dndHelper/dragZone/dragZone";
+import type { TempMetricConfig } from "../../types";
 import styles from "./panelEditor.module.scss";
 
 interface PanelEditorProps {
   fields: DragItem[];
   metrics: DragItem[];
+  tempMetrics?: TempMetricConfig[];
   config?: PanelEditorConfig;
   displayType?: DisplayPanelType;
   onChange: (displayType: DisplayPanelType, config: PanelEditorConfig) => void;
@@ -25,6 +27,7 @@ interface PanelEditorProps {
 export const PanelEditor: React.FC<PanelEditorProps> = ({
   fields,
   metrics,
+  tempMetrics = [],
   config,
   displayType = "table",
   onChange,
@@ -68,11 +71,19 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
 
   const availableFieldValues = useMemo(() => {
     return new Set(
-      [...fields, ...metrics]
+      [
+        ...fields,
+        ...metrics,
+        ...tempMetrics.map((item) => ({
+          id: item.id,
+          name: item.alias,
+          businessName: item.businessName,
+        })),
+      ]
         .map((item) => item.businessName || item.name)
         .filter((value): value is string => Boolean(value)),
     );
-  }, [fields, metrics]);
+  }, [fields, metrics, tempMetrics]);
 
   useEffect(() => {
     if (!hasInitializedOptionsRef.current) {
@@ -91,6 +102,12 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
       "valueField",
       "sizeField",
     ];
+    const cardMappedKeys: Array<keyof NonNullable<PanelEditorConfig["card"]>> = [
+      "valueField",
+      "changeValueField",
+      "chartXField",
+      "chartYField",
+    ];
 
     const invalidPatch: Partial<PanelEditorConfig> = {};
     let hasInvalidValue = false;
@@ -107,11 +124,32 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
       }
     });
 
-    if (!hasInvalidValue) {
+    const nextCardConfig = currentConfig.card ? { ...currentConfig.card } : undefined;
+    let hasInvalidCardValue = false;
+
+    cardMappedKeys.forEach((key) => {
+      const value = currentConfig.card?.[key];
+      if (
+        typeof value === "string" &&
+        value &&
+        !availableFieldValues.has(value)
+      ) {
+        if (nextCardConfig) {
+          nextCardConfig[key] = undefined;
+        }
+        hasInvalidCardValue = true;
+      }
+    });
+
+    if (!hasInvalidValue && !hasInvalidCardValue) {
       return;
     }
 
-    const nextConfig = { ...currentConfig, ...invalidPatch };
+    const nextConfig = {
+      ...currentConfig,
+      ...invalidPatch,
+      ...(hasInvalidCardValue ? { card: nextCardConfig } : {}),
+    };
     setCurrentConfig(nextConfig);
     onChange(currentType, nextConfig);
   }, [availableFieldValues, currentConfig, currentType, onChange]);
@@ -125,6 +163,7 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
           key={index}
           fields={fields}
           metrics={metrics}
+          tempMetrics={tempMetrics}
           config={currentConfig}
           onChange={handleConfigChange}
         />

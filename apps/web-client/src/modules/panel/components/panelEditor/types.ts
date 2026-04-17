@@ -1,4 +1,5 @@
 import type { DragItem } from "../dndHelper/dragZone/dragZone";
+import type { TempMetricConfig } from "../../types";
 import type {
   PanelFormattingConfig,
   PanelSimpleFormattingRule,
@@ -55,15 +56,16 @@ export interface AxisConfig {
 }
 
 export type MetricCardVariant = "default" | "withLineChart" | "withProgress";
+export type CardValuePickMode = "first" | "last";
 
 export interface CardPanelConfig {
   variant?: MetricCardVariant;
   title?: string;
   valueField?: string;
+  valuePickMode?: CardValuePickMode;
   changeValueField?: string;
   chartXField?: string;
   chartYField?: string;
-  progressTargetField?: string;
   prefix?: string;
   suffix?: string;
   width?: string | number;
@@ -101,6 +103,7 @@ export interface PanelEditorConfig {
 export interface ConfigPanelProps {
   fields: DragItem[];
   metrics: DragItem[];
+  tempMetrics?: TempMetricConfig[];
   config: PanelEditorConfig;
   onChange: (config: Partial<PanelEditorConfig>) => void;
 }
