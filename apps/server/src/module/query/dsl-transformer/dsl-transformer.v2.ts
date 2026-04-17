@@ -72,9 +72,22 @@ export interface QueryDSL {
     periodType?: PeriodOverPeriodType;
     calculationMode?: PeriodCalculationMode;
   }>;
+  orderBy?: QueryOrderByDSL[];
   limit?: number;
   offset?: number;
 }
+
+export type QueryOrderDirection = 'asc' | 'desc';
+
+export type QueryOrderByDSL = {
+  fieldId?: number;
+  metricId?: number;
+  tempMetricId?: string;
+  alias?: string;
+  field?: string;
+  dir?: QueryOrderDirection;
+  direction?: QueryOrderDirection;
+};
 
 export type TimeGrain = 'day' | 'week' | 'month' | 'quarter' | 'year';
 
@@ -1583,6 +1596,167 @@ export class DSLTransformerV2 {
       buildTempMetricExpr(tempMetric),
     );
 
+    const resolveOrderDirection = (
+      order: QueryOrderByDSL,
+    ): QueryOrderDirection => {
+      const dir = order.dir ?? order.direction ?? 'asc';
+      if (dir !== 'asc' && dir !== 'desc') {
+        throw new Error(`不支持的排序方向: ${String(dir)}`);
+      }
+      return dir;
+    };
+
+    const buildOrderExprFromDimension = (expr: Expr): string => {
+      if (expr.meta?.alias) {
+        return expr.meta.alias;
+      }
+      if (expr instanceof FieldRefExpr) {
+        return expr.getQualifiedName();
+      }
+      throw new Error('派生维度排序需要 alias');
+    };
+
+    const selectedDimensions = (dsl.dimensions || []).map((dimension, index) => {
+      const expr = dimensions[index];
+      const fieldId =
+        typeof dimension === 'number'
+          ? dimension
+          : 'fieldId' in dimension
+            ? dimension.fieldId
+            : undefined;
+
+      return {
+        fieldId,
+        alias: expr.meta?.alias,
+        expr,
+        orderExpr: buildOrderExprFromDimension(expr),
+      };
+    });
+
+    const selectedMetrics = (dsl.metrics || []).map((metricItem, index) => {
+      const expr = metrics[index];
+      const alias =
+        expr.meta?.alias ||
+        (expr instanceof FieldRefExpr ? expr.getQualifiedName() : undefined);
+      if (!alias) {
+        throw new Error(`指标 ${metricItem.id} 缺少可排序标识`);
+      }
+
+      return {
+        metricId: metricItem.id,
+        alias,
+      };
+    });
+
+    const selectedTempMetrics = tempMetrics.map((tempMetric, index) => {
+      const expr = tempMetricExprs[index];
+      const alias = expr.meta?.alias;
+      if (!alias) {
+        throw new Error(`临时指标 ${tempMetric.id} 缺少可排序别名`);
+      }
+
+      return {
+        tempMetricId: tempMetric.id,
+        alias,
+      };
+    });
+
+    const resolveOrderAlias = (
+      rawAlias: string,
+      order: QueryOrderByDSL,
+    ): string => {
+      const normalized = rawAlias.trim();
+      if (!normalized) {
+        throw new Error('排序 alias 不能为空');
+      }
+
+      const matchedDimension = selectedDimensions.find(
+        (item) => item.alias === normalized || item.orderExpr === normalized,
+      );
+      if (matchedDimension) {
+        return matchedDimension.orderExpr;
+      }
+
+      const matchedMetric = selectedMetrics.find(
+        (item) => item.alias === normalized,
+      );
+      if (matchedMetric) {
+        return matchedMetric.alias;
+      }
+
+      const matchedTempMetric = selectedTempMetrics.find(
+        (item) => item.alias === normalized,
+      );
+      if (matchedTempMetric) {
+        return matchedTempMetric.alias;
+      }
+
+      throw new Error(
+        `排序项 ${JSON.stringify(order)} 引用了未选中的 alias: ${normalized}`,
+      );
+    };
+
+    const resolveOrderExpr = (order: QueryOrderByDSL): string => {
+      if (order.alias) {
+        return resolveOrderAlias(order.alias, order);
+      }
+
+      if (order.field) {
+        return resolveOrderAlias(order.field, order);
+      }
+
+      if (order.tempMetricId) {
+        const matchedTempMetric = selectedTempMetrics.find(
+          (item) => item.tempMetricId === order.tempMetricId,
+        );
+        if (!matchedTempMetric) {
+          throw new Error(
+            `排序项 ${JSON.stringify(order)} 引用了未选中的临时指标: ${order.tempMetricId}`,
+          );
+        }
+        return matchedTempMetric.alias;
+      }
+
+      if (order.metricId !== undefined) {
+        const matchedMetric = selectedMetrics.find(
+          (item) => item.metricId === order.metricId,
+        );
+        if (!matchedMetric) {
+          throw new Error(
+            `排序项 ${JSON.stringify(order)} 引用了未选中的指标: ${order.metricId}`,
+          );
+        }
+        return matchedMetric.alias;
+      }
+
+      if (order.fieldId !== undefined) {
+        const matchedDimensions = selectedDimensions.filter(
+          (item) => item.fieldId === order.fieldId,
+        );
+        if (matchedDimensions.length === 0) {
+          throw new Error(
+            `排序项 ${JSON.stringify(order)} 引用了未选中的维度字段: ${order.fieldId}`,
+          );
+        }
+        if (matchedDimensions.length > 1) {
+          throw new Error(
+            `字段 ${order.fieldId} 在当前查询中对应多个维度，请改用 alias 排序`,
+          );
+        }
+        return matchedDimensions[0].orderExpr;
+      }
+
+      throw new Error(
+        `排序项 ${JSON.stringify(order)} 必须指定 fieldId、metricId、tempMetricId 或 alias`,
+      );
+    };
+
+    const orderBy =
+      dsl.orderBy?.map((order) => ({
+        expr: resolveOrderExpr(order),
+        dir: resolveOrderDirection(order),
+      })) || undefined;
+
     const filters = (dsl.filters || []).map((filter) => {
       const fieldExpr = resolveField(filter.fieldId);
 
@@ -1717,6 +1891,7 @@ export class DSLTransformerV2 {
       dimensions,
       metrics: [...metrics, ...tempMetricExprs],
       filters,
+      orderBy,
       limit: dsl.limit,
       offset: dsl.offset,
     };
