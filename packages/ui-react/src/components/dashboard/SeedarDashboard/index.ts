@@ -9,5 +9,5 @@ export {
 } from "./SeedarDashboardTriggers";
 export { useSeedarDashboardContext } from "./context/SeedarDashboardContext";
 export { SeedarPanel } from "../SeedarPanel";
-export { Title as SeedarTitle } from "./components/Title";
-export { type TitleType as SeedarTitleType } from "./components/Title";
+export { Title as SeedarTitle } from "../../shared/Title";
+export { type TitleType as SeedarTitleType } from "../../shared/Title";

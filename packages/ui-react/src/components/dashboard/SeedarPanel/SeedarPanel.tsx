@@ -1,7 +1,7 @@
 ﻿import { forwardRef } from "react";
 
 import { GridPanel } from "../../layout/GridPanel";
-import { Title } from "../SeedarDashboard/components/Title";
+import { Title } from "../../shared/Title";
 import { useSeedarPanelContent } from "./hooks/useSeedarPanelContent.hook";
 import { useSeedarPanelData } from "./hooks/useSeedarPanelData.hook";
 import type { SeedarPanelProps } from "./types";
