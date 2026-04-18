@@ -1,3 +1,9 @@
+import type {
+  AiInterruptPayload,
+  AskQuestionParams,
+  InterruptResultPayload,
+} from './ai-interrupt.types';
+
 export type YieldType =
   | "interrupt"
   | "tool_call"
@@ -11,17 +17,24 @@ export type InterruptContent<T> = {
   value: T;
 };
 
+export interface AiChatResumeDto {
+  kind: 'user_message' | 'interrupt_result';
+  message?: string;
+  interruptResult?: InterruptResultPayload;
+}
+
 export interface AiChatRequestDto {
   aiId: string;
-  message: string;
+  message?: string;
   stream?: boolean;
   sessionId?: string;
   isResume?: boolean;
+  resumePayload?: AiChatResumeDto;
 }
 
-export interface AiStreamChunk {
+export interface AiStreamChunk<TInterrupt = AskQuestionParams> {
   sid: string;
-  content: string | InterruptContent<AskQuestionParams>;
+  content: string | InterruptContent<TInterrupt>;
   type: YieldType;
   done: boolean;
   role?: string;
@@ -31,30 +44,31 @@ export interface AiStreamChunk {
   };
 }
 
-export interface AiSseEvent {
+export type AiAgentStreamChunk = AiStreamChunk<AiInterruptPayload>;
+
+export interface AiSseEvent<TInterrupt = AskQuestionParams> {
   type: "ping" | "session" | "message" | "done" | "error";
-  data: string | AiStreamChunk;
+  data: string | AiStreamChunk<TInterrupt>;
   sessionId?: string;
 }
 
-export interface AskQuestion {
-  questions: Array<{
-    id: string;
-    question: string;
-    type: "confirm" | "choice" | "text";
-    options?: {
-      label: string;
-      value: string;
-      description?: string;
-      isOther?: boolean;
-    }[];
-    multiple?: boolean;
-  }>;
-  answers?: {
-    questionId: string;
-    question?: string;
-    answer?: string | string[];
-  }[];
-}
+export type AiAgentSseEvent = AiSseEvent<AiInterruptPayload>;
 
-export type AskQuestionParams = AskQuestion;
+export type {
+  AiInterruptPayload,
+  AskQuestionAnswer,
+  AskQuestionItem,
+  AskQuestionOption,
+  AskQuestionParams,
+  AskQuestionResult,
+  AskUserInterrupt,
+  InterruptResultPayload,
+  WorkflowRunInterrupt,
+} from './ai-interrupt.types';
+
+export type {
+  StartWorkflowRequest,
+  WorkflowAction,
+  WorkflowRunResult,
+  WorkflowTemplate,
+} from './ai-workflow.types';

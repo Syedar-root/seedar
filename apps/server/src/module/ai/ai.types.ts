@@ -44,7 +44,7 @@ export type YieldType =
 
 export type InterruptContent<T> = {
   id: string;
-  values: T;
+  value: T;
 };
 
 interface InterruptAnswer {
