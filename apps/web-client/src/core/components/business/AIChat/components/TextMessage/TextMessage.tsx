@@ -12,9 +12,13 @@ const TextMessage: React.FC<TextMessageProps> = ({ message }) => {
           content={
             typeof message.content === "string"
               ? message.content
-              : message.content.value.questions
-                  .map((q) => q.question)
-                  .join("\n")
+              : message.content.value.kind === "ask_user"
+                ? message.content.value.questions
+                    .map((q) => q.question)
+                    .join("\n")
+                : message.content.value.kind === "workflow_run"
+                  ? `Workflow: ${message.content.value.request.workflowId}`
+                  : ""
           }
         />
       );

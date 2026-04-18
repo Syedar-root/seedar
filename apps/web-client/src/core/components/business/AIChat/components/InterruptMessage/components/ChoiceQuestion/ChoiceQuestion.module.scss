@@ -16,6 +16,10 @@
   align-items: flex-start;
   gap: var(--chat-space-sm);
   cursor: pointer;
+
+  &:has([data-disabled]) {
+    cursor: not-allowed;
+  }
 }
 
 .checkbox-root {
@@ -39,6 +43,12 @@
   &[data-disabled] {
     opacity: 0.5;
     cursor: not-allowed;
+    border-color: var(--chat-border-default);
+    background: color-mix(
+      in oklab,
+      var(--chat-bg-primary) 75%,
+      var(--chat-bg-secondary) 25%
+    );
   }
 }
 
@@ -103,6 +113,19 @@
   &:focus {
     border-color: var(--chat-color-accent);
     box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+  }
+
+  &:disabled,
+  &[data-disabled] {
+    color: var(--chat-color-muted);
+    background: color-mix(
+      in oklab,
+      var(--chat-bg-primary) 70%,
+      var(--chat-bg-secondary) 30%
+    );
+    border-color: var(--chat-border-default);
+    cursor: not-allowed;
+    box-shadow: none;
   }
 
   &::placeholder {

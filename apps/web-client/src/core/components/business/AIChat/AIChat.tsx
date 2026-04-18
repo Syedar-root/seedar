@@ -21,6 +21,7 @@ import {
   LineLoading,
 } from "./components";
 import { createUserMessage } from "./utils/messageAdapter.utils";
+import type { AiChatResumeDto } from "#pkg/seedar/types";
 import type { AIChatProps, ChatMessage, YieldType } from "./types";
 import type { ToolCallMessageProps } from "./components";
 import clsx from "clsx";
@@ -64,10 +65,26 @@ const AIChat: React.FC<AIChatProps> = ({
   }, [messages]);
 
   const handleSend = useCallback(
-    (content: string, isResume?: boolean) => {
-      onSendMessage?.(content, isResume);
+    (
+      content: string,
+      isResume?: boolean,
+      resumePayload?: AiChatResumeDto,
+    ) => {
+      onSendMessage?.(content, isResume, resumePayload);
     },
     [onSendMessage],
+  );
+
+  const hasPendingInterrupt = useMemo(() => {
+    const lastMessage = messages[messages.length - 1];
+    return !loading && lastMessage?.type === "interrupt";
+  }, [loading, messages]);
+
+  const handleUserSubmit = useCallback(
+    (content: string) => {
+      handleSend(content, hasPendingInterrupt);
+    },
+    [handleSend, hasPendingInterrupt],
   );
 
   const { userMessages, assistantGroups } = useMemo(() => {
@@ -148,7 +165,7 @@ const AIChat: React.FC<AIChatProps> = ({
               <InterruptMessage
                 content={msg.content}
                 onSubmit={handleSend}
-                disabled={false}
+                disabled={loading || group[group.length - 1]?.id !== msg.id}
               />
             </div>
           );
@@ -370,7 +387,7 @@ const AIChat: React.FC<AIChatProps> = ({
       <div className={styles["sender-wrapper"]}>
         <EnhancedSender
           loading={loading}
-          onSubmit={handleSend}
+          onSubmit={handleUserSubmit}
           placeholder={placeholder}
           disabled={disabled}
           commands={commands}

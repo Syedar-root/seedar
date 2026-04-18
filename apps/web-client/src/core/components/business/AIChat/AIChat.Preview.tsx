@@ -5,7 +5,7 @@ import { useChatState } from "./hooks/useChatState.hook";
 import { useSSEHandler } from "./hooks/useSSEHandler.hook";
 import type { ChatMessage, SSEData } from "./types";
 import styles from "./AIChat.Preview.module.scss";
-import { AiSessionResponse } from "#pkg/seedar/types";
+import type { AiChatResumeDto, AiSessionResponse } from "#pkg/seedar/types";
 
 const AIChatPreview: React.FC = () => {
   const [currentModel, setCurrentModel] = useState("gpt-4");
@@ -27,6 +27,7 @@ const AIChatPreview: React.FC = () => {
   const handleSendMessage = async (
     content: string,
     isResume: boolean = false,
+    resumePayload?: AiChatResumeDto,
   ) => {
     const session =
       currentSession ||
@@ -63,6 +64,7 @@ const AIChatPreview: React.FC = () => {
           stream: true,
           sessionId: session?.id || undefined,
           isResume: isResume || false,
+          resumePayload,
         },
         {
           onSession: (data) => {},

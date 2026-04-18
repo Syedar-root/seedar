@@ -38,6 +38,19 @@
     box-shadow: 0 0 0 2px var(--primary-light);
   }
 
+  &:disabled,
+  &[data-disabled] {
+    color: var(--chat-color-muted);
+    background: color-mix(
+      in oklab,
+      var(--chat-bg-primary) 70%,
+      var(--chat-bg-secondary) 30%
+    );
+    border-color: var(--chat-border-default);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
   &::placeholder {
     color: var(--chat-color-muted);
   }
@@ -84,6 +97,26 @@
     outline: none;
     box-shadow: 0 0 0 2px var(--ring-color);
   }
+
+  &:disabled,
+  &[data-disabled] {
+    color: var(--chat-color-muted);
+    background: color-mix(
+      in oklab,
+      var(--chat-bg-primary) 70%,
+      var(--chat-bg-secondary) 30%
+    );
+    border-color: var(--chat-border-default);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  &:disabled:hover,
+  &[data-disabled]:hover {
+    color: var(--chat-color-muted);
+    border-color: var(--chat-border-default);
+    box-shadow: none;
+  }
 }
 
 .primary-button {
@@ -106,6 +139,28 @@
   &:focus {
     outline: none;
     box-shadow: 0 0 0 2px var(--primary-light);
+  }
+
+  &:disabled,
+  &[data-disabled] {
+    color: var(--chat-color-muted);
+    background: color-mix(
+      in oklab,
+      var(--chat-color-muted) 18%,
+      var(--chat-bg-secondary) 82%
+    );
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  &:disabled:hover,
+  &[data-disabled]:hover {
+    background: color-mix(
+      in oklab,
+      var(--chat-color-muted) 18%,
+      var(--chat-bg-secondary) 82%
+    );
+    box-shadow: none !important;
   }
 }
 

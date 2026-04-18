@@ -12,7 +12,7 @@ import type {
   CreateAiSessionRequest,
   UpdateAiSessionRequest,
   AiChatRequestDto,
-  AiStreamChunk,
+  AiAgentStreamChunk,
   PaginatedResult,
 } from '#pkg/seedar/types';
 
@@ -126,7 +126,7 @@ export const useAiChat = () => {
     dto: AiChatRequestDto,
     callbacks: {
       onSession?: (data: { sessionId: string; timestamp: string }) => void;
-      onMessage?: (chunk: AiStreamChunk) => void;
+      onMessage?: (chunk: AiAgentStreamChunk) => void;
       onDone?: (data: { sessionId: string }) => void;
       onError?: (error: string) => void;
       onPing?: () => void;

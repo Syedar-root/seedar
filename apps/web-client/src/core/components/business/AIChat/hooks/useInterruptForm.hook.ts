@@ -5,6 +5,7 @@ import type {
   InterruptSubmitData,
   ChoiceOptionItem,
 } from "../types";
+import type { AiChatResumeDto } from "#pkg/seedar/types";
 
 export const parseOptions = (
   options: ChoiceOptionItem[] | undefined,
@@ -14,7 +15,11 @@ export const parseOptions = (
 
 interface UseInterruptFormOptions {
   questions: AskQuestionItem[];
-  onSubmit?: (data: string, isResume: boolean) => void;
+  onSubmit?: (
+    data: string,
+    isResume: boolean,
+    resumePayload?: AiChatResumeDto,
+  ) => void;
   answers?: InterruptAnswer[];
 }
 
@@ -118,7 +123,13 @@ export const useInterruptForm = (
     const submitData: InterruptSubmitData = {
       answers: Array.from(allAnswers.values()),
     };
-    onSubmit?.(`user answer: ${JSON.stringify(submitData)}`, true);
+    onSubmit?.("", true, {
+      kind: "interrupt_result",
+      interruptResult: {
+        kind: "ask_user_result",
+        answers: submitData.answers,
+      },
+    });
     setCurrentIndex(totalQuestions);
   }, [answers, questions, onSubmit, totalQuestions]);
 
@@ -136,7 +147,13 @@ export const useInterruptForm = (
     const submitData: InterruptSubmitData = {
       answers: Array.from(allAnswers.values()),
     };
-    onSubmit?.(`user answer: ${JSON.stringify(submitData)}`, true);
+    onSubmit?.("", true, {
+      kind: "interrupt_result",
+      interruptResult: {
+        kind: "ask_user_result",
+        answers: submitData.answers,
+      },
+    });
     setCurrentIndex(totalQuestions);
   }, [answers, questions, onSubmit, totalQuestions]);
 

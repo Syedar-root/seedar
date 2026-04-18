@@ -1,5 +1,8 @@
 import type React from "react";
 import type {
+  AiAgentStreamChunk,
+  AiChatResumeDto,
+  AiInterruptPayload,
   AiStreamChunk,
   InterruptContent,
   AskQuestionParams as _AskQuestionParams,
@@ -69,7 +72,7 @@ export interface ToolResultMeta {
 export interface SSEData {
   type: MessageType;
   data: {
-    content: string | InterruptContent<_AskQuestionParams>;
+    content: string | InterruptContent<AiInterruptPayload>;
     type?: MessageType;
     done: boolean;
     role: "user" | "clarify" | "act";
@@ -81,7 +84,7 @@ export interface SSEData {
 export interface ChatMessage {
   id: string;
   type: MessageType;
-  content: string | InterruptContent<_AskQuestionParams>;
+  content: string | InterruptContent<AiInterruptPayload>;
   role: "user" | "clarify" | "act";
   timestamp: number;
   done: boolean;
@@ -105,7 +108,11 @@ export interface ModelItem {
 export interface AIChatProps {
   messages?: ChatMessage[];
   loading?: boolean;
-  onSendMessage?: (content: string, isResume?: boolean) => void;
+  onSendMessage?: (
+    content: string,
+    isResume?: boolean,
+    resumePayload?: AiChatResumeDto,
+  ) => void;
   sseData?: SSEData;
   placeholder?: string;
   disabled?: boolean;
@@ -152,8 +159,12 @@ export interface OnInterruptSubmitCallback {
 }
 
 export interface InterruptMessageProps {
-  content: string | InterruptContent<AskQuestionParams>;
-  onSubmit?: (data: string, isResume: boolean) => void;
+  content: string | InterruptContent<AiInterruptPayload>;
+  onSubmit?: (
+    data: string,
+    isResume: boolean,
+    resumePayload?: AiChatResumeDto,
+  ) => void;
   disabled?: boolean;
 }
 
@@ -178,5 +189,5 @@ export interface SessionActions {
 }
 
 export interface AiStreamChunkAdapter {
-  (chunk: AiStreamChunk): ChatMessage;
+  (chunk: AiAgentStreamChunk): ChatMessage;
 }

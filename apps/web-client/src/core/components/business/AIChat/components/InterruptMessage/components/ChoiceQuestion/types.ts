@@ -10,6 +10,7 @@ export interface ChoiceQuestionProps {
   options: ChoiceOptionItem[];
   value: string[];
   otherInput: string;
+  disabled?: boolean;
   onChange: (value: string[]) => void;
   onOtherInputChange: (value: string) => void;
 }

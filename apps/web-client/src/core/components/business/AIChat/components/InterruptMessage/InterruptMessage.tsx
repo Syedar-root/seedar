@@ -6,6 +6,7 @@ import type {
   AskQuestionItem,
   ChoiceOptionItem,
 } from "../../types";
+import type { AiInterruptPayload } from "#pkg/seedar/types";
 import {
   useInterruptForm,
   parseOptions,
@@ -59,10 +60,58 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
   onSubmit,
   disabled = false,
 }) => {
+  const interruptValue: AiInterruptPayload | null =
+    typeof content === "string" ? null : content.value;
+
+  if (interruptValue?.kind === "workflow_run") {
+    const { interruptId, request } = interruptValue;
+    return (
+      <div className={styles["container"]}>
+        <div className={styles["header"]}>Workflow 请求</div>
+        <div className={styles["summary-area"]}>
+          <h3>{request.workflowId}</h3>
+          <p>前端 workflow executor 尚未实现，当前先返回 blocked 结果。</p>
+          {request.params ? (
+            <pre>{JSON.stringify(request.params, null, 2)}</pre>
+          ) : null}
+        </div>
+        <div className={styles["footer-container"]}>
+          <div className={styles["footer-right"]}>
+            <Button
+              className={styles["primary-button"]}
+              disabled={disabled}
+              onClick={() => {
+                onSubmit?.("", true, {
+                  kind: "interrupt_result",
+                  interruptResult: {
+                    kind: "workflow_result",
+                    interruptId,
+                    workflowId: request.workflowId,
+                    status: "blocked",
+                    error: {
+                      code: "WORKFLOW_EXECUTOR_NOT_READY",
+                      message: "前端 workflow executor 尚未实现",
+                    },
+                  },
+                });
+              }}
+            >
+              返回 blocked 结果
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const questions: AskQuestionItem[] =
-    typeof content === "string" ? [] : content.value.questions;
+    typeof content === "string" || interruptValue?.kind !== "ask_user"
+      ? []
+      : interruptValue.questions;
   const propsAnswers =
-    typeof content === "string" ? undefined : content.value.answers;
+    typeof content === "string" || interruptValue?.kind !== "ask_user"
+      ? undefined
+      : interruptValue.answers;
 
   const {
     currentIndex,
@@ -141,6 +190,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
   }, [currentIndex, currentQuestion, answers]);
 
   const handleCancel = () => {
+    if (disabled) return;
     cancelAndSubmit();
   };
 
@@ -181,7 +231,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
   };
 
   const saveCurrentAnswer = () => {
-    if (!currentQuestion) return;
+    if (!currentQuestion || disabled) return;
 
     const answer = getCurrentAnswer();
     const isEmptyAnswer =
@@ -195,12 +245,13 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
   };
 
   const handleJumpTo = (index: number) => {
+    if (disabled) return;
     saveCurrentAnswer();
     jumpTo(index);
   };
 
   const handleNext = () => {
-    if (!currentQuestion) return;
+    if (!currentQuestion || disabled) return;
 
     saveCurrentAnswer();
 
@@ -221,15 +272,25 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
             onValueChange={(val) =>
               dispatch({ type: "SET_TEXT", payload: val })
             }
+            disabled={disabled}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && formState.textValue.trim()) {
+              if (e.key === "Enter" && formState.textValue.trim() && !disabled) {
                 onSubmit?.(
-                  `user answer: ${JSON.stringify({
-                    questionId: "text",
-                    question: content,
-                    answer: formState.textValue,
-                  })}`,
+                  "",
                   true,
+                  {
+                    kind: "interrupt_result",
+                    interruptResult: {
+                      kind: "ask_user_result",
+                      answers: [
+                        {
+                          questionId: "text",
+                          question: content,
+                          answer: formState.textValue,
+                        },
+                      ],
+                    },
+                  },
                 );
               }
             }}
@@ -238,15 +299,25 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
           />
           <Button
             className={styles["primary-button"]}
+            disabled={disabled}
             onClick={() => {
-              if (formState.textValue.trim()) {
+              if (formState.textValue.trim() && !disabled) {
                 onSubmit?.(
-                  `user answer: ${JSON.stringify({
-                    questionId: "text",
-                    question: content,
-                    answer: formState.textValue,
-                  })}`,
+                  "",
                   true,
+                  {
+                    kind: "interrupt_result",
+                    interruptResult: {
+                      kind: "ask_user_result",
+                      answers: [
+                        {
+                          questionId: "text",
+                          question: content,
+                          answer: formState.textValue,
+                        },
+                      ],
+                    },
+                  },
                 );
               }
             }}
@@ -297,6 +368,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
           <TextQuestion
             question={currentQuestion.question}
             value={formState.textValue}
+            disabled={disabled}
             onChange={(val) => dispatch({ type: "SET_TEXT", payload: val })}
           />
         );
@@ -305,6 +377,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
           <ConfirmQuestion
             question={currentQuestion.question}
             value={formState.confirmValue}
+            disabled={disabled}
             onChange={(val) => dispatch({ type: "SET_CONFIRM", payload: val })}
           />
         );
@@ -315,6 +388,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
             options={parseOptions(currentQuestion.options)}
             value={formState.choiceValue}
             otherInput={formState.choiceOtherInput}
+            disabled={disabled}
             onChange={(val) => dispatch({ type: "SET_CHOICE", payload: val })}
             onOtherInputChange={(val) =>
               dispatch({ type: "SET_CHOICE_OTHER", payload: val })
@@ -347,6 +421,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
           <Button
             className={styles["default-button"]}
             onClick={handleCancel}
+            disabled={disabled}
             aria-label="取消"
           >
             取消
@@ -354,6 +429,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
           <Button
             className={styles["primary-button"]}
             onClick={handleNext}
+            disabled={disabled}
             aria-label={
               currentIndex === totalQuestions - 1 ? "完成" : "下一个问题"
             }

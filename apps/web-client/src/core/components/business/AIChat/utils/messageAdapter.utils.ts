@@ -1,5 +1,5 @@
 import type { ChatMessage, MessageType } from "../types";
-import type { AiStreamChunk } from "#pkg/seedar/types";
+import type { AiAgentStreamChunk } from "#pkg/seedar/types";
 import { v7 } from "uuid";
 
 export const adaptMessageToBubble = (message: ChatMessage) => {
@@ -43,7 +43,7 @@ export const createAssistantMessage = (
 };
 
 export const adaptAiStreamChunkToChatMessage = (
-  chunk: AiStreamChunk,
+  chunk: AiAgentStreamChunk,
   existingMessageId?: string,
 ): ChatMessage => {
   const type: MessageType = (chunk.type as MessageType) || "text";
@@ -66,7 +66,7 @@ export const adaptAiStreamChunkToChatMessage = (
 
 export const updateChatMessageWithChunk = (
   message: ChatMessage,
-  chunk: AiStreamChunk,
+  chunk: AiAgentStreamChunk,
 ): ChatMessage => {
   const content =
     typeof message.content === "string" && typeof chunk.content === "string"

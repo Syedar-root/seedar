@@ -8,7 +8,7 @@ import {
   CreateAiSessionRequest,
   UpdateAiSessionRequest,
   AiChatRequestDto,
-  AiStreamChunk,
+  AiAgentStreamChunk,
   PaginatedResult,
 } from "#pkg/seedar/types";
 
@@ -77,7 +77,7 @@ export class AiApi {
     dto: AiChatRequestDto,
     callbacks: {
       onSession?: (data: { sessionId: string; timestamp: string }) => void;
-      onMessage?: (chunk: AiStreamChunk) => void;
+      onMessage?: (chunk: AiAgentStreamChunk) => void;
       onDone?: (data: { sessionId: string }) => void;
       onError?: (error: string) => void;
       onPing?: () => void;
@@ -133,7 +133,7 @@ export class AiApi {
 
                 const event = JSON.parse(data) as {
                   type: string;
-                  data: string | AiStreamChunk;
+                  data: string | AiAgentStreamChunk;
                 };
 
                 switch (event.type) {
@@ -145,7 +145,7 @@ export class AiApi {
                     break;
                   case "message":
                     callbacks.onMessage?.({
-                      ...(event.data as AiStreamChunk),
+                      ...(event.data as AiAgentStreamChunk),
                       done: false,
                     });
                     break;

@@ -21,6 +21,19 @@
     box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
   }
 
+  &:disabled,
+  &[data-disabled] {
+    color: var(--chat-color-muted);
+    background: color-mix(
+      in oklab,
+      var(--chat-bg-primary) 70%,
+      var(--chat-bg-secondary) 30%
+    );
+    border-color: var(--chat-border-default);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
   &::placeholder {
     color: var(--chat-color-muted);
   }

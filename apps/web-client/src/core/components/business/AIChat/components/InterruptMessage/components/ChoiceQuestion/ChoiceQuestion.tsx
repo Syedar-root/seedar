@@ -1,14 +1,15 @@
-import React from 'react';
-import { Checkbox } from '@base-ui/react/checkbox';
-import { Input } from '@base-ui/react/input';
-import type { ChoiceQuestionProps } from './types';
-import styles from './ChoiceQuestion.module.scss';
+import React from "react";
+import { Checkbox } from "@base-ui/react/checkbox";
+import { Input } from "@base-ui/react/input";
+import type { ChoiceQuestionProps } from "./types";
+import styles from "./ChoiceQuestion.module.scss";
 
 const ChoiceQuestion: React.FC<ChoiceQuestionProps> = ({
   question,
   options,
   value,
   otherInput,
+  disabled = false,
   onChange,
   onOtherInputChange,
 }) => {
@@ -18,6 +19,7 @@ const ChoiceQuestion: React.FC<ChoiceQuestionProps> = ({
   });
 
   const handleCheckboxChange = (checkedValue: string, checked: boolean) => {
+    if (disabled) return;
     if (checked) {
       onChange([...value, checkedValue]);
     } else {
@@ -27,24 +29,23 @@ const ChoiceQuestion: React.FC<ChoiceQuestionProps> = ({
 
   return (
     <div>
-      <div className={styles['question-title']}>
-        {question}
-      </div>
-      <div className={styles['options-list']}>
+      <div className={styles["question-title"]}>{question}</div>
+      <div className={styles["options-list"]}>
         {options.map((option, index) => (
-          <label key={index} className={styles['option-item']}>
+          <label key={index} className={styles["option-item"]}>
             <Checkbox.Root
               checked={value.includes(option.value)}
-              onCheckedChange={(checked) => handleCheckboxChange(option.value, checked)}
-              className={styles['checkbox-root']}
+              onCheckedChange={(checked) =>
+                handleCheckboxChange(option.value, checked)
+              }
+              disabled={disabled}
+              className={styles["checkbox-root"]}
             >
-              <Checkbox.Indicator className={styles['checkbox-indicator']} />
+              <Checkbox.Indicator className={styles["checkbox-indicator"]} />
             </Checkbox.Root>
-            <span className={styles['option-label']}>
-              {option.label}
-            </span>
+            <span className={styles["option-label"]}>{option.label}</span>
             {option.description && (
-              <div className={styles['option-description']}>
+              <div className={styles["option-description"]}>
                 {option.description}
               </div>
             )}
@@ -52,12 +53,13 @@ const ChoiceQuestion: React.FC<ChoiceQuestionProps> = ({
         ))}
       </div>
       {hasOtherSelected && (
-        <div className={styles['other-input']}>
+        <div className={styles["other-input"]}>
           <Input
             value={otherInput}
             onValueChange={(val) => onOtherInputChange(val)}
+            disabled={disabled}
             placeholder="请输入其他内容..."
-            className={styles['other-input-field']}
+            className={styles["other-input-field"]}
           />
         </div>
       )}
