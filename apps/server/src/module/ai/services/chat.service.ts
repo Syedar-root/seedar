@@ -1,7 +1,9 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { AiService } from './ai.service';
 import {
-  AskQuestion,
+  AiAgentStreamChunk,
+  AiChatResumeDto,
+  AiInterruptPayload,
   InterruptContent,
   LLMConfig,
   StreamChunk,
@@ -66,7 +68,12 @@ export class ChatService {
 
   private readonly DEMAND_TOOL_MAP = {
     'data-query': ['getDataAtTemp', 'getDatasetInfo'],
-    'chart-recommend': ['askQuestion', 'getCurrentTime'],
+    'chart-recommend': [
+      'askQuestion',
+      'getCurrentTime',
+      'workflowMarket',
+      'startWorkflow',
+    ],
     'convert-to-backend': [],
   };
 
@@ -233,6 +240,8 @@ export class ChatService {
       const essentialTools = [
         'askQuestion',
         'getCurrentTime',
+        'workflowMarket',
+        'startWorkflow',
         'toolMarket',
         'toolMarketExecutor',
       ];
@@ -295,7 +304,11 @@ export class ChatService {
     };
   }
 
-  private readonly BLACKLIST_TOOL_NAMES: RegExp[] = [/askQuestion/, /extract/];
+  private readonly BLACKLIST_TOOL_NAMES: RegExp[] = [
+    /askQuestion/,
+    /startWorkflow/,
+    /extract/,
+  ];
 
   /**
    * 处理流式对话请求
@@ -306,10 +319,11 @@ export class ChatService {
    */
   async *streamChat(
     aiId: string,
-    message: string,
+    message: string | undefined,
     sessionId: string,
     isResume: boolean = false,
-  ): AsyncGenerator<StreamChunk<AskQuestion>, void, unknown> {
+    resumePayload?: AiChatResumeDto,
+  ): AsyncGenerator<AiAgentStreamChunk, void, unknown> {
     try {
       // 步骤1: 获取会话信息
       const session = await this.aiSessionService.findOne(sessionId);
@@ -317,13 +331,23 @@ export class ChatService {
       // 步骤2: 创建对话图
       const agent = await this.createGraph(aiId);
 
+      if (!isResume && !message) {
+        throw new InternalServerErrorException('初始对话缺少 message');
+      }
+
       // 步骤3: 启动流式对话
       const stream = await agent.stream(
         !isResume
           ? {
               messages: [new HumanMessage({ content: message })],
             }
-          : new Command({ resume: { message } }),
+          : new Command({
+              resume:
+                resumePayload ||
+                (message
+                  ? { kind: 'user_message', message }
+                  : { kind: 'user_message' }),
+            }),
         {
           streamMode: ['messages', 'values'],
           configurable: {
@@ -349,7 +373,7 @@ export class ChatService {
             lastType = 'interrupt';
             yield {
               sid: currentSid,
-              content: interruptData[0] as InterruptContent<AskQuestionParams>,
+              content: interruptData[0] as InterruptContent<AiInterruptPayload>,
               type: 'interrupt',
               done: false,
             };

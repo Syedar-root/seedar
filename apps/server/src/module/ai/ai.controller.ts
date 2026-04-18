@@ -24,7 +24,7 @@ import {
   AiSessionResponse,
   CreateAiSessionRequest,
 } from './dto';
-import { PaginatedResult } from './ai.types';
+import { AiChatResumeDto, PaginatedResult } from './ai.types';
 import { Observable } from 'rxjs';
 import { AiSessionService } from './services';
 
@@ -84,6 +84,7 @@ export class AiController {
       dto.message,
       sessionId,
       dto.isResume,
+      dto.resumePayload as AiChatResumeDto | undefined,
     );
 
     // 🔥 仅包装成 @Sse 要求的 Observable，内部逻辑完全是你的

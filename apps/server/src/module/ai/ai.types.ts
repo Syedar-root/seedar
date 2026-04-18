@@ -1,4 +1,4 @@
-import { AskQuestionParams } from './services/toolSchema';
+import { AskQuestionParams, StartWorkflowParams } from './services/toolSchema';
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -47,14 +47,53 @@ export type InterruptContent<T> = {
   value: T;
 };
 
-interface InterruptAnswer {
+export interface InterruptAnswer {
   questionId: string;
   question?: string;
   answer?: string | string[];
 }
 
+export interface AskUserInterrupt extends AskQuestionParams {
+  kind: 'ask_user';
+}
+
+export interface WorkflowRunInterrupt {
+  kind: 'workflow_run';
+  interruptId: string;
+  request: StartWorkflowParams;
+}
+
+export type AiInterruptPayload = AskUserInterrupt | WorkflowRunInterrupt;
+
 export interface AskQuestion extends AskQuestionParams {
   answers?: InterruptAnswer[];
+}
+
+export interface AskQuestionResult {
+  kind: 'ask_user_result';
+  answers: InterruptAnswer[];
+}
+
+export interface WorkflowRunResultPayload {
+  kind: 'workflow_result';
+  interruptId: string;
+  workflowId: string;
+  status: 'success' | 'failed' | 'blocked';
+  output?: Record<string, unknown>;
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+export type InterruptResultPayload =
+  | AskQuestionResult
+  | WorkflowRunResultPayload;
+
+export interface AiChatResumeDto {
+  kind: 'user_message' | 'interrupt_result';
+  message?: string;
+  interruptResult?: InterruptResultPayload;
 }
 
 export type StreamChunkContent<T> = string | InterruptContent<T>;
@@ -70,3 +109,5 @@ export interface StreamChunk<T> {
     tool_result?: { tool_call_id: string };
   };
 }
+
+export type AiAgentStreamChunk = StreamChunk<AiInterruptPayload>;

@@ -1,11 +1,31 @@
-import { IsString, IsOptional, IsBoolean, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsUUID,
+  IsObject,
+} from 'class-validator';
+
+export class AiChatResumeDto {
+  @IsString()
+  kind: 'user_message' | 'interrupt_result';
+
+  @IsOptional()
+  @IsString()
+  message?: string;
+
+  @IsOptional()
+  @IsObject()
+  interruptResult?: Record<string, unknown>;
+}
 
 export class AiChatRequestDto {
   @IsUUID()
   aiId: string;
 
+  @IsOptional()
   @IsString()
-  message: string;
+  message?: string;
 
   @IsOptional()
   @IsBoolean()
@@ -18,4 +38,8 @@ export class AiChatRequestDto {
   @IsOptional()
   @IsBoolean()
   isResume?: boolean;
+
+  @IsOptional()
+  @IsObject()
+  resumePayload?: AiChatResumeDto;
 }

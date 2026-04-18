@@ -12,11 +12,11 @@ const OperatorList = ['=', '!=', '>', '>=', '<', '<='] as const;
 const getDataAtTempSchema = z.object({
   dsl: z.object({
     datasetId: z.union([z.string(), z.number()]).describe('数据集 ID'),
-    tableId: z.number().describe('主表ID'),
-    dimensions: z.array(z.number()).describe('维度ID列表').optional(),
+    tableId: z.number().describe('主表 ID'),
+    dimensions: z.array(z.number()).describe('维度 ID 列表').optional(),
     metrics: z
       .array(z.object({ id: z.number() }))
-      .describe('指标ID列表')
+      .describe('指标 ID 列表')
       .optional(),
     filters: z
       .array(
@@ -43,23 +43,17 @@ const askQuestionSchema = z.object({
         question: z.string().describe('用户问题'),
         type: z
           .enum(['confirm', 'choice', 'text'])
-          .describe(
-            '问题类型，confirm/choice/text，confirm为确认问题，choice为单选/多选问题，text为文本问题',
-          ),
+          .describe('问题类型：confirm/choice/text'),
         options: z
           .array(
             z.object({
               label: z.string().describe('选项标签'),
-              value: z
-                .string()
-                .describe('选项值, 用于提交时识别, 一般和选项标签一致'),
+              value: z.string().describe('选项值'),
               description: z.string().describe('选项描述').optional(),
               isOther: z
                 .boolean()
                 .default(false)
-                .describe(
-                  '是否为「其他」选项, 有时需要用户补充选项，默认false',
-                ),
+                .describe('是否为“其他”选项'),
             }),
           )
           .describe('选项列表')
@@ -71,6 +65,16 @@ const askQuestionSchema = z.object({
 });
 
 type AskQuestionParams = z.infer<typeof askQuestionSchema>;
+
+const startWorkflowSchema = z.object({
+  workflowId: z.string().describe('要执行的 workflow 模板 ID'),
+  params: z
+    .record(z.string(), z.any())
+    .optional()
+    .describe('workflow 启动参数'),
+});
+
+type StartWorkflowParams = z.infer<typeof startWorkflowSchema>;
 
 const toolMarketExecutorSchema = z.object({
   toolName: z.string().describe('执行的工具名称'),
@@ -86,6 +90,8 @@ export {
   type GetDataAtTempParams,
   askQuestionSchema,
   type AskQuestionParams,
+  startWorkflowSchema,
+  type StartWorkflowParams,
   toolMarketExecutorSchema,
   type ToolMarketExecutorParams,
 };

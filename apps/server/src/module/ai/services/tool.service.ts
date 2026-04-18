@@ -14,6 +14,8 @@ import {
   askQuestionSchema,
   getDataAtTempSchema,
   getDatasetInfoSchema,
+  startWorkflowSchema,
+  type StartWorkflowParams,
   toolMarketExecutorSchema,
   type ToolMarketExecutorParams,
 } from './toolSchema';
@@ -41,7 +43,37 @@ function Seedar_Tool(config: ToolConfig): MethodDecorator {
 @Injectable()
 export class ToolService {
   private toolMethods: Array<{ method: ToolMethod; config: ToolConfig }> = [];
-  private INTERRUPT_TOOL_NAMES = ['askQuestion'];
+  private INTERRUPT_TOOL_NAMES = ['askQuestion', 'startWorkflow'];
+  private readonly WORKFLOW_TEMPLATES = [
+    {
+      id: 'create_empty_panel_draft_v1',
+      title: '创建空白图表草稿',
+      actions: [
+        { type: 'navigate', target: '/panel/create' },
+        { type: 'trigger_action', target: 'save_draft' },
+      ],
+    },
+    {
+      id: 'select_dataset_for_panel_v1',
+      title: '为当前图表选择数据集',
+      actions: [
+        { type: 'trigger_action', target: 'open_dataset_selector' },
+        { type: 'trigger_action', target: 'select_dataset' },
+        { type: 'trigger_action', target: 'confirm_dataset_selection' },
+      ],
+    },
+    {
+      id: 'create_panel_basic_v1',
+      title: '创建基础图表',
+      actions: [
+        { type: 'navigate', target: '/panel/create' },
+        { type: 'trigger_action', target: 'select_dataset' },
+        { type: 'trigger_action', target: 'set_panel_title' },
+        { type: 'trigger_action', target: 'set_display_type' },
+        { type: 'trigger_action', target: 'run_preview' },
+      ],
+    },
+  ];
 
   constructor(
     private readonly datasetService: DatasetService,
@@ -178,12 +210,51 @@ export class ToolService {
     });
 
     const response = interrupt({
+      kind: 'ask_user',
       questions: questions.map((q) => ({
         ...q,
         id: `${q.type}_${randomUUID()}`,
       })),
     });
     return response;
+  }
+
+  @Seedar_Tool({
+    name: 'workflowMarket',
+    description:
+      'workflow 模板市场，返回当前可用的 workflow 模板列表及其基础说明',
+  })
+  public workflowMarket() {
+    return {
+      workflows: this.WORKFLOW_TEMPLATES,
+    };
+  }
+
+  @Seedar_Tool({
+    name: 'startWorkflow',
+    description:
+      '启动一个预定义的 workflow 模板。适用于前端业务流程执行，agent 应优先选择模板并填写参数，而不是自由拼接长链 actions。',
+    schema: startWorkflowSchema,
+  })
+  public startWorkflow({ workflowId, params }: StartWorkflowParams) {
+    const workflow = this.WORKFLOW_TEMPLATES.find((item) => item.id === workflowId);
+
+    if (!workflow) {
+      throw new BusinessException(
+        ExceptionType.AI_AGENT_TOOL_FAILED,
+        `workflow ${workflowId} 不存在`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    return interrupt({
+      kind: 'workflow_run',
+      interruptId: randomUUID(),
+      request: {
+        workflowId,
+        params,
+      },
+    });
   }
 
   @Seedar_Tool({
@@ -194,7 +265,7 @@ export class ToolService {
   public toolMarket() {
     return {
       toolInfoList: this.getToolConfigs().filter(
-        (tool) => tool.name !== 'toolMarket',
+        (tool) => !['toolMarket', 'workflowMarket'].includes(tool.name),
       ),
     };
   }
