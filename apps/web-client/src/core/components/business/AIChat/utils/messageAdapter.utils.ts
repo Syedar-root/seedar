@@ -22,6 +22,7 @@ export const createUserMessage = (content: string): ChatMessage => {
     id: generateMessageId(),
     type: "text",
     content,
+    displayContent: content,
     role: "user",
     timestamp: Date.now(),
     done: true,

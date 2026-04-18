@@ -3,9 +3,28 @@ import { useAiApi, useAis, useCreateAiSession } from "#pkg/seedar/ui-react";
 import { AIChat } from "./";
 import { useChatState } from "./hooks/useChatState.hook";
 import { useSSEHandler } from "./hooks/useSSEHandler.hook";
-import type { ChatMessage, SSEData } from "./types";
+import type { ChatMessage, CommandItem, SSEData } from "./types";
 import styles from "./AIChat.Preview.module.scss";
 import type { AiChatResumeDto, AiSessionResponse } from "#pkg/seedar/types";
+import { formatMessageForDisplay } from "./utils/command.utils";
+
+const AI_CHAT_COMMANDS_RECORD = {
+  dataQuery: {
+    key: "data-query",
+    label: "数据查询",
+    description: "让 agent 进入数据查询能力。",
+  },
+  chartRecommend: {
+    key: "chart-recommend",
+    label: "图表推荐",
+    description: "让 agent 进入图表推荐能力，优先使用图表分析和 workflow 工具。",
+  },
+  panelWorkflow: {
+    key: "chart-workflow-create-panel",
+    label: "创建图表",
+    description: "让 agent 优先选择预定义 workflow，协助创建图表面板。",
+  },
+} satisfies Record<string, CommandItem>;
 
 const AIChatPreview: React.FC = () => {
   const [currentModel, setCurrentModel] = useState("gpt-4");
@@ -23,6 +42,7 @@ const AIChatPreview: React.FC = () => {
   const aiApi = useAiApi();
   const { data: aisData } = useAis();
   const { mutateAsync: createSession } = useCreateAiSession();
+  const commands = useMemo(() => Object.values(AI_CHAT_COMMANDS_RECORD), []);
 
   const handleSendMessage = async (
     content: string,
@@ -42,11 +62,11 @@ const AIChatPreview: React.FC = () => {
       ));
 
     if (!isResume) {
-      // isResume表示从中断恢复，中断信息不需要添加到消息列表
       const userMessage: ChatMessage = {
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         type: "text",
         content,
+        displayContent: formatMessageForDisplay(content, commands),
         role: "user",
         timestamp: Date.now(),
         done: true,
@@ -67,7 +87,7 @@ const AIChatPreview: React.FC = () => {
           resumePayload,
         },
         {
-          onSession: (data) => {},
+          onSession: () => {},
           onMessage: (chunk) => {
             const sseData: SSEData = {
               type: chunk.type,
@@ -105,7 +125,6 @@ const AIChatPreview: React.FC = () => {
   };
 
   const handleModelChange = (modelKey: string) => {
-    console.log("modelKey", modelKey);
     setCurrentModel(modelKey);
   };
 
@@ -139,24 +158,13 @@ const AIChatPreview: React.FC = () => {
             console.log("显示历史记录");
           }}
           onSendMessage={handleSendMessage}
+          commands={commands}
           models={models}
           currentModel={currentModel}
           onModelChange={handleModelChange}
         />
         {error && <div style={{ color: "red" }}>Error: {error}</div>}
       </section>
-
-      {/* <section className={styles["preview-section"]}>
-        <h2 className={styles["section-title"]}>无 AI ID 示例（仅本地消息）</h2>
-        <AIChat
-          messages={[]}
-          placeholder="输入消息..."
-          title="本地对话"
-          onSendMessage={(content: string) => {
-            console.log("本地发送消息:", content);
-          }}
-        />
-      </section> */}
     </div>
   );
 };

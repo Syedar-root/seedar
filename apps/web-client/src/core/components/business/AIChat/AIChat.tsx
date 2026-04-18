@@ -6,6 +6,7 @@ import {
   ThoughtChainItemType,
   Think,
 } from "@ant-design/x";
+import { Tag } from "antd";
 import styles from "./AIChat.module.scss";
 import "./variables.css";
 import { useChatState } from "./hooks/useChatState.hook";
@@ -21,6 +22,10 @@ import {
   LineLoading,
 } from "./components";
 import { createUserMessage } from "./utils/messageAdapter.utils";
+import {
+  formatMessageForDisplay,
+  resolveCommandFromMessage,
+} from "./utils/command.utils";
 import type { AiChatResumeDto } from "#pkg/seedar/types";
 import type { AIChatProps, ChatMessage, YieldType } from "./types";
 import type { ToolCallMessageProps } from "./components";
@@ -65,11 +70,7 @@ const AIChat: React.FC<AIChatProps> = ({
   }, [messages]);
 
   const handleSend = useCallback(
-    (
-      content: string,
-      isResume?: boolean,
-      resumePayload?: AiChatResumeDto,
-    ) => {
+    (content: string, isResume?: boolean, resumePayload?: AiChatResumeDto) => {
       onSendMessage?.(content, isResume, resumePayload);
     },
     [onSendMessage],
@@ -131,7 +132,10 @@ const AIChat: React.FC<AIChatProps> = ({
       const msg =
         typeof info.key === "string" ? messageMap.get(info.key) : undefined;
       if (!msg || msg.role === "user") return null;
-      const content = typeof msg.content === "string" ? msg.content : "";
+      const content =
+        typeof msg.content === "string"
+          ? msg.displayContent || formatMessageForDisplay(msg.content, commands)
+          : "";
       const actions = getMessageActions(content);
       return <Actions items={actions} />;
     },
@@ -316,16 +320,31 @@ const AIChat: React.FC<AIChatProps> = ({
   );
 
   const userBubbleItems = useMemo(() => {
-    return userMessages.map((message: ChatMessage) => ({
-      key: message.id,
-      role: message.role as "user" | "assistant",
-      content: message.content,
-      placement: "end" as const,
-      loading: !message.done,
-      contentRender: renderContent,
-      footer: renderActions,
-    }));
-  }, [userMessages, renderContent, renderActions]);
+    return userMessages.map((message: ChatMessage) => {
+      const command =
+        typeof message.content === "string"
+          ? resolveCommandFromMessage(message.content, commands)
+          : undefined;
+
+      return {
+        key: message.id,
+        role: message.role as "user" | "assistant",
+        content: command ? (
+          <Tag variant="filled" color={"blue"}>
+            {command.label}
+          </Tag>
+        ) : typeof message.content === "string" ? (
+          message.displayContent ||
+          formatMessageForDisplay(message.content, commands)
+        ) : (
+          message.content
+        ),
+        placement: "end" as const,
+        loading: !message.done,
+        footer: renderActions,
+      };
+    });
+  }, [commands, userMessages, renderActions]);
 
   return (
     <div

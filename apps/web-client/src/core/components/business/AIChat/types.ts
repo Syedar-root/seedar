@@ -85,6 +85,7 @@ export interface ChatMessage {
   id: string;
   type: MessageType;
   content: string | InterruptContent<AiInterruptPayload>;
+  displayContent?: string;
   role: "user" | "clarify" | "act";
   timestamp: number;
   done: boolean;
