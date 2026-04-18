@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 import {
+  CallExpr,
   Expr,
   ExprMeta,
   FieldRefExpr,
@@ -8,6 +9,7 @@ import {
 import { QuerySpec, SQLResult } from "./types";
 import { TimeFilterPlanner } from "./time-filter-planner";
 import { KnexQueryBuilder } from "./knex-builder";
+import { DatabaseDialect } from "../../core/types";
 
 interface PreparedMetric {
   expr: Expr;
@@ -22,6 +24,11 @@ interface PreparedPeriodMetric {
   displayName: string;
   businessName?: string;
   baseAlias: string;
+}
+
+interface DimensionAlignment {
+  alias: string;
+  requiresOffsetAlignment: boolean;
 }
 
 export class PeriodComparisonBuilder {
@@ -47,6 +54,10 @@ export class PeriodComparisonBuilder {
     this.assertCompatiblePeriodMetrics(periodMetrics);
 
     const primaryPeriodMetric = periodMetrics[0];
+    const dimensionAlignments = this.buildDimensionAlignments(
+      spec.dimensions as Expr[],
+      primaryPeriodMetric.timeField,
+    );
     const plannedFilters = TimeFilterPlanner.plan(
       spec.filters as Expr[],
       primaryPeriodMetric.timeField,
@@ -81,7 +92,13 @@ export class PeriodComparisonBuilder {
     ];
 
     if (preparedDimensions.length > 0) {
-      ctes.push(this.buildDimensionKeysCTE(preparedDimensions));
+      ctes.push(
+        this.buildDimensionKeysCTE(
+          preparedDimensions,
+          dimensionAlignments,
+          primaryPeriodMetric.offsetType,
+        ),
+      );
     }
 
     const finalQuery = this.buildFinalQuery(
@@ -89,6 +106,8 @@ export class PeriodComparisonBuilder {
       preparedDimensions,
       preparedNormalMetrics,
       preparedPeriodMetrics,
+      dimensionAlignments,
+      primaryPeriodMetric.offsetType,
     );
 
     return {
@@ -225,12 +244,32 @@ export class PeriodComparisonBuilder {
     return cloned;
   }
 
-  private buildDimensionKeysCTE(dimensions: PreparedMetric[]): string {
-    const aliases = dimensions.map((dimension) => dimension.alias).join(", ");
+  private buildDimensionKeysCTE(
+    dimensions: PreparedMetric[],
+    alignments: DimensionAlignment[],
+    offsetType: PeriodComparisonExpr["offsetType"],
+  ): string {
+    const currentAliases = dimensions.map((dimension) => dimension.alias).join(", ");
+    const comparisonAliases = dimensions
+      .map((dimension) => {
+        const alignment = alignments.find(
+          (candidate) => candidate.alias === dimension.alias,
+        );
+        if (!alignment?.requiresOffsetAlignment) {
+          return dimension.alias;
+        }
+
+        return `${this.buildForwardShiftedColumnSql(
+          dimension.alias,
+          offsetType,
+        )} AS ${dimension.alias}`;
+      })
+      .join(", ");
+
     return `dimension_keys AS (
-  SELECT ${aliases} FROM current_metrics
+  SELECT ${currentAliases} FROM current_metrics
   UNION
-  SELECT ${aliases} FROM comparison_metrics
+  SELECT ${comparisonAliases} FROM comparison_metrics
 )`;
   }
 
@@ -239,6 +278,8 @@ export class PeriodComparisonBuilder {
     dimensions: PreparedMetric[],
     normalMetrics: PreparedMetric[],
     periodMetrics: PreparedPeriodMetric[],
+    dimensionAlignments: DimensionAlignment[],
+    offsetType: PeriodComparisonExpr["offsetType"],
   ): { sql: string } {
     const selectParts: string[] = [];
     const fromClause =
@@ -269,15 +310,19 @@ export class PeriodComparisonBuilder {
       joinParts.push(
         `LEFT JOIN current_metrics cm ON ${this.buildDimensionJoinClause(
           dimensions,
+          dimensionAlignments,
           "dk",
           "cm",
+          offsetType,
         )}`,
       );
       joinParts.push(
         `LEFT JOIN comparison_metrics cp ON ${this.buildDimensionJoinClause(
           dimensions,
+          dimensionAlignments,
           "dk",
           "cp",
+          offsetType,
         )}`,
       );
     }
@@ -293,15 +338,99 @@ ${fromClause}${joinParts.length > 0 ? `\n${joinParts.join("\n")}` : ""}${orderBy
 
   private buildDimensionJoinClause(
     dimensions: PreparedMetric[],
+    alignments: DimensionAlignment[],
     leftAlias: string,
     rightAlias: string,
+    offsetType: PeriodComparisonExpr["offsetType"],
   ): string {
     return dimensions
-      .map(
-        (dimension) =>
-          `${leftAlias}.${dimension.alias} = ${rightAlias}.${dimension.alias}`,
-      )
+      .map((dimension) => {
+        const alignment = alignments.find(
+          (candidate) => candidate.alias === dimension.alias,
+        );
+        const rightColumn = `${rightAlias}.${dimension.alias}`;
+        const rightExpr =
+          rightAlias === "cp" && alignment?.requiresOffsetAlignment
+            ? this.buildForwardShiftedColumnSql(rightColumn, offsetType)
+            : rightColumn;
+
+        return `${leftAlias}.${dimension.alias} = ${rightExpr}`;
+      })
       .join(" AND ");
+  }
+
+  private buildDimensionAlignments(
+    dimensions: Expr[],
+    timeField: FieldRefExpr,
+  ): DimensionAlignment[] {
+    return dimensions.map((dimension, index) => ({
+      alias: dimension.meta?.alias || `dimension_${index + 1}`,
+      requiresOffsetAlignment: this.isTimeAlignedDimension(dimension, timeField),
+    }));
+  }
+
+  private isTimeAlignedDimension(
+    expr: Expr,
+    timeField: FieldRefExpr,
+  ): boolean {
+    if (expr instanceof FieldRefExpr) {
+      return expr.getQualifiedName() === timeField.getQualifiedName();
+    }
+
+    if (
+      expr instanceof CallExpr &&
+      expr.functionName === "TIME_GRAIN" &&
+      expr.args[0] instanceof FieldRefExpr
+    ) {
+      return expr.args[0].getQualifiedName() === timeField.getQualifiedName();
+    }
+
+    return false;
+  }
+
+  private buildForwardShiftedColumnSql(
+    columnSql: string,
+    offsetType: PeriodComparisonExpr["offsetType"],
+  ): string {
+    const { amount, unit } = this.periodOffsetToInterval(offsetType);
+
+    if (DatabaseDialect.isClickHouse()) {
+      switch (unit) {
+        case "day":
+          return `addDays(${columnSql}, ${amount})`;
+        case "week":
+          return `addWeeks(${columnSql}, ${amount})`;
+        case "month":
+          return `addMonths(${columnSql}, ${amount})`;
+        case "year":
+          return `addYears(${columnSql}, ${amount})`;
+      }
+    }
+
+    if (DatabaseDialect.isPostgres()) {
+      return `${columnSql} + INTERVAL '${amount} ${unit}'`;
+    }
+
+    return `DATE_ADD(${columnSql}, INTERVAL ${amount} ${unit.toUpperCase()})`;
+  }
+
+  private periodOffsetToInterval(
+    offsetType: PeriodComparisonExpr["offsetType"],
+  ): { amount: number; unit: "day" | "week" | "month" | "year" } {
+    switch (offsetType) {
+      case "day_over_day":
+        return { amount: 1, unit: "day" };
+      case "week_over_week":
+        return { amount: 1, unit: "week" };
+      case "month_over_month":
+        return { amount: 1, unit: "month" };
+      case "quarter_over_quarter":
+        return { amount: 3, unit: "month" };
+      case "year_over_year":
+        return { amount: 1, unit: "year" };
+      default:
+        throw new Error(`Unsupported period offset type: ${String(offsetType)}`);
+    }
   }
 
   private buildOrderBy(

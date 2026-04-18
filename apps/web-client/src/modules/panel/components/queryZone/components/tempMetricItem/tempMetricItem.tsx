@@ -1,7 +1,7 @@
 import React from "react";
 import styles from "./tempMetricItem.module.scss";
 import { X } from "lucide-react";
-import type { TempMetricConfig } from "../../../../hooks/usePanelEditorState";
+import type { TempMetricConfig } from "../../../../types";
 
 export interface TempMetricItemProps {
   tempMetric: TempMetricConfig;

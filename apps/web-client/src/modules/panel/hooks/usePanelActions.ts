@@ -18,14 +18,12 @@ import type {
 } from "#pkg/seedar/types";
 import type { NavigateFunction } from "react-router-dom";
 import { toast } from "sonner";
-import type { DragItem } from "../components/dndHelper/dragZone/dragZone";
-import type { TitleConfig } from "../components/editableTitle";
 import type {
   DisplayPanelType,
   PanelEditorConfig,
 } from "../components/panelEditor/types";
 import { buildPersistedChartConfig } from "../components/panelEditor/chartSpec";
-import type { FilterItem } from "../components/queryZone/types";
+import type { DragItem, FilterItem, TitleConfig } from "../types";
 
 type PanelWorkflowStatus = "unsaved" | "draft" | "published";
 type QueryDsl = QueryDSL;
@@ -177,20 +175,20 @@ export const usePanelActions = ({
         tableId: effectiveDataset.mainTableId,
         // joins: effectiveDataset.joins || [],
         dimensions: dropFields.map((field) => {
-          const dimensionDsl = (
-            field as DragItem & { dimensionDsl?: QueryDimensionDSL }
-          ).dimensionDsl;
+          const dimensionDsl = field.dimensionDsl as QueryDimensionDSL | undefined;
           if (dimensionDsl) {
             return dimensionDsl;
           }
+          const alias =
+            typeof field.alias === "string" ? field.alias : undefined;
           return {
             fieldId: Number(field.id),
-            alias: field.alias,
+            alias,
           };
         }),
         metrics: dropMetrics.map((metric) => ({
           id: Number(metric.id),
-          alias: metric.alias,
+          alias: typeof metric.alias === "string" ? metric.alias : undefined,
         })),
         filters: dropFilters.map((filter) => ({
           fieldId: filter.fieldId,

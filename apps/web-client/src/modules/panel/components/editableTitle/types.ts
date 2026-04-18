@@ -1,15 +1,6 @@
-import type { SeedarTitleType } from "#pkg/seedar/ui-react";
+import type { TitleConfig } from "../../types";
 
-export interface TitleConfig {
-  type: SeedarTitleType;
-  content: string;
-  flagColor?: string;
-  subtitle?: string;
-  accentText?: string;
-  number?: string;
-  enableTooltip?: boolean;
-  maxTitleWidth?: string;
-}
+export type { TitleConfig };
 
 export interface EditableTitleProps {
   title: string;

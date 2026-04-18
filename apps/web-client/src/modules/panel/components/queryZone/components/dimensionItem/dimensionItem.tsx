@@ -1,7 +1,7 @@
 ﻿import { Menu } from "@base-ui/react";
 import { Check, ChevronDownIcon, X } from "lucide-react";
 import styles from "./dimensionItem.module.scss";
-import type { DimensionItem as DimensionItemType } from "../../../../hooks/usePanelEditorState";
+import type { DimensionItem as DimensionItemType } from "../../../../types";
 
 interface DimensionItemProps {
   dimension: DimensionItemType;

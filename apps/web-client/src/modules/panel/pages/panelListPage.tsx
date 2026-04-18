@@ -1,63 +1,25 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Empty, Popconfirm } from 'antd';
-import { Plus, Trash2 } from 'lucide-react';
-import { usePanels, useUpdatePanel, useDeletePanel } from '#pkg/seedar/ui-react';
-import { PanelStatus } from '#pkg/seedar/types';
-import { Select } from '@/core/components/ui/Select';
-import styles from './styles/panelList.module.scss';
+import { Empty, Popconfirm } from "antd";
+import { Plus, Trash2 } from "lucide-react";
+import { PanelStatus } from "#pkg/seedar/types";
+import { Select } from "@/core/components/ui/Select";
+import { usePanelListPageViewModel } from "../hooks";
+import styles from "./styles/panelList.module.scss";
 
 export const PanelListPage = () => {
-  const navigate = useNavigate();
-  const { data: panels, isLoading } = usePanels();
-  const updatePanel = useUpdatePanel();
-  const deletePanel = useDeletePanel();
-
-  const [searchInput, setSearchInput] = useState('');
-  const [isComposing, setIsComposing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-
-  const handleSearchChange = (value: string) => {
-    setSearchInput(value);
-    if (!isComposing) {
-      setSearchQuery(value);
-    }
-  };
-
-  const handleSearchCompositionStart = () => {
-    setIsComposing(true);
-  };
-
-  const handleSearchCompositionEnd = (value: string) => {
-    setIsComposing(false);
-    setSearchInput(value);
-    setSearchQuery(value);
-  };
-
-  const handleCreatePanel = () => {
-    navigate('/panel/create');
-  };
-
-  // 过滤逻辑
-  const filteredPanels = useMemo(() => {
-    return panels?.filter((panel) => {
-      const matchTitle =
-        !searchQuery || panel.title?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchStatus = !statusFilter || panel.status === statusFilter;
-      return matchTitle && matchStatus;
-    }) ?? [];
-  }, [panels, searchQuery, statusFilter]);
-
-  const handleStatusToggle = (panel: { id: string; status: PanelStatus }) => {
-    const newStatus =
-      panel.status === PanelStatus.DRAFT ? PanelStatus.PUBLISHED : PanelStatus.DRAFT;
-    updatePanel.mutate({ id: panel.id, data: { status: newStatus } });
-  };
-
-  const handleDelete = (id: string) => {
-    deletePanel.mutate(id);
-  };
+  const {
+    isLoading,
+    filteredPanels,
+    searchInput,
+    statusFilter,
+    handleSearchChange,
+    handleSearchCompositionStart,
+    handleSearchCompositionEnd,
+    handleStatusFilterChange,
+    handleCreatePanel,
+    handleOpenPanel,
+    handleStatusToggle,
+    handleDelete,
+  } = usePanelListPageViewModel();
 
   return (
     <div className={styles.container}>
@@ -83,12 +45,12 @@ export const PanelListPage = () => {
         />
         <Select
           value={statusFilter}
-          onChange={(val) => setStatusFilter(val ?? '')}
+          onChange={(val) => handleStatusFilterChange(val ?? "")}
           label="状态"
           placeholder="全部状态"
           options={[
-            { label: '草稿', value: PanelStatus.DRAFT },
-            { label: '已发布', value: PanelStatus.PUBLISHED },
+            { label: "草稿", value: PanelStatus.DRAFT },
+            { label: "已发布", value: PanelStatus.PUBLISHED },
           ]}
         />
       </div>
@@ -104,20 +66,22 @@ export const PanelListPage = () => {
               <article
                 key={panel.id}
                 className={styles.card}
-                onClick={() => navigate(`/panel/${panel.id}`)}
+                onClick={() => handleOpenPanel(panel.id)}
               >
                 <div className={styles.cardHeader}>
-                  <h2 className={styles.cardTitle}>{panel.title || '未命名面板'}</h2>
+                  <h2 className={styles.cardTitle}>{panel.title || "未命名面板"}</h2>
                   <span
                     className={`${styles.badge} ${
-                      panel.status === PanelStatus.PUBLISHED ? styles.published : styles.draft
+                      panel.status === PanelStatus.PUBLISHED
+                        ? styles.published
+                        : styles.draft
                     }`}
                   >
-                    {panel.status === PanelStatus.PUBLISHED ? '已发布' : '草稿'}
+                    {panel.status === PanelStatus.PUBLISHED ? "已发布" : "草稿"}
                   </span>
                 </div>
                 <div className={styles.cardMeta}>
-                  创建于 {new Date(panel.createdAt).toLocaleDateString()}
+                  创建于{new Date(panel.createdAt).toLocaleDateString()}
                 </div>
                 <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
                   <button
@@ -125,7 +89,7 @@ export const PanelListPage = () => {
                     onClick={() => handleStatusToggle(panel)}
                     type="button"
                   >
-                    {panel.status === PanelStatus.DRAFT ? '发布' : '撤销'}
+                    {panel.status === PanelStatus.DRAFT ? "发布" : "撤销"}
                   </button>
                   <Popconfirm
                     title="确认删除该面板？"

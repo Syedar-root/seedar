@@ -10,7 +10,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
       "#pkg/seedar/ui-react": path.resolve(
         __dirname,
-        "../../packages/ui-react/src/index.tsx",
+        "../../packages/ui-react/src/index.ts",
       ),
       "#pkg/seedar/ui-core": path.resolve(
         __dirname,

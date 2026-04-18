@@ -3,8 +3,8 @@ import styles from "./popDialog.module.scss";
 import { useEffect, useState, useCallback } from "react";
 import { Select } from "@/core/components/ui/Select";
 import { PeriodOverPeriodType, PeriodCalculationMode } from "#pkg/seedar/types";
-import { MetricWithPopConfig, PeriodOverPeriodConfig } from "../../queryZone";
-import type { TempMetricConfig } from "../../../../hooks/usePanelEditorState";
+import { MetricWithPopConfig } from "../../queryZone";
+import type { PeriodOverPeriodConfig, TempMetricConfig } from "../../../../types";
 
 // 周期类型选项
 const PERIOD_TYPE_OPTIONS = [

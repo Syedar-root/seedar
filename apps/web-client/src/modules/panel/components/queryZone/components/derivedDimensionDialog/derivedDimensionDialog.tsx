@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   DerivedDimensionInput,
   DimensionItem,
-} from "../../../../hooks/usePanelEditorState";
+} from "../../../../types";
 import styles from "./derivedDimensionDialog.module.scss";
 
 type DerivedKind = DerivedDimensionInput["derivedKind"];

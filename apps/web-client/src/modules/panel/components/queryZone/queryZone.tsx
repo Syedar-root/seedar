@@ -13,14 +13,13 @@ import {
   PanelFormattingRole,
   PanelFormattingTarget,
   PanelSimpleFormattingRule,
-  PeriodOverPeriodType,
-  PeriodCalculationMode,
 } from "#pkg/seedar/types";
 import type {
   DerivedDimensionInput,
   DimensionItem as PanelDimensionItem,
+  PeriodOverPeriodConfig,
   TempMetricConfig,
-} from "../../hooks/usePanelEditorState";
+} from "../../types";
 import type { DatasetFieldResponse } from "#pkg/seedar/types";
 import { DerivedDimensionDialog } from "./components/derivedDimensionDialog/derivedDimensionDialog";
 import { FormattingDialog } from "./components/formattingDialog/formattingDialog";
@@ -28,11 +27,6 @@ import {
   findSimpleFormattingRule,
   toSimpleFormattingConfig,
 } from "../../utils/formatting";
-
-export interface PeriodOverPeriodConfig {
-  periodType?: PeriodOverPeriodType;
-  calculationMode?: PeriodCalculationMode;
-}
 
 export interface MetricWithPopConfig extends DragItem {
   hasPopConfig?: boolean;
@@ -253,7 +247,7 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
       openFormattingDialog(
         buildMetricFormattingTarget(metric),
         "metric",
-        metric.businessName || metric.name,
+        metric.businessName || metric.name || String(metric.id),
       );
     },
     [openFormattingDialog],
