@@ -20,11 +20,11 @@ import {
   type ToolMarketExecutorParams,
 } from './toolSchema';
 import { QueryService } from '@/module/query/query.service';
+import type { WorkflowTemplate } from '@seedar/types';
 import { getDatasetInfoCompact } from './helper';
 import { interrupt } from '@langchain/langgraph';
 import { randomUUID } from 'crypto';
 import { ToolConfig } from '../ai.types';
-import { is, tr } from 'zod/v4/locales';
 import { type ToolRunnableConfig } from '@langchain/core/tools';
 
 type ToolMethod = (
@@ -44,22 +44,26 @@ function Seedar_Tool(config: ToolConfig): MethodDecorator {
 export class ToolService {
   private toolMethods: Array<{ method: ToolMethod; config: ToolConfig }> = [];
   private INTERRUPT_TOOL_NAMES = ['askQuestion', 'startWorkflow'];
-  private readonly WORKFLOW_TEMPLATES = [
+  private readonly WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     {
       id: 'create_empty_panel_draft_v1',
       title: '创建空白图表草稿',
       actions: [
         { type: 'navigate', target: '/panel/create' },
-        { type: 'trigger_action', target: 'save_draft' },
+        { page: 'panel', type: 'trigger_action', target: 'save_draft' },
       ],
     },
     {
       id: 'select_dataset_for_panel_v1',
       title: '为当前图表选择数据集',
       actions: [
-        { type: 'trigger_action', target: 'open_dataset_selector' },
-        { type: 'trigger_action', target: 'select_dataset' },
-        { type: 'trigger_action', target: 'confirm_dataset_selection' },
+        { page: 'panel', type: 'trigger_action', target: 'open_dataset_selector' },
+        { page: 'panel', type: 'trigger_action', target: 'select_dataset' },
+        {
+          page: 'panel',
+          type: 'trigger_action',
+          target: 'confirm_dataset_selection',
+        },
       ],
     },
     {
@@ -67,10 +71,10 @@ export class ToolService {
       title: '创建基础图表',
       actions: [
         { type: 'navigate', target: '/panel/create' },
-        { type: 'trigger_action', target: 'select_dataset' },
-        { type: 'trigger_action', target: 'set_panel_title' },
-        { type: 'trigger_action', target: 'set_display_type' },
-        { type: 'trigger_action', target: 'run_preview' },
+        { page: 'panel', type: 'trigger_action', target: 'select_dataset' },
+        { page: 'panel', type: 'trigger_action', target: 'set_panel_title' },
+        { page: 'panel', type: 'trigger_action', target: 'set_display_type' },
+        { page: 'panel', type: 'trigger_action', target: 'run_preview' },
       ],
     },
   ];

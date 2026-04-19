@@ -29,6 +29,7 @@
     "@langchain/openai": "^1.4.1",
     "@langchain/tavily": "^1.2.0",
     "@metric-engine/core": "workspace:*",
+    "@seedar/types": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",

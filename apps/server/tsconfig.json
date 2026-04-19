@@ -15,7 +15,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@seedar/types": ["../../packages/types/dist/index.d.ts"]
     },
     "incremental": true,
     "skipLibCheck": true,
