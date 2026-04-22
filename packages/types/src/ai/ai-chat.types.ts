@@ -70,5 +70,4 @@ export type {
   StartWorkflowRequest,
   WorkflowAction,
   WorkflowRunResult,
-  WorkflowTemplate,
 } from './ai-workflow.types';

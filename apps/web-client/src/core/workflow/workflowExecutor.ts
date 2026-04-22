@@ -1,6 +1,5 @@
 import {
   getFrontendWorkflowTemplate,
-  type PanelQueryStatePayload,
   type StartWorkflowRequest,
   type WorkflowAction,
   type WorkflowRunInterrupt,
@@ -17,7 +16,7 @@ interface WorkflowExecutorDependencies {
 type WorkflowParams = StartWorkflowRequest["params"];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  Boolean(value) && typeof value === "object";
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
 const createWorkflowResult = (
   interruptId: string,
@@ -124,65 +123,24 @@ const resolveActionPayload = (
     return action;
   }
 
-  const payload: Record<string, unknown> = {
-    ...(action.payload ?? {}),
-  };
+  const targetParams = params?.[action.target];
+  if (targetParams === undefined) {
+    return action;
+  }
 
-  switch (action.target) {
-    case "set_query_state": {
-      const queryState =
-        isRecord(params?.queryState)
-          ? (params.queryState as PanelQueryStatePayload)
-          : undefined;
-
-      const legacyQueryState: PanelQueryStatePayload = {
-        datasetId:
-          typeof params?.datasetId === "number" ? params.datasetId : undefined,
-        dimensions: Array.isArray(params?.dimensions)
-          ? (params.dimensions as PanelQueryStatePayload["dimensions"])
-          : undefined,
-        metrics: Array.isArray(params?.metrics)
-          ? (params.metrics as PanelQueryStatePayload["metrics"])
-          : undefined,
-        filters: Array.isArray(params?.filters)
-          ? (params.filters as PanelQueryStatePayload["filters"])
-          : undefined,
-        tempMetrics: Array.isArray(params?.tempMetrics)
-          ? (params.tempMetrics as PanelQueryStatePayload["tempMetrics"])
-          : undefined,
-      };
-
-      Object.assign(payload, queryState ?? legacyQueryState);
-      break;
-    }
-    case "select_dataset":
-    case "confirm_dataset_selection": {
-      if (params?.datasetId !== undefined) {
-        payload.datasetId = params.datasetId;
-      }
-      break;
-    }
-    case "set_panel_title": {
-      const title = params?.panelTitle ?? params?.title;
-      if (typeof title === "string" && title.trim()) {
-        payload.title = title;
-      }
-      break;
-    }
-    case "set_display_type": {
-      const displayType = params?.displayType ?? params?.panelType ?? params?.type;
-      if (typeof displayType === "string" && displayType.trim()) {
-        payload.displayType = displayType;
-      }
-      break;
-    }
-    default:
-      break;
+  if (!isRecord(targetParams)) {
+    throw {
+      code: "WORKFLOW_PARAM_INVALID",
+      message: `workflow 参数 ${action.target} 必须是对象`,
+    };
   }
 
   return {
     ...action,
-    payload,
+    payload: {
+      ...(action.payload ?? {}),
+      ...targetParams,
+    },
   };
 };
 

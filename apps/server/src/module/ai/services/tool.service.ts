@@ -7,6 +7,7 @@ import { type ToolRunnableConfig } from '@langchain/core/tools';
 import { interrupt } from '@langchain/langgraph';
 import { tool, Tool } from 'langchain';
 import { randomUUID } from 'crypto';
+import { z } from 'zod';
 import {
   FRONTEND_WORKFLOW_TEMPLATES,
   getFrontendWorkflowTemplate,
@@ -201,7 +202,14 @@ export class ToolService {
   })
   public workflowMarket() {
     return {
-      workflows: FRONTEND_WORKFLOW_TEMPLATES,
+      workflows: FRONTEND_WORKFLOW_TEMPLATES.map(
+        ({ paramsSchema, ...template }) => ({
+          ...template,
+          paramsSchema: paramsSchema
+            ? z.toJSONSchema(paramsSchema)
+            : undefined,
+        }),
+      ),
     };
   }
 
@@ -221,9 +229,24 @@ export class ToolService {
       );
     }
 
+    const parsedParams = workflow.paramsSchema
+      ? workflow.paramsSchema.safeParse(params ?? {})
+      : {
+          success: true as const,
+          data: params,
+        };
+
+    if (!parsedParams.success) {
+      throw new BusinessException(
+        ExceptionType.AI_AGENT_TOOL_FAILED,
+        `workflow ${workflowId} 参数校验失败：${parsedParams.error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
     const request: StartWorkflowRequest = {
       workflowId,
-      params,
+      params: parsedParams.data,
     };
     const payload: WorkflowRunInterrupt = {
       kind: 'workflow_run',
