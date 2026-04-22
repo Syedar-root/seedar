@@ -9,3 +9,5 @@ export type {
   ChoiceQuestionProps,
   ChoiceOptionItem,
 } from "./ChoiceQuestion/types";
+export { AskUserInterrupt } from "./AskUserInterrupt";
+export { WorkflowRunInterrupt } from "./WorkflowRunInterrupt";
