@@ -1,12 +1,12 @@
-import type {
-  PanelQueryStatePayload,
-  StartWorkflowRequest,
-  WorkflowAction,
-  WorkflowRunInterrupt,
-  WorkflowRunResult,
+import {
+  getFrontendWorkflowTemplate,
+  type PanelQueryStatePayload,
+  type StartWorkflowRequest,
+  type WorkflowAction,
+  type WorkflowRunInterrupt,
+  type WorkflowRunResult,
 } from "#pkg/seedar/types";
 import { dispatchWorkflowAction } from "@/core/store";
-import { getWorkflowTemplate } from "./workflowTemplates";
 
 const WORKFLOW_ACTION_TIMEOUT_MS = 15_000;
 
@@ -239,7 +239,7 @@ export const executeWorkflowInterrupt = async (
 ): Promise<WorkflowRunResult> => {
   const { interruptId, request } = interrupt;
   const { workflowId, params } = request;
-  const template = getWorkflowTemplate(workflowId);
+  const template = getFrontendWorkflowTemplate(workflowId);
 
   if (!template) {
     return createWorkflowResult(

@@ -1,10 +1,10 @@
 import React from "react";
 import { ThoughtChain, type ThoughtChainItemType } from "@ant-design/x";
 import {
+  getFrontendWorkflowTemplate,
   getWorkflowActionPresentation,
   type AiInterruptPayload,
 } from "#pkg/seedar/types";
-import { getWorkflowTemplate } from "@/core/workflow";
 import type { InterruptRendererProps } from "../../types";
 import styles from "./WorkflowRunInterrupt.module.scss";
 
@@ -19,7 +19,7 @@ const WorkflowRunInterrupt: React.FC<InterruptRendererProps> = ({ content }) => 
   }
 
   const { request } = interruptValue;
-  const template = getWorkflowTemplate(request.workflowId);
+  const template = getFrontendWorkflowTemplate(request.workflowId);
   const items: ThoughtChainItemType[] =
     template?.actions.map((action, index) => {
       const presentation = getWorkflowActionPresentation(action);
