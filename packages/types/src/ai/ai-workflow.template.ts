@@ -10,6 +10,7 @@ export interface WorkflowTemplate<
 > {
   id: WorkflowId;
   title: string;
+  description?: string;
   actions: WorkflowAction[];
   paramsSchema?: ZodType<TParams>;
 }
@@ -17,7 +18,8 @@ export interface WorkflowTemplate<
 export const FRONTEND_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   {
     id: 'query_current_panel_as_table_v1',
-    title: '查询当前图表并以表格展示',
+    title: '查询数据并以表格展示到当前面板',
+    description: '查询当前面板的数据，并将其以表格形式展示',
     paramsSchema: queryCurrentPanelAsTableWorkflowParamsSchema,
     actions: [
       {

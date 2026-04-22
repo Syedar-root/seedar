@@ -203,7 +203,7 @@ export class ToolService {
   public workflowMarket() {
     return {
       workflows: FRONTEND_WORKFLOW_TEMPLATES.map(
-        ({ paramsSchema, ...template }) => ({
+        ({ paramsSchema, actions, ...template }) => ({
           ...template,
           paramsSchema: paramsSchema
             ? z.toJSONSchema(paramsSchema)
