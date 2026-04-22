@@ -151,8 +151,10 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
       ...(hasInvalidCardValue ? { card: nextCardConfig } : {}),
     };
     setCurrentConfig(nextConfig);
-    onChange(currentType, nextConfig);
-  }, [availableFieldValues, currentConfig, currentType, onChange]);
+    // Use the controlled prop as the source of truth here; otherwise a stale
+    // local currentType can overwrite a just-updated parent displayType.
+    onChange(displayType, nextConfig);
+  }, [availableFieldValues, currentConfig, displayType, onChange]);
 
   return (
     <ScrollArea className={styles.editor} contentStyle={{ minWidth: "none" }}>

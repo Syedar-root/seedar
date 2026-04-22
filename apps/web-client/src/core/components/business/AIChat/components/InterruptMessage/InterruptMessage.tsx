@@ -79,7 +79,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
           <div className={styles["footer-right"]}>
             <Button
               className={styles["primary-button"]}
-              disabled={disabled}
+              disabled={true}
               onClick={() => {
                 onSubmit?.("", true, {
                   kind: "interrupt_result",

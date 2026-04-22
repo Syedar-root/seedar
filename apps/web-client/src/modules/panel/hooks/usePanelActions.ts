@@ -57,15 +57,15 @@ interface UsePanelActionsParams {
 }
 
 interface UsePanelActionsReturn {
-  handlePrimarySave: () => Promise<void>;
-  handleRun: () => Promise<void>;
-  handleRevertToDraft: () => Promise<void>;
+  handlePrimarySave: () => Promise<boolean>;
+  handleRun: () => Promise<boolean>;
+  handleRevertToDraft: () => Promise<boolean>;
   isSaving: boolean;
   isRunning: boolean;
   isReverting: boolean;
   primaryActionLabel: string;
-  handleSave: () => Promise<void>;
-  handleSaveAs: () => Promise<void>;
+  handleSave: () => Promise<boolean>;
+  handleSaveAs: () => Promise<boolean>;
 }
 
 const toPanelType = (displayType: DisplayPanelType): PanelType => {
@@ -327,18 +327,18 @@ export const usePanelActions = ({
 
       if (!dsl) {
         toast.error("Please select a dataset first.");
-        return;
+        return false;
       }
 
       if (effectiveStatus === "unsaved") {
         await ensurePanelPersisted({ publishAfterCreate: true });
         toast.success("Panel published.");
-        return;
+        return true;
       }
 
       if (!effectivePanelId || !effectiveQueryId) {
         toast.error("Panel resource is incomplete.");
-        return;
+        return false;
       }
 
       await updateQueryAsync({
@@ -367,7 +367,7 @@ export const usePanelActions = ({
         );
         onStatusChange?.("published");
         toast.success("Panel published.");
-        return;
+        return true;
       }
 
       await updatePanelAsync({
@@ -380,8 +380,10 @@ export const usePanelActions = ({
         },
       });
       toast.success("Panel updated.");
+      return true;
     } catch {
       toast.error("Save failed. Please try again.");
+      return false;
     } finally {
       setIsSavingState(false);
     }
@@ -410,12 +412,12 @@ export const usePanelActions = ({
 
       if (!dsl) {
         toast.error("Please select a dataset first.");
-        return;
+        return false;
       }
 
       if (!dropFields.length && !dropMetrics.length) {
         toast.error("Please add at least one dimension or metric.");
-        return;
+        return false;
       }
 
       if (effectiveStatus === "unsaved") {
@@ -423,9 +425,11 @@ export const usePanelActions = ({
       }
 
       await runPreviewWithDsl(dsl);
+      return true;
     } catch (error) {
       console.error("Run failed:", error);
       toast.error("Run failed. Please try again.");
+      return false;
     } finally {
       setIsRunningState(false);
     }
@@ -442,7 +446,7 @@ export const usePanelActions = ({
   const handleRevertToDraft = useCallback(async () => {
     if (!effectivePanelId) {
       toast.error("No panel available.");
-      return;
+      return false;
     }
 
     try {
@@ -463,8 +467,10 @@ export const usePanelActions = ({
       );
       onStatusChange?.("draft");
       toast.success("Panel reverted to draft.");
+      return true;
     } catch {
       toast.error("Revert failed. Please try again.");
+      return false;
     } finally {
       setIsRevertingState(false);
     }

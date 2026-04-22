@@ -1,3 +1,8 @@
+import type {
+  PeriodCalculationMode,
+  PeriodOverPeriodType,
+} from '../dataset';
+
 export type WorkflowId = string;
 
 export type WorkflowActionStatus =
@@ -15,6 +20,50 @@ export type WorkflowPage =
   | 'panel'
   | 'dataset';
 
+export interface PanelQueryStateDimensionPayload {
+  fieldId?: number;
+  alias?: string;
+  name?: string;
+  businessName?: string;
+  dimensionDsl?: Record<string, unknown>;
+}
+
+export interface PanelQueryStateMetricPayload {
+  id: number;
+  alias?: string;
+  name?: string;
+  businessName?: string;
+}
+
+export interface PanelQueryStateFilterPayload {
+  fieldId: number;
+  op: string;
+  value: unknown;
+  raw?: boolean;
+}
+
+export interface PanelQueryStateTempMetricPayload {
+  id?: string;
+  alias: string;
+  businessName?: string;
+  expression?: string;
+  dataType?: string;
+  format?: string;
+  baseMetricId?: number;
+  timeFieldId?: number;
+  periodType?: PeriodOverPeriodType;
+  calculationMode?: PeriodCalculationMode;
+  popConfig?: Record<string, unknown>;
+}
+
+export interface PanelQueryStatePayload {
+  datasetId?: number;
+  dimensions?: PanelQueryStateDimensionPayload[];
+  metrics?: PanelQueryStateMetricPayload[];
+  filters?: PanelQueryStateFilterPayload[];
+  tempMetrics?: PanelQueryStateTempMetricPayload[];
+}
+
 export type PanelWorkflowNavigateTarget =
   | '/panel/create'
   | '/panel/:id';
@@ -24,6 +73,7 @@ export type PanelWorkflowTriggerActionTarget =
   | 'open_dataset_selector'
   | 'select_dataset'
   | 'confirm_dataset_selection'
+  | 'set_query_state'
   | 'set_panel_title'
   | 'set_display_type'
   | 'run_preview';

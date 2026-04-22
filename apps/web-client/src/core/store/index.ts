@@ -4,6 +4,7 @@ export {
   useWorkflowActionsStore,
 } from './WorkflowActionsState';
 export type {
+  DispatchWorkflowActionOptions,
   DispatchWorkflowActionParams,
   WorkflowActionStatus,
   WorkflowActionTask,

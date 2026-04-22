@@ -1,5 +1,9 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { PeriodOverPeriodType, type DatasetResponse } from "#pkg/seedar/types";
+import {
+  PeriodOverPeriodType,
+  type DatasetResponse,
+  type PanelQueryStatePayload,
+} from "#pkg/seedar/types";
 import type {
   DragItem,
   DerivedDimensionInput,
@@ -24,6 +28,8 @@ import type {
 import {
   buildBaseDimensionItem,
   buildDerivedDimensionItem,
+  isDerivedDimensionDsl,
+  parseDimensionDsl,
   serializeDimensions,
 } from "../utils/panelEditorState";
 import {
@@ -85,7 +91,20 @@ interface UsePanelEditorMutationsReturn {
     role: PanelFormattingRole,
   ) => void;
   handleTitleChange: (title: string, titleConfig?: TitleConfig) => void;
+  applyQueryState: (
+    payload: PanelQueryStatePayload,
+    targetDataset?: DatasetResponse,
+  ) => void;
 }
+
+const asTrimmedString = (value: unknown) => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const next = value.trim();
+  return next.length > 0 ? next : undefined;
+};
 
 export const usePanelEditorMutations = ({
   datasetData,
@@ -519,6 +538,175 @@ export const usePanelEditorMutations = ({
     [setTitle, setTitleConfig],
   );
 
+  const applyQueryState = useCallback(
+    (payload: PanelQueryStatePayload, targetDataset?: DatasetResponse) => {
+      const nextDataset = targetDataset ?? datasetData;
+      if (!nextDataset?.id) {
+        throw {
+          code: "WORKFLOW_DATASET_NOT_FOUND",
+          message: "当前查询态缺少可用数据集",
+        };
+      }
+
+      const hasDatasetChanged = nextDataset.id !== datasetData?.id;
+      const baseDimensionItems = hasDatasetChanged ? [] : dimensionItems;
+      const baseDropMetrics = hasDatasetChanged ? [] : dropMetrics;
+      const baseDropFilters = hasDatasetChanged ? [] : dropFilters;
+      const baseTempMetrics = hasDatasetChanged ? [] : tempMetrics;
+
+      const nextDimensionItems =
+        payload.dimensions === undefined
+          ? baseDimensionItems
+          : payload.dimensions.map((dimension, index) => {
+              const parsedDimension =
+                dimension.dimensionDsl !== undefined
+                  ? parseDimensionDsl(dimension.dimensionDsl)
+                  : parseDimensionDsl({
+                      fieldId: dimension.fieldId,
+                      alias: dimension.alias,
+                    });
+
+              if (!parsedDimension) {
+                throw {
+                  code: "WORKFLOW_QUERY_STATE_INVALID",
+                  message: `第 ${index + 1} 个维度无法映射到当前 panel 状态`,
+                };
+              }
+
+              if (isDerivedDimensionDsl(parsedDimension)) {
+                return buildDerivedDimensionItem({
+                  dimensionDsl: parsedDimension,
+                  datasetFields: nextDataset.fields,
+                  nextId: nextDerivedDimensionId,
+                });
+              }
+
+              return buildBaseDimensionItem({
+                dimensionDsl: parsedDimension,
+                datasetFields: nextDataset.fields,
+              });
+            });
+
+      const nextDropMetrics =
+        payload.metrics === undefined
+          ? baseDropMetrics
+          : payload.metrics.map((metric, index) => {
+              const matchedMetric = nextDataset.metrics.find(
+                (entry) => entry.id === metric.id,
+              );
+
+              if (!matchedMetric) {
+                throw {
+                  code: "WORKFLOW_QUERY_STATE_INVALID",
+                  message: `第 ${index + 1} 个指标在当前数据集中不存在`,
+                };
+              }
+
+              return {
+                ...matchedMetric,
+                alias: asTrimmedString(metric.alias),
+              };
+            });
+
+      const nextDropFilters =
+        payload.filters === undefined
+          ? baseDropFilters
+          : payload.filters.map((filter, index) => {
+              const matchedField = nextDataset.fields.find(
+                (entry) => entry.id === filter.fieldId,
+              );
+
+              if (!matchedField) {
+                throw {
+                  code: "WORKFLOW_QUERY_STATE_INVALID",
+                  message: `第 ${index + 1} 个筛选字段在当前数据集中不存在`,
+                };
+              }
+
+              return {
+                id: `workflow_filter_${filter.fieldId}_${index}`,
+                fieldId: filter.fieldId,
+                name:
+                  matchedField.businessName ||
+                  matchedField.name ||
+                  `field_${filter.fieldId}`,
+                fieldType: matchedField.type,
+                op: filter.op,
+                value: filter.value,
+              };
+            });
+
+      const nextTempMetrics =
+        payload.tempMetrics === undefined
+          ? baseTempMetrics
+          : payload.tempMetrics.map((tempMetric, index) => {
+              const alias = asTrimmedString(tempMetric.alias);
+              if (!alias) {
+                throw {
+                  code: "WORKFLOW_QUERY_STATE_INVALID",
+                  message: `第 ${index + 1} 个临时指标缺少 alias`,
+                };
+              }
+
+              if (typeof tempMetric.baseMetricId !== "number") {
+                throw {
+                  code: "WORKFLOW_QUERY_STATE_INVALID",
+                  message: `第 ${index + 1} 个临时指标缺少 baseMetricId`,
+                };
+              }
+
+              const matchedMetric = nextDataset.metrics.find(
+                (entry) => entry.id === tempMetric.baseMetricId,
+              );
+
+              if (!matchedMetric) {
+                throw {
+                  code: "WORKFLOW_QUERY_STATE_INVALID",
+                  message: `第 ${index + 1} 个临时指标依赖的基础指标不存在`,
+                };
+              }
+
+              return {
+                id:
+                  asTrimmedString(tempMetric.id) ??
+                  `${tempMetric.baseMetricId}_period_comparison_${index}`,
+                type: "period_comparison" as const,
+                alias,
+                businessName:
+                  asTrimmedString(tempMetric.businessName) ?? alias,
+                baseMetricId: tempMetric.baseMetricId,
+                timeFieldId:
+                  typeof tempMetric.timeFieldId === "number"
+                    ? tempMetric.timeFieldId
+                    : matchedMetric.timeFieldId,
+                periodType: tempMetric.periodType,
+                calculationMode: tempMetric.calculationMode,
+              };
+            });
+
+      setSelectedDataset(nextDataset);
+      setDimensionItems(nextDimensionItems);
+      setDropMetrics(nextDropMetrics);
+      setDropFilters(nextDropFilters);
+      setTempMetrics(nextTempMetrics);
+      setTempData(undefined);
+    },
+    [
+      datasetData,
+      dimensionItems,
+      dropFilters,
+      dropMetrics,
+      nextDerivedDimensionId,
+      setDimensionItems,
+      setDropFilters,
+      setDropMetrics,
+      setSelectedDataset,
+      setTempData,
+      setTempMetrics,
+      tempMetrics,
+    ],
+  );
+
   return {
     resetForDatasetChange,
     selectDataset,
@@ -539,5 +727,6 @@ export const usePanelEditorMutations = ({
     handleSaveItemFormatting,
     handleRemoveItemFormatting,
     handleTitleChange,
+    applyQueryState,
   };
 };

@@ -44,7 +44,24 @@ function Seedar_Tool(config: ToolConfig): MethodDecorator {
 export class ToolService {
   private toolMethods: Array<{ method: ToolMethod; config: ToolConfig }> = [];
   private INTERRUPT_TOOL_NAMES = ['askQuestion', 'startWorkflow'];
+  private readonly ACTIVE_WORKFLOW_ID = 'query_current_panel_as_table_v1';
   private readonly WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+    {
+      id: 'query_current_panel_as_table_v1',
+      title: 'query current panel as table',
+      actions: [
+        { page: 'panel', type: 'trigger_action', target: 'set_query_state' },
+        {
+          page: 'panel',
+          type: 'trigger_action',
+          target: 'set_display_type',
+          payload: {
+            displayType: 'table',
+          },
+        },
+        { page: 'panel', type: 'trigger_action', target: 'run_preview' },
+      ],
+    },
     {
       id: 'create_empty_panel_draft_v1',
       title: '创建空白图表草稿',
@@ -229,8 +246,12 @@ export class ToolService {
       'workflow 模板市场，返回当前可用的 workflow 模板列表及其基础说明',
   })
   public workflowMarket() {
+    const workflows = this.WORKFLOW_TEMPLATES.filter(
+      (item) => item.id === this.ACTIVE_WORKFLOW_ID,
+    );
+
     return {
-      workflows: this.WORKFLOW_TEMPLATES,
+      workflows,
     };
   }
 
@@ -241,7 +262,10 @@ export class ToolService {
     schema: startWorkflowSchema,
   })
   public startWorkflow({ workflowId, params }: StartWorkflowParams) {
-    const workflow = this.WORKFLOW_TEMPLATES.find((item) => item.id === workflowId);
+    const workflow = this.WORKFLOW_TEMPLATES.find(
+      (item) =>
+        item.id === workflowId && item.id === this.ACTIVE_WORKFLOW_ID,
+    );
 
     if (!workflow) {
       throw new BusinessException(

@@ -9,6 +9,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import type {
   DatasetResponse,
   ExecuteQueryResponse,
+  PanelQueryStatePayload,
   PanelFormattingRole,
   PanelFormattingTarget,
   PanelResponse,
@@ -38,6 +39,32 @@ import { usePanelEditorMutations } from "./usePanelEditorMutations.hook";
 
 // Canonical implementation of panel editor state orchestration.
 export type { DerivedDimensionInput, DimensionItem, TempMetricConfig };
+
+const cloneSnapshotValue = <T,>(value: T): T => {
+  if (value === undefined) {
+    return value;
+  }
+
+  if (typeof structuredClone === "function") {
+    return structuredClone(value);
+  }
+
+  return JSON.parse(JSON.stringify(value)) as T;
+};
+
+export interface PanelEditorSnapshot {
+  dimensionItems: DimensionItem[];
+  dropMetrics: DragItem[];
+  dropFilters: FilterItem[];
+  tempMetrics: TempMetricConfig[];
+  displayType: DisplayPanelType;
+  editorConfig: PanelEditorConfig;
+  tempData?: ExecuteQueryResponse;
+  selectedDataset?: DatasetResponse;
+  panelStatus: LocalPanelStatus;
+  title: string;
+  titleConfig?: TitleConfig;
+}
 
 interface UsePanelEditorStateReturn {
   dimensionItems: DimensionItem[];
@@ -97,6 +124,12 @@ interface UsePanelEditorStateReturn {
   title: string;
   titleConfig?: TitleConfig;
   handleTitleChange: (title: string, titleConfig?: TitleConfig) => void;
+  applyQueryState: (
+    payload: PanelQueryStatePayload,
+    targetDataset?: DatasetResponse,
+  ) => void;
+  createSnapshot: () => PanelEditorSnapshot;
+  restoreSnapshot: (snapshot: PanelEditorSnapshot) => void;
 }
 
 export const usePanelEditorState = (
@@ -180,6 +213,7 @@ export const usePanelEditorState = (
     handleSaveItemFormatting,
     handleRemoveItemFormatting,
     handleTitleChange,
+    applyQueryState,
   } = usePanelEditorMutations({
     datasetData,
     dimensionItems,
@@ -243,6 +277,49 @@ export const usePanelEditorState = (
     });
   }, [buildDsl, canRun, executeTempQuery, queryData?.dsl]);
 
+  const createSnapshot = useCallback(
+    (): PanelEditorSnapshot => ({
+      dimensionItems: cloneSnapshotValue(dimensionItems),
+      dropMetrics: cloneSnapshotValue(dropMetrics),
+      dropFilters: cloneSnapshotValue(dropFilters),
+      tempMetrics: cloneSnapshotValue(tempMetrics),
+      displayType,
+      editorConfig: cloneSnapshotValue(editorConfig),
+      tempData: cloneSnapshotValue(tempData),
+      selectedDataset: cloneSnapshotValue(selectedDataset),
+      panelStatus,
+      title,
+      titleConfig: cloneSnapshotValue(titleConfig),
+    }),
+    [
+      dimensionItems,
+      dropFilters,
+      dropMetrics,
+      displayType,
+      editorConfig,
+      panelStatus,
+      selectedDataset,
+      tempData,
+      tempMetrics,
+      title,
+      titleConfig,
+    ],
+  );
+
+  const restoreSnapshot = useCallback((snapshot: PanelEditorSnapshot) => {
+    setDimensionItems(cloneSnapshotValue(snapshot.dimensionItems));
+    setDropMetrics(cloneSnapshotValue(snapshot.dropMetrics));
+    setDropFilters(cloneSnapshotValue(snapshot.dropFilters));
+    setTempMetrics(cloneSnapshotValue(snapshot.tempMetrics));
+    setDisplayType(snapshot.displayType);
+    setEditorConfig(cloneSnapshotValue(snapshot.editorConfig));
+    setTempData(cloneSnapshotValue(snapshot.tempData));
+    setSelectedDataset(cloneSnapshotValue(snapshot.selectedDataset));
+    setPanelStatus(snapshot.panelStatus);
+    setTitle(snapshot.title);
+    setTitleConfig(cloneSnapshotValue(snapshot.titleConfig));
+  }, []);
+
   return {
     dimensionItems,
     dropFields,
@@ -286,5 +363,8 @@ export const usePanelEditorState = (
     title,
     titleConfig,
     handleTitleChange,
+    applyQueryState,
+    createSnapshot,
+    restoreSnapshot,
   };
 };

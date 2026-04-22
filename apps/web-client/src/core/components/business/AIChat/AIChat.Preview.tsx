@@ -3,6 +3,7 @@ import { useAiApi, useAis, useCreateAiSession } from "#pkg/seedar/ui-react";
 import { AIChat } from "./";
 import { useChatState } from "./hooks/useChatState.hook";
 import { useSSEHandler } from "./hooks/useSSEHandler.hook";
+import { useWorkflowInterruptExecutor } from "./hooks/useWorkflowInterruptExecutor.hook";
 import type { ChatMessage, CommandItem, SSEData } from "./types";
 import styles from "./AIChat.Preview.module.scss";
 import type { AiChatResumeDto, AiSessionResponse } from "#pkg/seedar/types";
@@ -118,6 +119,20 @@ const AIChatPreview: React.FC = () => {
       setError(err instanceof Error ? err.message : "Failed to send message");
     }
   };
+
+  useWorkflowInterruptExecutor({
+    enabled: !isLoading,
+    messages: chatState.messages,
+    onResume: async (resumePayload) => {
+      setIsLoading(true);
+      try {
+        await handleSendMessage("", true, resumePayload);
+      } catch (error) {
+        setIsLoading(false);
+        throw error;
+      }
+    },
+  });
 
   const handleAddChat = async () => {
     chatState.setMessages([]);

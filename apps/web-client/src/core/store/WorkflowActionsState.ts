@@ -20,6 +20,10 @@ export interface DispatchWorkflowActionParams {
   action: WorkflowAction;
 }
 
+export interface DispatchWorkflowActionOptions {
+  timeoutMs?: number;
+}
+
 interface WorkflowActionsState {
   actions: WorkflowActionTask[];
   enqueueAction: (params: DispatchWorkflowActionParams) => WorkflowActionTask;
@@ -206,11 +210,41 @@ export const useWorkflowActionsStore = create<WorkflowActionsState>()(
 
 export const dispatchWorkflowAction = (
   params: DispatchWorkflowActionParams,
+  options?: DispatchWorkflowActionOptions,
 ) => {
   const task = useWorkflowActionsStore.getState().enqueueAction(params);
 
   return new Promise<WorkflowActionTask>((resolve) => {
     pendingResolvers.set(task.id, resolve);
+
+    if (options?.timeoutMs === undefined || options.timeoutMs <= 0) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      if (!pendingResolvers.has(task.id)) {
+        return;
+      }
+
+      const timeoutError: WorkflowActionError = {
+        code: 'WORKFLOW_ACTION_TIMEOUT',
+        message: `前端动作执行超时（>${options.timeoutMs}ms）`,
+      };
+      const failedTask = useWorkflowActionsStore
+        .getState()
+        .failAction(task.id, timeoutError);
+
+      if (failedTask) {
+        return;
+      }
+
+      pendingResolvers.delete(task.id);
+      resolve({
+        ...task,
+        status: 'failed',
+        error: timeoutError,
+      });
+    }, options.timeoutMs);
   });
 };
 
