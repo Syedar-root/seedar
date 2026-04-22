@@ -1,5 +1,6 @@
 import {
   getFrontendWorkflowTemplate,
+  getWorkflowActionPresentation,
   type StartWorkflowRequest,
   type WorkflowAction,
   type WorkflowRunInterrupt,
@@ -14,6 +15,30 @@ interface WorkflowExecutorDependencies {
 }
 
 type WorkflowParams = StartWorkflowRequest["params"];
+
+type WorkflowExecutionStepStatus = "pending" | "running" | "done" | "failed";
+
+interface WorkflowExecutionStep {
+  key: string;
+  target: string;
+  title: string;
+  description?: string;
+  status: WorkflowExecutionStepStatus;
+  result?: Record<string, unknown>;
+  error?: WorkflowRunResult["error"];
+}
+
+interface WorkflowExecutionUpdate {
+  interruptId: string;
+  workflowId: string;
+  status: WorkflowExecutionStepStatus;
+  steps: WorkflowExecutionStep[];
+  error?: WorkflowRunResult["error"];
+}
+
+interface WorkflowExecutionCallbacks {
+  onStateChange?: (state: WorkflowExecutionUpdate) => void;
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -194,6 +219,7 @@ const executeAction = async (
 export const executeWorkflowInterrupt = async (
   interrupt: WorkflowRunInterrupt,
   dependencies: WorkflowExecutorDependencies,
+  callbacks?: WorkflowExecutionCallbacks,
 ): Promise<WorkflowRunResult> => {
   const { interruptId, request } = interrupt;
   const { workflowId, params } = request;
@@ -212,24 +238,75 @@ export const executeWorkflowInterrupt = async (
     );
   }
 
-  try {
-    const steps: Array<Record<string, unknown>> = [];
+  const executionSteps: WorkflowExecutionStep[] = template.actions.map(
+    (action, index) => {
+      const presentation = getWorkflowActionPresentation(action);
 
-    for (const action of template.actions) {
+      return {
+        key: `${workflowId}-${index}`,
+        target: action.target,
+        title: presentation.title,
+        description: presentation.description,
+        status: "pending",
+      };
+    },
+  );
+  const emitStateChange = (
+    status: WorkflowExecutionStepStatus,
+    error?: WorkflowRunResult["error"],
+  ) => {
+    callbacks?.onStateChange?.({
+      interruptId,
+      workflowId,
+      status,
+      steps: executionSteps.map((step) => ({ ...step })),
+      error,
+    });
+  };
+  let activeStepIndex = -1;
+
+  try {
+    const workflowSteps: Array<Record<string, unknown>> = [];
+    emitStateChange("running");
+
+    for (const [index, action] of template.actions.entries()) {
+      activeStepIndex = index;
+      const currentStep = executionSteps[index];
+      currentStep.status = "running";
+      emitStateChange("running");
       const stepResult = await executeAction(action, params, dependencies);
-      steps.push(stepResult);
+      currentStep.status = "done";
+      currentStep.result = stepResult;
+      workflowSteps.push(stepResult);
+      emitStateChange("running");
     }
 
+    emitStateChange("done");
     return createWorkflowResult(interruptId, workflowId, "done", {
-      steps,
+      steps: workflowSteps,
     });
   } catch (error) {
+    const normalizedError = normalizeWorkflowError(
+      error,
+      "WORKFLOW_EXECUTION_FAILED",
+    );
+    if (activeStepIndex >= 0 && executionSteps[activeStepIndex]) {
+      executionSteps[activeStepIndex].status = "failed";
+      executionSteps[activeStepIndex].error = normalizedError;
+    }
+    callbacks?.onStateChange?.({
+      interruptId,
+      workflowId,
+      status: "failed",
+      steps: executionSteps.map((step) => ({ ...step })),
+      error: normalizedError,
+    });
     return createWorkflowResult(
       interruptId,
       workflowId,
       "failed",
       undefined,
-      normalizeWorkflowError(error, "WORKFLOW_EXECUTION_FAILED"),
+      normalizedError,
     );
   }
 };

@@ -123,6 +123,7 @@ const AIChatPreview: React.FC = () => {
   useWorkflowInterruptExecutor({
     enabled: !isLoading,
     messages: chatState.messages,
+    onUpdateMessage: chatState.updateMessage,
     onResume: async (resumePayload) => {
       setIsLoading(true);
       try {

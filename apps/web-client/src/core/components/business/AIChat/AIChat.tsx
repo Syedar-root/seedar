@@ -1,4 +1,10 @@
-import React, { useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useLayoutEffect,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Bubble,
   ThoughtChain,
@@ -63,11 +69,11 @@ const AIChat: React.FC<AIChatProps> = ({
     isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 100;
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isAtBottomRef.current && messagesListRef.current) {
       messagesListRef.current.scrollTop = messagesListRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, loading]);
 
   const handleSend = useCallback(
     (content: string, isResume?: boolean, resumePayload?: AiChatResumeDto) => {
@@ -168,6 +174,7 @@ const AIChat: React.FC<AIChatProps> = ({
             <div key={msg.id} className={styles["message-item"]}>
               <InterruptMessage
                 content={msg.content}
+                message={msg}
                 onSubmit={handleSend}
                 disabled={loading || group[group.length - 1]?.id !== msg.id}
               />
@@ -363,13 +370,13 @@ const AIChat: React.FC<AIChatProps> = ({
 
       <div
         className={styles["messages-list"]}
-        ref={messagesListRef}
-        onScroll={handleScroll}
         role="log"
         aria-label="消息列表"
         aria-live="polite"
       >
         <ScrollArea
+          viewportRef={messagesListRef}
+          onViewportScroll={handleScroll}
           contentStyle={{ minWidth: "none", paddingInline: "1.25rem" }}
         >
           {assistantGroups.map(

@@ -1,10 +1,15 @@
 import { MetricCard, SeedarPanel } from "#pkg/seedar/ui-react";
-import type { DatasetResponse, PanelQueryStatePayload } from "#pkg/seedar/types";
+import type {
+  DatasetResponse,
+  PanelQueryStatePayload,
+  QueryDSL,
+} from "#pkg/seedar/types";
 import { PanelStatus } from "#pkg/seedar/types";
 import { Dialog } from "@base-ui/react/dialog";
 import { Segmented } from "antd";
 import type { SegmentedValue } from "antd/es/segmented";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -51,6 +56,14 @@ interface PanelWorkflowSnapshot {
   editor: PanelEditorSnapshot;
   isDatasetDialogOpen: boolean;
   pendingSelectedDataset?: DatasetResponse;
+}
+
+interface WorkflowPreviewContext {
+  hasDataset: boolean;
+  canRun: boolean;
+  buildDsl?: (baseDsl?: QueryDSL) => QueryDSL | undefined;
+  baseDsl?: QueryDSL;
+  runPreview: (dsl?: QueryDSL) => Promise<unknown>;
 }
 
 const COLLAPSED_THRESHOLD = 1200;
@@ -101,6 +114,11 @@ export const PanelPage = () => {
   const [hasPendingWorkflowChanges, setHasPendingWorkflowChanges] =
     useState(false);
   const workflowSnapshotRef = useRef<PanelWorkflowSnapshot | null>(null);
+  const workflowPreviewContextRef = useRef<WorkflowPreviewContext>({
+    hasDataset: false,
+    canRun: false,
+    runPreview: async () => undefined,
+  });
 
   const {
     dimensionItems,
@@ -195,6 +213,13 @@ export const PanelPage = () => {
   });
 
   const previewSpec = usePreviewSpec(displayType, editorConfig);
+  workflowPreviewContextRef.current = {
+    hasDataset,
+    canRun,
+    buildDsl,
+    baseDsl: queryData?.dsl as QueryDSL | undefined,
+    runPreview,
+  };
   const isPublished = panelStatus === PanelStatus.PUBLISHED;
   const panelStatusLabel = PANEL_STATUS_LABELS[panelStatus];
   const primaryActionLabel = isPublished
@@ -514,7 +539,9 @@ export const PanelPage = () => {
           };
         }
 
-        setPendingSelectedDataset(dataset);
+        flushSync(() => {
+          setPendingSelectedDataset(dataset);
+        });
 
         if (activeDataset?.id === dataset.id) {
           return {
@@ -535,9 +562,13 @@ export const PanelPage = () => {
         }
 
         if (activeDataset) {
-          replaceDataset(dataset);
+          flushSync(() => {
+            replaceDataset(dataset);
+          });
         } else {
-          selectDataset(dataset);
+          flushSync(() => {
+            selectDataset(dataset);
+          });
         }
 
         return {
@@ -562,7 +593,9 @@ export const PanelPage = () => {
           };
         }
 
-        setPendingSelectedDataset(dataset);
+        flushSync(() => {
+          setPendingSelectedDataset(dataset);
+        });
 
         if (
           isDatasetLocked &&
@@ -576,7 +609,9 @@ export const PanelPage = () => {
         }
 
         if (activeDataset?.id === dataset.id) {
-          setIsDatasetDialogOpen(false);
+          flushSync(() => {
+            setIsDatasetDialogOpen(false);
+          });
           return {
             datasetId: dataset.id,
             changed: false,
@@ -594,12 +629,18 @@ export const PanelPage = () => {
         }
 
         if (activeDataset) {
-          replaceDataset(dataset);
+          flushSync(() => {
+            replaceDataset(dataset);
+          });
         } else {
-          selectDataset(dataset);
+          flushSync(() => {
+            selectDataset(dataset);
+          });
         }
 
-        setIsDatasetDialogOpen(false);
+        flushSync(() => {
+          setIsDatasetDialogOpen(false);
+        });
         return {
           datasetId: dataset.id,
           changed: true,
@@ -657,7 +698,9 @@ export const PanelPage = () => {
           }
         }
 
-        applyQueryState(queryState, targetDataset);
+        flushSync(() => {
+          applyQueryState(queryState, targetDataset);
+        });
 
         return {
           datasetId: targetDataset.id,
@@ -678,7 +721,9 @@ export const PanelPage = () => {
           };
         }
 
-        handleTitleChange(titlePayload.trim(), titleConfig);
+        flushSync(() => {
+          handleTitleChange(titlePayload.trim(), titleConfig);
+        });
         return {
           title: titlePayload.trim(),
         };
@@ -697,7 +742,9 @@ export const PanelPage = () => {
           };
         }
 
-        handleEditorChange(displayType as DisplayPanelType, editorConfig);
+        flushSync(() => {
+          handleEditorChange(displayType as DisplayPanelType, editorConfig);
+        });
         return {
           displayType,
         };
@@ -705,8 +752,37 @@ export const PanelPage = () => {
       run_preview: async () => {
         captureWorkflowSnapshot();
 
-        const success = await handleRun();
-        if (!success) {
+        const {
+          hasDataset,
+          canRun,
+          buildDsl,
+          baseDsl,
+          runPreview,
+        } = workflowPreviewContextRef.current;
+        if (!hasDataset) {
+          throw {
+            code: "WORKFLOW_RUN_PREVIEW_INVALID",
+            message: COPY.selectDatasetFirst,
+          };
+        }
+
+        if (!canRun || !buildDsl) {
+          throw {
+            code: "WORKFLOW_RUN_PREVIEW_INVALID",
+            message: COPY.addDimensionOrMetric,
+          };
+        }
+
+        const dsl = buildDsl(baseDsl);
+        if (!dsl) {
+          throw {
+            code: "WORKFLOW_RUN_PREVIEW_INVALID",
+            message: "褰撳墠鏌ヨ鐘舵€佹棤娉曠敓鎴愭湁鏁?DSL",
+          };
+        }
+
+        const previewResult = await runPreview(dsl);
+        if (!previewResult) {
           throw {
             code: "WORKFLOW_RUN_PREVIEW_FAILED",
             message: "图表预览执行失败",
@@ -715,6 +791,9 @@ export const PanelPage = () => {
 
         return {
           previewExecuted: true,
+          rowCount: Array.isArray((previewResult as any).results?.rows)
+            ? (previewResult as any).results.rows.length
+            : undefined,
         };
       },
       save_draft: async () => {
@@ -885,24 +964,6 @@ export const PanelPage = () => {
             availableFields={activeDataset?.fields || []}
           />
           <div className={styles.operations}>
-            {hasPendingWorkflowChanges ? (
-              <>
-                <button
-                  className={styles.secondaryAction}
-                  onClick={handleDiscardWorkflowChanges}
-                  disabled={isSaving || isRunning || isReverting}
-                >
-                  撤销 AI 修改
-                </button>
-                <button
-                  className={styles.secondaryAction}
-                  onClick={handleAcceptWorkflowChanges}
-                  disabled={isSaving || isRunning || isReverting}
-                >
-                  接受 AI 修改
-                </button>
-              </>
-            ) : null}
             <button
               className={styles.save}
               onClick={onPrimarySave}
@@ -935,6 +996,40 @@ export const PanelPage = () => {
             </button>
           </div>
         </header>
+
+        {hasPendingWorkflowChanges ? (
+          <section
+            className={styles.workflowConfirmBanner}
+            aria-live="polite"
+            aria-label="AI 修改待确认"
+          >
+            <div className={styles.workflowConfirmCopy}>
+              <div className={styles.workflowConfirmEyebrow}>AI 修改待确认</div>
+              <div className={styles.workflowConfirmTitle}>
+                AI 已经改动当前图表，请现在确认保留还是撤销
+              </div>
+              <div className={styles.workflowConfirmDesc}>
+                接受后，这一轮 AI 修改会成为新的起点。撤销后，会完整回到本轮 AI 修改开始前的状态。
+              </div>
+            </div>
+            <div className={styles.workflowConfirmActions}>
+              <button
+                className={styles.workflowDiscardAction}
+                onClick={handleDiscardWorkflowChanges}
+                disabled={isSaving || isRunning || isReverting}
+              >
+                撤销本轮 AI 修改
+              </button>
+              <button
+                className={styles.workflowAcceptAction}
+                onClick={handleAcceptWorkflowChanges}
+                disabled={isSaving || isRunning || isReverting}
+              >
+                接受并作为当前结果
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <main className={styles.mainContent}>
           {previewPanel ? (

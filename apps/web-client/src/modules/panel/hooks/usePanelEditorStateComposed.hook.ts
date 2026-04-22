@@ -157,6 +157,7 @@ export const usePanelEditorState = (
 
   const hydratedQueryRef = useRef<string | undefined>();
   const derivedDimensionSeedRef = useRef(0);
+  const previewRequestIdRef = useRef(0);
 
   const { data: panelData } = usePanel(panelId ?? "", !!panelId);
   const queryId = panelData?.queryId;
@@ -253,8 +254,12 @@ export const usePanelEditorState = (
         return undefined;
       }
 
+      const requestId = previewRequestIdRef.current + 1;
+      previewRequestIdRef.current = requestId;
       const data = await executeTempQueryAsync(targetDsl);
-      setTempData(data);
+      if (previewRequestIdRef.current === requestId) {
+        setTempData(data);
+      }
       return data;
     },
     [buildDsl, executeTempQueryAsync, queryData?.dsl],
@@ -270,9 +275,13 @@ export const usePanelEditorState = (
       return;
     }
 
+    const requestId = previewRequestIdRef.current + 1;
+    previewRequestIdRef.current = requestId;
     executeTempQuery(dsl, {
       onSuccess: (data) => {
-        setTempData(data);
+        if (previewRequestIdRef.current === requestId) {
+          setTempData(data);
+        }
       },
     });
   }, [buildDsl, canRun, executeTempQuery, queryData?.dsl]);

@@ -17,6 +17,7 @@ const INTERRUPT_RENDERERS: Record<
 
 const InterruptMessage: React.FC<InterruptMessageProps> = ({
   content,
+  message,
   onSubmit,
   disabled = false,
 }) => {
@@ -24,6 +25,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
     return (
       <AskUserInterrupt
         content={content}
+        message={message}
         onSubmit={onSubmit}
         disabled={disabled}
       />
@@ -36,6 +38,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
   return (
     <InterruptRenderer
       content={content}
+      message={message}
       onSubmit={onSubmit}
       disabled={disabled}
     />

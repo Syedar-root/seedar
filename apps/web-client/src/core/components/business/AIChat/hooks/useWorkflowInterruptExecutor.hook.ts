@@ -5,12 +5,17 @@ import type {
   WorkflowRunInterrupt,
 } from "#pkg/seedar/types";
 import { executeWorkflowInterrupt } from "@/core/workflow";
-import type { ChatMessage } from "../types";
+import type {
+  ChatMessage,
+  MessageUpdate,
+  WorkflowExecutionState,
+} from "../types";
 
 interface UseWorkflowInterruptExecutorParams {
   enabled?: boolean;
   messages: ChatMessage[];
   onResume: (resumePayload: AiChatResumeDto) => Promise<unknown>;
+  onUpdateMessage: (id: string, updates: MessageUpdate) => void;
 }
 
 const getLatestWorkflowInterrupt = (messages: ChatMessage[]) => {
@@ -22,7 +27,10 @@ const getLatestWorkflowInterrupt = (messages: ChatMessage[]) => {
       typeof message.content !== "string" &&
       message.content.value.kind === "workflow_run"
     ) {
-      return message.content.value;
+      return {
+        interrupt: message.content.value,
+        messageId: message.id,
+      };
     }
   }
 
@@ -33,6 +41,7 @@ export const useWorkflowInterruptExecutor = ({
   enabled = true,
   messages,
   onResume,
+  onUpdateMessage,
 }: UseWorkflowInterruptExecutorParams) => {
   const navigate = useNavigate();
   const handledInterruptIdsRef = useRef(new Set<string>());
@@ -56,7 +65,7 @@ export const useWorkflowInterruptExecutor = ({
       return;
     }
 
-    const { interruptId } = latestWorkflowInterrupt;
+    const interruptId = latestWorkflowInterrupt.interrupt.interruptId;
     if (handledInterruptIdsRef.current.has(interruptId)) {
       return;
     }
@@ -64,10 +73,22 @@ export const useWorkflowInterruptExecutor = ({
     handledInterruptIdsRef.current.add(interruptId);
 
     void (async () => {
-      const interrupt = latestWorkflowInterrupt as WorkflowRunInterrupt;
-      const interruptResult = await executeWorkflowInterrupt(interrupt, {
-        navigate,
-      });
+      const interrupt = latestWorkflowInterrupt.interrupt as WorkflowRunInterrupt;
+      const messageId = latestWorkflowInterrupt.messageId;
+      const interruptResult = await executeWorkflowInterrupt(
+        interrupt,
+        {
+          navigate,
+        },
+        {
+          onStateChange: (workflowExecution) => {
+            onUpdateMessage(messageId, (previous) => ({
+              ...previous,
+              workflowExecution: workflowExecution as WorkflowExecutionState,
+            }));
+          },
+        },
+      );
 
       try {
         await onResume({
@@ -81,5 +102,5 @@ export const useWorkflowInterruptExecutor = ({
     })().catch((error) => {
       console.error("Workflow interrupt execution failed:", error);
     });
-  }, [enabled, latestWorkflowInterrupt, navigate, onResume]);
+  }, [enabled, latestWorkflowInterrupt, navigate, onResume, onUpdateMessage]);
 };

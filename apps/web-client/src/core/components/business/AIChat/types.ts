@@ -90,6 +90,48 @@ export interface ChatMessage {
   timestamp: number;
   done: boolean;
   meta?: ToolCallMeta | ToolResultMeta;
+  workflowExecution?: WorkflowExecutionState;
+}
+
+export type WorkflowExecutionStepStatus =
+  | "pending"
+  | "running"
+  | "done"
+  | "failed";
+
+export interface WorkflowExecutionStep {
+  key: string;
+  target: string;
+  title: string;
+  description?: string;
+  status: WorkflowExecutionStepStatus;
+  result?: Record<string, unknown>;
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+export interface WorkflowExecutionState {
+  interruptId: string;
+  workflowId: string;
+  status: WorkflowExecutionStepStatus;
+  steps: WorkflowExecutionStep[];
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+export interface WorkflowExecutionUpdate {
+  interruptId: string;
+  workflowId: string;
+  status: WorkflowExecutionStepStatus;
+  steps: WorkflowExecutionStep[];
+  error?: {
+    code: string;
+    message: string;
+  };
 }
 
 export interface CommandItem {
@@ -161,6 +203,7 @@ export interface OnInterruptSubmitCallback {
 
 export interface InterruptMessageProps {
   content: string | InterruptContent<AiInterruptPayload>;
+  message?: ChatMessage;
   onSubmit?: (
     data: string,
     isResume: boolean,
