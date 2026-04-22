@@ -8,7 +8,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  executeWorkflowInterrupt,
   useWorkflowActionConsumer,
 } from "@/core/workflow";
 import { Aside } from "../components/aside";
@@ -28,7 +27,6 @@ import {
   usePanelEditorState,
   usePreviewSpec,
 } from "../hooks";
-import { serializeDimensions } from "../utils/panelEditorState";
 import styles from "./styles/panel.module.scss";
 
 type SidePaneKey = "aside" | "editor";
@@ -202,7 +200,6 @@ export const PanelPage = () => {
   const primaryActionLabel = isPublished
     ? COPY.saveAndUpdate
     : COPY.saveAndPublish;
-  const isDevMode = import.meta.env.DEV;
 
   useEffect(() => {
     if (!isDatasetDialogOpen) {
@@ -476,93 +473,6 @@ export const PanelPage = () => {
       }
     });
   };
-
-  const buildMockQueryState = useCallback((): PanelQueryStatePayload | null => {
-    if (!activeDataset?.id) {
-      return null;
-    }
-
-    const currentDimensions = serializeDimensions(dimensionItems);
-    const currentDimensionFieldIds = new Set(
-      currentDimensions
-        .map((dimension) => ("fieldId" in dimension ? dimension.fieldId : undefined))
-        .filter((fieldId): fieldId is number => typeof fieldId === "number"),
-    );
-    const currentMetricIds = new Set(
-      dropMetrics
-        .map((metric) => Number(metric.id))
-        .filter((metricId) => !Number.isNaN(metricId)),
-    );
-
-    const nextDimensionField =
-      activeDataset.fields.find((field) => !currentDimensionFieldIds.has(field.id)) ??
-      activeDataset.fields[0];
-    const nextMetric =
-      activeDataset.metrics.find((metric) => !currentMetricIds.has(metric.id)) ??
-      activeDataset.metrics[0];
-
-    if (!nextDimensionField || !nextMetric) {
-      return null;
-    }
-
-    return {
-      datasetId: activeDataset.id,
-      dimensions: [
-        {
-          fieldId: nextDimensionField.id,
-          alias: undefined,
-          name: nextDimensionField.name,
-          businessName: nextDimensionField.businessName,
-        },
-      ],
-      metrics: [
-        {
-          id: nextMetric.id,
-          alias: undefined,
-          name: nextMetric.name,
-          businessName: nextMetric.businessName,
-        },
-      ],
-      filters: [],
-      tempMetrics: [],
-    };
-  }, [activeDataset, dimensionItems, dropMetrics]);
-
-  const handleMockWorkflow = useCallback(async () => {
-    const queryState = buildMockQueryState();
-    if (!queryState) {
-      toast.error("请先选择数据集后再测试 workflow");
-      return;
-    }
-
-    const interruptId =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `mock-workflow-${Date.now()}`;
-
-    const result = await executeWorkflowInterrupt(
-      {
-        kind: "workflow_run",
-        interruptId,
-        request: {
-          workflowId: "query_current_panel_as_table_v1",
-          params: {
-            queryState,
-          },
-        },
-      },
-      {
-        navigate,
-      },
-    );
-
-    if (result.status === "done") {
-      toast.success("Mock workflow 执行成功");
-      return;
-    }
-
-    toast.error(result.error?.message || "Mock workflow 执行失败");
-  }, [buildMockQueryState, navigate]);
 
   useWorkflowActionConsumer({
     page: "panel",
@@ -975,17 +885,6 @@ export const PanelPage = () => {
             availableFields={activeDataset?.fields || []}
           />
           <div className={styles.operations}>
-            {isDevMode ? (
-              <button
-                className={styles.secondaryAction}
-                onClick={() => {
-                  void handleMockWorkflow();
-                }}
-                disabled={isSaving || isRunning || isReverting}
-              >
-                Mock AI 表格流程
-              </button>
-            ) : null}
             {hasPendingWorkflowChanges ? (
               <>
                 <button
