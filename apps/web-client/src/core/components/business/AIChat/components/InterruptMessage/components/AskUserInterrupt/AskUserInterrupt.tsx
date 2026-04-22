@@ -1,21 +1,21 @@
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { Button } from "@base-ui/react/button";
 import { Input } from "@base-ui/react/input";
+import type { AiInterruptPayload } from "#pkg/seedar/types";
 import type {
   AskQuestionItem,
   ChoiceOptionItem,
 } from "../../../../types";
-import type { AiInterruptPayload } from "#pkg/seedar/types";
 import {
-  useInterruptForm,
   parseOptions,
+  useInterruptForm,
 } from "../../../../hooks/useInterruptForm.hook";
+import { ChoiceQuestion } from "../ChoiceQuestion";
+import { ConfirmQuestion } from "../ConfirmQuestion";
 import { ProgressBar } from "../ProgressBar";
 import { TextQuestion } from "../TextQuestion";
-import { ConfirmQuestion } from "../ConfirmQuestion";
-import { ChoiceQuestion } from "../ChoiceQuestion";
-import styles from "../../InterruptMessage.module.scss";
 import type { InterruptRendererProps } from "../../types";
+import styles from "./AskUserInterrupt.module.scss";
 
 interface FormState {
   textValue: string;
@@ -64,7 +64,7 @@ const PlainInterrupt: React.FC<InterruptRendererProps> = ({
     return null;
   }
 
-  const submit = () => {
+  const handleSubmit = () => {
     if (!textValue.trim() || disabled) {
       return;
     }
@@ -85,8 +85,8 @@ const PlainInterrupt: React.FC<InterruptRendererProps> = ({
   };
 
   return (
-    <div className={styles["container"]}>
-      <div className={styles["header"]}>{content}</div>
+    <div className={styles.container}>
+      <div className={styles.header}>{content}</div>
       <div className={styles["input-row"]}>
         <Input
           value={textValue}
@@ -94,7 +94,7 @@ const PlainInterrupt: React.FC<InterruptRendererProps> = ({
           disabled={disabled}
           onKeyDown={(event) => {
             if (event.key === "Enter" && textValue.trim() && !disabled) {
-              submit();
+              handleSubmit();
             }
           }}
           placeholder="请输入..."
@@ -103,11 +103,14 @@ const PlainInterrupt: React.FC<InterruptRendererProps> = ({
         <Button
           className={styles["primary-button"]}
           disabled={disabled}
-          onClick={submit}
+          onClick={handleSubmit}
         >
           确认
         </Button>
       </div>
+      {!disabled ? (
+        <span className={styles["wait-answer"]}>SeeMind等你回答</span>
+      ) : null}
     </div>
   );
 };
@@ -202,6 +205,7 @@ const AskUserInterrupt: React.FC<InterruptRendererProps> = ({
               dispatch({ type: "SET_CHOICE", payload: answerArray });
             }
           }
+
           return;
         }
       }
@@ -211,7 +215,10 @@ const AskUserInterrupt: React.FC<InterruptRendererProps> = ({
   }, [currentIndex, currentQuestion, answers]);
 
   const handleCancel = () => {
-    if (disabled) return;
+    if (disabled) {
+      return;
+    }
+
     cancelAndSubmit();
   };
 
@@ -297,7 +304,7 @@ const AskUserInterrupt: React.FC<InterruptRendererProps> = ({
 
   if (isCompleted || !currentQuestion) {
     return (
-      <div className={styles["container"]}>
+      <div className={styles.container}>
         <div className={styles["summary-area"]}>
           <h3>{isCancelled ? "问题表单已取消" : "问题表单已完成"}</h3>
           {!isCancelled && (
@@ -371,11 +378,11 @@ const AskUserInterrupt: React.FC<InterruptRendererProps> = ({
   };
 
   return (
-    <div className={styles["container"]} role="form" aria-label="问题表单">
+    <div className={styles.container} role="form" aria-label="问题表单">
       <div className={styles["question-area"]}>{renderCurrentQuestion()}</div>
       <div className={styles["footer-container"]}>
         <div
-          className={styles["footer"]}
+          className={styles.footer}
           role="progressbar"
           aria-label={`问题进度: ${currentIndex + 1}/${totalQuestions}`}
         >
@@ -406,6 +413,9 @@ const AskUserInterrupt: React.FC<InterruptRendererProps> = ({
           </Button>
         </div>
       </div>
+      {!disabled ? (
+        <span className={styles["wait-answer"]}>SeeMind等你回答</span>
+      ) : null}
     </div>
   );
 };

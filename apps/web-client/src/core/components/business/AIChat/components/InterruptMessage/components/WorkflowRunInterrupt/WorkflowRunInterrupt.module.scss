@@ -1,0 +1,33 @@
+.container {
+  padding: var(--chat-space-md);
+  background: var(--chat-bg-secondary);
+  border-radius: var(--chat-radius-lg);
+  border: 1px solid var(--chat-border-default);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chat-space-md);
+}
+
+.header {
+  font: var(--chat-text-heading);
+  color: var(--chat-color-primary);
+  letter-spacing: var(--chat-text-heading-tracking);
+}
+
+.summary-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chat-space-md);
+
+  h3 {
+    font: var(--chat-text-heading);
+    color: var(--chat-color-primary);
+    margin: 0;
+  }
+
+  p {
+    margin: 0;
+    font: var(--chat-text-body);
+    color: var(--chat-color-secondary);
+  }
+}

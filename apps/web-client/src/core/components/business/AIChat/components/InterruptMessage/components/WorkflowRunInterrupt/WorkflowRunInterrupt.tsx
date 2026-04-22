@@ -1,7 +1,12 @@
 import React from "react";
-import type { AiInterruptPayload } from "#pkg/seedar/types";
-import styles from "../../InterruptMessage.module.scss";
+import { ThoughtChain, type ThoughtChainItemType } from "@ant-design/x";
+import {
+  getWorkflowActionPresentation,
+  type AiInterruptPayload,
+} from "#pkg/seedar/types";
+import { getWorkflowTemplate } from "@/core/workflow";
 import type { InterruptRendererProps } from "../../types";
+import styles from "./WorkflowRunInterrupt.module.scss";
 
 const WorkflowRunInterrupt: React.FC<InterruptRendererProps> = ({ content }) => {
   if (typeof content === "string") {
@@ -14,15 +19,30 @@ const WorkflowRunInterrupt: React.FC<InterruptRendererProps> = ({ content }) => 
   }
 
   const { request } = interruptValue;
+  const template = getWorkflowTemplate(request.workflowId);
+  const items: ThoughtChainItemType[] =
+    template?.actions.map((action, index) => {
+      const presentation = getWorkflowActionPresentation(action);
+
+      return {
+        key: `${request.workflowId}-${index}`,
+        title: presentation.title,
+        description: presentation.description,
+        status: index === 0 ? "loading" : undefined,
+      };
+    }) || [];
 
   return (
     <div className={styles["container"]}>
-      <div className={styles["header"]}>Workflow 请求</div>
+      <div className={styles["header"]}>{request.workflowId}</div>
       <div className={styles["summary-area"]}>
-        <h3>{request.workflowId}</h3>
-        <p>前端正在自动执行当前 workflow，请稍候。</p>
-        {request.params ? (
-          <pre>{JSON.stringify(request.params, null, 2)}</pre>
+        {items.length > 0 ? (
+          <ThoughtChain
+            items={items}
+            defaultExpandedKeys={items
+              .map((item) => item.key)
+              .filter((key): key is string => typeof key === "string")}
+          />
         ) : null}
       </div>
     </div>

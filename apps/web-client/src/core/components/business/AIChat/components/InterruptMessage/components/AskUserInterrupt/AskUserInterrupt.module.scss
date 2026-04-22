@@ -110,13 +110,6 @@
     cursor: not-allowed;
     box-shadow: none;
   }
-
-  &:disabled:hover,
-  &[data-disabled]:hover {
-    color: var(--chat-color-muted);
-    border-color: var(--chat-border-default);
-    box-shadow: none;
-  }
 }
 
 .primary-button {
@@ -151,16 +144,6 @@
     );
     cursor: not-allowed;
     box-shadow: none;
-  }
-
-  &:disabled:hover,
-  &[data-disabled]:hover {
-    background: color-mix(
-      in oklab,
-      var(--chat-color-muted) 18%,
-      var(--chat-bg-secondary) 82%
-    );
-    box-shadow: none !important;
   }
 }
 
@@ -202,4 +185,44 @@
   font: var(--chat-text-body);
   color: var(--chat-color-primary);
   font-weight: 500;
+}
+
+.wait-answer {
+  --wait-answer-color: color-mix(
+    in oklab,
+    var(--chat-color-secondary) 40%,
+    #fff
+  );
+
+  font: var(--chat-text-label);
+  color: var(--wait-answer-color);
+  letter-spacing: 0.5px;
+  background: linear-gradient(
+    90deg,
+    var(--wait-answer-color) 0%,
+    var(--wait-answer-color) 25%,
+    #000 40%,
+    #000 60%,
+    var(--wait-answer-color) 75%,
+    var(--wait-answer-color) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: shimmer 1s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wait-answer {
+    animation: none;
+  }
 }
