@@ -8,7 +8,6 @@ import type { ChatMessage, CommandItem, SSEData } from "./types";
 import styles from "./AIChat.Preview.module.scss";
 import type { AiChatResumeDto, AiSessionResponse } from "#pkg/seedar/types";
 import { formatMessageForDisplay } from "./utils/command.utils";
-import { createUserMessage, generateMessageId } from "./utils/messageAdapter.utils";
 
 const AI_CHAT_COMMANDS_RECORD = {
   dataQuery: {
@@ -32,7 +31,6 @@ const AIChatPreview: React.FC = () => {
   const [currentModel, setCurrentModel] = useState("gpt-4");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isMockInterruptMode, setIsMockInterruptMode] = useState(false);
   const [currentSession, setCurrentSession] =
     useState<AiSessionResponse | null>(null);
 
@@ -52,7 +50,6 @@ const AIChatPreview: React.FC = () => {
     isResume: boolean = false,
     resumePayload?: AiChatResumeDto,
   ) => {
-    setIsMockInterruptMode(false);
     const session =
       currentSession ||
       (await createSession(
@@ -124,7 +121,7 @@ const AIChatPreview: React.FC = () => {
   };
 
   useWorkflowInterruptExecutor({
-    enabled: !isLoading && !isMockInterruptMode,
+    enabled: !isLoading,
     messages: chatState.messages,
     onResume: async (resumePayload) => {
       setIsLoading(true);
@@ -138,94 +135,8 @@ const AIChatPreview: React.FC = () => {
   });
 
   const handleAddChat = async () => {
-    setIsMockInterruptMode(false);
     chatState.setMessages([]);
     setCurrentSession(null);
-  };
-
-  const handleMockAskUserInterrupt = () => {
-    setIsMockInterruptMode(true);
-    setIsLoading(false);
-    setError(null);
-    chatState.setMessages([
-      createUserMessage("帮我补充当前查询需要的参数"),
-      {
-        id: generateMessageId(),
-        type: "interrupt",
-        role: "act",
-        timestamp: Date.now(),
-        done: true,
-        content: {
-          id: generateMessageId(),
-          value: {
-            kind: "ask_user",
-            questions: [
-              {
-                id: "dataset_choice",
-                question: "请选择你要查询的数据集",
-                type: "choice",
-                options: [
-                  { label: "销售数据", value: "sales" },
-                  { label: "用户数据", value: "users" },
-                ],
-              },
-              {
-                id: "goal_text",
-                question: "你想重点关注哪个指标？",
-                type: "text",
-              },
-            ],
-          },
-        },
-      },
-    ]);
-  };
-
-  const handleMockWorkflowInterrupt = () => {
-    setIsMockInterruptMode(true);
-    setIsLoading(false);
-    setError(null);
-    chatState.setMessages([
-      createUserMessage("把当前图表切成表格并重新跑一次查询"),
-      {
-        id: generateMessageId(),
-        type: "interrupt",
-        role: "act",
-        timestamp: Date.now(),
-        done: true,
-        content: {
-          id: generateMessageId(),
-          value: {
-            kind: "workflow_run",
-            interruptId: generateMessageId(),
-            request: {
-              workflowId: "query_current_panel_as_table_v1",
-              params: {
-                queryState: {
-                  datasetId: 1,
-                  dimensions: [
-                    {
-                      fieldId: 1,
-                      name: "order_date",
-                      businessName: "下单日期",
-                    },
-                  ],
-                  metrics: [
-                    {
-                      id: 1,
-                      name: "sales_amount",
-                      businessName: "销售额",
-                    },
-                  ],
-                  filters: [],
-                  tempMetrics: [],
-                },
-              },
-            },
-          },
-        },
-      },
-    ]);
   };
 
   const handleModelChange = (modelKey: string) => {
@@ -251,16 +162,6 @@ const AIChatPreview: React.FC = () => {
   return (
     <div className={styles["preview-container"]}>
       <section className={styles["preview-section"]}>
-        {import.meta.env.DEV ? (
-          <div style={{ display: "flex", gap: 8, padding: "8px 12px" }}>
-            <button type="button" onClick={handleMockAskUserInterrupt}>
-              Mock Ask User
-            </button>
-            <button type="button" onClick={handleMockWorkflowInterrupt}>
-              Mock Workflow
-            </button>
-          </div>
-        ) : null}
         <AIChat
           style={{ height: "100%", border: "none" }}
           messages={chatState.messages}
