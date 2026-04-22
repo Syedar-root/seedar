@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+﻿import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { AiService } from './ai.service';
 import {
   AiAgentStreamChunk,
@@ -55,14 +55,14 @@ import { LoggerService } from '@/logger/logger.service';
 @Injectable()
 export class ChatService {
   private readonly SYSTEM_PROMPT = `
-你的名字是Seedar，你是一个智能助手，你的任务是帮助用户完成任务。
-你需要严格遵循下面的规则：
-1. 请你不要在思考内容或者标签中直接说出任何关于内部工具的信息，使用直白的用户能理解的语言概括这一步骤即可，如"用户需要知道当前地点的天气，我将使用工具为用户查询天气"
-2. 当你在问题澄清、需求获取、步骤确认等场景下，请你使用提问工具向用户提出问题。
-   - 你需要根据具体的问题，来决定使用的问题类型。
-   - 如果你认为答案是有限的，你可以给用户提供选择。
-   - 如果你认为答案是无限的，你可以直接向用户提问。
-   - 如果你已经有了答案，那你必须先向用户确认。
+浣犵殑鍚嶅瓧鏄疭eedar锛屼綘鏄竴涓櫤鑳藉姪鎵嬶紝浣犵殑浠诲姟鏄府鍔╃敤鎴峰畬鎴愪换鍔°€?
+浣犻渶瑕佷弗鏍奸伒寰笅闈㈢殑瑙勫垯锛?
+1. 璇蜂綘涓嶈鍦ㄦ€濊€冨唴瀹规垨鑰呮爣绛句腑鐩存帴璇村嚭浠讳綍鍏充簬鍐呴儴宸ュ叿鐨勪俊鎭紝浣跨敤鐩寸櫧鐨勭敤鎴疯兘鐞嗚В鐨勮瑷€姒傛嫭杩欎竴姝ラ鍗冲彲锛屽"鐢ㄦ埛闇€瑕佺煡閬撳綋鍓嶅湴鐐圭殑澶╂皵锛屾垜灏嗕娇鐢ㄥ伐鍏蜂负鐢ㄦ埛鏌ヨ澶╂皵"
+2. 褰撲綘鍦ㄩ棶棰樻緞娓呫€侀渶姹傝幏鍙栥€佹楠ょ‘璁ょ瓑鍦烘櫙涓嬶紝璇蜂綘浣跨敤鎻愰棶宸ュ叿鍚戠敤鎴锋彁鍑洪棶棰樸€?
+   - 浣犻渶瑕佹牴鎹叿浣撶殑闂锛屾潵鍐冲畾浣跨敤鐨勯棶棰樼被鍨嬨€?
+   - 濡傛灉浣犺涓虹瓟妗堟槸鏈夐檺鐨勶紝浣犲彲浠ョ粰鐢ㄦ埛鎻愪緵閫夋嫨銆?
+   - 濡傛灉浣犺涓虹瓟妗堟槸鏃犻檺鐨勶紝浣犲彲浠ョ洿鎺ュ悜鐢ㄦ埛鎻愰棶銆?
+   - 濡傛灉浣犲凡缁忔湁浜嗙瓟妗堬紝閭ｄ綘蹇呴』鍏堝悜鐢ㄦ埛纭銆?
   `;
 
   private readonly DEMAND_TOOL_MAP = {
@@ -96,29 +96,69 @@ export class ChatService {
 
   private readonly checkpointer = new MemorySaver();
 
+  private isGraphInterruptLike(error: unknown): boolean {
+    if (error instanceof GraphInterrupt) {
+      return true;
+    }
+
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    return (
+      error.name === 'GraphInterrupt' ||
+      error.name === 'GraphBubbleUp' ||
+      error.name === 'NodeInterrupt'
+    );
+  }
+
+  private getToolInvocationError(error: unknown): Error | null {
+    if (!(error instanceof Error)) {
+      return null;
+    }
+
+    if (error.name === 'ToolInvocationError') {
+      return error;
+    }
+
+    const cause = (error as Error & { cause?: unknown }).cause;
+    if (cause instanceof Error && cause.name === 'ToolInvocationError') {
+      return cause;
+    }
+
+    return null;
+  }
+
   private createCatchToolExceptionMiddleware() {
     return createMiddleware({
       name: 'catchToolException',
-      wrapToolCall: (request, handler) => {
+      wrapToolCall: async (request, handler) => {
         try {
-          return handler(request);
+          return await handler(request);
         } catch (error) {
-          this.logger.error(error);
-          return Promise.resolve(
-            new ToolMessage({
-              content: `工具调用失败：${error instanceof Error ? error.message : error?.toString()}`,
+          if (this.isGraphInterruptLike(error)) {
+            throw error;
+          }
+
+          const toolInvocationError = this.getToolInvocationError(error);
+          if (toolInvocationError) {
+            this.logger.warn(toolInvocationError);
+            return new ToolMessage({
+              content: `工具参数校验失败，请修正后重新调用该工具。错误信息：${toolInvocationError.message}`,
               tool_call_id: request.toolCall.id || '',
-            }),
-          );
+            });
+          }
+
+          this.logger.error(error);
+          throw error;
         }
       },
     });
   }
-
   /**
-   * 创建对话图
-   * @param aiId AI 实例 ID
-   * @returns 编译后的状态图
+   * 鍒涘缓瀵硅瘽鍥?
+   * @param aiId AI 瀹炰緥 ID
+   * @returns 缂栬瘧鍚庣殑鐘舵€佸浘
    */
   private async createGraph(aiId: string) {
     const ai = await this.aiService.findOne(aiId);
@@ -144,22 +184,22 @@ export class ChatService {
   //     const askQuestionTool = tools.find((tool) => tool.name === 'askQuestion');
 
   //     const result = await askQuestionTool?.invoke({
-  //       questions: [{ type: 'text', question: '你好' }],
+  //       questions: [{ type: 'text', question: '浣犲ソ' }],
   //     });
   //     return result;
   //   };
   // }
 
   /**
-   * 创建澄清节点
-   * 负责理解用户需求，确定需要使用的工具和技能
+   * 鍒涘缓婢勬竻鑺傜偣
+   * 璐熻矗鐞嗚В鐢ㄦ埛闇€姹傦紝纭畾闇€瑕佷娇鐢ㄧ殑宸ュ叿鍜屾妧鑳?
    *
-   * Agent 特点：
-   * - 使用固定的工具集：askQuestion, getCurrentTime
-   * - 使用结构化响应格式，返回用户需求、允许的工具和技能
+   * Agent 鐗圭偣锛?
+   * - 浣跨敤鍥哄畾鐨勫伐鍏烽泦锛歛skQuestion, getCurrentTime
+   * - 浣跨敤缁撴瀯鍖栧搷搴旀牸寮忥紝杩斿洖鐢ㄦ埛闇€姹傘€佸厑璁哥殑宸ュ叿鍜屾妧鑳?
    *
-   * @param llmConfig LLM 配置
-   * @returns Graph 节点
+   * @param llmConfig LLM 閰嶇疆
+   * @returns Graph 鑺傜偣
    */
   private createClarifyNode(
     llmConfig: LLMConfig,
@@ -175,22 +215,22 @@ export class ChatService {
 
       const keywordMap: Record<string, string[]> = {
         'data-query': [
-          '数据',
-          '查询',
-          '温度',
-          '信息',
+          '鏁版嵁',
+          '鏌ヨ',
+          '娓╁害',
+          '淇℃伅',
           'data',
           'query',
           'temperature',
           'info',
         ],
         'chart-recommend': [
-          '图表',
-          '画图',
-          '推荐',
+          '鍥捐〃',
+          '鐢诲浘',
+          '鎺ㄨ崘',
           'chart',
           'recommend',
-          '图形',
+          '鍥惧舰',
         ],
       };
 
@@ -204,7 +244,7 @@ export class ChatService {
         maybeUserDemands.push('convert-to-backend');
       }
 
-      // 步骤4: 返回更新后的状态
+      // 姝ラ4: 杩斿洖鏇存柊鍚庣殑鐘舵€?
       return {
         allowTools: Array.from(
           new Set([
@@ -222,19 +262,19 @@ export class ChatService {
   }
 
   /**
-   * 创建执行节点
-   * 负责使用工具和技能执行具体任务
+   * 鍒涘缓鎵ц鑺傜偣
+   * 璐熻矗浣跨敤宸ュ叿鍜屾妧鑳芥墽琛屽叿浣撲换鍔?
    *
-   * Agent 特点：
-   * - 根据允许的工具列表动态过滤工具
-   * - 使用自由响应格式，不限制输出结构
+   * Agent 鐗圭偣锛?
+   * - 鏍规嵁鍏佽鐨勫伐鍏峰垪琛ㄥ姩鎬佽繃婊ゅ伐鍏?
+   * - 浣跨敤鑷敱鍝嶅簲鏍煎紡锛屼笉闄愬埗杈撳嚭缁撴瀯
    *
-   * @param llmConfig LLM 配置
-   * @returns Graph 节点
+   * @param llmConfig LLM 閰嶇疆
+   * @returns Graph 鑺傜偣
    */
   private createActNode(llmConfig: LLMConfig): GraphNode<typeof this.State> {
     return async (state) => {
-      // 步骤1: 创建 Deep Agent
+      // 姝ラ1: 鍒涘缓 Deep Agent
       const llm = this.createLLM(llmConfig);
       const essentialTools = [
         'askQuestion',
@@ -269,19 +309,19 @@ export class ChatService {
             .join(', ') || '',
       });
 
-      // 1. 技能根目录（NestJS 源码目录：src/skills）
+      // 1. 鎶€鑳芥牴鐩綍锛圢estJS 婧愮爜鐩綍锛歴rc/skills锛?
       const SKILLS_ROOT = path.join(__dirname, '.');
-      // 2. 校验目录是否存在
+      // 2. 鏍￠獙鐩綍鏄惁瀛樺湪
       if (!existsSync(SKILLS_ROOT)) {
         throw new InternalServerErrorException(
-          `技能目录不存在：${SKILLS_ROOT}`,
+          `鎶€鑳界洰褰曚笉瀛樺湪锛?{SKILLS_ROOT}`,
         );
       }
       console.log('hcs SKILLS_ROOT', SKILLS_ROOT); //hcs SKILLS_ROOT D:\Program\projects\seedar\apps\server\dist\module\ai\services
 
-      // 3. 创建文件系统后端（允许读取本地技能文件）
+      // 3. 鍒涘缓鏂囦欢绯荤粺鍚庣锛堝厑璁歌鍙栨湰鍦版妧鑳芥枃浠讹級
       const backend = new FilesystemBackend({
-        rootDir: SKILLS_ROOT, // 技能根目录
+        rootDir: SKILLS_ROOT, // 鎶€鑳芥牴鐩綍
         virtualMode: true,
       });
 
@@ -295,10 +335,10 @@ export class ChatService {
         skills: ['/skills/'],
       });
 
-      // 步骤2: 执行 Agent
+      // 姝ラ2: 鎵ц Agent
       const response = await agent.invoke({ messages: state.messages });
 
-      // 步骤3: 返回更新后的消息
+      // 姝ラ3: 杩斿洖鏇存柊鍚庣殑娑堟伅
       return { messages: response.messages };
     };
   }
@@ -310,11 +350,11 @@ export class ChatService {
   ];
 
   /**
-   * 处理流式对话请求
-   * @param aiId AI 实例 ID
-   * @param message 用户消息
-   * @param sessionId 会话 ID
-   * @yields 流式响应数据
+   * 澶勭悊娴佸紡瀵硅瘽璇锋眰
+   * @param aiId AI 瀹炰緥 ID
+   * @param message 鐢ㄦ埛娑堟伅
+   * @param sessionId 浼氳瘽 ID
+   * @yields 娴佸紡鍝嶅簲鏁版嵁
    */
   async *streamChat(
     aiId: string,
@@ -324,17 +364,17 @@ export class ChatService {
     resumePayload?: AiChatResumeDto,
   ): AsyncGenerator<AiAgentStreamChunk, void, unknown> {
     try {
-      // 步骤1: 获取会话信息
+      // 姝ラ1: 鑾峰彇浼氳瘽淇℃伅
       const session = await this.aiSessionService.findOne(sessionId);
 
-      // 步骤2: 创建对话图
+      // 姝ラ2: 鍒涘缓瀵硅瘽鍥?
       const agent = await this.createGraph(aiId);
 
       if (!isResume && !message) {
-        throw new InternalServerErrorException('初始对话缺少 message');
+        throw new InternalServerErrorException('鍒濆瀵硅瘽缂哄皯 message');
       }
 
-      // 步骤3: 启动流式对话
+      // 姝ラ3: 鍚姩娴佸紡瀵硅瘽
       const stream = await agent.stream(
         !isResume
           ? {
@@ -361,10 +401,10 @@ export class ChatService {
       let currentSid = '';
       let lastType: YieldType | undefined;
 
-      // 步骤4: 处理流式响应
+      // 姝ラ4: 澶勭悊娴佸紡鍝嶅簲
       for await (const [streamMode, chunk] of stream) {
-        // 处理 values 模式的中断信息
-        // TODO: 这样是有风险的
+        // 澶勭悊 values 妯″紡鐨勪腑鏂俊鎭?
+        // TODO: 杩欐牱鏄湁椋庨櫓鐨?
         if (streamMode === 'values') {
           const interruptData = this.extractInterrupt(chunk);
           if (interruptData && interruptData?.[0]?.value) {
@@ -380,7 +420,7 @@ export class ChatService {
           continue;
         }
 
-        // 处理 messages 模式的消息内容
+        // 澶勭悊 messages 妯″紡鐨勬秷鎭唴瀹?
         const token = chunk[0];
         const metadata = chunk[1];
         const { content, type } =
@@ -405,7 +445,7 @@ export class ChatService {
         }
 
         if (content && type) {
-          // 判断是否为工具调用结果
+          // 鍒ゆ柇鏄惁涓哄伐鍏疯皟鐢ㄧ粨鏋?
           const messageType = token.type === 'tool' ? 'tool_result' : type;
           if (
             messageType === 'tool_result' &&
@@ -414,7 +454,7 @@ export class ChatService {
             continue;
           }
 
-          // 类型变化时生成新的 sid
+          // 绫诲瀷鍙樺寲鏃剁敓鎴愭柊鐨?sid
           if (type !== lastType) {
             currentSid = randomUUID();
             lastType = type as YieldType;
@@ -446,11 +486,11 @@ export class ChatService {
         }
       }
 
-      // 步骤5: 返回完成标记
+      // 姝ラ5: 杩斿洖瀹屾垚鏍囪
       console.log('hcs tool_call', JSON.stringify(tool_call, null, 2));
       yield { sid: currentSid, content: '', done: true };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      const errorMessage = error instanceof Error ? error.message : '鏈煡閿欒';
       console.error('streamChat error:', errorMessage, error, '\n');
       console.log('error type:', typeof error, '\n');
       yield {
@@ -460,14 +500,14 @@ export class ChatService {
         done: true,
         role: '',
       };
-      throw new InternalServerErrorException(`流式对话失败: ${errorMessage}`);
+      throw new InternalServerErrorException(`娴佸紡瀵硅瘽澶辫触: ${errorMessage}`);
     }
   }
 
   /**
-   * 从流数据中提取中断信息
-   * @param chunk 流数据块
-   * @returns 中断信息或 null
+   * 浠庢祦鏁版嵁涓彁鍙栦腑鏂俊鎭?
+   * @param chunk 娴佹暟鎹潡
+   * @returns 涓柇淇℃伅鎴?null
    */
   private extractInterrupt(chunk: unknown): any | null {
     if (
@@ -481,25 +521,25 @@ export class ChatService {
   }
 
   /**
-   * 从 AI 配置中解析 LLM 配置
-   * @param ai AI 实体
+   * 浠?AI 閰嶇疆涓В鏋?LLM 閰嶇疆
+   * @param ai AI 瀹炰綋
    */
   private getLLMConfig(ai: AiResponse): LLMConfig {
     const config = ai.config as Record<string, unknown> | undefined;
     const llmConfig = config?.llm as Record<string, unknown> | undefined;
     if (!llmConfig) {
-      throw new InternalServerErrorException('AI 配置中缺少 llm 配置');
+      throw new InternalServerErrorException('AI 閰嶇疆涓己灏?llm 閰嶇疆');
     }
 
     const apiKey = llmConfig.apiKey as string | undefined;
     const model = llmConfig.model as string | undefined;
 
     if (!apiKey) {
-      throw new InternalServerErrorException('LLM 配置中缺少 apiKey');
+      throw new InternalServerErrorException('LLM 閰嶇疆涓己灏?apiKey');
     }
 
     if (!model && !ai.name) {
-      throw new InternalServerErrorException('LLM 配置中缺少 model 或 name');
+      throw new InternalServerErrorException('LLM 閰嶇疆涓己灏?model 鎴?name');
     }
 
     return {
@@ -514,8 +554,8 @@ export class ChatService {
   }
 
   /**
-   * 创建 LLM 实例
-   * @param llmConfig LLM 配置
+   * 鍒涘缓 LLM 瀹炰緥
+   * @param llmConfig LLM 閰嶇疆
    */
   private createLLM(
     llmConfig: LLMConfig,
