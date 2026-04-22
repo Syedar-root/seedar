@@ -49,7 +49,6 @@ import { AiSessionService } from './ai-session.service';
 import { loadSkill } from './helper';
 import path from 'path';
 import { existsSync } from 'fs';
-import { AskQuestionParams } from './toolSchema';
 import { randomUUID } from 'crypto';
 import { LoggerService } from '@/logger/logger.service';
 

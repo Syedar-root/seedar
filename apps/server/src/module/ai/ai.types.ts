@@ -1,15 +1,8 @@
-import { AskQuestionParams, StartWorkflowParams } from './services/toolSchema';
-
-type WorkflowActionStatus =
-  | 'pending'
-  | 'running'
-  | 'done'
-  | 'failed';
-
-interface WorkflowActionError {
-  code: string;
-  message: string;
-}
+import type {
+  AiChatResumeDto,
+  AiInterruptPayload,
+  InterruptResultPayload,
+} from '@seedar/types';
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -42,7 +35,7 @@ export interface StreamingResult {
 export interface ToolConfig {
   name: string;
   description: string;
-  schema?: any; // tool schema
+  schema?: any;
 }
 
 export type YieldType =
@@ -58,59 +51,13 @@ export type InterruptContent<T> = {
   value: T;
 };
 
-export interface InterruptAnswer {
-  questionId: string;
-  question?: string;
-  answer?: string | string[];
-}
-
-export interface AskUserInterrupt extends AskQuestionParams {
-  kind: 'ask_user';
-}
-
-export interface WorkflowRunInterrupt {
-  kind: 'workflow_run';
-  interruptId: string;
-  request: StartWorkflowParams;
-}
-
-export type AiInterruptPayload = AskUserInterrupt | WorkflowRunInterrupt;
-
-export interface AskQuestion extends AskQuestionParams {
-  answers?: InterruptAnswer[];
-}
-
-export interface AskQuestionResult {
-  kind: 'ask_user_result';
-  answers: InterruptAnswer[];
-}
-
-export interface WorkflowRunResultPayload {
-  kind: 'workflow_result';
-  interruptId: string;
-  workflowId: string;
-  status: WorkflowActionStatus;
-  result?: Record<string, unknown>;
-  error?: WorkflowActionError;
-}
-
-export type InterruptResultPayload =
-  | AskQuestionResult
-  | WorkflowRunResultPayload;
-
-export interface AiChatResumeDto {
-  kind: 'user_message' | 'interrupt_result';
-  message?: string;
-  interruptResult?: InterruptResultPayload;
-}
-
 export type StreamChunkContent<T> = string | InterruptContent<T>;
 
 export interface StreamChunk<T> {
-  sid: string; // segmentId, 流式块id，一段思考、一段正文...，每个流式块都有一个唯一的id
+  sid: string;
   content: StreamChunkContent<T>;
   type?: YieldType;
-  done: boolean; //表示流式是否完成
+  done: boolean;
   role?: string;
   meta?: {
     tool_call?: { id: string; name: string; [key: string]: any };
@@ -119,3 +66,9 @@ export interface StreamChunk<T> {
 }
 
 export type AiAgentStreamChunk = StreamChunk<AiInterruptPayload>;
+
+export type {
+  AiChatResumeDto,
+  AiInterruptPayload,
+  InterruptResultPayload,
+} from '@seedar/types';

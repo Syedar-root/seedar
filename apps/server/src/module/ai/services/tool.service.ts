@@ -1,31 +1,31 @@
 import 'reflect-metadata';
-import { BusinessException } from '@/common/exceptions';
-import { ExceptionType } from '@/common/exceptions';
+import { BusinessException, ExceptionType } from '@/common/exceptions';
 import { DatasetService } from '@/module/dataset/services/dataset.service';
-import {
-  HttpStatus,
-  Inject,
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { QueryService } from '@/module/query/query.service';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { type ToolRunnableConfig } from '@langchain/core/tools';
+import { interrupt } from '@langchain/langgraph';
 import { tool, Tool } from 'langchain';
+import { randomUUID } from 'crypto';
 import {
-  type AskQuestionParams,
+  FRONTEND_WORKFLOW_TEMPLATES,
+  getFrontendWorkflowTemplate,
+  type AskUserInterrupt,
+  type StartWorkflowRequest,
+  type WorkflowRunInterrupt,
+} from '@seedar/types';
+import { ToolConfig } from '../ai.types';
+import { getDatasetInfoCompact } from './helper';
+import {
   askQuestionSchema,
   getDataAtTempSchema,
   getDatasetInfoSchema,
   startWorkflowSchema,
-  type StartWorkflowParams,
   toolMarketExecutorSchema,
+  type AskQuestionParams,
+  type StartWorkflowParams,
   type ToolMarketExecutorParams,
 } from './toolSchema';
-import { QueryService } from '@/module/query/query.service';
-import type { WorkflowTemplate } from '@seedar/types';
-import { getDatasetInfoCompact } from './helper';
-import { interrupt } from '@langchain/langgraph';
-import { randomUUID } from 'crypto';
-import { ToolConfig } from '../ai.types';
-import { type ToolRunnableConfig } from '@langchain/core/tools';
 
 type ToolMethod = (
   input: Record<string, unknown>,
@@ -35,7 +35,7 @@ type ToolMethod = (
 const TOOL_METADATA_KEY = 'Seedar_Tool';
 
 function Seedar_Tool(config: ToolConfig): MethodDecorator {
-  return function (target, propertyKey, descriptor: PropertyDescriptor) {
+  return function (target, propertyKey) {
     Reflect.defineMetadata(TOOL_METADATA_KEY, config, target, propertyKey);
   };
 }
@@ -43,58 +43,7 @@ function Seedar_Tool(config: ToolConfig): MethodDecorator {
 @Injectable()
 export class ToolService {
   private toolMethods: Array<{ method: ToolMethod; config: ToolConfig }> = [];
-  private INTERRUPT_TOOL_NAMES = ['askQuestion', 'startWorkflow'];
-  private readonly ACTIVE_WORKFLOW_ID = 'query_current_panel_as_table_v1';
-  private readonly WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
-    {
-      id: 'query_current_panel_as_table_v1',
-      title: 'query current panel as table',
-      actions: [
-        { page: 'panel', type: 'trigger_action', target: 'set_query_state' },
-        {
-          page: 'panel',
-          type: 'trigger_action',
-          target: 'set_display_type',
-          payload: {
-            displayType: 'table',
-          },
-        },
-        { page: 'panel', type: 'trigger_action', target: 'run_preview' },
-      ],
-    },
-    {
-      id: 'create_empty_panel_draft_v1',
-      title: '创建空白图表草稿',
-      actions: [
-        { type: 'navigate', target: '/panel/create' },
-        { page: 'panel', type: 'trigger_action', target: 'save_draft' },
-      ],
-    },
-    {
-      id: 'select_dataset_for_panel_v1',
-      title: '为当前图表选择数据集',
-      actions: [
-        { page: 'panel', type: 'trigger_action', target: 'open_dataset_selector' },
-        { page: 'panel', type: 'trigger_action', target: 'select_dataset' },
-        {
-          page: 'panel',
-          type: 'trigger_action',
-          target: 'confirm_dataset_selection',
-        },
-      ],
-    },
-    {
-      id: 'create_panel_basic_v1',
-      title: '创建基础图表',
-      actions: [
-        { type: 'navigate', target: '/panel/create' },
-        { page: 'panel', type: 'trigger_action', target: 'select_dataset' },
-        { page: 'panel', type: 'trigger_action', target: 'set_panel_title' },
-        { page: 'panel', type: 'trigger_action', target: 'set_display_type' },
-        { page: 'panel', type: 'trigger_action', target: 'run_preview' },
-      ],
-    },
-  ];
+  private readonly INTERRUPT_TOOL_NAMES = ['askQuestion', 'startWorkflow'];
 
   constructor(
     private readonly datasetService: DatasetService,
@@ -131,30 +80,31 @@ export class ToolService {
         schema: config.schema,
       }),
     );
+
     if (toolNames) {
-      return tools.filter((tool) => toolNames.includes(tool.name));
+      return tools.filter((item) => toolNames.includes(item.name));
     }
+
     return tools;
   }
 
   public getToolNames() {
-    return this.toolMethods.map((tool) => tool.config.name);
+    return this.toolMethods.map((item) => item.config.name);
   }
 
   public getToolConfigs() {
-    return this.toolMethods.map((tool) => tool.config);
+    return this.toolMethods.map((item) => item.config);
   }
 
   @Seedar_Tool({
     name: 'getDatasetInfo',
-    description:
-      '根据数据集 ID 获取数据集的表、字段、join、指标等信息及其元信息',
+    description: '根据数据集 ID 获取表、字段、关联与指标等元信息',
     schema: getDatasetInfoSchema,
   })
   public async getDatasetInfo({ datasetId }: { datasetId: string }) {
     const id = Number(datasetId);
 
-    if (isNaN(id)) {
+    if (Number.isNaN(id)) {
       throw new BusinessException(
         ExceptionType.AI_AGENT_TOOL_FAILED,
         '数据集 ID 无效',
@@ -168,19 +118,20 @@ export class ToolService {
 
   @Seedar_Tool({
     name: 'getDataAtTemp',
-    description: '根据数据集 ID 和查询 DSL 执行临时查询，返回查询结果',
+    description: '根据查询 DSL 执行临时查询并返回结果',
     schema: getDataAtTempSchema,
   })
   public async getDataAtTemp({ dsl }: { dsl: any }) {
     const datasetId = Number(dsl.datasetId);
 
-    if (isNaN(datasetId)) {
+    if (Number.isNaN(datasetId)) {
       throw new BusinessException(
         ExceptionType.AI_AGENT_TOOL_FAILED,
         '数据集 ID 无效',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+
     const result = await this.queryService.executeTemp({ ...dsl, datasetId });
     return result.results;
   }
@@ -195,12 +146,10 @@ export class ToolService {
 
   @Seedar_Tool({
     name: 'askQuestion',
-    description:
-      '提问工具，向用户提问，返回问题的详细回答；常用于问题澄清，需求获取，步骤确认等场景',
+    description: '向用户提问，用于澄清需求、补充信息或确认步骤',
     schema: askQuestionSchema,
   })
   public askQuestion({ questions }: AskQuestionParams) {
-    // 校验 questions 是否为空数组
     if (Array.isArray(questions) && questions.length === 0) {
       throw new BusinessException(
         ExceptionType.AI_AGENT_TOOL_FAILED,
@@ -209,19 +158,24 @@ export class ToolService {
       );
     }
 
-    // 当问题是选择题时，需要提供一个其他选项，用户可以补充选项
-    questions.forEach((q) => {
-      if (q.type === 'choice') {
-        // 检查是否有且只有一个其他选项
-        const otherOptions = q.options?.filter((o) => o.isOther);
-        if (otherOptions && otherOptions?.length > 1) {
-          // 移除只保留第一个其他选项
-          q.options = q.options?.filter((o) => !o.isOther);
-          q.options?.push(otherOptions[0]);
-        } else if (!otherOptions || otherOptions?.length === 0) {
-          // 如果没有其他选项，添加一个默认的其他选项
-          q.options?.push({ label: '其它', value: '其它', isOther: true });
-        }
+    questions.forEach((question) => {
+      if (question.type !== 'choice') {
+        return;
+      }
+
+      const otherOptions = question.options?.filter((option) => option.isOther);
+      if (otherOptions && otherOptions.length > 1) {
+        question.options = question.options?.filter((option) => !option.isOther);
+        question.options?.push(otherOptions[0]);
+        return;
+      }
+
+      if (!otherOptions || otherOptions.length === 0) {
+        question.options?.push({
+          label: '其他',
+          value: '其他',
+          isOther: true,
+        });
       }
     });
 
@@ -230,42 +184,34 @@ export class ToolService {
       type: 'text',
     });
 
-    const response = interrupt({
+    const response: AskUserInterrupt = {
       kind: 'ask_user',
-      questions: questions.map((q) => ({
-        ...q,
-        id: `${q.type}_${randomUUID()}`,
+      questions: questions.map((question) => ({
+        ...question,
+        id: `${question.type}_${randomUUID()}`,
       })),
-    });
-    return response;
+    };
+
+    return interrupt(response);
   }
 
   @Seedar_Tool({
     name: 'workflowMarket',
-    description:
-      'workflow 模板市场，返回当前可用的 workflow 模板列表及其基础说明',
+    description: '返回当前可用的 workflow 模板列表',
   })
   public workflowMarket() {
-    const workflows = this.WORKFLOW_TEMPLATES.filter(
-      (item) => item.id === this.ACTIVE_WORKFLOW_ID,
-    );
-
     return {
-      workflows,
+      workflows: FRONTEND_WORKFLOW_TEMPLATES,
     };
   }
 
   @Seedar_Tool({
     name: 'startWorkflow',
-    description:
-      '启动一个预定义的 workflow 模板。适用于前端业务流程执行，agent 应优先选择模板并填写参数，而不是自由拼接长链 actions。',
+    description: '启动一个预定义 workflow 模板，并携带对应参数',
     schema: startWorkflowSchema,
   })
   public startWorkflow({ workflowId, params }: StartWorkflowParams) {
-    const workflow = this.WORKFLOW_TEMPLATES.find(
-      (item) =>
-        item.id === workflowId && item.id === this.ACTIVE_WORKFLOW_ID,
-    );
+    const workflow = getFrontendWorkflowTemplate(workflowId);
 
     if (!workflow) {
       throw new BusinessException(
@@ -275,34 +221,34 @@ export class ToolService {
       );
     }
 
-    return interrupt({
+    const request: StartWorkflowRequest = {
+      workflowId,
+      params,
+    };
+    const payload: WorkflowRunInterrupt = {
       kind: 'workflow_run',
       interruptId: randomUUID(),
-      request: {
-        workflowId,
-        params,
-      },
-    });
+      request,
+    };
+
+    return interrupt(payload);
   }
 
   @Seedar_Tool({
     name: 'toolMarket',
-    description:
-      '工具市场，返回所有可用的工具。如果你没有直接可使用的工具，你可以使用这个工具来获取可用的工具列表。搭配 toolMarketExecutor 工具使用',
+    description: '返回当前可用工具列表',
   })
   public toolMarket() {
     return {
       toolInfoList: this.getToolConfigs().filter(
-        (tool) => !['toolMarket', 'workflowMarket'].includes(tool.name),
+        (item) => !['toolMarket', 'workflowMarket', 'startWorkflow'].includes(item.name),
       ),
     };
   }
 
-  // 工具市场执行器
   @Seedar_Tool({
     name: 'toolMarketExecutor',
-    description:
-      '工具市场执行器，根据用户输入的工具名称，执行对应的工具。搭配 toolMarket 工具使用',
+    description: '根据工具名执行工具，需配合 toolMarket 使用',
     schema: toolMarketExecutorSchema,
   })
   public async toolMarketExecutor(
@@ -312,17 +258,19 @@ export class ToolService {
     if (this.INTERRUPT_TOOL_NAMES.includes(toolName)) {
       return `不能使用中断工具 ${toolName}`;
     }
-    const tool = this.getTools([toolName])[0];
-    if (!tool) {
+
+    const targetTool = this.getTools([toolName])[0];
+    if (!targetTool) {
       return `工具 ${toolName} 不存在`;
     }
+
     try {
-      // 如果 toolParams 是字符串，则解析为对象
       const parsedParams =
         typeof toolParams === 'string' ? JSON.parse(toolParams) : toolParams;
-      return await tool.invoke(parsedParams, runtime);
+      return await targetTool.invoke(parsedParams, runtime);
     } catch (error) {
-      return `工具 ${toolName} 执行失败：${error.message}`;
+      const message = error instanceof Error ? error.message : String(error);
+      return `工具 ${toolName} 执行失败：${message}`;
     }
   }
 }
