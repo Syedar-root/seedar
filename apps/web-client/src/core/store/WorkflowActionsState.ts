@@ -1,22 +1,19 @@
-import type { WorkflowAction } from '#pkg/seedar/types';
+import type {
+  WorkflowAction,
+  WorkflowActionError,
+  WorkflowActionStatus,
+} from '#pkg/seedar/types';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
-export type WorkflowActionStatus =
-  | 'pending'
-  | 'running'
-  | 'done'
-  | 'failed';
+export type { WorkflowActionError, WorkflowActionStatus } from '#pkg/seedar/types';
 
 export interface WorkflowActionTask {
   id: string;
   action: WorkflowAction;
   status: WorkflowActionStatus;
   result?: Record<string, unknown>;
-  error?: {
-    code: string;
-    message: string;
-  };
+  error?: WorkflowActionError;
 }
 
 export interface DispatchWorkflowActionParams {
@@ -33,10 +30,7 @@ interface WorkflowActionsState {
   ) => WorkflowActionTask | null;
   failAction: (
     actionId: string,
-    error: {
-      code: string;
-      message: string;
-    },
+    error: WorkflowActionError,
   ) => WorkflowActionTask | null;
   removeAction: (actionId: string) => void;
   clearFinishedActions: () => void;

@@ -1,5 +1,16 @@
 export type WorkflowId = string;
 
+export type WorkflowActionStatus =
+  | 'pending'
+  | 'running'
+  | 'done'
+  | 'failed';
+
+export interface WorkflowActionError {
+  code: string;
+  message: string;
+}
+
 export type WorkflowPage =
   | 'panel'
   | 'dataset';
@@ -71,10 +82,7 @@ export interface WorkflowRunResult {
   kind: 'workflow_result';
   interruptId: string;
   workflowId: WorkflowId;
-  status: 'success' | 'failed' | 'blocked';
-  output?: Record<string, unknown>;
-  error?: {
-    code: string;
-    message: string;
-  };
+  status: WorkflowActionStatus;
+  result?: Record<string, unknown>;
+  error?: WorkflowActionError;
 }

@@ -1,5 +1,16 @@
 import { AskQuestionParams, StartWorkflowParams } from './services/toolSchema';
 
+type WorkflowActionStatus =
+  | 'pending'
+  | 'running'
+  | 'done'
+  | 'failed';
+
+interface WorkflowActionError {
+  code: string;
+  message: string;
+}
+
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
@@ -78,12 +89,9 @@ export interface WorkflowRunResultPayload {
   kind: 'workflow_result';
   interruptId: string;
   workflowId: string;
-  status: 'success' | 'failed' | 'blocked';
-  output?: Record<string, unknown>;
-  error?: {
-    code: string;
-    message: string;
-  };
+  status: WorkflowActionStatus;
+  result?: Record<string, unknown>;
+  error?: WorkflowActionError;
 }
 
 export type InterruptResultPayload =

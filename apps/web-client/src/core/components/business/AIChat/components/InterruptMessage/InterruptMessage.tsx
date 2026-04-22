@@ -70,7 +70,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
         <div className={styles["header"]}>Workflow 请求</div>
         <div className={styles["summary-area"]}>
           <h3>{request.workflowId}</h3>
-          <p>前端 workflow executor 尚未实现，当前先返回 blocked 结果。</p>
+          <p>前端 workflow executor 尚未实现，当前先返回 failed 结果。</p>
           {request.params ? (
             <pre>{JSON.stringify(request.params, null, 2)}</pre>
           ) : null}
@@ -87,7 +87,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
                     kind: "workflow_result",
                     interruptId,
                     workflowId: request.workflowId,
-                    status: "blocked",
+                    status: "failed",
                     error: {
                       code: "WORKFLOW_EXECUTOR_NOT_READY",
                       message: "前端 workflow executor 尚未实现",
@@ -96,7 +96,7 @@ const InterruptMessage: React.FC<InterruptMessageProps> = ({
                 });
               }}
             >
-              返回 blocked 结果
+              返回 failed 结果
             </Button>
           </div>
         </div>
