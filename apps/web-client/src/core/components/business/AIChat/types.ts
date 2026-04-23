@@ -1,5 +1,6 @@
 import type React from "react";
 import type {
+  AiChatMode,
   AiAgentStreamChunk,
   AiChatResumeDto,
   AiInterruptPayload,
@@ -148,6 +149,13 @@ export interface ModelItem {
   icon?: React.ReactNode;
 }
 
+export interface ChatModeItem {
+  key: AiChatMode;
+  label: string;
+  description?: string;
+  icon?: React.ReactNode;
+}
+
 export interface AIChatProps {
   messages?: ChatMessage[];
   loading?: boolean;
@@ -164,6 +172,9 @@ export interface AIChatProps {
   models?: ModelItem[];
   currentModel?: string;
   onModelChange?: (modelKey: string) => void;
+  modes?: ChatModeItem[];
+  currentMode?: AiChatMode;
+  onModeChange?: (mode: AiChatMode) => void;
   title?: React.ReactNode;
   onAddChat?: () => void;
   onShowHistory?: () => void;

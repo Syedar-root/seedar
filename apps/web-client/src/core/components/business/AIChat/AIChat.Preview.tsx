@@ -4,10 +4,15 @@ import { AIChat } from "./";
 import { useChatState } from "./hooks/useChatState.hook";
 import { useSSEHandler } from "./hooks/useSSEHandler.hook";
 import { useWorkflowInterruptExecutor } from "./hooks/useWorkflowInterruptExecutor.hook";
-import type { ChatMessage, CommandItem, SSEData } from "./types";
+import type { ChatMessage, ChatModeItem, CommandItem, SSEData } from "./types";
 import styles from "./AIChat.Preview.module.scss";
-import type { AiChatResumeDto, AiSessionResponse } from "#pkg/seedar/types";
+import type {
+  AiChatMode,
+  AiChatResumeDto,
+  AiSessionResponse,
+} from "#pkg/seedar/types";
 import { formatMessageForDisplay } from "./utils/command.utils";
+import { MessageSquareText, Workflow } from "lucide-react";
 
 const AI_CHAT_COMMANDS_RECORD = {
   dataQuery: {
@@ -29,6 +34,7 @@ const AI_CHAT_COMMANDS_RECORD = {
 
 const AIChatPreview: React.FC = () => {
   const [currentModel, setCurrentModel] = useState("gpt-4");
+  const [currentMode, setCurrentMode] = useState<AiChatMode>("chat");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentSession, setCurrentSession] =
@@ -84,6 +90,7 @@ const AIChatPreview: React.FC = () => {
           message: content,
           stream: true,
           sessionId: session?.id || undefined,
+          mode: currentMode,
           isResume: isResume || false,
           resumePayload,
         },
@@ -144,6 +151,10 @@ const AIChatPreview: React.FC = () => {
     setCurrentModel(modelKey);
   };
 
+  const handleModeChange = (mode: AiChatMode) => {
+    setCurrentMode(mode);
+  };
+
   const models = useMemo(() => {
     return (
       aisData?.data
@@ -155,6 +166,23 @@ const AIChatPreview: React.FC = () => {
         })) || []
     );
   }, [aisData]);
+
+  const modes = useMemo<ChatModeItem[]>(() => {
+    return [
+      {
+        key: "chat",
+        label: "Chat",
+        description: "纯对话模式，不暴露 workflow 工具",
+        icon: <MessageSquareText size={14} />,
+      },
+      {
+        key: "agent",
+        label: "Agent",
+        description: "Agent 模式，允许使用 workflow 工具",
+        icon: <Workflow size={14} />,
+      },
+    ];
+  }, []);
 
   useEffect(() => {
     setCurrentModel(models[0]?.key || "");
@@ -178,6 +206,9 @@ const AIChatPreview: React.FC = () => {
           models={models}
           currentModel={currentModel}
           onModelChange={handleModelChange}
+          modes={modes}
+          currentMode={currentMode}
+          onModeChange={handleModeChange}
         />
         {error && <div style={{ color: "red" }}>Error: {error}</div>}
       </section>

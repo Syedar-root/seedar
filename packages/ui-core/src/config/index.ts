@@ -16,4 +16,3 @@ export const defaultApiConfig: ApiConfig = {
 /**
  * 重新导出 ApiConfig 类型
  */
-export type { ApiConfig };

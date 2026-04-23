@@ -83,6 +83,7 @@ export class AiController {
       dto.aiId,
       dto.message,
       sessionId,
+      dto.mode,
       dto.isResume,
       dto.resumePayload as AiChatResumeDto | undefined,
     );

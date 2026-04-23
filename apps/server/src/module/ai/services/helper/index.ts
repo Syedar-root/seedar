@@ -28,4 +28,8 @@ const loadSkill = async (skillName: string) => {
   const promptPath = path.join(__dirname, `../skills/${skillName}/SKILL.md`);
   return await fs.readFile(promptPath, 'utf8');
 };
-export { getDatasetInfoCompact, loadSkill };
+const loadPrompt = async (promptName: string) => {
+  const promptPath = path.join(__dirname, `../prompts/${promptName}.md`);
+  return await fs.readFile(promptPath, 'utf8');
+};
+export { getDatasetInfoCompact, loadSkill, loadPrompt };

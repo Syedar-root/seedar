@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsString,
   IsOptional,
   IsBoolean,
@@ -34,6 +35,10 @@ export class AiChatRequestDto {
   @IsOptional()
   @IsUUID()
   sessionId: string;
+
+  @IsOptional()
+  @IsIn(['chat', 'agent'])
+  mode?: 'chat' | 'agent';
 
   @IsOptional()
   @IsBoolean()

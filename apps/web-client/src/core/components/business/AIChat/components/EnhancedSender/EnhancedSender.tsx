@@ -7,10 +7,15 @@ import type {
 import type { GetRef } from "antd";
 import { Flex } from "antd";
 import { Menu } from "@base-ui/react/menu";
-import { ChevronDown, Bot } from "lucide-react";
+import {
+  Bot,
+  ChevronDown,
+  MessageSquareText,
+} from "lucide-react";
 import styles from "./EnhancedSender.module.scss";
 import type { EnhancedSenderProps } from "./types";
 import clsx from "clsx";
+import type { AiChatMode } from "#pkg/seedar/types";
 
 type SenderRef = GetRef<typeof Sender>;
 
@@ -31,6 +36,9 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
   models,
   currentModel,
   onModelChange,
+  modes,
+  currentMode,
+  onModeChange,
 }) => {
   const senderRef = useRef<SenderRef>(null);
 
@@ -99,26 +107,54 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
     return model?.icon || <Bot size={14} />;
   };
 
-  const modelMenuItems = useMemo(() => {
-    if (!models || models.length === 0) return [];
-    return models.map((model) => ({
-      value: model.key,
+  const getCurrentModeLabel = () => {
+    if (!modes || !currentMode) return "选择模式";
+    const mode = modes.find((item) => item.key === currentMode);
+    return mode?.label || "选择模式";
+  };
+
+  const getCurrentModeIcon = () => {
+    if (!modes || !currentMode) return <MessageSquareText size={14} />;
+    const mode = modes.find((item) => item.key === currentMode);
+    return mode?.icon || <MessageSquareText size={14} />;
+  };
+
+  const buildMenuItems = <
+    TItem extends {
+      key: string;
+      label: string;
+      description?: string;
+      icon?: React.ReactNode;
+    },
+  >(
+    items: TItem[] | undefined,
+    onSelect?: (key: TItem["key"]) => void,
+  ) => {
+    if (!items || items.length === 0) return [];
+    return items.map((item) => ({
+      value: item.key,
       label: (
         <div className={styles["menu-item-content"]}>
           <div className={styles["menu-item-label"]}>
-            {model.icon}
-            <span>{model.label}</span>
+            {item.icon}
+            <span>{item.label}</span>
           </div>
-          {model.description && (
+          {item.description && (
             <div className={styles["menu-item-description"]}>
-              {model.description}
+              {item.description}
             </div>
           )}
         </div>
       ),
-      onClick: () => onModelChange?.(model.key),
+      onClick: () => onSelect?.(item.key),
     }));
-  }, [models, onModelChange]);
+  };
+
+  const modelMenuItems = buildMenuItems(models, onModelChange);
+
+  const modeMenuItems = buildMenuItems(modes, (modeKey) =>
+    onModeChange?.(modeKey as AiChatMode),
+  );
 
   const footer = (
     _: React.ReactNode,
@@ -127,35 +163,62 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
     const { SendButton, LoadingButton } = info.components;
     return (
       <Flex justify="space-between" align="center">
-        {models && models.length > 0 ? (
-          <Menu.Root>
-            <Menu.Trigger
-              className={styles["model-switch-button"]}
-              disabled={disabled}
-            >
-              {getCurrentModelIcon()}
-              <span>{getCurrentModelLabel()}</span>
-              <ChevronDown size={12} />
-            </Menu.Trigger>
-            <Menu.Portal>
-              <Menu.Positioner side="top" align="end">
-                <Menu.Popup className={styles["model-menu-listbox"]}>
-                  {modelMenuItems.map((item) => (
-                    <Menu.Item
-                      key={item.value}
-                      onClick={item.onClick}
-                      className={styles["model-menu-item"]}
-                    >
-                      {item.label}
-                    </Menu.Item>
-                  ))}
-                </Menu.Popup>
-              </Menu.Positioner>
-            </Menu.Portal>
-          </Menu.Root>
-        ) : (
-          <span></span>
-        )}
+        <Flex align="center" gap="small">
+          {modes && modes.length > 0 ? (
+            <Menu.Root>
+              <Menu.Trigger
+                className={styles["selector-button"]}
+                disabled={disabled}
+              >
+                {getCurrentModeIcon()}
+                <span>{getCurrentModeLabel()}</span>
+                <ChevronDown size={12} />
+              </Menu.Trigger>
+              <Menu.Portal>
+                <Menu.Positioner side="top" align="start">
+                  <Menu.Popup className={styles["selector-menu-listbox"]}>
+                    {modeMenuItems.map((item) => (
+                      <Menu.Item
+                        key={item.value}
+                        onClick={item.onClick}
+                        className={styles["selector-menu-item"]}
+                      >
+                        {item.label}
+                      </Menu.Item>
+                    ))}
+                  </Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.Root>
+          ) : null}
+          {models && models.length > 0 ? (
+            <Menu.Root>
+              <Menu.Trigger
+                className={styles["selector-button"]}
+                disabled={disabled}
+              >
+                {getCurrentModelIcon()}
+                <span>{getCurrentModelLabel()}</span>
+                <ChevronDown size={12} />
+              </Menu.Trigger>
+              <Menu.Portal>
+                <Menu.Positioner side="top" align="start">
+                  <Menu.Popup className={styles["selector-menu-listbox"]}>
+                    {modelMenuItems.map((item) => (
+                      <Menu.Item
+                        key={item.value}
+                        onClick={item.onClick}
+                        className={styles["selector-menu-item"]}
+                      >
+                        {item.label}
+                      </Menu.Item>
+                    ))}
+                  </Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.Root>
+          ) : null}
+        </Flex>
         <Flex align="center" gap="small">
           {loading ? (
             <LoadingButton className={styles["loading-button"]} />

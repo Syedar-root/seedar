@@ -1,7 +1,8 @@
-﻿import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { AiService } from './ai.service';
 import {
   AiAgentStreamChunk,
+  AiChatMode,
   AiChatResumeDto,
   AiInterruptPayload,
   InterruptContent,
@@ -46,7 +47,7 @@ import {
 } from '@langchain/langgraph';
 import * as z from 'zod/v4';
 import { AiSessionService } from './ai-session.service';
-import { loadSkill } from './helper';
+import { loadPrompt } from './helper';
 import path from 'path';
 import { existsSync } from 'fs';
 import { randomUUID } from 'crypto';
@@ -55,14 +56,14 @@ import { LoggerService } from '@/logger/logger.service';
 @Injectable()
 export class ChatService {
   private readonly SYSTEM_PROMPT = `
-浣犵殑鍚嶅瓧鏄疭eedar锛屼綘鏄竴涓櫤鑳藉姪鎵嬶紝浣犵殑浠诲姟鏄府鍔╃敤鎴峰畬鎴愪换鍔°€?
-浣犻渶瑕佷弗鏍奸伒寰笅闈㈢殑瑙勫垯锛?
-1. 璇蜂綘涓嶈鍦ㄦ€濊€冨唴瀹规垨鑰呮爣绛句腑鐩存帴璇村嚭浠讳綍鍏充簬鍐呴儴宸ュ叿鐨勪俊鎭紝浣跨敤鐩寸櫧鐨勭敤鎴疯兘鐞嗚В鐨勮瑷€姒傛嫭杩欎竴姝ラ鍗冲彲锛屽"鐢ㄦ埛闇€瑕佺煡閬撳綋鍓嶅湴鐐圭殑澶╂皵锛屾垜灏嗕娇鐢ㄥ伐鍏蜂负鐢ㄦ埛鏌ヨ澶╂皵"
-2. 褰撲綘鍦ㄩ棶棰樻緞娓呫€侀渶姹傝幏鍙栥€佹楠ょ‘璁ょ瓑鍦烘櫙涓嬶紝璇蜂綘浣跨敤鎻愰棶宸ュ叿鍚戠敤鎴锋彁鍑洪棶棰樸€?
-   - 浣犻渶瑕佹牴鎹叿浣撶殑闂锛屾潵鍐冲畾浣跨敤鐨勯棶棰樼被鍨嬨€?
-   - 濡傛灉浣犺涓虹瓟妗堟槸鏈夐檺鐨勶紝浣犲彲浠ョ粰鐢ㄦ埛鎻愪緵閫夋嫨銆?
-   - 濡傛灉浣犺涓虹瓟妗堟槸鏃犻檺鐨勶紝浣犲彲浠ョ洿鎺ュ悜鐢ㄦ埛鎻愰棶銆?
-   - 濡傛灉浣犲凡缁忔湁浜嗙瓟妗堬紝閭ｄ綘蹇呴』鍏堝悜鐢ㄦ埛纭銆?
+你的名字是 Seedar，你是一个智能助手，你的任务是帮助用户完成任务。
+你需要严格遵守下面的规则：
+1. 不要在思考内容或标签中直接暴露任何关于内部工具的信息。请使用用户能理解的自然语言概括当前步骤，例如“用户需要知道当前地点的天气，我将查询天气信息”。
+2. 当你处于问题澄清、需求获取、步骤确认等场景时，请使用提问工具向用户发起问题。
+   - 你需要根据具体问题决定提问类型。
+   - 如果答案范围有限，可以给用户提供选项。
+   - 如果答案范围开放，可以直接向用户提问。
+   - 如果你已经形成结论，也必须先向用户确认。
   `;
 
   private readonly DEMAND_TOOL_MAP = {
@@ -75,6 +76,15 @@ export class ChatService {
     ],
     'convert-to-backend': [],
   };
+
+  private readonly CORE_TOOL_NAMES = [
+    'askQuestion',
+    'getCurrentTime',
+    'toolMarket',
+    'toolMarketExecutor',
+  ];
+
+  private readonly WORKFLOW_TOOL_NAMES = ['workflowMarket', 'startWorkflow'];
 
   constructor(
     private readonly aiService: AiService,
@@ -155,12 +165,35 @@ export class ChatService {
       },
     });
   }
+
+  private getEssentialToolNames(mode: AiChatMode): string[] {
+    if (mode === 'agent') {
+      return [...this.CORE_TOOL_NAMES, ...this.WORKFLOW_TOOL_NAMES];
+    }
+
+    return [...this.CORE_TOOL_NAMES];
+  }
+
+  private sanitizeAllowedTools(
+    toolNames: string[] | undefined,
+    mode: AiChatMode,
+  ): string[] {
+    const tools = toolNames ?? [];
+
+    if (mode === 'agent') {
+      return tools;
+    }
+
+    return tools.filter(
+      (toolName) => !this.WORKFLOW_TOOL_NAMES.includes(toolName),
+    );
+  }
   /**
-   * 鍒涘缓瀵硅瘽鍥?
-   * @param aiId AI 瀹炰緥 ID
-   * @returns 缂栬瘧鍚庣殑鐘舵€佸浘
+   * 创建对话图
+   * @param aiId AI 实例 ID
+   * @returns 编译后的状态图
    */
-  private async createGraph(aiId: string) {
+  private async createGraph(aiId: string, mode: AiChatMode) {
     const ai = await this.aiService.findOne(aiId);
     const llmConfig = this.getLLMConfig(ai);
 
@@ -168,7 +201,7 @@ export class ChatService {
 
     graphBuilder
       .addNode('clarify', this.createClarifyNode(llmConfig))
-      .addNode('act', this.createActNode(llmConfig))
+      .addNode('act', this.createActNode(llmConfig, mode))
       .addEdge(START, 'clarify')
       .addEdge('clarify', 'act')
       .addEdge('act', END);
@@ -184,22 +217,18 @@ export class ChatService {
   //     const askQuestionTool = tools.find((tool) => tool.name === 'askQuestion');
 
   //     const result = await askQuestionTool?.invoke({
-  //       questions: [{ type: 'text', question: '浣犲ソ' }],
+  //       questions: [{ type: 'text', question: '你好' }],
   //     });
   //     return result;
   //   };
   // }
 
   /**
-   * 鍒涘缓婢勬竻鑺傜偣
-   * 璐熻矗鐞嗚В鐢ㄦ埛闇€姹傦紝纭畾闇€瑕佷娇鐢ㄧ殑宸ュ叿鍜屾妧鑳?
+   * 创建澄清节点
+   * 负责理解用户需求，并推断本轮允许使用的工具和技能。
    *
-   * Agent 鐗圭偣锛?
-   * - 浣跨敤鍥哄畾鐨勫伐鍏烽泦锛歛skQuestion, getCurrentTime
-   * - 浣跨敤缁撴瀯鍖栧搷搴旀牸寮忥紝杩斿洖鐢ㄦ埛闇€姹傘€佸厑璁哥殑宸ュ叿鍜屾妧鑳?
-   *
-   * @param llmConfig LLM 閰嶇疆
-   * @returns Graph 鑺傜偣
+   * @param llmConfig LLM 配置
+   * @returns Graph 节点
    */
   private createClarifyNode(
     llmConfig: LLMConfig,
@@ -215,22 +244,22 @@ export class ChatService {
 
       const keywordMap: Record<string, string[]> = {
         'data-query': [
-          '鏁版嵁',
-          '鏌ヨ',
-          '娓╁害',
-          '淇℃伅',
+          '数据',
+          '查询',
+          '温度',
+          '信息',
           'data',
           'query',
           'temperature',
           'info',
         ],
         'chart-recommend': [
-          '鍥捐〃',
-          '鐢诲浘',
-          '鎺ㄨ崘',
+          '图表',
+          '画图',
+          '推荐',
           'chart',
           'recommend',
-          '鍥惧舰',
+          '图形',
         ],
       };
 
@@ -244,7 +273,7 @@ export class ChatService {
         maybeUserDemands.push('convert-to-backend');
       }
 
-      // 姝ラ4: 杩斿洖鏇存柊鍚庣殑鐘舵€?
+      // 步骤 4：返回更新后的状态
       return {
         allowTools: Array.from(
           new Set([
@@ -262,29 +291,21 @@ export class ChatService {
   }
 
   /**
-   * 鍒涘缓鎵ц鑺傜偣
-   * 璐熻矗浣跨敤宸ュ叿鍜屾妧鑳芥墽琛屽叿浣撲换鍔?
+   * 创建执行节点
+   * 负责使用工具和技能完成具体任务。
    *
-   * Agent 鐗圭偣锛?
-   * - 鏍规嵁鍏佽鐨勫伐鍏峰垪琛ㄥ姩鎬佽繃婊ゅ伐鍏?
-   * - 浣跨敤鑷敱鍝嶅簲鏍煎紡锛屼笉闄愬埗杈撳嚭缁撴瀯
-   *
-   * @param llmConfig LLM 閰嶇疆
-   * @returns Graph 鑺傜偣
+   * @param llmConfig LLM 配置
+   * @returns Graph 节点
    */
-  private createActNode(llmConfig: LLMConfig): GraphNode<typeof this.State> {
+  private createActNode(
+    llmConfig: LLMConfig,
+    mode: AiChatMode,
+  ): GraphNode<typeof this.State> {
     return async (state) => {
-      // 姝ラ1: 鍒涘缓 Deep Agent
+      // 步骤 1：创建 Deep Agent
       const llm = this.createLLM(llmConfig);
-      const essentialTools = [
-        'askQuestion',
-        'getCurrentTime',
-        'workflowMarket',
-        'startWorkflow',
-        'toolMarket',
-        'toolMarketExecutor',
-      ];
-      state.allowTools = state.allowTools || [];
+      const essentialTools = this.getEssentialToolNames(mode);
+      state.allowTools = this.sanitizeAllowedTools(state.allowTools, mode);
       essentialTools.forEach((tool) => {
         if (!state.allowTools.includes(tool)) {
           state.allowTools.push(tool);
@@ -300,7 +321,7 @@ export class ChatService {
           .filter((tool) => state.allowTools?.includes(tool.name));
       }
 
-      const prompt = await loadSkill('act');
+      const prompt = await loadPrompt('act');
       const promptTemplate = PromptTemplate.fromTemplate(prompt);
       const systemPrompt = await promptTemplate.format({
         recommendSkills:
@@ -309,19 +330,19 @@ export class ChatService {
             .join(', ') || '',
       });
 
-      // 1. 鎶€鑳芥牴鐩綍锛圢estJS 婧愮爜鐩綍锛歴rc/skills锛?
+      // 1. 技能根目录：当前服务目录
       const SKILLS_ROOT = path.join(__dirname, '.');
-      // 2. 鏍￠獙鐩綍鏄惁瀛樺湪
+      // 2. 校验目录是否存在
       if (!existsSync(SKILLS_ROOT)) {
         throw new InternalServerErrorException(
-          `鎶€鑳界洰褰曚笉瀛樺湪锛?{SKILLS_ROOT}`,
+          `技能目录不存在：${SKILLS_ROOT}`,
         );
       }
       console.log('hcs SKILLS_ROOT', SKILLS_ROOT); //hcs SKILLS_ROOT D:\Program\projects\seedar\apps\server\dist\module\ai\services
 
-      // 3. 鍒涘缓鏂囦欢绯荤粺鍚庣锛堝厑璁歌鍙栨湰鍦版妧鑳芥枃浠讹級
+      // 3. 创建文件系统后端，允许读取本地技能文件
       const backend = new FilesystemBackend({
-        rootDir: SKILLS_ROOT, // 鎶€鑳芥牴鐩綍
+        rootDir: SKILLS_ROOT,
         virtualMode: true,
       });
 
@@ -335,10 +356,10 @@ export class ChatService {
         skills: ['/skills/'],
       });
 
-      // 姝ラ2: 鎵ц Agent
+      // 步骤 2：执行 Agent
       const response = await agent.invoke({ messages: state.messages });
 
-      // 姝ラ3: 杩斿洖鏇存柊鍚庣殑娑堟伅
+      // 步骤 3：返回更新后的消息
       return { messages: response.messages };
     };
   }
@@ -360,21 +381,22 @@ export class ChatService {
     aiId: string,
     message: string | undefined,
     sessionId: string,
+    mode: AiChatMode = 'chat',
     isResume: boolean = false,
     resumePayload?: AiChatResumeDto,
   ): AsyncGenerator<AiAgentStreamChunk, void, unknown> {
     try {
-      // 姝ラ1: 鑾峰彇浼氳瘽淇℃伅
+      // 步骤 1：获取会话信息
       const session = await this.aiSessionService.findOne(sessionId);
 
-      // 姝ラ2: 鍒涘缓瀵硅瘽鍥?
-      const agent = await this.createGraph(aiId);
+      // 步骤 2：创建对话图
+      const agent = await this.createGraph(aiId, mode);
 
       if (!isResume && !message) {
-        throw new InternalServerErrorException('鍒濆瀵硅瘽缂哄皯 message');
+        throw new InternalServerErrorException('初始对话缺少 message');
       }
 
-      // 姝ラ3: 鍚姩娴佸紡瀵硅瘽
+      // 步骤 3：启动流式对话
       const stream = await agent.stream(
         !isResume
           ? {
@@ -401,10 +423,10 @@ export class ChatService {
       let currentSid = '';
       let lastType: YieldType | undefined;
 
-      // 姝ラ4: 澶勭悊娴佸紡鍝嶅簲
+      // 步骤 4：处理流式响应
       for await (const [streamMode, chunk] of stream) {
-        // 澶勭悊 values 妯″紡鐨勪腑鏂俊鎭?
-        // TODO: 杩欐牱鏄湁椋庨櫓鐨?
+        // 处理 values 模式中的中断信息
+        // TODO: 这里仍然有一定耦合风险，后续可拆分
         if (streamMode === 'values') {
           const interruptData = this.extractInterrupt(chunk);
           if (interruptData && interruptData?.[0]?.value) {
@@ -420,7 +442,7 @@ export class ChatService {
           continue;
         }
 
-        // 澶勭悊 messages 妯″紡鐨勬秷鎭唴瀹?
+        // 处理 messages 模式中的常规消息
         const token = chunk[0];
         const metadata = chunk[1];
         const { content, type } =
@@ -445,7 +467,7 @@ export class ChatService {
         }
 
         if (content && type) {
-          // 鍒ゆ柇鏄惁涓哄伐鍏疯皟鐢ㄧ粨鏋?
+          // 判断是否为工具调用结果
           const messageType = token.type === 'tool' ? 'tool_result' : type;
           if (
             messageType === 'tool_result' &&
@@ -454,7 +476,7 @@ export class ChatService {
             continue;
           }
 
-          // 绫诲瀷鍙樺寲鏃剁敓鎴愭柊鐨?sid
+          // 类型变化时生成新的 sid
           if (type !== lastType) {
             currentSid = randomUUID();
             lastType = type as YieldType;
@@ -486,11 +508,11 @@ export class ChatService {
         }
       }
 
-      // 姝ラ5: 杩斿洖瀹屾垚鏍囪
+      // 步骤 5：返回完成标记
       console.log('hcs tool_call', JSON.stringify(tool_call, null, 2));
       yield { sid: currentSid, content: '', done: true };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '鏈煡閿欒';
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
       console.error('streamChat error:', errorMessage, error, '\n');
       console.log('error type:', typeof error, '\n');
       yield {
@@ -500,14 +522,14 @@ export class ChatService {
         done: true,
         role: '',
       };
-      throw new InternalServerErrorException(`娴佸紡瀵硅瘽澶辫触: ${errorMessage}`);
+      throw new InternalServerErrorException(`流式对话失败: ${errorMessage}`);
     }
   }
 
   /**
-   * 浠庢祦鏁版嵁涓彁鍙栦腑鏂俊鎭?
-   * @param chunk 娴佹暟鎹潡
-   * @returns 涓柇淇℃伅鎴?null
+   * 从流数据中提取中断信息
+   * @param chunk 流数据块
+   * @returns 中断信息或 null
    */
   private extractInterrupt(chunk: unknown): any | null {
     if (
@@ -521,25 +543,25 @@ export class ChatService {
   }
 
   /**
-   * 浠?AI 閰嶇疆涓В鏋?LLM 閰嶇疆
-   * @param ai AI 瀹炰綋
+   * 从 AI 配置中解析 LLM 配置
+   * @param ai AI 实体
    */
   private getLLMConfig(ai: AiResponse): LLMConfig {
     const config = ai.config as Record<string, unknown> | undefined;
     const llmConfig = config?.llm as Record<string, unknown> | undefined;
     if (!llmConfig) {
-      throw new InternalServerErrorException('AI 閰嶇疆涓己灏?llm 閰嶇疆');
+      throw new InternalServerErrorException('AI 配置中缺少 llm 配置');
     }
 
     const apiKey = llmConfig.apiKey as string | undefined;
     const model = llmConfig.model as string | undefined;
 
     if (!apiKey) {
-      throw new InternalServerErrorException('LLM 閰嶇疆涓己灏?apiKey');
+      throw new InternalServerErrorException('LLM 配置中缺少 apiKey');
     }
 
     if (!model && !ai.name) {
-      throw new InternalServerErrorException('LLM 閰嶇疆涓己灏?model 鎴?name');
+      throw new InternalServerErrorException('LLM 配置中缺少 model 或 name');
     }
 
     return {
@@ -554,8 +576,8 @@ export class ChatService {
   }
 
   /**
-   * 鍒涘缓 LLM 瀹炰緥
-   * @param llmConfig LLM 閰嶇疆
+   * 创建 LLM 实例
+   * @param llmConfig LLM 配置
    */
   private createLLM(
     llmConfig: LLMConfig,

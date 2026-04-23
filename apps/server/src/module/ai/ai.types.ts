@@ -1,4 +1,5 @@
 import type {
+  AiChatMode,
   AiChatResumeDto,
   AiInterruptPayload,
   InterruptResultPayload,
@@ -68,6 +69,7 @@ export interface StreamChunk<T> {
 export type AiAgentStreamChunk = StreamChunk<AiInterruptPayload>;
 
 export type {
+  AiChatMode,
   AiChatResumeDto,
   AiInterruptPayload,
   InterruptResultPayload,

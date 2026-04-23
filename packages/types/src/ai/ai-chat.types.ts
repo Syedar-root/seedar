@@ -23,11 +23,14 @@ export interface AiChatResumeDto {
   interruptResult?: InterruptResultPayload;
 }
 
+export type AiChatMode = 'chat' | 'agent';
+
 export interface AiChatRequestDto {
   aiId: string;
   message?: string;
   stream?: boolean;
   sessionId?: string;
+  mode?: AiChatMode;
   isResume?: boolean;
   resumePayload?: AiChatResumeDto;
 }

@@ -1,4 +1,9 @@
-import type { CommandItem, ModelItem } from "../../types";
+import type {
+  ChatModeItem,
+  CommandItem,
+  ModelItem,
+} from "../../types";
+import type { AiChatMode } from "#pkg/seedar/types";
 
 export interface EnhancedSenderProps {
   loading?: boolean;
@@ -10,6 +15,9 @@ export interface EnhancedSenderProps {
   models?: ModelItem[];
   currentModel?: string;
   onModelChange?: (modelKey: string) => void;
+  modes?: ChatModeItem[];
+  currentMode?: AiChatMode;
+  onModeChange?: (mode: AiChatMode) => void;
 }
 
 export interface CommandSuggestionItem {

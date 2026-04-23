@@ -44,7 +44,11 @@ function Seedar_Tool(config: ToolConfig): MethodDecorator {
 @Injectable()
 export class ToolService {
   private toolMethods: Array<{ method: ToolMethod; config: ToolConfig }> = [];
-  private readonly INTERRUPT_TOOL_NAMES = ['askQuestion', 'startWorkflow'];
+  private readonly TOOL_EXECUTOR_BLOCKLIST = [
+    'askQuestion',
+    'startWorkflow',
+    'workflowMarket',
+  ];
 
   constructor(
     private readonly datasetService: DatasetService,
@@ -278,7 +282,7 @@ export class ToolService {
     { toolName, toolParams }: ToolMarketExecutorParams,
     runtime?: ToolRunnableConfig,
   ) {
-    if (this.INTERRUPT_TOOL_NAMES.includes(toolName)) {
+    if (this.TOOL_EXECUTOR_BLOCKLIST.includes(toolName)) {
       return `不能使用中断工具 ${toolName}`;
     }
 

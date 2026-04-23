@@ -8,6 +8,10 @@
       {
         "include": "module/ai/services/skills/**/*.*",
         "watchAssets": true
+      },
+      {
+        "include": "module/ai/services/prompts/**/*.*",
+        "watchAssets": true
       }
     ]
   }
