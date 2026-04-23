@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsIn,
   IsString,
   IsOptional,
@@ -39,6 +40,11 @@ export class AiChatRequestDto {
   @IsOptional()
   @IsIn(['chat', 'agent'])
   mode?: 'chat' | 'agent';
+
+  @IsOptional()
+  @IsArray()
+  @IsObject({ each: true })
+  scenes?: Record<string, unknown>[];
 
   @IsOptional()
   @IsBoolean()

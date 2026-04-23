@@ -24,7 +24,7 @@ import {
   AiSessionResponse,
   CreateAiSessionRequest,
 } from './dto';
-import { AiChatResumeDto, PaginatedResult } from './ai.types';
+import { AiChatResumeDto, AiChatScene, PaginatedResult } from './ai.types';
 import { Observable } from 'rxjs';
 import { AiSessionService } from './services';
 
@@ -84,6 +84,7 @@ export class AiController {
       dto.message,
       sessionId,
       dto.mode,
+      dto.scenes as AiChatScene[] | undefined,
       dto.isResume,
       dto.resumePayload as AiChatResumeDto | undefined,
     );

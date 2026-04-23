@@ -1,9 +1,10 @@
 import type {
+  AiChatScene,
   AiChatMode,
   AiChatResumeDto,
   AiInterruptPayload,
   InterruptResultPayload,
-} from '@seedar/types';
+} from '@seedar/types/ai';
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -69,8 +70,9 @@ export interface StreamChunk<T> {
 export type AiAgentStreamChunk = StreamChunk<AiInterruptPayload>;
 
 export type {
+  AiChatScene,
   AiChatMode,
   AiChatResumeDto,
   AiInterruptPayload,
   InterruptResultPayload,
-} from '@seedar/types';
+} from '@seedar/types/ai';

@@ -1,4 +1,5 @@
 export { useAppStore } from './AppState';
+export { useAiChatScenesStore } from './AIChatScenesState';
 export {
   dispatchWorkflowAction,
   useWorkflowActionsStore,

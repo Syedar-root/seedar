@@ -1,5 +1,6 @@
 import { MetricCard, SeedarPanel } from "#pkg/seedar/ui-react";
 import type {
+  AiChatScene,
   DatasetResponse,
   PanelQueryStatePayload,
   QueryDSL,
@@ -12,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { useAiChatScenesStore } from "@/core/store";
 import {
   useWorkflowActionConsumer,
 } from "@/core/workflow";
@@ -101,6 +103,8 @@ const PANEL_STATUS_LABELS = {
 } as const;
 
 export const PanelPage = () => {
+  const setAiChatScenes = useAiChatScenesStore((state) => state.setScenes);
+  const clearAiChatScenes = useAiChatScenesStore((state) => state.clearScenes);
   const { panelId: rawPanelId } = useParams();
   const panelId = rawPanelId === "create" ? undefined : rawPanelId;
   const navigate = useNavigate();
@@ -166,6 +170,26 @@ export const PanelPage = () => {
 
   const activeDataset = selectedDataset ?? datasetData;
   const isDatasetLocked = Boolean(activeDataset?.id);
+  const currentDsl = useMemo<QueryDSL | undefined>(() => {
+    return buildDsl((queryData?.dsl as QueryDSL | undefined) ?? undefined);
+  }, [buildDsl, queryData?.dsl]);
+  const panelScene = useMemo<AiChatScene>(() => {
+    return {
+      path: `/panel/${panelData?.id ?? panelId ?? "create"}`,
+      panelId: panelData?.id ?? panelId,
+      datasetId: activeDataset?.id,
+      queryId: queryData?.id,
+      title,
+      dsl: currentDsl,
+    };
+  }, [
+    activeDataset?.id,
+    currentDsl,
+    panelData?.id,
+    panelId,
+    queryData?.id,
+    title,
+  ]);
 
   const {
     datasets,
@@ -225,6 +249,14 @@ export const PanelPage = () => {
   const primaryActionLabel = isPublished
     ? COPY.saveAndUpdate
     : COPY.saveAndPublish;
+
+  useEffect(() => {
+    setAiChatScenes([panelScene]);
+
+    return () => {
+      clearAiChatScenes();
+    };
+  }, [clearAiChatScenes, panelScene, setAiChatScenes]);
 
   useEffect(() => {
     if (!isDatasetDialogOpen) {

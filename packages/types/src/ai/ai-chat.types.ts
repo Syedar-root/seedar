@@ -25,12 +25,18 @@ export interface AiChatResumeDto {
 
 export type AiChatMode = 'chat' | 'agent';
 
+export interface AiChatScene {
+  path: string;
+  [key: string]: unknown;
+}
+
 export interface AiChatRequestDto {
   aiId: string;
   message?: string;
   stream?: boolean;
   sessionId?: string;
   mode?: AiChatMode;
+  scenes?: AiChatScene[];
   isResume?: boolean;
   resumePayload?: AiChatResumeDto;
 }

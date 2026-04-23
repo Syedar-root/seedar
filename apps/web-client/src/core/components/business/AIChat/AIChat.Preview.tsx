@@ -4,15 +4,18 @@ import { AIChat } from "./";
 import { useChatState } from "./hooks/useChatState.hook";
 import { useSSEHandler } from "./hooks/useSSEHandler.hook";
 import { useWorkflowInterruptExecutor } from "./hooks/useWorkflowInterruptExecutor.hook";
+import { useAiChatScenesStore } from "@/core/store";
 import type { ChatMessage, ChatModeItem, CommandItem, SSEData } from "./types";
 import styles from "./AIChat.Preview.module.scss";
 import type {
+  AiChatScene,
   AiChatMode,
   AiChatResumeDto,
   AiSessionResponse,
 } from "#pkg/seedar/types";
 import { formatMessageForDisplay } from "./utils/command.utils";
 import { MessageSquareText, Workflow } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 const AI_CHAT_COMMANDS_RECORD = {
   dataQuery: {
@@ -39,6 +42,8 @@ const AIChatPreview: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentSession, setCurrentSession] =
     useState<AiSessionResponse | null>(null);
+  const location = useLocation();
+  const activeScenes = useAiChatScenesStore((state) => state.scenes);
 
   const chatState = useChatState([]);
   const { handleSSEData } = useSSEHandler({
@@ -50,6 +55,17 @@ const AIChatPreview: React.FC = () => {
   const { data: aisData } = useAis();
   const { mutateAsync: createSession } = useCreateAiSession();
   const commands = useMemo(() => Object.values(AI_CHAT_COMMANDS_RECORD), []);
+  const requestScenes = useMemo<AiChatScene[]>(() => {
+    if (activeScenes.length > 0) {
+      return activeScenes;
+    }
+
+    return [
+      {
+        path: `${location.pathname}${location.search}${location.hash}`,
+      },
+    ];
+  }, [activeScenes, location.hash, location.pathname, location.search]);
 
   const handleSendMessage = async (
     content: string,
@@ -91,6 +107,7 @@ const AIChatPreview: React.FC = () => {
           stream: true,
           sessionId: session?.id || undefined,
           mode: currentMode,
+          scenes: requestScenes,
           isResume: isResume || false,
           resumePayload,
         },

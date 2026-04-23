@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { AiService } from './ai.service';
 import {
   AiAgentStreamChunk,
+  AiChatScene,
   AiChatMode,
   AiChatResumeDto,
   AiInterruptPayload,
@@ -188,12 +189,24 @@ export class ChatService {
       (toolName) => !this.WORKFLOW_TOOL_NAMES.includes(toolName),
     );
   }
+
+  private formatScenesContext(scenes: AiChatScene[] | undefined): string {
+    if (!scenes || scenes.length === 0) {
+      return '[]';
+    }
+
+    return JSON.stringify(scenes, null, 2);
+  }
   /**
    * 创建对话图
    * @param aiId AI 实例 ID
    * @returns 编译后的状态图
    */
-  private async createGraph(aiId: string, mode: AiChatMode) {
+  private async createGraph(
+    aiId: string,
+    mode: AiChatMode,
+    scenes?: AiChatScene[],
+  ) {
     const ai = await this.aiService.findOne(aiId);
     const llmConfig = this.getLLMConfig(ai);
 
@@ -201,7 +214,7 @@ export class ChatService {
 
     graphBuilder
       .addNode('clarify', this.createClarifyNode(llmConfig))
-      .addNode('act', this.createActNode(llmConfig, mode))
+      .addNode('act', this.createActNode(llmConfig, mode, scenes))
       .addEdge(START, 'clarify')
       .addEdge('clarify', 'act')
       .addEdge('act', END);
@@ -300,6 +313,7 @@ export class ChatService {
   private createActNode(
     llmConfig: LLMConfig,
     mode: AiChatMode,
+    scenes?: AiChatScene[],
   ): GraphNode<typeof this.State> {
     return async (state) => {
       // 步骤 1：创建 Deep Agent
@@ -328,6 +342,7 @@ export class ChatService {
           state.allowSkills
             ?.filter((skill) => skill !== 'convert-to-backend')
             .join(', ') || '',
+        scenesContext: this.formatScenesContext(scenes),
       });
 
       // 1. 技能根目录：当前服务目录
@@ -382,6 +397,7 @@ export class ChatService {
     message: string | undefined,
     sessionId: string,
     mode: AiChatMode = 'chat',
+    scenes?: AiChatScene[],
     isResume: boolean = false,
     resumePayload?: AiChatResumeDto,
   ): AsyncGenerator<AiAgentStreamChunk, void, unknown> {
@@ -390,7 +406,7 @@ export class ChatService {
       const session = await this.aiSessionService.findOne(sessionId);
 
       // 步骤 2：创建对话图
-      const agent = await this.createGraph(aiId, mode);
+      const agent = await this.createGraph(aiId, mode, scenes);
 
       if (!isResume && !message) {
         throw new InternalServerErrorException('初始对话缺少 message');
