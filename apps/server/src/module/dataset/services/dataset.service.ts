@@ -176,11 +176,6 @@ export class DatasetService {
           }
         }
 
-        console.log('tableIdToDatasetTableId  ',tableIdToDatasetTableId);
-        console.log('request.fields.tableId  ',request.fields.map((f) => f.tableId));
-
-        console.log('request.ghostField  ',request.fields.find((f)=>f.tableId === 3));
-
         // 2. 创建 DatasetFields
         const datasetFields = await Promise.all(
           request.fields.map(async (field) => {
