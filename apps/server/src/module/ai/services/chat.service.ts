@@ -321,7 +321,7 @@ export class ChatService {
           .filter((tool) => state.allowTools?.includes(tool.name));
       }
 
-      const prompt = await loadPrompt('act');
+      const prompt = await loadPrompt('act', mode);
       const promptTemplate = PromptTemplate.fromTemplate(prompt);
       const systemPrompt = await promptTemplate.format({
         recommendSkills:
