@@ -5,7 +5,9 @@ import styles from "./ConnectionTest.module.scss";
 
 interface ConnectionTestProps {
   config: ConnectionConfig;
-  onTest?: (config: ConnectionConfig) => Promise<{ success: boolean; message: string }>;
+  onTest?: (
+    config: ConnectionConfig,
+  ) => Promise<{ success: boolean; message: string }>;
 }
 
 export const ConnectionTest: React.FC<ConnectionTestProps> = ({
@@ -13,13 +15,16 @@ export const ConnectionTest: React.FC<ConnectionTestProps> = ({
   onTest,
 }) => {
   const [isTesting, setIsTesting] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [result, setResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   const handleTest = async () => {
     if (!onTest) {
       setResult({
         success: true,
-        message: "连接测试功能尚未实现",
+        message: "测试连接功能尚未实现",
       });
       return;
     }
@@ -41,7 +46,13 @@ export const ConnectionTest: React.FC<ConnectionTestProps> = ({
   };
 
   const canTest = () => {
-    return !!(config.host && config.port && config.database && config.username && config.password);
+    return !!(
+      config.host &&
+      config.port &&
+      config.database &&
+      config.username &&
+      config.password
+    );
   };
 
   return (
@@ -60,11 +71,16 @@ export const ConnectionTest: React.FC<ConnectionTestProps> = ({
         ) : result ? (
           <>
             {result.success ? (
-              <CheckCircle size={16} className={styles.icon} />
+              <>
+                <CheckCircle size={16} className={styles.icon} />
+                {"连接成功"}
+              </>
             ) : (
-              <XCircle size={16} className={styles.icon} />
+              <>
+                <XCircle size={16} className={styles.icon} />
+                {"连接失败"}
+              </>
             )}
-            {result.message}
           </>
         ) : (
           "测试连接"
@@ -72,7 +88,9 @@ export const ConnectionTest: React.FC<ConnectionTestProps> = ({
       </button>
 
       {result && (
-        <div className={`${styles.resultMessage} ${result.success ? styles.success : styles.error}`}>
+        <div
+          className={`${styles.resultMessage} ${result.success ? styles.success : styles.error}`}
+        >
           {result.success ? (
             <CheckCircle size={16} className={styles.icon} />
           ) : (

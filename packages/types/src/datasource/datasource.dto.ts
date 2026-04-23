@@ -27,6 +27,16 @@ export class UpdateDatasourceRequest {
   config?: DataSourceConfig;
 }
 
+export class TestDatasourceConnectionRequest {
+  type!: DataSourceType;
+  config!: DataSourceConfig;
+}
+
+export interface TestDatasourceConnectionResponse {
+  success: boolean;
+  message: string;
+}
+
 /**
  * 外键关系响应
  */

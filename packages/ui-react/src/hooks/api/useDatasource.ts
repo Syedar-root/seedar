@@ -3,6 +3,7 @@ import { useDatasourceApi } from './useApi';
 import type {
   DatasourceResponse,
   CreateDatasourceRequest,
+  TestDatasourceConnectionRequest,
   UpdateDatasourceRequest,
 } from '#pkg/seedar/types';
 
@@ -60,6 +61,15 @@ export const useCreateDatasource = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: datasourceKeys.lists() });
     },
+  });
+};
+
+export const useTestDatasourceConnection = () => {
+  const datasourceApi = useDatasourceApi();
+
+  return useMutation({
+    mutationFn: (data: TestDatasourceConnectionRequest) =>
+      datasourceApi.testConnection(data),
   });
 };
 

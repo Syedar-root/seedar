@@ -13,6 +13,7 @@ export {
   useDatasources,
   useDatasource,
   useCreateDatasource,
+  useTestDatasourceConnection,
   useUpdateDatasource,
   useDeleteDatasource,
 } from "./api/useDatasource";

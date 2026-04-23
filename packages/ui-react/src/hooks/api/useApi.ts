@@ -10,6 +10,7 @@ import {
 import type {
   DatasourceResponse,
   CreateDatasourceRequest,
+  TestDatasourceConnectionRequest,
   UpdateDatasourceRequest,
   DatasetResponse,
   CreateDatasetRequest,
@@ -58,6 +59,13 @@ export const useDatasourceApi = () => {
     [],
   );
 
+  const testConnection = useCallback(
+    (data: TestDatasourceConnectionRequest, options?: RequestOptions) => {
+      return DatasourceApi.testConnection(data, options);
+    },
+    [],
+  );
+
   const update = useCallback(
     (id: number, data: UpdateDatasourceRequest, options?: RequestOptions) => {
       return DatasourceApi.update(id, data, options);
@@ -73,6 +81,7 @@ export const useDatasourceApi = () => {
     findAll,
     findOne,
     create,
+    testConnection,
     update,
     remove,
   };
