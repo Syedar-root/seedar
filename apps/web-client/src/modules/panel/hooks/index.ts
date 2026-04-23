@@ -4,4 +4,6 @@ export type { TempMetricConfig } from "../types";
 export { usePanelActions } from "./usePanelActions";
 export { useDatasetSelector } from "./useDatasetSelector";
 export { usePanelListPageViewModel } from "./usePanelListPageViewModel.hook";
+export { usePanelPageViewModel } from "./usePanelPageViewModel.hook";
+export type { UsePanelPageViewModelReturn } from "./usePanelPageViewModel.hook";
 export { usePreviewSpec } from "./usePreviewSpec";
