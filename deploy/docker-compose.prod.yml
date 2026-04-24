@@ -65,7 +65,7 @@ services:
     command:
       [
         "node",
-        "../../node_modules/typeorm/cli.js",
+        "node_modules/typeorm/cli.js",
         "-d",
         "dist/config/typeorm.datasource.js",
         "migration:run",

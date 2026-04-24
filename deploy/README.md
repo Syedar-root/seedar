@@ -51,6 +51,7 @@ docker compose -f .\deploy\docker-compose.prod.yml up -d --build server web
 - `MYSQL_USER` must be a regular database user such as `seedar`; do not set it to `root`.
 - Deployment order is `mysql -> migrate -> server/web`.
 - Use `.\deploy\migrate-prod.ps1` to run migrations independently.
+- The PowerShell scripts keep the original default ports, but if a host port is already occupied they automatically choose the next free port and reuse it on later runs.
 
 ## 6. Troubleshooting
 
@@ -58,12 +59,5 @@ docker compose -f .\deploy\docker-compose.prod.yml up -d --build server web
 
 ```powershell
 $env:DOCKER_BUILDKIT = "0"
-.\deploy\up-prod.ps1
-```
-
-- If port `3306` is already occupied on the host, override the published MySQL port for this shell session:
-
-```powershell
-$env:MYSQL_PORT = "3307"
 .\deploy\up-prod.ps1
 ```

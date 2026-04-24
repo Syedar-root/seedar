@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 
 $composeFile = Join-Path $PSScriptRoot "docker-compose.prod.yml"
 $serverEnvFile = Join-Path $PSScriptRoot "..\apps\server\.env.production"
+. (Join-Path $PSScriptRoot "Resolve-ProdPorts.ps1")
 
 function Get-EnvValue {
   param(
@@ -45,6 +46,9 @@ $mysqlUser = Get-EnvValue -Path $serverEnvFile -Key "MYSQL_USER"
 if ($mysqlUser -eq "root") {
   throw "Invalid MYSQL_USER in $serverEnvFile. MySQL Docker image does not allow MYSQL_USER=root. Use a regular user such as 'seedar' and keep MYSQL_ROOT_PASSWORD for the root account."
 }
+
+$mysqlPort = Resolve-PublishedPort -ComposeFile $composeFile -EnvName "MYSQL_PORT" -DefaultPort 3306 -Service "mysql" -TargetPort 3306
+Write-Host "MySQL host port: $mysqlPort"
 
 docker compose -f $composeFile up -d mysql
 docker compose -f $composeFile run --rm --build migrate
