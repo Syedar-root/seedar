@@ -1,10 +1,11 @@
 ﻿import { Responsive } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 import styles from "./GridContainer.module.css";
 import {
   BREAKPOINTS,
   BREAKPOINT_LABELS,
   COLS,
-  CONTAINER_PADDING,
   MARGIN,
 } from "../../../utils/dashboard-layout/constants";
 import { useGridContainerController } from "./hooks/useGridContainerController.hook";
@@ -54,14 +55,14 @@ export const GridContainer: React.FC<GridContainerProps> = ({
           <>
             <div className={styles.metaBar}>
               <span className={styles.metaChip}>
-                缂栬緫 {activeBreakpoint.toUpperCase()} 路{" "}
+                编辑 {activeBreakpoint.toUpperCase()} ·{" "}
                 {BREAKPOINT_LABELS[activeBreakpoint]}
               </span>
               <span className={styles.metaChip}>
-                瀹瑰櫒 {Math.round(containerWidth)}px 路 {containerBreakpoint.toUpperCase()}
+                容器 {Math.round(containerWidth)}px · {containerBreakpoint.toUpperCase()}
               </span>
               <span className={styles.metaChip}>
-                鐢诲竷 {Math.round(effectiveGridWidth)}px
+                画布 {Math.round(effectiveGridWidth)}px
               </span>
             </div>
             <div className={styles.frame}>
@@ -79,7 +80,6 @@ export const GridContainer: React.FC<GridContainerProps> = ({
                   breakpoints={BREAKPOINTS}
                   cols={COLS}
                   margin={[MARGIN, MARGIN]}
-                  containerPadding={[CONTAINER_PADDING, CONTAINER_PADDING]}
                   rowHeight={rowHeight}
                   width={effectiveGridWidth}
                   compactor={compactor}
