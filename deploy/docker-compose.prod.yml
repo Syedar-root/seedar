@@ -1,0 +1,95 @@
+name: seedar-prod
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: seedar-mysql
+    restart: unless-stopped
+    env_file:
+      - ../apps/server/.env.production
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - seedar-net
+
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/docker/server.Dockerfile
+    image: seedar/server:prod
+    container_name: seedar-server
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - ../apps/server/.env.production
+    environment:
+      TZ: Asia/Shanghai
+      DB_HOST: mysql
+      PORT: 3000
+    ports:
+      - "${SERVER_PORT:-8090}:3000"
+    networks:
+      - seedar-net
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/docker/server.Dockerfile
+    image: seedar/server:prod
+    restart: "no"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - ../apps/server/.env.production
+    environment:
+      TZ: Asia/Shanghai
+      DB_HOST: mysql
+      PORT: 3000
+    command:
+      [
+        "node",
+        "../../node_modules/typeorm/cli.js",
+        "-d",
+        "dist/config/typeorm.datasource.js",
+        "migration:run",
+      ]
+    networks:
+      - seedar-net
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/docker/web.Dockerfile
+    image: seedar/web:prod
+    container_name: seedar-web
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    networks:
+      - seedar-net
+
+volumes:
+  mysql_data:
+
+networks:
+  seedar-net:
+    driver: bridge

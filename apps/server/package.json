@@ -18,7 +18,14 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "typeorm": "typeorm-ts-node-commonjs -d src/config/typeorm.datasource.ts",
+    "migration:create": "pnpm run typeorm -- migration:create src/migrations/ManualMigration",
+    "migration:generate": "pnpm run typeorm -- migration:generate src/migrations/AutoMigration",
+    "migration:run": "pnpm run typeorm -- migration:run",
+    "migration:revert": "pnpm run typeorm -- migration:revert",
+    "migration:show": "pnpm run typeorm -- migration:show",
+    "migration:run:prod": "node ../../node_modules/typeorm/cli.js -d dist/config/typeorm.datasource.js migration:run"
   },
   "dependencies": {
     "@langchain/anthropic": "^1.3.26",

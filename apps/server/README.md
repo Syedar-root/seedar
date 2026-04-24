@@ -156,6 +156,25 @@ $ pnpm run start:dev
 $ pnpm run start:prod
 ```
 
+## Database migrations (TypeORM)
+
+```bash
+# create an empty migration file
+$ pnpm run migration:create
+
+# generate migration from current entity changes
+$ pnpm run migration:generate
+
+# apply pending migrations
+$ pnpm run migration:run
+
+# rollback the latest migration
+$ pnpm run migration:revert
+```
+
+In production deployment, migrations are executed as an independent step before server startup.
+Detailed workflow: `src/migrations/README.md`.
+
 ## Run tests
 
 ```bash
