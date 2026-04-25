@@ -15,6 +15,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Validate release token
+        env:
+          TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::RELEASE_PLEASE_TOKEN is empty or not configured."
+            exit 1
+          fi
+
+          HTTP_STATUS=$(curl -sS -o /tmp/release-please-user.json -w "%{http_code}" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/user)
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::RELEASE_PLEASE_TOKEN cannot authenticate to the GitHub API (HTTP $HTTP_STATUS)."
+            echo "Expected a classic PAT with repo scope, or a fine-grained PAT with this repo selected plus contents/pull requests/issues permissions."
+            echo "If the repo belongs to an organization with SSO, authorize the token for that organization as well."
+            cat /tmp/release-please-user.json
+            exit 1
+          fi
+
+          python - <<'PY'
+          import json
+          with open('/tmp/release-please-user.json', 'r', encoding='utf-8') as f:
+              data = json.load(f)
+          print(f"Authenticated release-please token as: {data.get('login', '<unknown>')}")
+          PY
+
       - name: Run release-please
         uses: googleapis/release-please-action@v4
         with:
