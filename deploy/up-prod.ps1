@@ -3,7 +3,6 @@ $ErrorActionPreference = "Stop"
 
 $composeFile = Join-Path $PSScriptRoot "docker-compose.prod.yml"
 $serverEnvFile = Join-Path $PSScriptRoot "..\apps\server\.env.production"
-$webEnvFile = Join-Path $PSScriptRoot "..\apps\web-client\.env.production"
 $migrateScript = Join-Path $PSScriptRoot "migrate-prod.ps1"
 . (Join-Path $PSScriptRoot "Resolve-ProdPorts.ps1")
 
@@ -24,10 +23,6 @@ function Get-EnvValue {
 
 if (-not (Test-Path $serverEnvFile)) {
   throw "Missing $serverEnvFile. Copy apps/server/.env.production.example to apps/server/.env.production first."
-}
-
-if (-not (Test-Path $webEnvFile)) {
-  throw "Missing $webEnvFile. Copy apps/web-client/.env.production.example to apps/web-client/.env.production first."
 }
 
 $requiredServerKeys = @(
@@ -53,8 +48,8 @@ if ($mysqlUser -eq "root") {
   throw "Invalid MYSQL_USER in $serverEnvFile. MySQL Docker image does not allow MYSQL_USER=root. Use a regular user such as 'seedar' and keep MYSQL_ROOT_PASSWORD for the root account."
 }
 
-if (-not (Select-String -Path $webEnvFile -Pattern "^\s*VITE_API_BASE_URL\s*=" -Quiet)) {
-  throw "Missing key 'VITE_API_BASE_URL' in $webEnvFile."
+if (-not [Environment]::GetEnvironmentVariable("SEEDAR_VERSION", "Process")) {
+  [Environment]::SetEnvironmentVariable("SEEDAR_VERSION", "latest", "Process")
 }
 
 $mysqlPort = Resolve-PublishedPort -ComposeFile $composeFile -EnvName "MYSQL_PORT" -DefaultPort 3306 -Service "mysql" -TargetPort 3306
@@ -64,6 +59,7 @@ $webPort = Resolve-PublishedPort -ComposeFile $composeFile -EnvName "WEB_PORT" -
 Write-Host "MySQL host port: $mysqlPort"
 Write-Host "Server host port: $serverPort"
 Write-Host "Web host port: $webPort"
+Write-Warning "Legacy deployment path. Prefer 'seedar install' or 'seedar update'."
 
 & $migrateScript
-docker compose -f $composeFile up -d --build server web
+docker compose -f $composeFile up -d server web

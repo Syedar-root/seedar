@@ -50,5 +50,11 @@ if ($mysqlUser -eq "root") {
 $mysqlPort = Resolve-PublishedPort -ComposeFile $composeFile -EnvName "MYSQL_PORT" -DefaultPort 3306 -Service "mysql" -TargetPort 3306
 Write-Host "MySQL host port: $mysqlPort"
 
+if (-not [Environment]::GetEnvironmentVariable("SEEDAR_VERSION", "Process")) {
+  [Environment]::SetEnvironmentVariable("SEEDAR_VERSION", "latest", "Process")
+}
+
+Write-Warning "Legacy deployment path. Prefer 'seedar install' or 'seedar update'."
+
 docker compose -f $composeFile up -d mysql
-docker compose -f $composeFile run --rm --build migrate
+docker compose -f $composeFile run --rm migrate

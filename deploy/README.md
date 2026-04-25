@@ -1,63 +1,65 @@
-# Seedar Docker Compose (Production)
+# Seedar Production Deployment
 
-中文文档: [README.zh-CN.md](./README.zh-CN.md)
+The default production path is now the Seedar CLI.
 
-## 1. Prepare env files
+## Recommended path
 
-From project root:
+Run Seedar without cloning the repo:
 
-```powershell
-Copy-Item .\apps\server\.env.production.example .\apps\server\.env.production
-Copy-Item .\apps\web-client\.env.production.example .\apps\web-client\.env.production
+```bash
+npx @seedar/cli@latest install
 ```
 
-Then edit:
+Common commands:
 
-- `apps/server/.env.production`
-- `apps/web-client/.env.production`
+```bash
+seedar update
+seedar status
+seedar logs server --follow
+seedar doctor
+seedar uninstall
+```
 
-## 2. Build and run
+Runtime files are stored under:
+
+- Linux/macOS: `~/.seedar`
+- Windows: `%USERPROFILE%\.seedar`
+
+The CLI generates:
+
+- `runtime/docker-compose.yml`
+- `runtime/.env`
+- `runtime/.installed-version`
+- `data/`
+- `logs/`
+- `backups/`
+
+## Release model
+
+- Docker images are published to DockerHub:
+  - `seedarhq/seedar-server:<version>`
+  - `seedarhq/seedar-web:<version>`
+- CLI is published to npm as `@seedar/cli`.
+- Git tags use `vX.Y.Z`.
+
+## Legacy path
+
+The PowerShell scripts are still available as a compatibility path:
 
 ```powershell
+$env:SEEDAR_VERSION = "latest"
 .\deploy\up-prod.ps1
 ```
 
-Or use docker compose directly:
+Notes:
 
-```powershell
-docker compose -f .\deploy\docker-compose.prod.yml up -d mysql
-docker compose -f .\deploy\docker-compose.prod.yml run --rm --build migrate
-docker compose -f .\deploy\docker-compose.prod.yml up -d --build server web
-```
+- Legacy scripts now **pull remote images** instead of building locally.
+- Only `apps/server/.env.production` is required for legacy deployment.
+- New deployments should prefer the CLI.
 
-## 3. Stop services
+## Templates
 
-```powershell
-.\deploy\down-prod.ps1
-```
+Reusable runtime templates live in [templates](./templates/):
 
-## 4. Service ports
-
-- Web: `8080` (override with shell env `WEB_PORT`)
-- Server: `8090` (override with shell env `SERVER_PORT`)
-- MySQL: `3306` (override with shell env `MYSQL_PORT`)
-
-## 5. Notes
-
-- Frontend calls backend with `/api`, and Nginx rewrites `/api/*` to backend routes.
-- `apps/server/.env.production` is reused by both `mysql` and `server` services.
-- `apps/web-client/.env.production` is reused during frontend image build.
-- `apps/server/.env.production` must include `MYSQL_ROOT_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`.
-- `MYSQL_USER` must be a regular database user such as `seedar`; do not set it to `root`.
-- Deployment order is `mysql -> migrate -> server/web`.
-- Use `.\deploy\migrate-prod.ps1` to run migrations independently.
-- The PowerShell scripts keep the original default ports, but if a host port is already occupied they automatically choose the next free port and reuse it on later runs.
-
-## 6. Troubleshooting
-
-- If Docker BuildKit fails with mirror/EOF errors while resolving `node` or `nginx` metadata, either fix your Docker registry mirror configuration or temporarily run:
-
-```powershell
-$env:DOCKER_BUILDKIT = "0"
-.\deploy\up-prod.ps1
-```
+- `docker-compose.runtime.yml`
+- `runtime.env.example`

@@ -1,50 +1,65 @@
-# Seedar Docker Compose（生产环境）
+# Seedar 生产部署
 
-## 1. 准备环境变量文件
+现在默认的生产部署入口已经切换为 Seedar CLI。
 
-在项目根目录执行：
+## 推荐方式
 
-```powershell
-Copy-Item .\apps\server\.env.production.example .\apps\server\.env.production
-Copy-Item .\apps\web-client\.env.production.example .\apps\web-client\.env.production
+用户机器不再需要源码仓库，直接执行：
+
+```bash
+npx @seedar/cli@latest install
 ```
 
-然后编辑：
+常用命令：
 
-- `apps/server/.env.production`
-- `apps/web-client/.env.production`
+```bash
+seedar update
+seedar status
+seedar logs server --follow
+seedar doctor
+seedar uninstall
+```
 
-## 2. 构建并启动
+运行时文件默认位于：
+
+- Linux/macOS：`~/.seedar`
+- Windows：`%USERPROFILE%\.seedar`
+
+CLI 会生成：
+
+- `runtime/docker-compose.yml`
+- `runtime/.env`
+- `runtime/.installed-version`
+- `data/`
+- `logs/`
+- `backups/`
+
+## 发布模型
+
+- Docker 镜像发布到 DockerHub：
+  - `seedarhq/seedar-server:<version>`
+  - `seedarhq/seedar-web:<version>`
+- CLI 发布到 npm：`@seedar/cli`
+- Git tag 采用 `vX.Y.Z`
+
+## Legacy 兼容入口
+
+PowerShell 脚本仍然保留，但只作为兼容方案：
 
 ```powershell
+$env:SEEDAR_VERSION = "latest"
 .\deploy\up-prod.ps1
 ```
 
-或者手动执行 docker compose：
+说明：
 
-```powershell
-docker compose -f .\deploy\docker-compose.prod.yml up -d mysql
-docker compose -f .\deploy\docker-compose.prod.yml run --rm --build migrate
-docker compose -f .\deploy\docker-compose.prod.yml up -d --build server web
-```
+- Legacy 脚本现在**只拉取远端镜像**，不再本地构建。
+- Legacy 模式只要求 `apps/server/.env.production`。
+- 新部署请优先使用 CLI。
 
-## 3. 停止服务
+## 模板文件
 
-```powershell
-.\deploy\down-prod.ps1
-```
+运行时模板位于 [templates](./templates/)：
 
-## 4. 默认端口
-
-- Web：`8080`（可通过 shell 环境变量 `WEB_PORT` 覆盖）
-- Server：`8090`（可通过 shell 环境变量 `SERVER_PORT` 覆盖）
-- MySQL：`3306`（可通过 shell 环境变量 `MYSQL_PORT` 覆盖）
-
-## 5. 说明
-
-- 前端默认通过 `/api` 访问后端，Nginx 会将 `/api/*` 重写并转发到后端服务。
-- `apps/server/.env.production` 会被 `mysql` 和 `server` 服务共同复用。
-- `apps/web-client/.env.production` 会在前端镜像构建阶段使用。
-- `apps/server/.env.production` 必须包含：`MYSQL_ROOT_PASSWORD`、`MYSQL_DATABASE`、`MYSQL_USER`、`MYSQL_PASSWORD`。
-- 部署顺序为：`mysql -> migrate -> server/web`。
-- 需要单独执行迁移时可使用：`.\deploy\migrate-prod.ps1`。
+- `docker-compose.runtime.yml`
+- `runtime.env.example`

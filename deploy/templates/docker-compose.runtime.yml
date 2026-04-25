@@ -1,18 +1,20 @@
-name: seedar-prod
+name: ${SEEDAR_PROJECT_NAME}
 
 services:
   mysql:
     image: mysql:8.4
-    container_name: seedar-mysql
+    container_name: ${SEEDAR_PROJECT_NAME}-mysql
     restart: unless-stopped
-    env_file:
-      - ../apps/server/.env.production
     environment:
       TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      - "${MYSQL_PORT}:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - "${SEEDAR_INSTALL_ROOT}/data/mysql:/var/lib/mysql"
     healthcheck:
       test:
         [
@@ -27,34 +29,42 @@ services:
       - seedar-net
 
   server:
-    image: seedarhq/seedar-server:${SEEDAR_VERSION:-latest}
-    container_name: seedar-server
+    image: seedarhq/seedar-server:${SEEDAR_VERSION}
+    container_name: ${SEEDAR_PROJECT_NAME}-server
     restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
-    env_file:
-      - ../apps/server/.env.production
     environment:
       TZ: Asia/Shanghai
-      DB_HOST: mysql
+      NODE_ENV: production
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      AES_SECRET: ${AES_SECRET}
       PORT: 3000
     ports:
-      - "${SERVER_PORT:-8090}:3000"
+      - "${SERVER_PORT}:3000"
     networks:
       - seedar-net
 
   migrate:
-    image: seedarhq/seedar-server:${SEEDAR_VERSION:-latest}
+    image: seedarhq/seedar-server:${SEEDAR_VERSION}
     restart: "no"
     depends_on:
       mysql:
         condition: service_healthy
-    env_file:
-      - ../apps/server/.env.production
     environment:
       TZ: Asia/Shanghai
-      DB_HOST: mysql
+      NODE_ENV: production
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      AES_SECRET: ${AES_SECRET}
       PORT: 3000
     command:
       [
@@ -68,18 +78,15 @@ services:
       - seedar-net
 
   web:
-    image: seedarhq/seedar-web:${SEEDAR_VERSION:-latest}
-    container_name: seedar-web
+    image: seedarhq/seedar-web:${SEEDAR_VERSION}
+    container_name: ${SEEDAR_PROJECT_NAME}-web
     restart: unless-stopped
     depends_on:
       - server
     ports:
-      - "${WEB_PORT:-8080}:80"
+      - "${WEB_PORT}:80"
     networks:
       - seedar-net
-
-volumes:
-  mysql_data:
 
 networks:
   seedar-net:
