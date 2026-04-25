@@ -95,6 +95,12 @@
   }
 }
 
+.selector-menu-item-action-start {
+  border-top: 1px solid var(--chat-border-default);
+  margin-top: var(--chat-space-xs);
+  padding-top: calc(var(--chat-space-sm) + var(--chat-space-xs));
+}
+
 @media (prefers-reduced-motion: reduce) {
   .selector-button {
     transition: none;

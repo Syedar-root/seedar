@@ -11,6 +11,7 @@ import {
   Bot,
   ChevronDown,
   MessageSquareText,
+  Settings2,
 } from "lucide-react";
 import styles from "./EnhancedSender.module.scss";
 import type { EnhancedSenderProps } from "./types";
@@ -36,6 +37,7 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
   models,
   currentModel,
   onModelChange,
+  onManageModels,
   modes,
   currentMode,
   onModeChange,
@@ -55,18 +57,7 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
   const slotConfig = useMemo<SlotConfigType[]>(() => {
     if (!commands || commands.length === 0) return [];
     return [{ type: "text" as const, value: "", props: { placeholder } }];
-    // return [
-    //   { type: "text" as const, value: "/" },
-    //   {
-    //     type: "select" as const,
-    //     key: "command-selector",
-    //     props: {
-    //       options: commands.map((cmd) => cmd.label),
-    //       placeholder: "选择命令...",
-    //     },
-    //   },
-    // ];
-  }, [commands]);
+  }, [commands, placeholder]);
 
   const handleCommandSelect = useCallback(
     (value: string) => {
@@ -74,36 +65,43 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
       if (command && onCommandSelect) {
         onCommandSelect(command);
       }
-      const item = commandSuggestions.find((s) => s.value === value);
-      if (item) {
-        senderRef.current?.insert?.(
-          [
-            {
-              type: "tag" as const,
-              key: `${value}_${Date.now()}`,
-              props: {
-                label: item.label,
-                value: value,
-              },
-            },
-          ],
-          "cursor",
-          "/",
-        );
+
+      const item = commandSuggestions.find(
+        (suggestion) => suggestion.value === value,
+      );
+
+      if (!item) {
+        return;
       }
+
+      senderRef.current?.insert?.(
+        [
+          {
+            type: "tag" as const,
+            key: `${value}_${Date.now()}`,
+            props: {
+              label: item.label,
+              value,
+            },
+          },
+        ],
+        "cursor",
+        "/",
+      );
     },
     [commands, onCommandSelect, commandSuggestions],
   );
 
   const getCurrentModelLabel = () => {
-    if (!models || !currentModel) return "选择模型";
-    const model = models.find((m) => m.key === currentModel);
+    if (!models || models.length === 0) return "未配置模型";
+    if (!currentModel) return "选择模型";
+    const model = models.find((item) => item.key === currentModel);
     return model?.label || "选择模型";
   };
 
   const getCurrentModelIcon = () => {
     if (!models || !currentModel) return <Bot size={14} />;
-    const model = models.find((m) => m.key === currentModel);
+    const model = models.find((item) => item.key === currentModel);
     return model?.icon || <Bot size={14} />;
   };
 
@@ -139,11 +137,11 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
             {item.icon}
             <span>{item.label}</span>
           </div>
-          {item.description && (
+          {item.description ? (
             <div className={styles["menu-item-description"]}>
               {item.description}
             </div>
-          )}
+          ) : null}
         </div>
       ),
       onClick: () => onSelect?.(item.key),
@@ -151,16 +149,19 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
   };
 
   const modelMenuItems = buildMenuItems(models, onModelChange);
-
   const modeMenuItems = buildMenuItems(modes, (modeKey) =>
     onModeChange?.(modeKey as AiChatMode),
   );
+
+  const shouldShowModelSelector =
+    (models?.length || 0) > 0 || Boolean(onManageModels);
 
   const footer = (
     _: React.ReactNode,
     info: { components: ActionsComponents },
   ) => {
     const { SendButton, LoadingButton } = info.components;
+
     return (
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="small">
@@ -191,7 +192,8 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
               </Menu.Portal>
             </Menu.Root>
           ) : null}
-          {models && models.length > 0 ? (
+
+          {shouldShowModelSelector ? (
             <Menu.Root>
               <Menu.Trigger
                 className={styles["selector-button"]}
@@ -213,12 +215,32 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
                         {item.label}
                       </Menu.Item>
                     ))}
+                    {onManageModels ? (
+                      <Menu.Item
+                        onClick={onManageModels}
+                        className={clsx(
+                          styles["selector-menu-item"],
+                          styles["selector-menu-item-action-start"],
+                        )}
+                      >
+                        <div className={styles["menu-item-content"]}>
+                          <div className={styles["menu-item-label"]}>
+                            <Settings2 size={14} />
+                            <span>模型管理</span>
+                          </div>
+                          <div className={styles["menu-item-description"]}>
+                            查看模型列表，并进行创建、编辑和删除
+                          </div>
+                        </div>
+                      </Menu.Item>
+                    ) : null}
                   </Menu.Popup>
                 </Menu.Positioner>
               </Menu.Portal>
             </Menu.Root>
           ) : null}
         </Flex>
+
         <Flex align="center" gap="small">
           {loading ? (
             <LoadingButton className={styles["loading-button"]} />
@@ -261,11 +283,12 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
               disabled={disabled}
               slotConfig={slotConfig}
               footer={footer}
-              onKeyDown={(e) => {
-                if (e.key === "/") {
+              onKeyDown={(event) => {
+                if (event.key === "/") {
                   onTrigger();
                 }
-                return onKeyDown(e);
+
+                return onKeyDown(event);
               }}
             />
           )}

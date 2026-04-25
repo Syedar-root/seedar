@@ -53,6 +53,7 @@ const AIChat: React.FC<AIChatProps> = ({
   models,
   currentModel,
   onModelChange,
+  onManageModels,
   modes,
   currentMode,
   onModeChange,
@@ -424,6 +425,7 @@ const AIChat: React.FC<AIChatProps> = ({
           models={models}
           currentModel={currentModel}
           onModelChange={onModelChange}
+          onManageModels={onManageModels}
           modes={modes}
           currentMode={currentMode}
           onModeChange={onModeChange}

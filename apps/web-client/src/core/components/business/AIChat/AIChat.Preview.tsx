@@ -4,6 +4,7 @@ import { AIChat } from "./";
 import { useChatState } from "./hooks/useChatState.hook";
 import { useSSEHandler } from "./hooks/useSSEHandler.hook";
 import { useWorkflowInterruptExecutor } from "./hooks/useWorkflowInterruptExecutor.hook";
+import { ModelConfigDialog } from "./components";
 import { useAiChatScenesStore } from "@/core/store";
 import type { ChatMessage, ChatModeItem, CommandItem, SSEData } from "./types";
 import styles from "./AIChat.Preview.module.scss";
@@ -11,6 +12,7 @@ import type {
   AiChatScene,
   AiChatMode,
   AiChatResumeDto,
+  AiResponse,
   AiSessionResponse,
 } from "#pkg/seedar/types";
 import { formatMessageForDisplay } from "./utils/command.utils";
@@ -40,6 +42,7 @@ const AIChatPreview: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<AiChatMode>("chat");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [currentSession, setCurrentSession] =
     useState<AiSessionResponse | null>(null);
   const location = useLocation();
@@ -96,6 +99,7 @@ const AIChatPreview: React.FC = () => {
       };
       chatState.addMessage(userMessage);
     }
+
     setIsLoading(true);
     setError(null);
 
@@ -114,7 +118,7 @@ const AIChatPreview: React.FC = () => {
         {
           onSession: () => {},
           onMessage: (chunk) => {
-            const sseData: SSEData = {
+            const nextSseData: SSEData = {
               type: chunk.type,
               data: {
                 content: chunk.content,
@@ -125,22 +129,26 @@ const AIChatPreview: React.FC = () => {
                 meta: chunk.meta,
               },
             };
-            handleSSEData(sseData, chunk.sid);
+            handleSSEData(nextSseData, chunk.sid);
           },
           onDone: () => {
             setIsLoading(false);
           },
-          onError: (err) => {
+          onError: (requestError) => {
             setIsLoading(false);
-            setError(err);
+            setError(requestError);
           },
         },
       );
 
       return controller;
-    } catch (err) {
+    } catch (requestError) {
       setIsLoading(false);
-      setError(err instanceof Error ? err.message : "Failed to send message");
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Failed to send message",
+      );
     }
   };
 
@@ -152,9 +160,9 @@ const AIChatPreview: React.FC = () => {
       setIsLoading(true);
       try {
         await handleSendMessage("", true, resumePayload);
-      } catch (error) {
+      } catch (requestError) {
         setIsLoading(false);
-        throw error;
+        throw requestError;
       }
     },
   });
@@ -172,17 +180,17 @@ const AIChatPreview: React.FC = () => {
     setCurrentMode(mode);
   };
 
-  const models = useMemo(() => {
-    return (
-      aisData?.data
-        ?.filter((ai) => ai.status === "active")
-        .map((ai) => ({
-          key: ai.id,
-          label: ai.name,
-          description: ai.description,
-        })) || []
-    );
+  const activeAiModels = useMemo<AiResponse[]>(() => {
+    return aisData?.data?.filter((ai) => ai.status === "active") || [];
   }, [aisData]);
+
+  const models = useMemo(() => {
+    return activeAiModels.map((ai) => ({
+      key: ai.id,
+      label: ai.name,
+      description: ai.description,
+    }));
+  }, [activeAiModels]);
 
   const modes = useMemo<ChatModeItem[]>(() => {
     return [
@@ -202,7 +210,18 @@ const AIChatPreview: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    setCurrentModel(models[0]?.key || "");
+    if (models.length === 0) {
+      setCurrentModel("");
+      return;
+    }
+
+    setCurrentModel((previousModel) => {
+      if (previousModel && models.some((model) => model.key === previousModel)) {
+        return previousModel;
+      }
+
+      return models[0]?.key || "";
+    });
   }, [models]);
 
   return (
@@ -223,11 +242,39 @@ const AIChatPreview: React.FC = () => {
           models={models}
           currentModel={currentModel}
           onModelChange={handleModelChange}
+          onManageModels={() => setIsModelDialogOpen(true)}
           modes={modes}
           currentMode={currentMode}
           onModeChange={handleModeChange}
         />
-        {error && <div style={{ color: "red" }}>Error: {error}</div>}
+        <ModelConfigDialog
+          open={isModelDialogOpen}
+          models={activeAiModels}
+          currentModelId={currentModel}
+          onClose={() => setIsModelDialogOpen(false)}
+          onCurrentModelChange={(modelId) => {
+            setCurrentModel(modelId);
+          }}
+          onCreated={(createdModel) => {
+            setCurrentModel(createdModel.id);
+          }}
+          onUpdated={(updatedModel) => {
+            if (currentModel === updatedModel.id) {
+              setCurrentModel(updatedModel.id);
+            }
+          }}
+          onDeleted={(deletedModelId) => {
+            if (currentModel !== deletedModelId) {
+              return;
+            }
+
+            const nextModel = activeAiModels.find(
+              (model) => model.id !== deletedModelId,
+            );
+            setCurrentModel(nextModel?.id || "");
+          }}
+        />
+        {error ? <div style={{ color: "red" }}>Error: {error}</div> : null}
       </section>
     </div>
   );
