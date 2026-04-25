@@ -1,12 +1,28 @@
 import { spawn } from "node:child_process";
 
-import type { RunResult, RuntimeLayout } from "./types.js";
+import type { RunResult, RuntimeLayout } from "../shared/types.js";
 
 interface RunCommandOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   stdio?: "inherit" | "pipe";
   shell?: boolean;
+}
+
+export function spawnDetached(
+  command: string,
+  args: string[],
+  options: Omit<RunCommandOptions, "stdio"> = {},
+): void {
+  const child = spawn(command, args, {
+    cwd: options.cwd,
+    env: options.env ?? process.env,
+    stdio: "ignore",
+    shell: options.shell ?? false,
+    detached: true,
+    windowsHide: true,
+  });
+  child.unref();
 }
 
 export async function runCommand(
