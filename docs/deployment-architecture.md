@@ -5,7 +5,7 @@
 Seedar 的生产部署从“仓库内 PowerShell 脚本现场构建”调整为“两层模型”：
 
 1. CI/CD 负责构建并发布 `server` / `web` Docker 镜像到 DockerHub。
-2. 用户通过 `@seedar/cli` 安装、升级、卸载和诊断，不再依赖源码仓库。
+2. 用户通过 `@syedar/seedar-cli` 安装、升级、卸载和诊断，不再依赖源码仓库。
 
 ## 运行拓扑
 
@@ -13,7 +13,7 @@ Seedar 的生产部署从“仓库内 PowerShell 脚本现场构建”调整为�
 flowchart LR
   A["Git Tag / Release"] --> B["CI/CD Workflow"]
   B --> C["DockerHub: seedar-server / seedar-web"]
-  B --> D["npm: @seedar/cli"]
+  B --> D["npm: @syedar/seedar-cli"]
   E["用户机器"] --> F["seedar install / update"]
   F --> C
   F --> G["~/.seedar/runtime/.env"]

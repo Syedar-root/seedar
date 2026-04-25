@@ -1,5 +1,5 @@
 {
-  "name": "@seedar/cli",
+  "name": "@syedar/seedar-cli",
   "version": "1.0.0",
   "description": "Seedar deployment CLI",
   "type": "module",

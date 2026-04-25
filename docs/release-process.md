@@ -20,7 +20,7 @@ Seedar 采用两层发布模型：
    - `syedarhandsome/seedar-server:latest`
    - `syedarhandsome/seedar-web:X.Y.Z`
    - `syedarhandsome/seedar-web:latest`
-   - `@seedar/cli@X.Y.Z`
+   - `@syedar/seedar-cli@X.Y.Z`
 
 ## 版本来源
 
