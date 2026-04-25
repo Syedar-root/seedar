@@ -12,8 +12,10 @@
     "dev": "pnpm -r --parallel start:dev",
     "start:dev": "pnpm -r --parallel start:dev",
     "build": "pnpm -r build",
+    "build:cli": "pnpm --filter @seedar/cli build",
     "lint": "echo \"Use lint:web for frontend lint checks\"",
     "lint:web": "node apps/server/node_modules/eslint/bin/eslint.js -c eslint.config.mjs apps/web-client/src packages/ui-react/src packages/ui-core/src packages/types/src --ext .ts,.tsx,.js,.jsx,.mjs,.cjs",
+    "typecheck:cli": "pnpm --filter @seedar/cli type-check",
     "typecheck:web": "pnpm --filter @seedar/web-client exec tsc -p tsconfig.json --noEmit && pnpm --filter @seedar/ui-core run type-check && pnpm --filter @seedar/types run type-check",
     "dev:server": "pnpm --filter server run start:dev",
     "dev:web": "pnpm --filter web-client run start:dev"

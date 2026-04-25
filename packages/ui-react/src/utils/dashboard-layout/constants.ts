@@ -45,4 +45,3 @@ export const COLS = {
   xxs: 2 * COLS_RATE,
 };
 export const MARGIN = 0;
-export const CONTAINER_PADDING = 16;
