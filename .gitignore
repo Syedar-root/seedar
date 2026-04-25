@@ -32,6 +32,7 @@ Thumbs.db
 **.env.**
 !**/.env.example
 !**/.env.*.example
+!deploy/templates/runtime.env.example
 
 **/logs/**
 
