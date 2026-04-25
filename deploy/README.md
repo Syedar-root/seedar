@@ -7,7 +7,7 @@ The default production path is now the Seedar CLI.ok
 Run Seedar without cloning the repo:
 
 ```bash
-npx @seedar/cli@latest install
+npx @syedar/seedar-cli@latest install
 ```
 
 Common commands:
@@ -39,7 +39,7 @@ The CLI generates:
 - Docker images are published to DockerHub:
   - `syedarhandsome/seedar-server:<version>`
   - `syedarhandsome/seedar-web:<version>`
-- CLI is published to npm as `@seedar/cli`.
+- CLI is published to npm as `@syedar/seedar-cli`.
 - Git tags use `vX.Y.Z`.
 
 ## Legacy path

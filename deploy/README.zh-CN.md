@@ -7,7 +7,7 @@
 用户机器不再需要源码仓库，直接执行：
 
 ```bash
-npx @seedar/cli@latest install
+npx @syedar/seedar-cli@latest install
 ```
 
 常用命令：
@@ -39,7 +39,7 @@ CLI 会生成：
 - Docker 镜像发布到 DockerHub：
   - `syedarhandsome/seedar-server:<version>`
   - `syedarhandsome/seedar-web:<version>`
-- CLI 发布到 npm：`@seedar/cli`
+- CLI 发布到 npm：`@syedar/seedar-cli`
 - Git tag 采用 `vX.Y.Z`
 
 ## Legacy 兼容入口

@@ -83,7 +83,7 @@ jobs:
             ${{ steps.release.outputs.docker_namespace }}/seedar-web:latest
 
       - name: Build CLI
-        run: pnpm --filter @seedar/cli build
+        run: pnpm --filter @syedar/seedar-cli build
 
       - name: Publish CLI package
         working-directory: apps/cli
