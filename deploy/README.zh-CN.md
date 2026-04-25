@@ -37,8 +37,8 @@ CLI 会生成：
 ## 发布模型
 
 - Docker 镜像发布到 DockerHub：
-  - `seedarhq/seedar-server:<version>`
-  - `seedarhq/seedar-web:<version>`
+  - `syedarhandsome/seedar-server:<version>`
+  - `syedarhandsome/seedar-web:<version>`
 - CLI 发布到 npm：`@seedar/cli`
 - Git tag 采用 `vX.Y.Z`
 

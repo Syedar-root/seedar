@@ -7,7 +7,7 @@ export const DEFAULT_PORTS = {
 
 export const DEFAULT_DB_NAME = "seedar_prod";
 export const DEFAULT_DB_USER = "seedar";
-export const DEFAULT_DOCKER_ORG = "seedarhq";
+export const DEFAULT_DOCKER_ORG = "syedarhandsome";
 export const DEFAULT_SERVER_IMAGE = `${DEFAULT_DOCKER_ORG}/seedar-server`;
 export const DEFAULT_WEB_IMAGE = `${DEFAULT_DOCKER_ORG}/seedar-web`;
 export const MIN_NODE_MAJOR = 18;

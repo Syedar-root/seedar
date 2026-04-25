@@ -16,10 +16,10 @@ Seedar 采用两层发布模型：
 5. 合并 Release PR
 6. `release-please` 自动创建 `vX.Y.Z` tag 和 GitHub Release
 7. `release.yml` 基于该 tag 发布：
-   - `seedarhq/seedar-server:X.Y.Z`
-   - `seedarhq/seedar-server:latest`
-   - `seedarhq/seedar-web:X.Y.Z`
-   - `seedarhq/seedar-web:latest`
+   - `syedarhandsome/seedar-server:X.Y.Z`
+   - `syedarhandsome/seedar-server:latest`
+   - `syedarhandsome/seedar-web:X.Y.Z`
+   - `syedarhandsome/seedar-web:latest`
    - `@seedar/cli@X.Y.Z`
 
 ## 版本来源
