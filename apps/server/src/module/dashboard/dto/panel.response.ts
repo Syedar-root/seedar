@@ -9,6 +9,7 @@ export class PanelResponse {
   config?: Record<string, any>;
   width?: number;
   height?: number;
+  status: string;
   createdAt: Date;
   updatedAt: Date;
 
@@ -22,6 +23,7 @@ export class PanelResponse {
     response.config = panel.config;
     response.width = panel.width;
     response.height = panel.height;
+    response.status = panel.status;
     response.createdAt = panel.createdAt;
     response.updatedAt = panel.updatedAt;
     return response;

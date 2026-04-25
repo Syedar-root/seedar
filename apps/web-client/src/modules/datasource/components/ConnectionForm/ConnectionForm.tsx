@@ -11,6 +11,10 @@ export interface ConnectionConfig {
   password?: string;
 }
 
+export type ConnectionFormData = ConnectionConfig;
+
+export type ConnectionFormErrors = Partial<Record<keyof ConnectionConfig, string>>;
+
 interface ConnectionFormProps {
   type: DatasourceType;
   config: ConnectionConfig;

@@ -1,8 +1,10 @@
 import { PanelEditorConfig, ChartFieldConfig, FIELD_LABELS } from "../../types";
 import type { DragItem } from "../../../dndHelper/dragZone/dragZone";
-import { Select } from "@base-ui/react/select";
 import styles from "./fieldMapper.module.scss";
-import { ChevronsUpDown } from "lucide-react";
+import {
+  Combobox,
+  type ComboboxOptionGroup,
+} from "../../../../../../core/components/ui/Combobox";
 
 interface FieldMapperProps {
   fields: DragItem[];
@@ -19,7 +21,28 @@ export const FieldMapper: React.FC<FieldMapperProps> = ({
   fieldConfig,
   onChange,
 }) => {
-  const allOptions = [...fields, ...metrics];
+  const fieldOptions: ComboboxOptionGroup[] = [
+    {
+      label: "维度",
+      options: fields.map((item) => {
+        const displayValue = item.businessName ?? item.name ?? String(item.id);
+        return {
+          label: displayValue,
+          value: displayValue,
+        };
+      }),
+    },
+    {
+      label: "指标",
+      options: metrics.map((item) => {
+        const displayValue = item.businessName ?? item.name ?? String(item.id);
+        return {
+          label: displayValue,
+          value: displayValue,
+        };
+      }),
+    },
+  ];
 
   const renderSelect = (fieldKey: string, isRequired: boolean) => {
     const currentValue = config[fieldKey as keyof PanelEditorConfig] as
@@ -28,63 +51,18 @@ export const FieldMapper: React.FC<FieldMapperProps> = ({
 
     return (
       <div key={fieldKey} className={styles.fieldItem}>
-        <Select.Root
+        <label className={styles.label}>
+          {FIELD_LABELS[fieldKey]}
+          {isRequired && <span className={styles.required}>*</span>}
+        </label>
+        <Combobox
           value={currentValue || null}
-          onValueChange={(value) =>
-            onChange({ [fieldKey]: value || undefined })
-          }
-        >
-          <Select.Label className={styles.label}>
-            {FIELD_LABELS[fieldKey]}
-            {isRequired && <span className={styles.required}>*</span>}
-          </Select.Label>
-          <Select.Trigger className={styles.trigger}>
-            <Select.Value placeholder="请选择" />
-            <Select.Icon className={styles.icon}>
-              <ChevronsUpDown />
-            </Select.Icon>
-          </Select.Trigger>
-          <Select.Portal>
-            <Select.Positioner className={styles.positioner}>
-              <Select.Popup className={styles.popup}>
-                <Select.List className={styles.list}>
-                  <Select.Group>
-                    <Select.GroupLabel className={styles.groupLabel}>
-                      维度
-                    </Select.GroupLabel>
-                    {fields.map((item) => (
-                      <Select.Item
-                        key={item.id}
-                        value={item.businessName || item.name}
-                        className={styles.item}
-                      >
-                        <Select.ItemText>
-                          {item.businessName || item.name}
-                        </Select.ItemText>
-                      </Select.Item>
-                    ))}
-                  </Select.Group>
-                  <Select.Group>
-                    <Select.GroupLabel className={styles.groupLabel}>
-                      指标
-                    </Select.GroupLabel>
-                    {metrics.map((item) => (
-                      <Select.Item
-                        key={item.id}
-                        value={item.businessName || item.name}
-                        className={styles.item}
-                      >
-                        <Select.ItemText>
-                          {item.businessName || item.name}
-                        </Select.ItemText>
-                      </Select.Item>
-                    ))}
-                  </Select.Group>
-                </Select.List>
-              </Select.Popup>
-            </Select.Positioner>
-          </Select.Portal>
-        </Select.Root>
+          onChange={(value) => onChange({ [fieldKey]: value || undefined })}
+          options={fieldOptions}
+          placeholder="请选择字段/指标"
+          searchPlaceholder="搜索字段/指标"
+          emptyText="没有匹配的字段/指标"
+        />
       </div>
     );
   };

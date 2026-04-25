@@ -1,0 +1,42 @@
+/* 全局：溢出隐藏 + 统一过渡动画（你的写法完全正确） */
+[class*="sidebarTransition"] {
+  overflow: hidden !important;
+}
+
+/* 入场初始：收起（强制！） */
+.sidebarTransition-enter {
+  opacity: 0 !important;
+  max-width: 0 !important;
+}
+
+/* 入场动画中：展开（强制恢复透明度） */
+.sidebarTransition-enter-active {
+  opacity: 1 !important;
+  max-width: 100% !important;
+  transition:
+    opacity var(--transition-slow),
+    max-width var(--transition-slow);
+}
+
+/* 入场完成：无冗余代码 → 自动用行内 flex:30 1 0px */
+.sidebarTransition-enter-done {
+}
+
+/* 离场初始：展开 → 自动用行内样式，无需写任何代码 */
+.sidebarTransition-exit {
+}
+
+/* 离场动画中：收起（强制！） */
+.sidebarTransition-exit-active {
+  opacity: 0 !important;
+  max-width: 0 !important;
+  transition:
+    opacity var(--transition-slow),
+    max-width var(--transition-slow);
+}
+
+/* 离场完成：收起（强制！） */
+.sidebarTransition-exit-done {
+  opacity: 0 !important;
+  max-width: 0 !important;
+}

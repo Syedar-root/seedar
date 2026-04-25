@@ -131,7 +131,13 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
           className={`${styles.item} ${index === selectedIndex ? styles.selected : ""}`}
         >
           <span className={styles.fieldBadge}>F</span>
-          <span className={styles.itemName}>{field.name}</span>
+          <span className={styles.itemName}>
+            {field.name}{" "}
+            {field.tableName && (
+              <span className={styles.tableTag}>来自: {field.tableName}</span>
+            )}
+          </span>
+
           <span className={styles.itemId}>#F{field.id}</span>
         </li>
       );

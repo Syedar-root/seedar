@@ -1,40 +1,67 @@
 {
   "name": "@seedar/types",
   "version": "1.0.0",
+  "type": "module",
   "description": "Seedar 项目的类型定义包",
-  "types": "index.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "datasource": [
+        "./dist/datasource/index.d.ts"
+      ],
+      "dataset": [
+        "./dist/dataset/index.d.ts"
+      ],
+      "query": [
+        "./dist/query/index.d.ts"
+      ],
+      "common": [
+        "./dist/common/index.d.ts"
+      ],
+      "ai": [
+        "./dist/ai/index.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
-      "types": "./index.ts",
-      "import": "./index.ts",
-      "require": "./index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     },
     "./datasource": {
-      "types": "./src/datasource/index.ts",
-      "import": "./src/datasource/index.ts",
-      "require": "./src/datasource/index.ts"
+      "types": "./dist/datasource/index.d.ts",
+      "import": "./dist/datasource/index.js",
+      "require": "./dist/datasource/index.cjs"
     },
     "./dataset": {
-      "types": "./src/dataset/index.ts",
-      "import": "./src/dataset/index.ts",
-      "require": "./src/dataset/index.ts"
+      "types": "./dist/dataset/index.d.ts",
+      "import": "./dist/dataset/index.js",
+      "require": "./dist/dataset/index.cjs"
     },
     "./query": {
-      "types": "./src/query/index.ts",
-      "import": "./src/query/index.ts",
-      "require": "./src/query/index.ts"
+      "types": "./dist/query/index.d.ts",
+      "import": "./dist/query/index.js",
+      "require": "./dist/query/index.cjs"
     },
     "./common": {
-      "types": "./src/common/index.ts",
-      "import": "./src/common/index.ts",
-      "require": "./src/common/index.ts"
+      "types": "./dist/common/index.d.ts",
+      "import": "./dist/common/index.js",
+      "require": "./dist/common/index.cjs"
+    },
+    "./ai": {
+      "types": "./dist/ai/index.d.ts",
+      "import": "./dist/ai/index.js",
+      "require": "./dist/ai/index.cjs"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist"
   },
@@ -45,10 +72,14 @@
   ],
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
   "devDependencies": {
-    "typescript": "^5.3.3",
     "@types/node": "^20.10.6",
-    "rimraf": "^5.0.5"
+    "rimraf": "^5.0.5",
+    "tsup": "^8.5.1",
+    "typescript": "^5.3.3"
   },
   "sideEffects": false
 }

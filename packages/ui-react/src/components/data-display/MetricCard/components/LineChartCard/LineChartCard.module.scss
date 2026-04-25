@@ -1,0 +1,128 @@
+@use "../../../../styles/variables" as *;
+
+.line-chart-card {
+  height: 100%;
+}
+
+.card-body {
+  padding: 0 0 0 $mc-space-lg;
+}
+
+.chart-card-content {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: $mc-space-xl;
+}
+
+.left-section {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: $mc-space-md;
+  min-width: 0;
+  padding-block: $mc-space-lg;
+}
+
+.right-section {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border-radius: $mc-radius-sm;
+  background: radial-gradient(
+    90% 90% at right bottom,
+    $mc-color-surface-muted 0%,
+    $mc-color-bg 100%
+  );
+}
+
+.info-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: $mc-space-sm;
+  min-width: 0;
+}
+
+.title-area {
+  min-height: 21px;
+  color: $mc-color-text-secondary;
+  font-size: $mc-font-size-md;
+  line-height: 1.5;
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding-top: $mc-space-xs;
+
+  svg {
+    color: $mc-color-text-tertiary;
+  }
+}
+
+.value-row {
+  display: flex;
+  align-items: baseline;
+  gap: $mc-space-xs;
+  flex-wrap: wrap;
+}
+
+.prefix-text,
+.suffix-text {
+  color: $mc-color-text-secondary;
+  font-size: $mc-font-size-lg;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.value-text {
+  color: $mc-color-text-primary;
+  font-size: $mc-font-size-2xl;
+  line-height: 1.2;
+  font-weight: 500;
+  font-feature-settings: "tnum", "lnum";
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+.trend-section {
+  display: inline-flex;
+  align-items: center;
+  gap: $mc-space-xs;
+  font-size: $mc-font-size-sm;
+  line-height: 1.5;
+  font-weight: 500;
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.trend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: $mc-space-xs;
+}
+
+.trend-divider {
+  margin: 0 $mc-space-xs;
+  color: $mc-color-text-tertiary;
+}
+
+.trend-section[data-direction="up"] {
+  color: $mc-color-trend-up;
+}
+
+.trend-section[data-direction="down"] {
+  color: $mc-color-trend-down;
+}

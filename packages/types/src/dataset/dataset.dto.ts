@@ -1,4 +1,4 @@
-import { DatasetType, JoinType } from './dataset.types';
+import { DatasetType, JoinType } from "./dataset.types";
 
 /**
  * 实体操作请求
@@ -17,9 +17,9 @@ export class EntityActionRequest<T, S = T> {
  * 创建数据集字段请求
  */
 export class CreateDatasetFieldRequest {
-  dataSourceColumnId: number;
-  tableId: number;
-  name: string;
+  dataSourceColumnId!: number;
+  tableId!: number;
+  name!: string;
   description?: string;
   businessName?: string;
   /** 是否为主键字段 */
@@ -33,22 +33,22 @@ export class CreateDatasetJoinRequest {
   /**
    * 左表ID（datasource_table 表的主键 ID）
    */
-  leftTableId: number;
+  leftTableId!: number;
 
   /**
    * 左表的连接列ID（datasource_column 表的主键 ID）
    */
-  leftColumnId: number;
+  leftColumnId!: number;
 
   /**
    * 右表ID（datasource_table 表的主键 ID）
    */
-  rightTableId: number;
+  rightTableId!: number;
 
   /**
    * 右表的连接列ID（datasource_column 表的主键 ID）
    */
-  rightColumnId: number;
+  rightColumnId!: number;
 
   /**
    * Join类型，默认为INNER
@@ -60,11 +60,11 @@ export class CreateDatasetJoinRequest {
  * 创建数据集请求
  */
 export class CreateDatasetRequest {
-  name: string;
-  datasourceId: number;
-  datasourceTableIds: number[];
-  description: string;
-  type: DatasetType;
+  name!: string;
+  datasourceId!: number;
+  datasourceTableIds!: number[];
+  description!: string;
+  type!: DatasetType;
   wideTableConfig?: Record<string, any>;
 
   /**
@@ -125,6 +125,11 @@ export type AddMetric = {
   timeDataSourceColumnId?: number;
   periodType?: string;
   calculationMode?: string;
+
+  /**
+   * 时间字段 ID（关联到 dataset_fields 表的主键 ID）,用于同环比计算的 业务时间字段
+   */
+  timeFieldId?: string;
 };
 
 /**
@@ -151,6 +156,11 @@ export type UpdateMetric = {
   timeDataSourceColumnId?: number;
   periodType?: string;
   calculationMode?: string;
+
+  /**
+   * 时间字段 ID（关联到 dataset_fields 表的主键 ID）,用于同环比计算的 业务时间字段
+   */
+  timeFieldId?: string;
 };
 
 /**
@@ -204,7 +214,7 @@ export type UpdateTable = {
  * 数据集更新请求
  */
 export class UpdateDatasetRequest {
-  dataSetId: number;
+  dataSetId!: number;
   name?: string;
   description?: string;
 

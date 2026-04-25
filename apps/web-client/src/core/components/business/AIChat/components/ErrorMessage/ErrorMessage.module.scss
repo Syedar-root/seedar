@@ -1,0 +1,21 @@
+.container {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--chat-space-sm);
+  padding: var(--chat-space-md);
+  background: var(--chat-bg-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--chat-border-default);
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.content {
+  font: var(--chat-text-caption);
+  color: var(--chat-color-primary);
+  font-style: italic;
+  letter-spacing: var(--chat-text-caption-tracking);
+  line-height: 18px;
+}

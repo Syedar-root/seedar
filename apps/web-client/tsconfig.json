@@ -9,7 +9,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "#pkg/seedar/ui-react": ["../../packages/ui-react/src/index.tsx"],
+      "#pkg/seedar/ui-react": ["../../packages/ui-react/src/index.ts"],
       "#pkg/seedar/ui-core": ["../../packages/ui-core/src/index.ts"],
       "#pkg/seedar/types": ["../../packages/types/src/index.ts"]
     }

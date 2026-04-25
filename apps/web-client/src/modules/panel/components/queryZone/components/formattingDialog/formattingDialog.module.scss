@@ -1,0 +1,139 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 20, 24, 0.45);
+}
+
+.container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+.header {
+  margin: 0;
+  padding: var(--spacing-lg) var(--spacing-xl) 0;
+  font-size: var(--font-xl);
+  color: var(--text-primary);
+}
+
+.subHeader {
+  margin: 0;
+  padding: var(--spacing-xs) var(--spacing-xl) var(--spacing-md);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  border-bottom: 1px solid var(--border-base);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg) var(--spacing-xl);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.label {
+  color: var(--text-secondary);
+  font-size: var(--font-base);
+}
+
+.select,
+.input {
+  min-height: 34px;
+  width: 100%;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  padding: 0 var(--spacing-sm);
+  outline: none;
+
+  &:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 20%, transparent);
+  }
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.footer {
+  border-top: 1px solid var(--border-base);
+  padding: var(--spacing-md) var(--spacing-xl) var(--spacing-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.footerActions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.cancelButton,
+.saveButton,
+.removeButton {
+  min-height: 34px;
+  padding: 0 var(--spacing-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-base);
+  cursor: pointer;
+}
+
+.cancelButton {
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+.saveButton {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-inverse);
+}
+
+.removeButton {
+  background: transparent;
+  color: var(--danger);
+  border-color: transparent;
+}
+
+@media (max-width: 640px) {
+  .row {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xs);
+  }
+
+  .footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .footerActions {
+    width: 100%;
+  }
+
+  .cancelButton,
+  .saveButton {
+    flex: 1;
+  }
+}
+

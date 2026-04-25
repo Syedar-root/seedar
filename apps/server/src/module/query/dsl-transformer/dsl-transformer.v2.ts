@@ -1,9 +1,10 @@
-import {
+﻿import {
   FieldRefExpr,
   ComparisonExpr,
   LiteralExpr,
   AggExpr,
   BinaryExpr,
+  CallExpr,
   AggFuncName,
   BinaryOperator,
   ComparisonOperator,
@@ -12,6 +13,13 @@ import {
   ConditionalExpr,
   SelectExpr,
   parseExpression,
+  InExpr,
+  BetweenExpr,
+  LikeExpr,
+  IsNullExpr,
+  PeriodComparisonExpr,
+  ComparisonMode,
+  PeriodOffsetType,
 } from '@metric-engine/core';
 import {
   DatasetResponse,
@@ -21,6 +29,8 @@ import {
   DatasetJoinResponse,
   MetricType,
   MetricAggregateFunction,
+  PeriodCalculationMode,
+  PeriodOverPeriodType,
 } from '@/module/dataset/dataset.types';
 import { QuerySpec, JoinSpec } from '@metric-engine/core';
 import { Operator, TimeFilter, TimeRange } from '@metric-engine/core';
@@ -41,7 +51,7 @@ import { Operator, TimeFilter, TimeRange } from '@metric-engine/core';
 export interface QueryDSL {
   datasetId: number;
   tableId: number;
-  dimensions?: Array<number | { fieldId: number; alias?: string }>;
+  dimensions?: QueryDimensionDSL[];
   metrics?: Array<{
     id: number;
     alias?: string;
@@ -52,9 +62,87 @@ export interface QueryDSL {
     value?: any;
     raw?: boolean;
   }>;
+  tempMetrics?: Array<{
+    id: string;
+    type?: 'period_comparison';
+    alias?: string;
+    businessName?: string;
+    baseMetricId: number;
+    timeFieldId?: number;
+    periodType?: PeriodOverPeriodType;
+    calculationMode?: PeriodCalculationMode;
+  }>;
+  orderBy?: QueryOrderByDSL[];
   limit?: number;
   offset?: number;
 }
+
+export type QueryOrderDirection = 'asc' | 'desc';
+
+export type QueryOrderByDSL = {
+  fieldId?: number;
+  metricId?: number;
+  tempMetricId?: string;
+  alias?: string;
+  field?: string;
+  dir?: QueryOrderDirection;
+  direction?: QueryOrderDirection;
+};
+
+export type TimeGrain = 'day' | 'week' | 'month' | 'quarter' | 'year';
+
+export type BaseDimensionDSL = {
+  fieldId: number;
+  alias?: string;
+  derivedKind?: undefined;
+};
+
+export type TimeGrainDimensionDSL = {
+  derivedKind: 'time_grain';
+  fieldId: number;
+  grain: TimeGrain;
+  alias: string;
+};
+
+export type BucketRangeDSL = {
+  lt: number;
+  label: string;
+};
+
+export type BucketDimensionDSL = {
+  derivedKind: 'bucket';
+  fieldId: number;
+  ranges: BucketRangeDSL[];
+  defaultLabel?: string;
+  alias: string;
+};
+
+export type MappingRuleDSL = {
+  in: Array<string | number | boolean>;
+  label: string;
+};
+
+export type MappingDimensionDSL = {
+  derivedKind: 'mapping';
+  fieldId: number;
+  rules: MappingRuleDSL[];
+  defaultLabel?: string;
+  alias: string;
+};
+
+export type ExpressionDimensionDSL = {
+  derivedKind: 'expression';
+  expression: string;
+  alias: string;
+};
+
+export type DerivedDimensionDSL =
+  | TimeGrainDimensionDSL
+  | BucketDimensionDSL
+  | MappingDimensionDSL
+  | ExpressionDimensionDSL;
+
+export type QueryDimensionDSL = number | BaseDimensionDSL | DerivedDimensionDSL;
 
 /**
  * DSL转换器V2版本
@@ -153,6 +241,12 @@ export class DSLTransformerV2 {
     (datasetInfo.metrics || []).forEach((metric: DatasetMetricResponse) => {
       metricMap.set(metric.id, metric);
     });
+    const metricIdByName = new Map<string, number>(
+      (datasetInfo.metrics || []).map((metric: DatasetMetricResponse) => [
+        metric.name,
+        metric.id,
+      ]),
+    );
 
     (datasetInfo.joins || []).forEach((join: DatasetJoinResponse) => {
       joinMap.set(join.id, join);
@@ -172,6 +266,54 @@ export class DSLTransformerV2 {
     console.log('表map:', tableMap);
 
     const mainTableAlias = 't1';
+
+    const extractExpressionRefs = (
+      expression: string,
+    ): { fieldIds: number[]; metricIds: number[] } => {
+      const fieldIds: number[] = [];
+      const metricIds: number[] = [];
+
+      const collectIds = (source: string, pattern: RegExp): number[] => {
+        const collected: number[] = [];
+        let localMatch: RegExpExecArray | null;
+        while ((localMatch = pattern.exec(source)) !== null) {
+          const ids = localMatch[1]
+            .split(',')
+            .map((id) => parseInt(id, 10))
+            .filter((id) => !Number.isNaN(id));
+          collected.push(...ids);
+        }
+        return collected;
+      };
+
+      fieldIds.push(...collectIds(expression, /#F(\d+(?:,\d+)*)/g));
+      metricIds.push(...collectIds(expression, /#M(\d+(?:,\d+)*)/g));
+
+      return {
+        fieldIds: Array.from(new Set(fieldIds)),
+        metricIds: Array.from(new Set(metricIds)),
+      };
+    };
+
+    const tempMetrics = dsl.tempMetrics || [];
+
+    const periodTypeToOffsetType = (
+      periodType?: PeriodOverPeriodType,
+    ): PeriodOffsetType => {
+      switch (periodType) {
+        case PeriodOverPeriodType.DAY_OVER_DAY:
+          return PeriodOffsetType.DAY_OVER_DAY;
+        case PeriodOverPeriodType.WEEK_OVER_WEEK:
+          return PeriodOffsetType.WEEK_OVER_WEEK;
+        case PeriodOverPeriodType.QUARTER_OVER_QUARTER:
+          return PeriodOffsetType.QUARTER_OVER_QUARTER;
+        case PeriodOverPeriodType.YEAR_OVER_YEAR:
+          return PeriodOffsetType.YEAR_OVER_YEAR;
+        case PeriodOverPeriodType.MONTH_OVER_MONTH:
+        default:
+          return PeriodOffsetType.MONTH_OVER_MONTH;
+      }
+    };
 
     // ========================================================================
     // 第二阶段：收集依赖表ID
@@ -234,6 +376,17 @@ export class DSLTransformerV2 {
       }
 
       if (metric.expression) {
+        const { fieldIds, metricIds } = extractExpressionRefs(
+          metric.expression,
+        );
+        fieldIds.forEach((fieldId) => collectFieldTableId(fieldId));
+        metricIds.forEach((refMetricId) =>
+          collectMetricTableIds(refMetricId, visited),
+        );
+        return;
+      }
+
+      if (metric.expression) {
         // 解析表达式中的字段引用 #F(\d+)
         const fieldIdPattern = /#F(\d+)/g;
         let match;
@@ -286,18 +439,69 @@ export class DSLTransformerV2 {
       }
     };
 
+    const collectDimensionTableIds = (dimension: QueryDimensionDSL) => {
+      if (typeof dimension === 'number') {
+        collectFieldTableId(dimension);
+        return;
+      }
+
+      if (dimension.derivedKind === undefined) {
+        collectFieldTableId(dimension.fieldId);
+        return;
+      }
+
+      if (!dimension.alias?.trim()) {
+        throw new Error(
+          `dimensions 中 derivedKind=${dimension.derivedKind} 的维度必须提供 alias`,
+        );
+      }
+
+      switch (dimension.derivedKind) {
+        case 'time_grain':
+        case 'bucket':
+        case 'mapping':
+          collectFieldTableId(dimension.fieldId);
+          return;
+        case 'expression': {
+          const refs = extractExpressionRefs(dimension.expression);
+          if (refs.metricIds.length > 0) {
+            throw new Error(
+              `derivedKind=expression 维度不支持 #M 指标引用: ${refs.metricIds.join(', ')}`,
+            );
+          }
+          refs.fieldIds.forEach((fieldId) => collectFieldTableId(fieldId));
+          return;
+        }
+        default:
+          throw new Error(
+            `不支持的 derivedKind: ${(dimension as { derivedKind: string }).derivedKind}`,
+          );
+      }
+    };
+
     // 收集dimensions中的表依赖
     (dsl.dimensions || []).forEach((dim) => {
-      if (typeof dim === 'number') {
-        collectFieldTableId(dim);
-      } else {
-        collectFieldTableId(dim.fieldId);
-      }
+      collectDimensionTableIds(dim);
     });
 
     // 收集metrics中的表依赖
     (dsl.metrics || []).forEach((metricItem) => {
       collectMetricTableIds(metricItem.id);
+    });
+
+    tempMetrics.forEach((tempMetric) => {
+      collectMetricTableIds(tempMetric.baseMetricId);
+      const baseMetricInfo = metricMap.get(tempMetric.baseMetricId);
+      const effectiveTimeFieldId =
+        tempMetric.timeFieldId ?? baseMetricInfo?.timeFieldId;
+
+      if (!effectiveTimeFieldId) {
+        throw new Error(
+          `临时周期指标 ${tempMetric.id} 需要 timeFieldId 或基础指标的默认 timeFieldId。`,
+        );
+      }
+
+      collectFieldTableId(effectiveTimeFieldId);
     });
 
     // 收集filters中的表依赖
@@ -578,21 +782,9 @@ export class DSLTransformerV2 {
       );
     };
 
-    // 构建dimensions
-    const dimensions = (dsl.dimensions || []).map((dim) => {
-      if (typeof dim === 'number') {
-        return resolveField(dim);
-      } else {
-        const fieldExpr = resolveField(dim.fieldId);
-        fieldExpr.meta = fieldExpr.meta || {};
-        fieldExpr.meta.alias = dim.alias || undefined;
-        return fieldExpr;
-      }
-    });
-
     /**
      * 预处理表达式：将 #F 和 #M 替换为实际字段/指标名
-     * #F10,20,30 表示字段ID列表
+     * #F100,200,300 表示字段ID列表
      * #M100,200 表示指标ID列表
      */
     const preprocessExpression = (expression: string): string => {
@@ -601,8 +793,11 @@ export class DSLTransformerV2 {
       console.log('原始表达式:', expression);
 
       // 先替换 #M 指标引用
-      result = result.replace(/#M([\d,]+)/g, (match, ids) => {
-        const idList = ids.split(',').map((id) => parseInt(id, 10));
+      result = result.replace(/#M(\d+(?:,\d+)*)/g, (_match, ids) => {
+        const idList = ids
+          .split(',')
+          .map((id: string) => parseInt(id, 10))
+          .filter((id: number) => !Number.isNaN(id));
         return idList
           .map((id) => {
             const metricInfo = metricMap.get(id);
@@ -615,8 +810,11 @@ export class DSLTransformerV2 {
       });
 
       // 再替换 #F 字段引用
-      result = result.replace(/#F([\d,]+)/g, (match, ids) => {
-        const idList = ids.split(',').map((id) => parseInt(id, 10));
+      result = result.replace(/#F(\d+(?:,\d+)*)/g, (_match, ids) => {
+        const idList = ids
+          .split(',')
+          .map((id: string) => parseInt(id, 10))
+          .filter((id: number) => !Number.isNaN(id));
         return idList
           .map((id) => {
             const fieldInfo = fieldMap.get(id);
@@ -629,8 +827,291 @@ export class DSLTransformerV2 {
           .join(', ');
       });
 
-      console.log('hcs result', result);
       return result;
+    };
+
+    const buildBucketDimensionExpr = (
+      fieldExpr: FieldRefExpr,
+      ranges: BucketRangeDSL[],
+      defaultLabel?: string,
+    ): Expr => {
+      let branch: Expr = new LiteralExpr(defaultLabel ?? null);
+
+      for (let i = ranges.length - 1; i >= 0; i -= 1) {
+        const currentRange = ranges[i];
+        branch = new ConditionalExpr(
+          new ComparisonExpr('<', fieldExpr, new LiteralExpr(currentRange.lt)),
+          new LiteralExpr(currentRange.label),
+          branch,
+        );
+      }
+
+      return branch;
+    };
+
+    const buildMappingDimensionExpr = (
+      fieldExpr: FieldRefExpr,
+      rules: MappingRuleDSL[],
+      defaultLabel?: string,
+    ): Expr => {
+      let branch: Expr = new LiteralExpr(defaultLabel ?? null);
+      const flattenedRules = rules.flatMap((rule) =>
+        rule.in.map((value) => ({ value, label: rule.label })),
+      );
+
+      for (let i = flattenedRules.length - 1; i >= 0; i -= 1) {
+        const currentRule = flattenedRules[i];
+        branch = new ConditionalExpr(
+          new ComparisonExpr(
+            '=',
+            fieldExpr,
+            new LiteralExpr(currentRule.value),
+          ),
+          new LiteralExpr(currentRule.label),
+          branch,
+        );
+      }
+
+      return branch;
+    };
+
+    const buildExpressionDimensionExpr = (
+      dimension: ExpressionDimensionDSL,
+    ): Expr => {
+      const refs = extractExpressionRefs(dimension.expression);
+      if (refs.metricIds.length > 0) {
+        throw new Error(
+          `derivedKind=expression 维度不支持 #M 指标引用: ${refs.metricIds.join(', ')}`,
+        );
+      }
+
+      const processedExpr = preprocessExpression(dimension.expression);
+      const context = {
+        tables: new Map([
+          [
+            mainTableAlias,
+            { name: mainTableInfo.tableName, alias: mainTableAlias },
+          ],
+        ]),
+        fields: new Map(
+          Array.from(fieldMap.values())
+            .filter((f) => {
+              const fieldTableInfo = tableMap.get(f.tableId);
+              return fieldTableInfo && requiredTableIds.has(fieldTableInfo.id);
+            })
+            .map((f) => {
+              const fieldTableInfo = tableMap.get(f.tableId);
+              const fieldTableAlias = fieldTableInfo
+                ? getTableAlias(fieldTableInfo.id)
+                : mainTableAlias;
+              return [
+                f.name,
+                {
+                  name: f.name,
+                  tableName: fieldTableInfo?.tableName || '',
+                  tableAlias: fieldTableAlias,
+                },
+              ];
+            }),
+        ),
+        metrics: new Map<string, Expr>(),
+        defaultTable: mainTableAlias,
+      };
+
+      const expr = parseExpression(processedExpr, context);
+      expr.meta = {
+        ...(expr.meta || {}),
+        alias: dimension.alias,
+        businessName: dimension.alias,
+      };
+
+      return expr;
+    };
+
+    const inlineMetricRefs = (expr: Expr, visited: Set<number>): Expr => {
+      if (expr instanceof MetricRefExpr) {
+        const metricId = metricIdByName.get(expr.metricName);
+        if (!metricId) {
+          throw new Error(`找不到指标: ${expr.metricName}`);
+        }
+        return buildMetricExpr(metricId, new Set(visited));
+      }
+
+      if (expr instanceof AggExpr) {
+        return new AggExpr(
+          expr.functionName,
+          inlineMetricRefs(expr.arg, visited),
+          expr.distinct,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof PeriodComparisonExpr) {
+        return new PeriodComparisonExpr(
+          inlineMetricRefs(expr.baseMetric, visited),
+          expr.offsetType,
+          expr.comparisonMode,
+          expr.timeField,
+          expr.customTimeRange,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof BinaryExpr) {
+        return new BinaryExpr(
+          expr.operator,
+          inlineMetricRefs(expr.left, visited),
+          inlineMetricRefs(expr.right, visited),
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof ComparisonExpr) {
+        return new ComparisonExpr(
+          expr.operator,
+          inlineMetricRefs(expr.left, visited),
+          inlineMetricRefs(expr.right, visited),
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof ConditionalExpr) {
+        return new ConditionalExpr(
+          inlineMetricRefs(expr.condition, visited),
+          inlineMetricRefs(expr.consequent, visited),
+          inlineMetricRefs(expr.alternate, visited),
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof SelectExpr) {
+        return new SelectExpr(
+          expr.cases.map((caseItem) => ({
+            condition: caseItem.condition
+              ? inlineMetricRefs(caseItem.condition, visited)
+              : undefined,
+            value: inlineMetricRefs(caseItem.value, visited),
+          })),
+          expr.defaultValue
+            ? inlineMetricRefs(expr.defaultValue, visited)
+            : undefined,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof CallExpr) {
+        return new CallExpr(
+          expr.functionName,
+          expr.args.map((arg) => inlineMetricRefs(arg, visited)),
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof InExpr) {
+        return new InExpr(
+          inlineMetricRefs(expr.expr, visited),
+          expr.values.map((value) => inlineMetricRefs(value, visited)),
+          expr.negated,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof BetweenExpr) {
+        return new BetweenExpr(
+          inlineMetricRefs(expr.expr, visited),
+          inlineMetricRefs(expr.low, visited),
+          inlineMetricRefs(expr.high, visited),
+          expr.negated,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof LikeExpr) {
+        return new LikeExpr(
+          inlineMetricRefs(expr.expr, visited),
+          inlineMetricRefs(expr.pattern, visited),
+          expr.negated,
+          expr.meta,
+        );
+      }
+
+      if (expr instanceof IsNullExpr) {
+        return new IsNullExpr(
+          inlineMetricRefs(expr.expr, visited),
+          expr.negated,
+          expr.meta,
+        );
+      }
+
+      return expr;
+    };
+
+    const applyCalculationModeOverride = (
+      expr: Expr,
+      metric: DatasetMetricResponse,
+    ): Expr => {
+      if (!(expr instanceof PeriodComparisonExpr) || !metric.calculationMode) {
+        return expr;
+      }
+
+      if (metric.calculationMode === PeriodCalculationMode.BOTH) {
+        throw new Error(
+          `Metric ${metric.name} uses calculationMode=both, which is not supported in V2.1. Please split it into two metrics.`,
+        );
+      }
+
+      const comparisonMode =
+        metric.calculationMode === PeriodCalculationMode.ABSOLUTE
+          ? ComparisonMode.ABSOLUTE
+          : ComparisonMode.PERCENTAGE;
+
+      return new PeriodComparisonExpr(
+        expr.baseMetric,
+        expr.offsetType,
+        comparisonMode,
+        expr.timeField,
+        expr.customTimeRange,
+        expr.meta,
+      );
+    };
+
+    const assertPeriodComparisonFilterSupport = (
+      metric: DatasetMetricResponse,
+      refs: { fieldIds: number[]; metricIds: number[] },
+    ) => {
+      if (
+        !metric.expression ||
+        !/^(MOM|YOY|WOW|QOQ|DOD)\s*\(/i.test(metric.expression.trim())
+      ) {
+        return;
+      }
+
+      if (refs.metricIds.length === 0) {
+        throw new Error(
+          `Metric ${metric.name} PoP expression must reference at least one #M metric id.`,
+        );
+      }
+
+      if (refs.fieldIds.length === 0) {
+        throw new Error(
+          `Metric ${metric.name} PoP expression must reference at least one #F field id.`,
+        );
+      }
+
+      const [timeFieldId] = refs.fieldIds;
+      const hasTimeFilter = (dsl.filters || []).some(
+        (filter) =>
+          filter.fieldId === timeFieldId &&
+          ['recent_days', 'recent_weeks', 'recent_months', 'between'].includes(
+            filter.op,
+          ),
+      );
+
+      if (!hasTimeFilter) {
+        throw new Error(
+          `Metric ${metric.name} PoP query requires a matching time filter for #F${timeFieldId}.`,
+        );
+      }
     };
 
     /**
@@ -655,6 +1136,7 @@ export class DSLTransformerV2 {
       }
 
       visited.add(metric.id);
+      const refs = extractExpressionRefs(metric.expression);
 
       const processedExpr = preprocessExpression(metric.expression);
 
@@ -706,7 +1188,24 @@ export class DSLTransformerV2 {
         defaultTable: mainTableAlias,
       };
 
-      return parseExpression(processedExpr, context);
+      context.metrics = new Map(
+        refs.metricIds.map((refMetricId) => {
+          const metricInfo = metricMap.get(refMetricId);
+          if (!metricInfo) {
+            throw new Error(`找不到指标: ${refMetricId}`);
+          }
+          return [
+            metricInfo.name,
+            new MetricRefExpr(metricInfo.name, { alias: metricInfo.name }),
+          ];
+        }),
+      );
+
+      const parsedExpr = parseExpression(processedExpr, context);
+      const inlinedExpr = inlineMetricRefs(parsedExpr, visited);
+      const finalExpr = applyCalculationModeOverride(inlinedExpr, metric);
+      assertPeriodComparisonFilterSupport(metric, refs);
+      return finalExpr;
     };
 
     /**
@@ -778,6 +1277,77 @@ export class DSLTransformerV2 {
             businessName: metric.businessName,
           });
       }
+    };
+
+    const buildTempMetricExpr = (
+      tempMetric: NonNullable<QueryDSL['tempMetrics']>[number],
+    ): PeriodComparisonExpr => {
+      if ((tempMetric.type || 'period_comparison') !== 'period_comparison') {
+        throw new Error(`不支持的临时指标类型: ${tempMetric.type}`);
+      }
+
+      const baseMetricInfo = metricMap.get(tempMetric.baseMetricId);
+      if (!baseMetricInfo) {
+        throw new Error(`找不到指标: ${tempMetric.baseMetricId}`);
+      }
+
+      const effectiveTimeFieldId =
+        tempMetric.timeFieldId ?? baseMetricInfo.timeFieldId;
+      if (!effectiveTimeFieldId) {
+        throw new Error(
+          `临时周期指标 ${tempMetric.id} 需要 timeFieldId 或基础指标的默认 timeFieldId。`,
+        );
+      }
+
+      const hasTimeFilter = (dsl.filters || []).some(
+        (filter) =>
+          filter.fieldId === effectiveTimeFieldId &&
+          ['recent_days', 'recent_weeks', 'recent_months', 'between'].includes(
+            filter.op,
+          ),
+      );
+      if (!hasTimeFilter) {
+        throw new Error(
+          `临时周期指标 ${tempMetric.id} 需要字段 #F${effectiveTimeFieldId} 的匹配时间过滤器。`,
+        );
+      }
+
+      const calculationMode =
+        tempMetric.calculationMode ?? baseMetricInfo.calculationMode;
+      if (calculationMode === PeriodCalculationMode.BOTH) {
+        throw new Error(
+          `临时周期指标 ${tempMetric.id} 使用 calculationMode=both，在 V2.1 中不支持。`,
+        );
+      }
+
+      const baseExpr = resolveMetric(tempMetric.baseMetricId);
+      if (baseExpr instanceof PeriodComparisonExpr) {
+        throw new Error(
+          `临时周期指标 ${tempMetric.id} 不能使用周期指标作为其基础指标。`,
+        );
+      }
+
+      const timeFieldExpr = resolveField(effectiveTimeFieldId);
+      const comparisonMode =
+        calculationMode === PeriodCalculationMode.ABSOLUTE
+          ? ComparisonMode.ABSOLUTE
+          : ComparisonMode.PERCENTAGE;
+
+      return new PeriodComparisonExpr(
+        baseExpr,
+        periodTypeToOffsetType(tempMetric.periodType),
+        comparisonMode,
+        timeFieldExpr,
+        undefined,
+        {
+          alias:
+            tempMetric.alias ?? baseMetricInfo.alias ?? baseMetricInfo.name,
+          businessName:
+            tempMetric.businessName ??
+            baseMetricInfo.businessName ??
+            baseMetricInfo.name,
+        },
+      );
     };
 
     const buildAggregateExpr = (metric: DatasetMetricResponse): AggExpr => {
@@ -936,6 +1506,71 @@ export class DSLTransformerV2 {
       );
     };
 
+    const buildDimensionExpr = (dimension: QueryDimensionDSL): Expr => {
+      if (typeof dimension === 'number') {
+        return resolveField(dimension);
+      }
+
+      if (dimension.derivedKind === undefined) {
+        const fieldExpr = resolveField(dimension.fieldId);
+        fieldExpr.meta = fieldExpr.meta || {};
+        fieldExpr.meta.alias = dimension.alias || undefined;
+        return fieldExpr;
+      }
+
+      if (!dimension.alias?.trim()) {
+        throw new Error(
+          `dimensions 中 derivedKind=${dimension.derivedKind} 的维度必须提供 alias`,
+        );
+      }
+
+      let derivedExpr: Expr;
+      switch (dimension.derivedKind) {
+        case 'time_grain':
+          derivedExpr = new CallExpr(
+            'TIME_GRAIN',
+            [resolveField(dimension.fieldId), new LiteralExpr(dimension.grain)],
+            {
+              alias: dimension.alias,
+              businessName: dimension.alias,
+            },
+          );
+          break;
+        case 'bucket':
+          derivedExpr = buildBucketDimensionExpr(
+            resolveField(dimension.fieldId),
+            dimension.ranges,
+            dimension.defaultLabel,
+          );
+          break;
+        case 'mapping':
+          derivedExpr = buildMappingDimensionExpr(
+            resolveField(dimension.fieldId),
+            dimension.rules,
+            dimension.defaultLabel,
+          );
+          break;
+        case 'expression':
+          derivedExpr = buildExpressionDimensionExpr(dimension);
+          break;
+        default:
+          throw new Error(
+            `不支持的 derivedKind: ${(dimension as { derivedKind: string }).derivedKind}`,
+          );
+      }
+
+      derivedExpr.meta = {
+        ...(derivedExpr.meta || {}),
+        alias: dimension.alias,
+        businessName: dimension.alias,
+      };
+      return derivedExpr;
+    };
+
+    const dimensions = (dsl.dimensions || []).map((dimension) =>
+      buildDimensionExpr(dimension),
+    );
+
     const metrics = (dsl.metrics || []).map((metricItem) => {
       const metricInfo = metricMap.get(metricItem.id);
       if (!metricInfo) {
@@ -945,13 +1580,7 @@ export class DSLTransformerV2 {
       const expr = resolveMetric(metricItem.id);
 
       if (metricItem.alias || metricInfo.businessName) {
-        if (expr instanceof AggExpr) {
-          expr.meta = expr.meta || {};
-          expr.meta.alias = metricItem.alias || metricInfo.name;
-          if (metricInfo.businessName) {
-            expr.meta.businessName = metricInfo.businessName;
-          }
-        } else if (expr instanceof BinaryExpr) {
+        if (expr instanceof Expr) {
           expr.meta = expr.meta || {};
           expr.meta.alias = metricItem.alias || metricInfo.name;
           if (metricInfo.businessName) {
@@ -962,6 +1591,171 @@ export class DSLTransformerV2 {
 
       return expr;
     });
+
+    const tempMetricExprs = tempMetrics.map((tempMetric) =>
+      buildTempMetricExpr(tempMetric),
+    );
+
+    const resolveOrderDirection = (
+      order: QueryOrderByDSL,
+    ): QueryOrderDirection => {
+      const dir = order.dir ?? order.direction ?? 'asc';
+      if (dir !== 'asc' && dir !== 'desc') {
+        throw new Error(`不支持的排序方向: ${String(dir)}`);
+      }
+      return dir;
+    };
+
+    const buildOrderExprFromDimension = (expr: Expr): string => {
+      if (expr.meta?.alias) {
+        return expr.meta.alias;
+      }
+      if (expr instanceof FieldRefExpr) {
+        return expr.getQualifiedName();
+      }
+      throw new Error('派生维度排序需要 alias');
+    };
+
+    const selectedDimensions = (dsl.dimensions || []).map((dimension, index) => {
+      const expr = dimensions[index];
+      const fieldId =
+        typeof dimension === 'number'
+          ? dimension
+          : 'fieldId' in dimension
+            ? dimension.fieldId
+            : undefined;
+
+      return {
+        fieldId,
+        alias: expr.meta?.alias,
+        expr,
+        orderExpr: buildOrderExprFromDimension(expr),
+      };
+    });
+
+    const selectedMetrics = (dsl.metrics || []).map((metricItem, index) => {
+      const expr = metrics[index];
+      const alias =
+        expr.meta?.alias ||
+        (expr instanceof FieldRefExpr ? expr.getQualifiedName() : undefined);
+      if (!alias) {
+        throw new Error(`指标 ${metricItem.id} 缺少可排序标识`);
+      }
+
+      return {
+        metricId: metricItem.id,
+        alias,
+      };
+    });
+
+    const selectedTempMetrics = tempMetrics.map((tempMetric, index) => {
+      const expr = tempMetricExprs[index];
+      const alias = expr.meta?.alias;
+      if (!alias) {
+        throw new Error(`临时指标 ${tempMetric.id} 缺少可排序别名`);
+      }
+
+      return {
+        tempMetricId: tempMetric.id,
+        alias,
+      };
+    });
+
+    const resolveOrderAlias = (
+      rawAlias: string,
+      order: QueryOrderByDSL,
+    ): string => {
+      const normalized = rawAlias.trim();
+      if (!normalized) {
+        throw new Error('排序 alias 不能为空');
+      }
+
+      const matchedDimension = selectedDimensions.find(
+        (item) => item.alias === normalized || item.orderExpr === normalized,
+      );
+      if (matchedDimension) {
+        return matchedDimension.orderExpr;
+      }
+
+      const matchedMetric = selectedMetrics.find(
+        (item) => item.alias === normalized,
+      );
+      if (matchedMetric) {
+        return matchedMetric.alias;
+      }
+
+      const matchedTempMetric = selectedTempMetrics.find(
+        (item) => item.alias === normalized,
+      );
+      if (matchedTempMetric) {
+        return matchedTempMetric.alias;
+      }
+
+      throw new Error(
+        `排序项 ${JSON.stringify(order)} 引用了未选中的 alias: ${normalized}`,
+      );
+    };
+
+    const resolveOrderExpr = (order: QueryOrderByDSL): string => {
+      if (order.alias) {
+        return resolveOrderAlias(order.alias, order);
+      }
+
+      if (order.field) {
+        return resolveOrderAlias(order.field, order);
+      }
+
+      if (order.tempMetricId) {
+        const matchedTempMetric = selectedTempMetrics.find(
+          (item) => item.tempMetricId === order.tempMetricId,
+        );
+        if (!matchedTempMetric) {
+          throw new Error(
+            `排序项 ${JSON.stringify(order)} 引用了未选中的临时指标: ${order.tempMetricId}`,
+          );
+        }
+        return matchedTempMetric.alias;
+      }
+
+      if (order.metricId !== undefined) {
+        const matchedMetric = selectedMetrics.find(
+          (item) => item.metricId === order.metricId,
+        );
+        if (!matchedMetric) {
+          throw new Error(
+            `排序项 ${JSON.stringify(order)} 引用了未选中的指标: ${order.metricId}`,
+          );
+        }
+        return matchedMetric.alias;
+      }
+
+      if (order.fieldId !== undefined) {
+        const matchedDimensions = selectedDimensions.filter(
+          (item) => item.fieldId === order.fieldId,
+        );
+        if (matchedDimensions.length === 0) {
+          throw new Error(
+            `排序项 ${JSON.stringify(order)} 引用了未选中的维度字段: ${order.fieldId}`,
+          );
+        }
+        if (matchedDimensions.length > 1) {
+          throw new Error(
+            `字段 ${order.fieldId} 在当前查询中对应多个维度，请改用 alias 排序`,
+          );
+        }
+        return matchedDimensions[0].orderExpr;
+      }
+
+      throw new Error(
+        `排序项 ${JSON.stringify(order)} 必须指定 fieldId、metricId、tempMetricId 或 alias`,
+      );
+    };
+
+    const orderBy =
+      dsl.orderBy?.map((order) => ({
+        expr: resolveOrderExpr(order),
+        dir: resolveOrderDirection(order),
+      })) || undefined;
 
     const filters = (dsl.filters || []).map((filter) => {
       const fieldExpr = resolveField(filter.fieldId);
@@ -988,31 +1782,104 @@ export class DSLTransformerV2 {
         );
       }
 
-      const opMap: Record<string, Operator> = {
-        '=': Operator.EQUALS,
-        '!=': Operator.NOT_EQUALS,
-        '>': Operator.GREATER_THAN,
-        '<': Operator.LESS_THAN,
-        '>=': Operator.GREATER_EQUAL,
-        '<=': Operator.LESS_EQUAL,
-        like: Operator.LIKE,
-        in: Operator.IN,
-        not_in: Operator.NOT_IN,
-        is_null: Operator.IS_NULL,
-        is_not_null: Operator.IS_NOT_NULL,
-      };
+      switch (filter.op) {
+        case 'in': {
+          const values = Array.isArray(filter.value)
+            ? filter.value.map((v) => new LiteralExpr(v))
+            : [new LiteralExpr(filter.value)];
+          return new InExpr(fieldExpr, values, false);
+        }
 
-      const op = opMap[filter.op] || (filter.op as Operator);
-      let value: any = filter.value;
-      if (filter.raw && typeof value === 'string') {
-        value = { rawSql: value };
+        case 'not_in': {
+          const values = Array.isArray(filter.value)
+            ? filter.value.map((v) => new LiteralExpr(v))
+            : [new LiteralExpr(filter.value)];
+          return new InExpr(fieldExpr, values, true);
+        }
+
+        case 'between': {
+          if (
+            filter.value &&
+            typeof filter.value === 'object' &&
+            'low' in filter.value &&
+            'high' in filter.value
+          ) {
+            const rangeValue = filter.value as { low: unknown; high: unknown };
+            return new BetweenExpr(
+              fieldExpr,
+              new LiteralExpr(
+                rangeValue.low as string | number | boolean | null,
+              ),
+              new LiteralExpr(
+                rangeValue.high as string | number | boolean | null,
+              ),
+              false,
+            );
+          }
+          throw new Error('BETWEEN 操作符需要 { low, high } 格式的 value');
+        }
+
+        case 'not_between': {
+          if (
+            filter.value &&
+            typeof filter.value === 'object' &&
+            'low' in filter.value &&
+            'high' in filter.value
+          ) {
+            const rangeValue = filter.value as { low: unknown; high: unknown };
+            return new BetweenExpr(
+              fieldExpr,
+              new LiteralExpr(
+                rangeValue.low as string | number | boolean | null,
+              ),
+              new LiteralExpr(
+                rangeValue.high as string | number | boolean | null,
+              ),
+              true,
+            );
+          }
+          throw new Error('NOT BETWEEN 操作符需要 { low, high } 格式的 value');
+        }
+
+        case 'like':
+          return new LikeExpr(fieldExpr, new LiteralExpr(filter.value), false);
+
+        case 'not_like':
+          return new LikeExpr(fieldExpr, new LiteralExpr(filter.value), true);
+
+        case 'is_null':
+          return new IsNullExpr(fieldExpr, false);
+
+        case 'is_not_null':
+          return new IsNullExpr(fieldExpr, true);
+
+        default: {
+          const opMap: Record<string, Operator> = {
+            '=': Operator.EQUALS,
+            '!=': Operator.NOT_EQUALS,
+            '>': Operator.GREATER_THAN,
+            '<': Operator.LESS_THAN,
+            '>=': Operator.GREATER_EQUAL,
+            '<=': Operator.LESS_EQUAL,
+          };
+
+          const op = opMap[filter.op];
+          if (!op) {
+            throw new Error(`不支持的操作符: ${filter.op}`);
+          }
+
+          let value: any = filter.value;
+          if (filter.raw && typeof value === 'string') {
+            value = { rawSql: value };
+          }
+
+          return new ComparisonExpr(
+            op as ComparisonOperator,
+            fieldExpr,
+            value !== undefined ? new LiteralExpr(value) : (undefined as any),
+          );
+        }
       }
-
-      return new ComparisonExpr(
-        op as ComparisonOperator,
-        fieldExpr,
-        value !== undefined ? new LiteralExpr(value) : (undefined as any),
-      );
     });
 
     return {
@@ -1022,8 +1889,9 @@ export class DSLTransformerV2 {
       },
       joins,
       dimensions,
-      metrics,
+      metrics: [...metrics, ...tempMetricExprs],
       filters,
+      orderBy,
       limit: dsl.limit,
       offset: dsl.offset,
     };
@@ -1032,7 +1900,7 @@ export class DSLTransformerV2 {
   private static parseCaseCondition(
     caseCondition: string,
     defaultExpr: FieldRefExpr,
-    fieldMap: Map<number, DatasetFieldResponse>,
+    _fieldMap: Map<number, DatasetFieldResponse>,
     defaultTableAlias: string,
   ): ConditionalExpr {
     const eqMatch = caseCondition.match(/^(\w+)\s*=\s*'([^']+)'$/);

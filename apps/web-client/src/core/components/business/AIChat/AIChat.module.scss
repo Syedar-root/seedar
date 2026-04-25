@@ -1,0 +1,150 @@
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 600px;
+  min-width: 0;
+  border: 1px solid var(--chat-border-default);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--chat-bg-secondary);
+
+  * {
+    font: var(--chat-text-body);
+  }
+
+  .messages-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    padding: var(--chat-space-md);
+    scroll-behavior: smooth;
+  }
+
+  .sender-wrapper {
+    border-top: 1px solid var(--chat-border-default);
+    padding: var(--chat-space-md);
+  }
+}
+
+.assistant-group {
+  margin-bottom: var(--chat-space-md);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.assistant-content {
+  flex: 1;
+}
+
+.thought-chain {
+  margin-bottom: var(--chat-space-sm);
+}
+
+.message-item {
+  margin-bottom: var(--chat-space-md);
+}
+
+.message-actions {
+  display: flex;
+  gap: var(--chat-space-sm);
+  padding-top: var(--chat-space-sm);
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chat-space-xs);
+  padding: var(--chat-space-xs) var(--chat-space-sm);
+  font: var(--chat-text-label);
+  font-size: 12px;
+  color: var(--chat-color-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--chat-radius-sm);
+  cursor: pointer;
+  transition: all var(--chat-transition-fast);
+
+  &:hover {
+    color: var(--chat-color-primary);
+    background: var(--chat-bg-tertiary);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+  }
+}
+
+.bubble-item {
+  margin-bottom: var(--chat-space-md);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-group,
+  .bubble-item {
+    animation: none;
+  }
+
+  .message-actions button {
+    transition: none;
+  }
+}
+
+.interrupt-wait-answer {
+  --wait-answer-color: color-mix(
+    in oklab,
+    var(--chat-color-secondary) 40%,
+    #fff
+  );
+
+  font: var(--chat-text-label);
+
+  color: var(--wait-answer-color);
+
+  letter-spacing: 0.5px;
+  background: linear-gradient(
+    90deg,
+    var(--wait-answer-color) 0%,
+    var(--wait-answer-color) 25%,
+    #000 40%,
+    #000 60%,
+    var(--wait-answer-color) 75%,
+    var(--wait-answer-color) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: shimmer 1s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interrupt-wait-answer {
+    animation: none;
+  }
+}

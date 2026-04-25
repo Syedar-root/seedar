@@ -5,6 +5,69 @@
   gap: var(--spacing-md);
 }
 
+.datasetCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-hover) 100%);
+}
+
+.datasetMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.datasetLabel {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.datasetName,
+.datasetEmptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.datasetHint {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.datasetAction,
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-base);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.datasetAction {
+  height: 32px;
+  padding: 0 12px;
+}
+
+.datasetAction:hover,
+.addButton:hover {
+  background: var(--bg-hover);
+}
+
+.datasetAction:disabled {
+  cursor: not-allowed;
+  color: var(--text-disabled);
+  background: var(--bg-base);
+  border-color: var(--border-secondary);
+}
+
 .sidebarHeader {
   display: flex;
   flex-direction: column;
@@ -19,6 +82,40 @@
 .sidebarHint {
   font-size: var(--font-sm);
   color: var(--text-disabled);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 28px 20px;
+  border: 1px dashed var(--border-base);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.emptyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  color: var(--primary);
+}
+
+.emptyTitle {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.emptyDesc {
+  font-size: var(--font-sm);
+  line-height: 1.5;
 }
 
 .sidebarContent {
@@ -47,22 +144,9 @@
 }
 
 .addButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 24px;
   height: 24px;
   padding: 0;
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
-  background: white;
-  color: #333;
-  cursor: pointer;
-  font-size: 16px;
-
-  &:hover {
-    background: #f5f5f5;
-  }
 }
 
 .sidebarList {
@@ -87,15 +171,15 @@
   transition:
     background-color var(--transition-base),
     box-shadow var(--transition-base);
+}
 
-  &:hover {
-    background: var(--bg-hover);
-    box-shadow: var(--shadow-sm);
-  }
+.dragItem:hover {
+  background: var(--bg-hover);
+  box-shadow: var(--shadow-sm);
+}
 
-  &:active {
-    cursor: grabbing;
-  }
+.dragItem:active {
+  cursor: grabbing;
 }
 
 .dragHandle {
@@ -104,8 +188,8 @@
   flex-shrink: 0;
   width: 14px;
   height: 14px;
+}
 
-  .dragItem:hover & {
-    color: var(--text-tertiary);
-  }
+.dragItem:hover .dragHandle {
+  color: var(--text-tertiary);
 }

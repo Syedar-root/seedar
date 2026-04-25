@@ -1,0 +1,26 @@
+.container {
+  padding: var(--chat-space-sm);
+  background: var(--chat-bg-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--chat-border-default);
+}
+
+.content {
+  height: 25vh;
+  min-height: 250px;
+  max-height: 450px;
+  font: var(--chat-text-body);
+  color: var(--chat-color-secondary);
+  word-break: break-all;
+}
+
+.jsonContent {
+  margin: 0;
+  padding: var(--chat-space-xs);
+  background: var(--chat-bg-primary);
+  border-radius: 4px;
+  font-family: var(--font-mono-override);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow: auto;
+}

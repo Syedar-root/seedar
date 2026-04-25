@@ -3,6 +3,8 @@ import {
   CreateDatasourceRequest,
   UpdateDatasourceRequest,
   DatasourceResponse,
+  TestDatasourceConnectionRequest,
+  TestDatasourceConnectionResponse,
 } from '#pkg/seedar/types';
 import { RequestOptions } from '#pkg/seedar/types';
 
@@ -46,6 +48,17 @@ export class DatasourceApi {
     options?: RequestOptions
   ): Promise<DatasourceResponse> {
     return ApiClient.post<DatasourceResponse>('/datasource', data, options);
+  }
+
+  static async testConnection(
+    data: TestDatasourceConnectionRequest,
+    options?: RequestOptions
+  ): Promise<TestDatasourceConnectionResponse> {
+    return ApiClient.post<TestDatasourceConnectionResponse>(
+      '/datasource/test-connection',
+      data,
+      options
+    );
   }
 
   /**

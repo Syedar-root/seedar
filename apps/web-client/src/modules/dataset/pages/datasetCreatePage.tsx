@@ -10,14 +10,25 @@ export const DatasetCreatePage = () => {
   const createMutation = useCreateDataset();
 
   const handleSubmit = async (data: DatasetFormData) => {
-    const fields = data.fields.map((field) => ({
-      dataSourceColumnId: field.dataSourceColumnId!,
-      tableId: field.tableId!,
-      name: field.name,
-      businessName: field.businessName,
-      description: field.description,
-      isPrimaryKey: field.isPrimaryKey,
-    }));
+    const selectedTableIds = new Set(
+      data.tables.map((table) => parseInt(table.tableId, 10)),
+    );
+
+    const fields = data.fields
+      .filter(
+        (field) =>
+          typeof field.dataSourceColumnId === "number" &&
+          typeof field.tableId === "number" &&
+          selectedTableIds.has(field.tableId),
+      )
+      .map((field) => ({
+        dataSourceColumnId: field.dataSourceColumnId,
+        tableId: field.tableId,
+        name: field.name,
+        businessName: field.businessName,
+        description: field.description,
+        isPrimaryKey: field.isPrimaryKey,
+      }));
 
     const joins = data.joins.map((join) => ({
       leftTableId: parseInt(join.leftTable, 10),

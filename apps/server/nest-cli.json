@@ -3,6 +3,16 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "assets": [
+      {
+        "include": "module/ai/services/skills/**/*.*",
+        "watchAssets": true
+      },
+      {
+        "include": "module/ai/services/prompts/**/*.*",
+        "watchAssets": true
+      }
+    ]
   }
 }

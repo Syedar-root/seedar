@@ -10,9 +10,10 @@ import {
 } from '@nestjs/common';
 import { DatasourceService } from './service/datasource.service';
 import { CreateDatasourceRequest } from './dto/create-datasource.request';
-import { DataSourceType } from './datasource.types';
 import { UpdateDatasourceRequest } from './dto/update-datasource.request';
 import { DatasourceResponse } from './dto/datasource.response';
+import { TestDatasourceConnectionRequest } from './dto/test-datasource-connection.request';
+import { TestDatasourceConnectionResponse } from './dto/test-datasource-connection.response';
 import { SuccessMessage } from '@/common/success-message.decorator';
 
 @Controller('datasource')
@@ -25,6 +26,14 @@ export class DatasourceController {
     @Body() createDatasourceRequest: CreateDatasourceRequest,
   ): Promise<DatasourceResponse> {
     return this.datasourceService.create(createDatasourceRequest);
+  }
+
+  @Post('test-connection')
+  @SuccessMessage('数据源连接测试完成')
+  testConnection(
+    @Body() testDatasourceConnectionRequest: TestDatasourceConnectionRequest,
+  ): Promise<TestDatasourceConnectionResponse> {
+    return this.datasourceService.testConnection(testDatasourceConnectionRequest);
   }
 
   @Get()

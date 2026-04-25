@@ -4,6 +4,7 @@ export interface FieldItem {
   id: string | number;
   name: string;
   businessName?: string;
+  tableName?: string;
   type: "field";
 }
 

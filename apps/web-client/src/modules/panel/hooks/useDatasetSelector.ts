@@ -1,60 +1,83 @@
-import { useDatasets, useCreateQuery, useCreatePanel } from "#pkg/seedar/ui-react";
-import { DatasetResponse, PanelType } from "#pkg/seedar/types";
-import { useCallback } from "react";
-import { toast } from "sonner";
-import { NavigateFunction } from "react-router-dom";
+import { useDatasets } from "#pkg/seedar/ui-react";
+import type { DatasetResponse } from "#pkg/seedar/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-interface UseDatasetSelectorReturn {
-  datasets: DatasetResponse[] | undefined;
-  handleSelectDataset: (dataset: DatasetResponse) => void;
+interface UseDatasetSelectorOptions {
+  initialSelectedDatasetId?: number;
 }
 
-export const useDatasetSelector = (
-  navigate: NavigateFunction,
-): UseDatasetSelectorReturn => {
-  const { data: datasets } = useDatasets();
-  const { mutate: createQuery } = useCreateQuery();
-  const { mutate: createPanel } = useCreatePanel();
+interface UseDatasetSelectorReturn {
+  datasets: DatasetResponse[];
+  filteredDatasets: DatasetResponse[];
+  isLoading: boolean;
+  searchKeyword: string;
+  setSearchKeyword: (keyword: string) => void;
+  selectedDatasetId?: number;
+  selectedDataset?: DatasetResponse;
+  handleSelectDataset: (dataset: DatasetResponse) => void;
+  setSelectedDataset: (dataset?: DatasetResponse) => void;
+  clearSelection: () => void;
+}
 
-  const handleSelectDataset = useCallback(
-    (dataset: DatasetResponse) => {
-      createQuery(
-        {
-          name: "未命名查询",
-          datasetId: dataset.id,
-          dsl: {
-            datasetId: dataset.id,
-            tableId: dataset.mainTableId!,
-            joins: dataset.joins || [],
-            dimensions: [],
-            metrics: [],
-          },
-        },
-        {
-          onSuccess: (queryData) => {
-            createPanel(
-              {
-                title: "未命名面板",
-                queryId: queryData.id,
-                type: "table" as PanelType,
-                config: {},
-              },
-              {
-                onSuccess: (panelData) => {
-                  navigate(`/panel/${panelData.id}`);
-                  toast.success("创建看板成功");
-                },
-              },
-            );
-          },
-        },
-      );
-    },
-    [createQuery, createPanel, navigate],
+export const useDatasetSelector = ({
+  initialSelectedDatasetId,
+}: UseDatasetSelectorOptions = {}): UseDatasetSelectorReturn => {
+  const { data, isLoading } = useDatasets();
+  const datasets = data ?? [];
+
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [selectedDatasetId, setSelectedDatasetId] = useState<number | undefined>(
+    initialSelectedDatasetId,
   );
+
+  useEffect(() => {
+    setSelectedDatasetId(initialSelectedDatasetId);
+  }, [initialSelectedDatasetId]);
+
+  const filteredDatasets = useMemo(() => {
+    const keyword = searchKeyword.trim().toLowerCase();
+    if (!keyword) {
+      return datasets;
+    }
+
+    return datasets.filter((dataset) => {
+      const name = dataset.name.toLowerCase();
+      const description = dataset.description?.toLowerCase() ?? "";
+      return name.includes(keyword) || description.includes(keyword);
+    });
+  }, [datasets, searchKeyword]);
+
+  const selectedDataset = useMemo(() => {
+    if (selectedDatasetId === undefined) {
+      return undefined;
+    }
+
+    return datasets.find((dataset) => dataset.id === selectedDatasetId);
+  }, [datasets, selectedDatasetId]);
+
+  const handleSelectDataset = useCallback((dataset: DatasetResponse) => {
+    setSelectedDatasetId(dataset.id);
+  }, []);
+
+  const setSelectedDataset = useCallback((dataset?: DatasetResponse) => {
+    setSelectedDatasetId(dataset?.id);
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedDatasetId(undefined);
+    setSearchKeyword("");
+  }, []);
 
   return {
     datasets,
+    filteredDatasets,
+    isLoading,
+    searchKeyword,
+    setSearchKeyword,
+    selectedDatasetId,
+    selectedDataset,
     handleSelectDataset,
+    setSelectedDataset,
+    clearSelection,
   };
 };

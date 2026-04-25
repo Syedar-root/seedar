@@ -1,0 +1,49 @@
+:root {
+  --chat-color-primary: var(--primary);
+  --chat-color-secondary: var(--text-secondary);
+  --chat-color-muted: var(--text-tertiary);
+  --chat-color-accent: var(--primary);
+
+  --chat-bg-primary: var(--bg-elevated);
+  --chat-bg-secondary: var(--bg-base);
+  --chat-bg-tertiary: var(--bg-hover);
+  --chat-bg-inverse: #1f2028;
+
+  --chat-border-default: var(--border-base);
+  --chat-border-strong: var(--border-hover);
+
+  --chat-color-success: var(--success);
+  --chat-color-error: var(--danger);
+  --chat-color-warning: var(--warning);
+
+  --chat-space-xs: var(--spacing-xs);
+  --chat-space-sm: var(--spacing-sm);
+  --chat-space-md: var(--spacing-md);
+  --chat-space-lg: var(--spacing-lg);
+  --chat-space-xl: var(--spacing-xl);
+
+  --chat-text-display: 500 18px / 1.3 var(--chat-font-sans);
+  --chat-text-title: 600 15px / 1.4 var(--chat-font-sans);
+  --chat-text-heading: 600 14px / 1.4 var(--chat-font-sans);
+  --chat-text-heading-tracking: 0.01em;
+  --chat-text-body: 400 14px / 1.5 var(--chat-font-sans);
+  --chat-text-label: 500 12px / 1.3 var(--chat-font-sans);
+  --chat-text-label-tracking: 0.02em;
+  --chat-text-label-transform: uppercase;
+  --chat-text-caption: 400 12px / 1.4 var(--chat-font-sans);
+  --chat-text-caption-tracking: 0.02em;
+  --chat-text-caption-style: italic;
+
+  --chat-font-sans: system-ui, "Segoe UI", -apple-system, sans-serif;
+
+  --chat-radius-sm: var(--radius-sm);
+  --chat-radius-md: var(--radius-base);
+  --chat-radius-lg: var(--radius-lg);
+
+  --chat-transition-fast: var(--transition-fast);
+  --chat-transition-normal: var(--transition-base);
+
+  --chat-shadow-sm: var(--shadow-sm);
+  --chat-shadow-md: var(--shadow-md);
+  --chat-shadow-dropdown: var(--shadow-md);
+}

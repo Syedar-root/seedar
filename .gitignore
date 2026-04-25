@@ -36,5 +36,8 @@ Thumbs.db
 
 commit_msg.txt
 
-.trae/skill-config.json
-.trae/documents/
+.trae/
+.claude/*
+.codex/*
+
+**/assets/**/font/**

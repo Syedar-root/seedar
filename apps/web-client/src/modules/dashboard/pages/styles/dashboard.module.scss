@@ -41,9 +41,13 @@
 
 main {
   flex: 1;
+  max-height: 100%;
+  max-width: 100%;
   height: 100%;
   background: var(--bg-color);
   padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
 }
 
 .header {

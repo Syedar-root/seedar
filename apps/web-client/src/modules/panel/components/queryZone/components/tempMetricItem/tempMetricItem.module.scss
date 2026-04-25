@@ -1,0 +1,14 @@
+@use "../../queryZone.module.scss" as queryZone;
+
+.tempMetric {
+  @include queryZone.drag-item-style(
+    var(--accent-1),
+    var(--accent-1-border),
+    var(--accent-1-text)
+  );
+}
+
+.name {
+  font-size: var(--font-base);
+  color: var(--text-primary);
+}

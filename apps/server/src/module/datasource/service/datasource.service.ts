@@ -6,6 +6,8 @@ import { DatasourceTable } from '../entities/datasource-table.entity';
 import { CreateDatasourceRequest } from '../dto/create-datasource.request';
 import { validateDataSourceConfig } from '../datasource.validation';
 import { UpdateDatasourceRequest } from '../dto/update-datasource.request';
+import { TestDatasourceConnectionRequest } from '../dto/test-datasource-connection.request';
+import { TestDatasourceConnectionResponse } from '../dto/test-datasource-connection.response';
 import {
   DatasourceResponse,
   ForeignKeyResponse,
@@ -137,6 +139,53 @@ export class DatasourceService {
     );
 
     return new DatasourceResponse(savedDatasource);
+  }
+
+  async testConnection(
+    testDatasourceConnectionRequest: TestDatasourceConnectionRequest,
+  ): Promise<TestDatasourceConnectionResponse> {
+    this.logger.log(
+      `开始测试数据源连接: ${testDatasourceConnectionRequest.type}`,
+      'TestDatasourceConnectionStart',
+    );
+
+    try {
+      validateDataSourceConfig(
+        testDatasourceConnectionRequest.type,
+        testDatasourceConnectionRequest.config,
+      );
+    } catch (error: any) {
+      this.logger.warn(
+        `数据源配置校验失败: ${(error as Error).message}`,
+        'TestDatasourceConnectionValidationFailed',
+      );
+
+      return {
+        success: false,
+        message: (error as Error).message,
+      };
+    }
+
+    const datasource = new Datasource();
+    datasource.name = 'connection-test';
+    datasource.type = testDatasourceConnectionRequest.type;
+    datasource.config = testDatasourceConnectionRequest.config;
+
+    const testResult = await this.knexFactory.testConnection(datasource);
+
+    if (!testResult.success) {
+      this.logger.warn(
+        `数据源连接测试失败: ${testResult.message}`,
+        'TestDatasourceConnectionFailed',
+      );
+    } else {
+      this.logger.log('数据源连接测试成功', 'TestDatasourceConnectionSuccess');
+    }
+
+    return {
+      success: testResult.success,
+      message: testResult.message,
+    };
   }
 
   async findAll(): Promise<DatasourceResponse[]> {

@@ -1,0 +1,78 @@
+@use "@/core/assets/styles/global.variable.scss";
+
+.globalNav {
+  height: 56px;
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--border-base);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--spacing-xl);
+  gap: var(--spacing-xl);
+}
+
+.logo {
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition-base);
+
+  &:hover {
+    color: var(--primary);
+  }
+}
+
+.navItems {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--text-primary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
+  cursor: pointer;
+  height: 40px;
+  box-sizing: border-box;
+
+  &:hover {
+    background: var(--bg-hover);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    transform: scaleX(0);
+    width: 100%;
+    height: 3px;
+    background: var(--primary);
+    border-radius: 3px 3px 0 0;
+    transition: transform var(--transition-base);
+    transform-origin: center;
+  }
+
+  &.active {
+    background: var(--bg-selected);
+    color: var(--primary);
+
+    &::after {
+      transform: scaleX(1);
+    }
+  }
+}
+
+.spacer {
+  flex: 1;
+}

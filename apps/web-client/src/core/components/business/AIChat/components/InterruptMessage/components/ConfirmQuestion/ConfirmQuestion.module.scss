@@ -1,0 +1,69 @@
+.question-title {
+  font: var(--chat-text-heading);
+  color: var(--chat-color-primary);
+  letter-spacing: var(--chat-text-heading-tracking);
+  margin-bottom: var(--chat-space-sm);
+}
+
+.radio-group {
+  display: flex;
+  gap: var(--chat-space-lg);
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: var(--chat-space-sm);
+  cursor: pointer;
+
+  &:has([data-disabled]) {
+    cursor: not-allowed;
+  }
+}
+
+.radio-root {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--chat-border-strong);
+  border-radius: 50%;
+  background: var(--chat-bg-primary);
+  transition: border-color var(--chat-transition-fast), background-color var(--chat-transition-fast);
+
+  &[data-checked] {
+    border-color: var(--chat-color-accent);
+  }
+
+  &[data-disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: var(--chat-border-default);
+    background: color-mix(
+      in oklab,
+      var(--chat-bg-primary) 75%,
+      var(--chat-bg-secondary) 25%
+    );
+  }
+}
+
+.radio-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--chat-color-accent);
+  opacity: 0;
+  transition: opacity var(--chat-transition-fast);
+
+  &[data-checked] {
+    opacity: 1;
+  }
+}
+
+.radio-text {
+  font: var(--chat-text-body);
+  color: var(--chat-color-primary);
+}

@@ -92,6 +92,15 @@
   gap: 4px;
 }
 
+.tableTag {
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  background: var(--bg-base);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  margin-left: auto;
+}
+
 .itemButton {
   display: flex;
   align-items: center;

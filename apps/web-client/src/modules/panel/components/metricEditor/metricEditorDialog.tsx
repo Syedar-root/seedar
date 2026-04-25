@@ -10,6 +10,7 @@ interface MetricEditorDialogProps {
   datasetId: number;
   fields: { id: number; name: string; businessName?: string }[];
   metrics: { id: number; name: string; businessName?: string }[];
+  numericFields: { id: number; name: string; businessName?: string }[];
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -18,6 +19,7 @@ export const MetricEditorDialog: React.FC<MetricEditorDialogProps> = ({
   datasetId,
   fields,
   metrics,
+  numericFields,
   onClose,
   onSuccess,
 }) => {

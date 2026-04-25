@@ -20,11 +20,13 @@
   max-width: 960px;
   margin: 0 auto;
   padding: var(--spacing-xl) var(--spacing-lg);
+  height: 100%;
+  gap: var(--spacing-xl);
 }
 
-.header {
-  margin-bottom: var(--spacing-xl);
-}
+// .header {
+//   margin-bottom: var(--spacing-xl);
+// }
 
 .title {
   font-size: var(--font-xl);
@@ -46,13 +48,14 @@
   border: 1px solid var(--border-secondary);
   border-radius: var(--radius-lg);
   padding: var(--spacing-xl);
+  overflow: hidden;
 }
 
 .footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: var(--spacing-xl);
+  // margin-top: var(--spacing-xl);
   padding-top: var(--spacing-lg);
   border-top: 1px solid var(--border-secondary);
 }

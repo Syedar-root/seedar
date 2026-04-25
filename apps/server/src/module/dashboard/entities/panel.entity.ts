@@ -9,6 +9,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { PanelType } from '../panel-types.enum';
+import { PanelStatus } from '../panel-status.enum';
 import { Query } from '@/module/query/entities/query.entity';
 import { DashboardPanelRelation } from './dashboard-panel-relation.entity';
 
@@ -30,6 +31,14 @@ export class Panel {
     default: PanelType.CHART,
   })
   type: PanelType;
+
+  @Column({
+    name: 'status',
+    type: 'enum',
+    enum: PanelStatus,
+    default: PanelStatus.DRAFT,
+  })
+  status: PanelStatus;
 
   @Column({ name: 'query_id', nullable: true })
   queryId?: string;

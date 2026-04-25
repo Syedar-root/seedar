@@ -5,6 +5,8 @@ import {
   AggFuncName,
   BinaryOperator,
   ComparisonOperator,
+  PeriodOffsetType,
+  ComparisonMode,
 } from "./types";
 
 export abstract class Expr {
@@ -253,6 +255,142 @@ export class SelectExpr extends Expr {
       })),
       this.defaultValue?.clone(),
       this.meta,
+    );
+  }
+}
+
+export class InExpr extends Expr {
+  expr: Expr;
+  values: Expr[];
+  negated: boolean;
+
+  constructor(expr: Expr, values: Expr[], negated = false, meta?: ExprMeta) {
+    super(ExprKind.In, meta);
+    this.expr = expr;
+    this.values = values;
+    this.negated = negated;
+  }
+
+  clone(): InExpr {
+    return new InExpr(
+      this.expr.clone(),
+      this.values.map((v) => v.clone()),
+      this.negated,
+      this.meta,
+    );
+  }
+}
+
+export class BetweenExpr extends Expr {
+  expr: Expr;
+  low: Expr;
+  high: Expr;
+  negated: boolean;
+
+  constructor(expr: Expr, low: Expr, high: Expr, negated = false, meta?: ExprMeta) {
+    super(ExprKind.Between, meta);
+    this.expr = expr;
+    this.low = low;
+    this.high = high;
+    this.negated = negated;
+  }
+
+  clone(): BetweenExpr {
+    return new BetweenExpr(
+      this.expr.clone(),
+      this.low.clone(),
+      this.high.clone(),
+      this.negated,
+      this.meta,
+    );
+  }
+}
+
+export class LikeExpr extends Expr {
+  expr: Expr;
+  pattern: Expr;
+  negated: boolean;
+
+  constructor(expr: Expr, pattern: Expr, negated = false, meta?: ExprMeta) {
+    super(ExprKind.Like, meta);
+    this.expr = expr;
+    this.pattern = pattern;
+    this.negated = negated;
+  }
+
+  clone(): LikeExpr {
+    return new LikeExpr(
+      this.expr.clone(),
+      this.pattern.clone(),
+      this.negated,
+      this.meta,
+    );
+  }
+}
+
+export class IsNullExpr extends Expr {
+  expr: Expr;
+  negated: boolean;
+
+  constructor(expr: Expr, negated = false, meta?: ExprMeta) {
+    super(ExprKind.IsNull, meta);
+    this.expr = expr;
+    this.negated = negated;
+  }
+
+  clone(): IsNullExpr {
+    return new IsNullExpr(this.expr.clone(), this.negated, this.meta);
+  }
+}
+
+export interface PeriodComparisonCustomRange {
+  current: { start: Date; end: Date };
+  comparison: { start: Date; end: Date };
+}
+
+export class PeriodComparisonExpr extends Expr {
+  public readonly baseMetric: Expr;
+  public readonly offsetType: PeriodOffsetType;
+  public readonly comparisonMode: ComparisonMode;
+  public readonly timeField: FieldRefExpr;
+  public readonly customTimeRange?: PeriodComparisonCustomRange;
+
+  constructor(
+    baseMetric: Expr,
+    offsetType: PeriodOffsetType,
+    comparisonMode: ComparisonMode,
+    timeField: FieldRefExpr,
+    customTimeRange?: PeriodComparisonCustomRange,
+    meta?: ExprMeta,
+  ) {
+    super(ExprKind.PeriodComparison, meta);
+    this.baseMetric = baseMetric;
+    this.offsetType = offsetType;
+    this.comparisonMode = comparisonMode;
+    this.timeField = timeField;
+    this.customTimeRange = customTimeRange;
+    this.aggLevel = AggLevel.Full;
+  }
+
+  clone(): PeriodComparisonExpr {
+    return new PeriodComparisonExpr(
+      this.baseMetric.clone(),
+      this.offsetType,
+      this.comparisonMode,
+      this.timeField.clone(),
+      this.customTimeRange
+        ? {
+            current: {
+              start: new Date(this.customTimeRange.current.start),
+              end: new Date(this.customTimeRange.current.end),
+            },
+            comparison: {
+              start: new Date(this.customTimeRange.comparison.start),
+              end: new Date(this.customTimeRange.comparison.end),
+            },
+          }
+        : undefined,
+      this.meta ? { ...this.meta } : undefined,
     );
   }
 }

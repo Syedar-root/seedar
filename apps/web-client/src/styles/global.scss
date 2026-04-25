@@ -1,9 +1,10 @@
-@use 'tailwindcss' as *;
-@use '../core/assets/styles/global.variable.scss';
+@use "tailwindcss" as *;
+@use "../core/assets/styles/fonts.scss";
+@use "../core/assets/styles/global.variable.scss";
 
 @theme {
-  --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
-    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-sans: var(--font-primary);
+  --font-mono: var(--font-mono-override);
 }
 
 @layer base {
@@ -11,15 +12,28 @@
     box-sizing: border-box;
   }
 
-  html,
+  html {
+    height: 100%;
+    font-family: var(--font-primary);
+  }
+
   body {
     height: 100%;
     margin: 0;
     padding: 0;
+    font-family: var(--font-primary);
+    font-size: var(--font-base);
+    color: var(--text-primary);
+    background-color: var(--bg-base);
   }
 
   #root {
     height: 100%;
-    color: #000000;
+  }
+
+  code,
+  pre,
+  kbd {
+    font-family: var(--font-mono-override);
   }
 }

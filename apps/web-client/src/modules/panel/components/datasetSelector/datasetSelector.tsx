@@ -1,33 +1,63 @@
-import { useState, useMemo } from "react";
+﻿import clsx from "clsx";
+import { useMemo, useState } from "react";
 import { Search, Database, Layers, BarChart3, FolderOpen } from "lucide-react";
-import { DatasetResponse } from "#pkg/seedar/types";
+import type { DatasetResponse } from "#pkg/seedar/types";
 import styles from "./datasetSelector.module.scss";
+
+const COPY = {
+  loading: "\u6b63\u5728\u52a0\u8f7d\u6570\u636e\u96c6...",
+  title: "\u9009\u62e9\u6570\u636e\u96c6",
+  subtitle:
+    "\u9009\u62e9\u540e\u53ef\u5728\u5f53\u524d\u9875\u9762\u7ee7\u7eed\u7f16\u8f91\uff0c\u5e76\u5728\u9700\u8981\u65f6\u4fdd\u5b58\u6216\u53d1\u5e03\u3002",
+  searchPlaceholder:
+    "\u641c\u7d22\u6570\u636e\u96c6\u540d\u79f0\u6216\u63cf\u8ff0...",
+  clearSearch: "\u6e05\u9664\u641c\u7d22",
+  emptySearch: "\u672a\u627e\u5230\u5339\u914d\u7684\u6570\u636e\u96c6",
+  emptyDefault: "\u6682\u65e0\u53ef\u7528\u6570\u636e\u96c6",
+  emptySearchDesc: "\u8bd5\u8bd5\u522b\u7684\u5173\u952e\u8bcd\u3002",
+  emptyDefaultDesc:
+    "\u8bf7\u5148\u521b\u5efa\u6570\u636e\u96c6\u540e\u518d\u56de\u6765\u3002",
+  fieldsSuffix: "\u5b57\u6bb5",
+  metricsSuffix: "\u6307\u6807",
+  datasourceLabel: "\u6570\u636e\u6e90",
+  cancel: "\u53d6\u6d88",
+  confirm: "\u786e\u8ba4",
+} as const;
 
 interface DatasetSelectorProps {
   datasets: DatasetResponse[];
-  onSelect: (dataset: DatasetResponse) => void;
+  selectedDatasetId?: number;
+  onSelectDataset: (dataset: DatasetResponse) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
   isLoading?: boolean;
 }
 
 export const DatasetSelector = ({
   datasets,
-  onSelect,
+  selectedDatasetId,
+  onSelectDataset,
+  onConfirm,
+  onCancel,
   isLoading = false,
 }: DatasetSelectorProps) => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredDatasets = useMemo(() => {
-    if (!searchQuery.trim()) return datasets;
+    if (!searchQuery.trim()) {
+      return datasets;
+    }
+
     const query = searchQuery.toLowerCase();
     return datasets.filter(
       (dataset) =>
         dataset.name.toLowerCase().includes(query) ||
-        dataset.description?.toLowerCase().includes(query)
+        dataset.description?.toLowerCase().includes(query),
     );
   }, [datasets, searchQuery]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Escape") {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
       setSearchQuery("");
     }
   };
@@ -38,7 +68,7 @@ export const DatasetSelector = ({
         <div className={styles.content}>
           <div className={styles.loadingState}>
             <div className={styles.loadingSpinner} />
-            <p className={styles.loadingText}>正在加载数据集...</p>
+            <p className={styles.loadingText}>{COPY.loading}</p>
           </div>
         </div>
       </div>
@@ -49,10 +79,8 @@ export const DatasetSelector = ({
     <div className={styles.container}>
       <div className={styles.content}>
         <header className={styles.header}>
-          <h2 className={styles.title}>选择数据集</h2>
-          <p className={styles.subtitle}>
-            请选择一个数据集来创建新的看板
-          </p>
+          <h2 className={styles.title}>{COPY.title}</h2>
+          <p className={styles.subtitle}>{COPY.subtitle}</p>
         </header>
 
         <div className={styles.searchWrapper}>
@@ -61,20 +89,21 @@ export const DatasetSelector = ({
             <input
               type="text"
               className={styles.searchInput}
-              placeholder="搜索数据集名称或描述..."
+              placeholder={COPY.searchPlaceholder}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(event) => setSearchQuery(event.target.value)}
               onKeyDown={handleKeyDown}
             />
-            {searchQuery && (
+            {searchQuery ? (
               <button
+                type="button"
                 className={styles.clearButton}
                 onClick={() => setSearchQuery("")}
-                aria-label="清除搜索"
+                aria-label={COPY.clearSearch}
               >
-                ×
+                x
               </button>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -84,56 +113,73 @@ export const DatasetSelector = ({
               <FolderOpen size={48} strokeWidth={1.5} />
             </div>
             <h3 className={styles.emptyTitle}>
-              {searchQuery ? "未找到匹配的数据集" : "暂无可用数据集"}
+              {searchQuery ? COPY.emptySearch : COPY.emptyDefault}
             </h3>
             <p className={styles.emptyDesc}>
-              {searchQuery
-                ? "请尝试其他搜索关键词"
-                : "请先创建数据集后再创建看板"}
+              {searchQuery ? COPY.emptySearchDesc : COPY.emptyDefaultDesc}
             </p>
           </div>
         ) : (
           <div className={styles.grid}>
-            {filteredDatasets.map((dataset) => (
-              <button
-                key={dataset.id}
-                className={styles.card}
-                onClick={() => onSelect(dataset)}
-              >
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardIcon}>
-                    <Database size={20} />
-                  </div>
-                  <h3 className={styles.cardTitle}>{dataset.name}</h3>
-                </div>
+            {filteredDatasets.map((dataset) => {
+              const isSelected = dataset.id === selectedDatasetId;
 
-                {dataset.description && (
-                  <p className={styles.cardDesc}>{dataset.description}</p>
-                )}
+              return (
+                <button
+                  type="button"
+                  key={dataset.id}
+                  className={clsx(styles.card, isSelected && styles.cardSelected)}
+                  onClick={() => onSelectDataset(dataset)}
+                >
+                  <div className={styles.cardHeader}>
+                    <div className={styles.cardIcon}>
+                      <Database size={20} />
+                    </div>
+                    <h3 className={styles.cardTitle}>{dataset.name}</h3>
+                  </div>
 
-                <div className={styles.cardMeta}>
-                  <div className={styles.metaItem}>
-                    <Layers size={14} />
-                    <span>{dataset.fields?.length || 0} 字段</span>
-                  </div>
-                  <div className={styles.metaItem}>
-                    <BarChart3 size={14} />
-                    <span>{dataset.metrics?.length || 0} 指标</span>
-                  </div>
-                </div>
+                  {dataset.description ? (
+                    <p className={styles.cardDesc}>{dataset.description}</p>
+                  ) : null}
 
-                {dataset.datasource && (
-                  <div className={styles.cardDatasource}>
-                    <span className={styles.datasourceLabel}>数据源:</span>
-                    <span className={styles.datasourceName}>
-                      {dataset.datasource.name}
-                    </span>
+                  <div className={styles.cardMeta}>
+                    <div className={styles.metaItem}>
+                      <Layers size={14} />
+                      <span>{dataset.fields?.length || 0} {COPY.fieldsSuffix}</span>
+                    </div>
+                    <div className={styles.metaItem}>
+                      <BarChart3 size={14} />
+                      <span>{dataset.metrics?.length || 0} {COPY.metricsSuffix}</span>
+                    </div>
                   </div>
-                )}
-              </button>
-            ))}
+
+                  {dataset.datasource ? (
+                    <div className={styles.cardDatasource}>
+                      <span className={styles.datasourceLabel}>{COPY.datasourceLabel}</span>
+                      <span className={styles.datasourceName}>
+                        {dataset.datasource.name}
+                      </span>
+                    </div>
+                  ) : null}
+                </button>
+              );
+            })}
           </div>
         )}
+
+        <div className={styles.footer}>
+          <button type="button" className={styles.footerButton} onClick={onCancel}>
+            {COPY.cancel}
+          </button>
+          <button
+            type="button"
+            className={clsx(styles.footerButton, styles.footerPrimary)}
+            onClick={onConfirm}
+            disabled={!selectedDatasetId}
+          >
+            {COPY.confirm}
+          </button>
+        </div>
       </div>
     </div>
   );

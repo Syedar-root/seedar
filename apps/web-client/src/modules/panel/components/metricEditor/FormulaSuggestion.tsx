@@ -133,6 +133,9 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
         >
           <span className={styles.fieldBadge}>F</span>
           <span className={styles.itemName}>{field.name}</span>
+          {field.tableName && (
+            <span className={styles.tableTag}>{field.tableName}</span>
+          )}
           <span className={styles.itemId}>#F{field.id}</span>
         </li>
       );

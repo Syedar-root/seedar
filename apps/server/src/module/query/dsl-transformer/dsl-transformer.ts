@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DSL转换器 - 将query模块的DSL转换为metric-engine的Query
  */
 import {
@@ -29,6 +29,8 @@ import {
   DatasetJoinResponse,
   MetricType,
   MetricAggregateFunction,
+  PeriodOverPeriodType,
+  PeriodCalculationMode,
 } from '@/module/dataset/dataset.types';
 
 /**
@@ -52,6 +54,16 @@ export interface QueryDSL {
     op: string;
     value?: any;
     raw?: boolean;
+  }>;
+  tempMetrics?: Array<{
+    id: string;
+    type?: 'period_comparison';
+    alias?: string;
+    businessName?: string;
+    baseMetricId: number;
+    timeFieldId?: number;
+    periodType?: PeriodOverPeriodType;
+    calculationMode?: PeriodCalculationMode;
   }>;
   /** 限制返回的记录数（可选） */
   limit?: number;
@@ -689,3 +701,5 @@ export class DSLTransformer {
     return QueryBuilder.assignTableAliases(metricQuery);
   }
 }
+
+

@@ -1,1 +1,1 @@
-export { PanelPage } from './pages';
+export { PanelPage, PanelListPage } from './pages';

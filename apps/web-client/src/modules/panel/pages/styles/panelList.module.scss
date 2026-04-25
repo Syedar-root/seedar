@@ -1,0 +1,217 @@
+.container {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-bottom: 1px solid var(--border-base);
+  background: var(--bg-elevated);
+
+  h1 {
+    font-size: var(--font-xl);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+  }
+}
+
+.createButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-base);
+  cursor: pointer;
+  font-size: var(--font-base);
+  font-weight: 500;
+  transition:
+    background-color var(--transition-fast) ease,
+    box-shadow var(--transition-fast) ease;
+
+  &:hover {
+    background: var(--primary-hover);
+    box-shadow: var(--shadow-sm);
+  }
+
+  &:active {
+    background: var(--primary-active);
+  }
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-base);
+}
+
+.searchInput {
+  flex: 1;
+  max-width: 300px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-base);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-base);
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast);
+  outline: none;
+  min-height: 36px;
+
+  &::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  &:hover {
+    border-color: var(--border-hover);
+  }
+
+  &:focus {
+    border-color: var(--border-focus);
+  }
+}
+
+.content {
+  flex: 1;
+  padding: var(--spacing-xl);
+  overflow-y: auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+/* 与 DatasetCard 保持一致的卡片样式 */
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  gap: var(--spacing-md);
+  cursor: pointer;
+  transition: transform var(--transition-fast),
+              box-shadow var(--transition-fast),
+              border-color var(--transition-fast);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
+  }
+
+  .cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  .cardTitle {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    flex-shrink: 0;
+
+    &.published {
+      background: var(--success-light);
+      color: var(--success);
+    }
+
+    &.draft {
+      background: var(--bg-disabled);
+      color: var(--text-disabled);
+    }
+  }
+
+  .cardMeta {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.5;
+  }
+
+  .cardActions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-secondary);
+    margin-top: auto;
+
+    .btnGhost {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-sm);
+      min-width: 36px;
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-base);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+
+      &:hover {
+        background: var(--bg-hover);
+        border-color: var(--border-hover);
+        color: var(--text-primary);
+      }
+
+      &:active {
+        background: var(--bg-selected);
+      }
+    }
+
+    .btnDanger {
+      color: var(--danger);
+
+      &:hover {
+        background: var(--danger-light);
+        border-color: var(--danger);
+      }
+
+      &:active {
+        background: var(--danger-light);
+      }
+    }
+  }
+}

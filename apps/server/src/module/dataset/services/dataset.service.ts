@@ -459,7 +459,7 @@ export class DatasetService {
             tableName: dataset.mainTable.tableName,
             datasetName: dataset.mainTable.datasetName,
           }
-        : null,
+        : undefined,
       tables: tables.map((table) => ({
         id: table.id,
         datasourceTableId: table.datasourceTableId,
@@ -526,6 +526,8 @@ export class DatasetService {
       // 同环比指标
       baseMetricId: metric.baseMetricId,
       baseMetricName: metric.baseMetric?.name,
+      timeFieldId: metric.timeFieldId,
+      timeFieldName: metric.timeField?.businessName || metric.timeField?.name,
       timeDataSourceColumnId: metric.timeDataSourceColumnId,
       timeDataSourceColumnName: metric.timeDataSourceColumn?.columnName,
       periodType: metric.periodType,

@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
-import { useCreateDatasource } from "#pkg/seedar/ui-react";
+import {
+  useCreateDatasource,
+  useTestDatasourceConnection,
+} from "#pkg/seedar/ui-react";
+import type {
+  CreateDatasourceRequest,
+  DataSourceType,
+  TestDatasourceConnectionRequest,
+} from "#pkg/seedar/types";
 import { toast } from "sonner";
 import { DatasourceTypeSelector } from "../DatasourceTypeSelector/DatasourceTypeSelector";
 import {
@@ -17,6 +25,43 @@ interface CreateDatasourceDialogProps {
   onSuccess: (datasourceId: number) => void;
 }
 
+const buildConnectionPayload = (
+  config: ConnectionConfig,
+  type: DatasourceType,
+): TestDatasourceConnectionRequest["config"] | null => {
+  if (type === "mysql") {
+    return {
+      host: config.host,
+      port: config.port || "3306",
+      database: config.database,
+      username: config.username,
+      password: config.password,
+    };
+  }
+
+  if (type === "postgres") {
+    return {
+      host: config.host,
+      port: config.port || "5432",
+      database: config.database,
+      username: config.username,
+      password: config.password,
+    };
+  }
+
+  if (type === "clickhouse") {
+    return {
+      host: config.host,
+      port: config.port || "8123",
+      database: config.database,
+      username: config.username,
+      password: config.password,
+    };
+  }
+
+  return null;
+};
+
 export const CreateDatasourceDialog: React.FC<CreateDatasourceDialogProps> = ({
   open,
   onClose,
@@ -31,6 +76,7 @@ export const CreateDatasourceDialog: React.FC<CreateDatasourceDialogProps> = ({
   const [error, setError] = useState<string | undefined>();
 
   const { mutate: createDatasource } = useCreateDatasource();
+  const { mutateAsync: testDatasourceConnection } = useTestDatasourceConnection();
 
   const validateForm = (): boolean => {
     if (!connectionConfig.name.trim()) {
@@ -69,38 +115,20 @@ export const CreateDatasourceDialog: React.FC<CreateDatasourceDialogProps> = ({
       return;
     }
 
+    const config = buildConnectionPayload(connectionConfig, datasourceType);
+
+    if (!config) {
+      setError("当前数据源类型暂不支持");
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const createData: any = {
+    const createData: CreateDatasourceRequest = {
       name: connectionConfig.name,
-      type: datasourceType,
+      type: datasourceType as DataSourceType,
+      config,
     };
-
-    if (datasourceType === "mysql") {
-      createData.config = {
-        host: connectionConfig.host,
-        port: connectionConfig.port || "3306",
-        database: connectionConfig.database,
-        username: connectionConfig.username,
-        password: connectionConfig.password,
-      };
-    } else if (datasourceType === "postgres") {
-      createData.config = {
-        host: connectionConfig.host,
-        port: connectionConfig.port || "5432",
-        database: connectionConfig.database,
-        username: connectionConfig.username,
-        password: connectionConfig.password,
-      };
-    } else if (datasourceType === "clickhouse") {
-      createData.config = {
-        host: connectionConfig.host,
-        port: connectionConfig.port || "8123",
-        database: connectionConfig.database,
-        username: connectionConfig.username,
-        password: connectionConfig.password,
-      };
-    }
 
     createDatasource(createData, {
       onSuccess: (data) => {
@@ -135,6 +163,22 @@ export const CreateDatasourceDialog: React.FC<CreateDatasourceDialogProps> = ({
     setError(undefined);
   };
 
+  const handleTestConnection = async (config: ConnectionConfig) => {
+    const requestConfig = buildConnectionPayload(config, config.type);
+
+    if (!requestConfig) {
+      return {
+        success: false,
+        message: "当前数据源类型暂不支持",
+      };
+    }
+
+    return testDatasourceConnection({
+      type: config.type as DataSourceType,
+      config: requestConfig,
+    });
+  };
+
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
@@ -148,7 +192,7 @@ export const CreateDatasourceDialog: React.FC<CreateDatasourceDialogProps> = ({
             <div className={styles.form}>
               <div className={styles.formGroup}>
                 <label className={styles.label}>
-                  数据源名称 <span className={styles.required}>*</span>
+                  数据源名称<span className={styles.required}>*</span>
                 </label>
                 <input
                   type="text"
@@ -177,7 +221,10 @@ export const CreateDatasourceDialog: React.FC<CreateDatasourceDialogProps> = ({
                 onChange={handleConnectionConfigChange}
               />
 
-              <ConnectionTest config={connectionConfig} />
+              <ConnectionTest
+                config={connectionConfig}
+                onTest={handleTestConnection}
+              />
 
               {error && (
                 <div

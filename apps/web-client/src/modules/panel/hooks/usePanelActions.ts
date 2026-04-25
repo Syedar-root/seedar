@@ -1,186 +1,497 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
-  useUpdateQuery,
-  useUpdatePanel,
-  useCreateQuery,
   useCreatePanel,
+  useCreateQuery,
+  useExecuteTempQuery,
+  useUpdatePanel,
+  useUpdateQuery,
 } from "#pkg/seedar/ui-react";
-import { toast } from "sonner";
-import type { PanelType, PanelResponse } from "#pkg/seedar/types";
+import { PanelStatus } from "#pkg/seedar/types";
+import type {
+  DatasetResponse,
+  ExecuteQueryResponse,
+  PanelResponse,
+  PanelType,
+  QueryDimensionDSL,
+  QueryDSL,
+  QueryResponse,
+} from "#pkg/seedar/types";
 import type { NavigateFunction } from "react-router-dom";
-import type { DragItem } from "../components/dndHelper/dragZone/dragZone";
-import type { FilterItem } from "../components/queryZone/types";
+import { toast } from "sonner";
 import type {
   DisplayPanelType,
   PanelEditorConfig,
 } from "../components/panelEditor/types";
-import type { TitleConfig } from "../components/editableTitle";
+import { buildPersistedChartConfig } from "../components/panelEditor/chartSpec";
+import type { DragItem, FilterItem, TitleConfig } from "../types";
+
+type PanelWorkflowStatus = "unsaved" | "draft" | "published";
+type QueryDsl = QueryDSL;
+
+interface PersistedPanelPayload {
+  panelId: string;
+  queryId: string;
+  status: PanelWorkflowStatus;
+}
 
 interface UsePanelActionsParams {
   panelId?: string;
   panelData?: PanelResponse;
-  queryData?: any;
-  datasetData?: any;
+  queryData?: QueryResponse;
+  datasetData?: DatasetResponse;
+  selectedDataset?: DatasetResponse;
+  panelStatus?: PanelWorkflowStatus;
   dropFields: DragItem[];
   dropMetrics: DragItem[];
   dropFilters: FilterItem[];
   displayType: DisplayPanelType;
   editorConfig: PanelEditorConfig;
-  handleRun: () => void;
-  navigate: NavigateFunction;
+  buildDsl?: (baseDsl?: QueryDsl) => QueryDsl | undefined;
+  runPreview?: (dsl?: QueryDsl) => Promise<ExecuteQueryResponse | undefined>;
+  handleRun?: () => void;
+  navigate?: NavigateFunction;
   title: string;
   titleConfig?: TitleConfig;
+  onStatusChange?: (status: PanelWorkflowStatus) => void;
+  onPanelPersisted?: (payload: PersistedPanelPayload) => void;
 }
 
 interface UsePanelActionsReturn {
-  handleSave: () => void;
-  handleSaveAs: () => void;
+  handlePrimarySave: () => Promise<boolean>;
+  handleRun: () => Promise<boolean>;
+  handleRevertToDraft: () => Promise<boolean>;
+  isSaving: boolean;
+  isRunning: boolean;
+  isReverting: boolean;
+  primaryActionLabel: string;
+  handleSave: () => Promise<boolean>;
+  handleSaveAs: () => Promise<boolean>;
 }
+
+const toPanelType = (displayType: DisplayPanelType): PanelType => {
+  if (displayType === "table") {
+    return "table" as PanelType;
+  }
+
+  if (displayType === "card") {
+    return "card" as PanelType;
+  }
+
+  return "chart" as PanelType;
+};
+
+const getPanelConfig = (
+  displayType: DisplayPanelType,
+  editorConfig: PanelEditorConfig,
+) => {
+  if (displayType === "table" || displayType === "card") {
+    return { ...editorConfig };
+  }
+
+  return buildPersistedChartConfig(displayType, editorConfig) ?? {
+    type: displayType,
+  };
+};
 
 export const usePanelActions = ({
   panelId,
   panelData,
   queryData,
   datasetData,
+  selectedDataset,
+  panelStatus,
   dropFields,
   dropMetrics,
   dropFilters,
   displayType,
   editorConfig,
-  handleRun,
+  buildDsl,
+  runPreview,
+  handleRun: legacyHandleRun,
   navigate,
   title,
   titleConfig,
+  onStatusChange,
+  onPanelPersisted,
 }: UsePanelActionsParams): UsePanelActionsReturn => {
-  const { mutate: updateQuery } = useUpdateQuery();
-  const { mutate: updatePanel } = useUpdatePanel();
-  const { mutate: createQuery } = useCreateQuery();
-  const { mutate: createPanel } = useCreatePanel();
+  const { mutateAsync: updateQueryAsync, isPending: isUpdateQueryPending } =
+    useUpdateQuery();
+  const { mutateAsync: updatePanelAsync, isPending: isUpdatePanelPending } =
+    useUpdatePanel();
+  const { mutateAsync: createQueryAsync, isPending: isCreateQueryPending } =
+    useCreateQuery();
+  const { mutateAsync: createPanelAsync, isPending: isCreatePanelPending } =
+    useCreatePanel();
+  const { mutateAsync: executeTempQueryAsync } = useExecuteTempQuery();
 
-  const getPanelTypeAndConfig = useCallback(() => {
-    const panelType =
-      displayType === "table" || displayType === "card" ? displayType : "chart";
+  const [isSavingState, setIsSavingState] = useState(false);
+  const [isRunningState, setIsRunningState] = useState(false);
+  const [isRevertingState, setIsRevertingState] = useState(false);
+  const [persistedState, setPersistedState] = useState<
+    PersistedPanelPayload | undefined
+  >();
 
-    const config =
-      displayType === "table" || displayType === "card"
-        ? {}
-        : { ...editorConfig, type: displayType };
+  const effectivePanelId = panelId ?? panelData?.id ?? persistedState?.panelId;
+  const effectiveQueryId =
+    queryData?.id ?? panelData?.queryId ?? persistedState?.queryId;
+  const effectiveDataset = selectedDataset ?? datasetData;
 
-    return { panelType, config };
-  }, [displayType, editorConfig]);
+  const effectiveStatus: PanelWorkflowStatus = useMemo(() => {
+    if (panelStatus) {
+      return panelStatus;
+    }
+    if (panelData?.status === PanelStatus.PUBLISHED) {
+      return "published";
+    }
+    if (panelData?.status === PanelStatus.DRAFT) {
+      return "draft";
+    }
+    if (persistedState?.status) {
+      return persistedState.status;
+    }
+    if (effectivePanelId) {
+      return "draft";
+    }
+    return "unsaved";
+  }, [
+    effectivePanelId,
+    panelData?.status,
+    panelStatus,
+    persistedState?.status,
+  ]);
 
-  const getQueryDsl = useCallback(
-    (baseDsl?: any) => {
+  const primaryActionLabel =
+    effectiveStatus === "published" ? "Save and update" : "Save and publish";
+
+  const buildDslFallback = useCallback(
+    (baseDsl?: QueryDsl): QueryDsl | undefined => {
+      if (!effectiveDataset?.id || !effectiveDataset.mainTableId) {
+        return undefined;
+      }
+
       return {
-        datasetId: datasetData?.id!,
-        tableId: datasetData?.mainTableId!,
-        joins: datasetData?.joins || [],
-        ...baseDsl,
-        dimensions: dropFields.map((f) => f.id),
-        metrics: dropMetrics,
-        filters: dropFilters.map((f) => ({
-          fieldId: f.fieldId,
-          op: f.op,
-          value: f.value,
+        ...(baseDsl ?? {}),
+        datasetId: effectiveDataset.id,
+        tableId: effectiveDataset.mainTableId,
+        // joins: effectiveDataset.joins || [],
+        dimensions: dropFields.map((field) => {
+          const dimensionDsl = field.dimensionDsl as QueryDimensionDSL | undefined;
+          if (dimensionDsl) {
+            return dimensionDsl;
+          }
+          const alias =
+            typeof field.alias === "string" ? field.alias : undefined;
+          return {
+            fieldId: Number(field.id),
+            alias,
+          };
+        }),
+        metrics: dropMetrics.map((metric) => ({
+          id: Number(metric.id),
+          alias: typeof metric.alias === "string" ? metric.alias : undefined,
+        })),
+        filters: dropFilters.map((filter) => ({
+          fieldId: filter.fieldId,
+          op: filter.op,
+          value: filter.value,
         })),
       };
     },
-    [datasetData, dropFields, dropMetrics, dropFilters],
+    [dropFields, dropFilters, dropMetrics, effectiveDataset],
   );
 
-  const handleSave = useCallback(() => {
-    if (!panelData || !panelId) return;
+  const resolveDsl = useCallback(
+    (baseDsl?: QueryDsl): QueryDsl | undefined =>
+      buildDsl?.(baseDsl) ?? buildDslFallback(baseDsl),
+    [buildDsl, buildDslFallback],
+  );
 
-    const { panelType, config } = getPanelTypeAndConfig();
-    const dsl = getQueryDsl(queryData?.dsl);
+  const runPreviewWithDsl = useCallback(
+    async (dsl?: QueryDsl): Promise<ExecuteQueryResponse | undefined> => {
+      if (!dsl) {
+        return undefined;
+      }
 
-    updatePanel(
-      {
-        id: panelId,
-        data: {
-          title,
-          titleConfig,
-          type: panelType as any,
-          config,
-        },
-      },
-      {
-        onSuccess: () => {
-          updateQuery(
-            {
-              id: panelData?.queryId!,
-              data: {
-                dsl,
-              },
-            },
-            {
-              onSuccess: () => {
-                handleRun();
-                toast.success("保存成功");
-              },
-            },
-          );
-        },
-      },
-    );
-  }, [
-    panelData,
-    panelId,
-    queryData,
-    title,
-    titleConfig,
-    getPanelTypeAndConfig,
-    getQueryDsl,
-    updateQuery,
-    updatePanel,
-    handleRun,
-  ]);
+      if (runPreview) {
+        return runPreview(dsl);
+      }
 
-  const handleSaveAs = useCallback(() => {
-    if (!panelData || !panelId) return;
+      if (legacyHandleRun) {
+        legacyHandleRun();
+        return undefined;
+      }
 
-    const dsl = getQueryDsl(queryData?.dsl);
-    const { panelType, config } = getPanelTypeAndConfig();
+      return executeTempQueryAsync(dsl);
+    },
+    [executeTempQueryAsync, legacyHandleRun, runPreview],
+  );
 
-    createQuery(
-      {
-        name: "未命名查询",
-        datasetId: datasetData?.id!,
+  const ensurePanelPersisted = useCallback(
+    async (options: {
+      publishAfterCreate: boolean;
+    }): Promise<PersistedPanelPayload> => {
+      const dsl = resolveDsl(
+        (queryData?.dsl as QueryDsl | undefined) ?? undefined,
+      );
+      if (!dsl) {
+        throw new Error(
+          "No dataset selected or dataset metadata is incomplete.",
+        );
+      }
+
+      if (effectivePanelId && effectiveQueryId) {
+        return {
+          panelId: effectivePanelId,
+          queryId: effectiveQueryId,
+          status: effectiveStatus,
+        };
+      }
+
+      if (!effectiveDataset?.id) {
+        throw new Error("Dataset is required before persisting panel.");
+      }
+
+      const createdQuery = await createQueryAsync({
+        name: "Untitled Query",
+        datasetId: effectiveDataset.id,
         dsl,
-      },
-      {
-        onSuccess: (data) => {
-          createPanel(
-            {
-              title: title || "未命名面板",
-              titleConfig,
-              queryId: data.id,
-              type: panelType as PanelType,
-              config,
-            },
-            {
-              onSuccess: (data) => {
-                navigate(`/panel/${data.id}`);
-                toast.success("另存为成功");
-              },
-            },
-          );
+      });
+
+      const panelType = toPanelType(displayType);
+      const panelConfig = getPanelConfig(displayType, editorConfig);
+      const createdPanel = await createPanelAsync({
+        title: title || "Untitled Panel",
+        titleConfig,
+        queryId: createdQuery.id,
+        type: panelType,
+        config: panelConfig,
+      });
+
+      let nextStatus: PanelWorkflowStatus = "draft";
+      if (options.publishAfterCreate) {
+        await updatePanelAsync({
+          id: createdPanel.id,
+          data: {
+            title: title || "Untitled Panel",
+            titleConfig,
+            type: panelType,
+            config: panelConfig,
+            status: PanelStatus.PUBLISHED,
+          },
+        });
+        nextStatus = "published";
+      }
+
+      navigate?.(`/panel/${createdPanel.id}`, { replace: true });
+      onStatusChange?.(nextStatus);
+
+      const payload = {
+        panelId: createdPanel.id,
+        queryId: createdQuery.id,
+        status: nextStatus,
+      };
+      setPersistedState(payload);
+      onPanelPersisted?.(payload);
+      return payload;
+    },
+    [
+      createPanelAsync,
+      createQueryAsync,
+      displayType,
+      editorConfig,
+      effectiveDataset,
+      effectivePanelId,
+      effectiveQueryId,
+      effectiveStatus,
+      navigate,
+      onPanelPersisted,
+      onStatusChange,
+      persistedState?.panelId,
+      persistedState?.queryId,
+      queryData?.dsl,
+      resolveDsl,
+      title,
+      titleConfig,
+      updatePanelAsync,
+    ],
+  );
+
+  const handlePrimarySave = useCallback(async () => {
+    try {
+      setIsSavingState(true);
+      const panelType = toPanelType(displayType);
+      const panelConfig = getPanelConfig(displayType, editorConfig);
+      const dsl = resolveDsl(
+        (queryData?.dsl as QueryDsl | undefined) ?? undefined,
+      );
+
+      if (!dsl) {
+        toast.error("Please select a dataset first.");
+        return false;
+      }
+
+      if (effectiveStatus === "unsaved") {
+        await ensurePanelPersisted({ publishAfterCreate: true });
+        toast.success("Panel published.");
+        return true;
+      }
+
+      if (!effectivePanelId || !effectiveQueryId) {
+        toast.error("Panel resource is incomplete.");
+        return false;
+      }
+
+      await updateQueryAsync({
+        id: effectiveQueryId,
+        data: { dsl },
+      });
+
+      if (effectiveStatus === "draft") {
+        await updatePanelAsync({
+          id: effectivePanelId,
+          data: {
+            title: title || "Untitled Panel",
+            titleConfig,
+            type: panelType,
+            config: panelConfig,
+            status: PanelStatus.PUBLISHED,
+          },
+        });
+        setPersistedState((current) =>
+          current
+            ? {
+                ...current,
+                status: "published",
+              }
+            : current,
+        );
+        onStatusChange?.("published");
+        toast.success("Panel published.");
+        return true;
+      }
+
+      await updatePanelAsync({
+        id: effectivePanelId,
+        data: {
+          title: title || "Untitled Panel",
+          titleConfig,
+          type: panelType,
+          config: panelConfig,
         },
-      },
-    );
+      });
+      toast.success("Panel updated.");
+      return true;
+    } catch {
+      toast.error("Save failed. Please try again.");
+      return false;
+    } finally {
+      setIsSavingState(false);
+    }
   }, [
-    panelData,
-    panelId,
-    datasetData,
-    queryData,
+    displayType,
+    editorConfig,
+    effectivePanelId,
+    effectiveQueryId,
+    effectiveStatus,
+    ensurePanelPersisted,
+    onStatusChange,
+    queryData?.dsl,
+    resolveDsl,
     title,
     titleConfig,
-    getQueryDsl,
-    getPanelTypeAndConfig,
-    createQuery,
-    createPanel,
-    navigate,
+    updatePanelAsync,
+    updateQueryAsync,
   ]);
 
-  return { handleSave, handleSaveAs };
+  const handleRun = useCallback(async () => {
+    try {
+      setIsRunningState(true);
+      const dsl = resolveDsl(
+        (queryData?.dsl as QueryDsl | undefined) ?? undefined,
+      );
+
+      if (!dsl) {
+        toast.error("Please select a dataset first.");
+        return false;
+      }
+
+      if (!dropFields.length && !dropMetrics.length) {
+        toast.error("Please add at least one dimension or metric.");
+        return false;
+      }
+
+      if (effectiveStatus === "unsaved") {
+        await ensurePanelPersisted({ publishAfterCreate: false });
+      }
+
+      await runPreviewWithDsl(dsl);
+      return true;
+    } catch (error) {
+      console.error("Run failed:", error);
+      toast.error("Run failed. Please try again.");
+      return false;
+    } finally {
+      setIsRunningState(false);
+    }
+  }, [
+    dropFields.length,
+    dropMetrics.length,
+    effectiveStatus,
+    ensurePanelPersisted,
+    queryData?.dsl,
+    resolveDsl,
+    runPreviewWithDsl,
+  ]);
+
+  const handleRevertToDraft = useCallback(async () => {
+    if (!effectivePanelId) {
+      toast.error("No panel available.");
+      return false;
+    }
+
+    try {
+      setIsRevertingState(true);
+      await updatePanelAsync({
+        id: effectivePanelId,
+        data: {
+          status: PanelStatus.DRAFT,
+        },
+      });
+      setPersistedState((current) =>
+        current
+          ? {
+              ...current,
+              status: "draft",
+            }
+          : current,
+      );
+      onStatusChange?.("draft");
+      toast.success("Panel reverted to draft.");
+      return true;
+    } catch {
+      toast.error("Revert failed. Please try again.");
+      return false;
+    } finally {
+      setIsRevertingState(false);
+    }
+  }, [effectivePanelId, onStatusChange, updatePanelAsync]);
+
+  const isSaving =
+    isSavingState ||
+    isCreateQueryPending ||
+    isCreatePanelPending ||
+    isUpdateQueryPending ||
+    isUpdatePanelPending;
+
+  return {
+    handlePrimarySave,
+    handleRun,
+    handleRevertToDraft,
+    isSaving,
+    isRunning: isRunningState,
+    isReverting: isRevertingState,
+    primaryActionLabel,
+    handleSave: handlePrimarySave,
+    handleSaveAs: handlePrimarySave,
+  };
 };

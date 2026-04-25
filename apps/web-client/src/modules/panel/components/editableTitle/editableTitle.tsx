@@ -50,11 +50,7 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
           enableTooltip={currentConfig.enableTooltip}
           maxTitleWidth={currentConfig.maxTitleWidth}
         />
-        <Pencil
-          size={14}
-          className={styles.editIcon}
-          onClick={handleEdit}
-        />
+        <Pencil size={14} className={styles.editIcon} onClick={handleEdit} />
       </div>
 
       <TitleEditorDialog

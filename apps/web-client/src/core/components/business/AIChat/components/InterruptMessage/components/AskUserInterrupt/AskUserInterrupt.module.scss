@@ -1,0 +1,228 @@
+.container {
+  padding: var(--chat-space-md);
+  background: var(--chat-bg-secondary);
+  border-radius: var(--chat-radius-lg);
+  border: 1px solid var(--chat-border-default);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chat-space-md);
+}
+
+.header {
+  font: var(--chat-text-heading);
+  color: var(--chat-color-primary);
+  letter-spacing: var(--chat-text-heading-tracking);
+  margin-bottom: var(--chat-space-sm);
+}
+
+.input-row {
+  display: flex;
+  gap: var(--chat-space-sm);
+}
+
+.input-field {
+  flex: 1;
+  padding: var(--chat-space-sm) var(--chat-space-md);
+  border-radius: var(--chat-radius-md);
+  border: 1px solid var(--chat-border-default);
+  font: var(--chat-text-body);
+  color: var(--chat-color-primary);
+  background: var(--chat-bg-primary);
+  outline: none;
+  transition:
+    border-color var(--chat-transition-fast),
+    box-shadow var(--chat-transition-fast);
+
+  &:focus {
+    border-color: var(--chat-color-accent);
+    box-shadow: 0 0 0 2px var(--primary-light);
+  }
+
+  &:disabled,
+  &[data-disabled] {
+    color: var(--chat-color-muted);
+    background: color-mix(
+      in oklab,
+      var(--chat-bg-primary) 70%,
+      var(--chat-bg-secondary) 30%
+    );
+    border-color: var(--chat-border-default);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  &::placeholder {
+    color: var(--chat-color-muted);
+  }
+}
+
+.question-area {
+  flex: 1;
+}
+
+.footer-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--chat-space-md);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--chat-space-sm);
+}
+
+.footer-right {
+  display: flex;
+  gap: var(--chat-space-sm);
+}
+
+.default-button {
+  padding: var(--chat-space-xs) var(--chat-space-md);
+  font: var(--chat-text-body);
+  color: var(--chat-color-secondary);
+  background: var(--chat-bg-primary);
+  border: 1px solid var(--chat-border-default);
+  border-radius: var(--chat-radius-md);
+  cursor: pointer;
+  transition: all var(--chat-transition-fast);
+
+  &:hover {
+    color: var(--chat-color-primary);
+    border-color: var(--chat-border-strong);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--ring-color);
+  }
+
+  &:disabled,
+  &[data-disabled] {
+    color: var(--chat-color-muted);
+    background: color-mix(
+      in oklab,
+      var(--chat-bg-primary) 70%,
+      var(--chat-bg-secondary) 30%
+    );
+    border-color: var(--chat-border-default);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+.primary-button {
+  position: relative;
+  padding: var(--chat-space-xs) var(--chat-space-md);
+  font: var(--chat-text-body);
+  color: var(--chat-bg-primary);
+  background: var(--chat-color-accent);
+  border: none;
+  border-radius: var(--chat-radius-md);
+  cursor: pointer;
+  transition: all var(--transition-base);
+
+  &:hover {
+    background: var(--primary-hover);
+    box-shadow: 0 0 0 4px
+      color-mix(in oklab, var(--primary-hover) 20%, var(--chat-bg-primary) 80%) !important;
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--primary-light);
+  }
+
+  &:disabled,
+  &[data-disabled] {
+    color: var(--chat-color-muted);
+    background: color-mix(
+      in oklab,
+      var(--chat-color-muted) 18%,
+      var(--chat-bg-secondary) 82%
+    );
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+.summary-area {
+  padding: var(--chat-space-sm) 0;
+
+  h3 {
+    font: var(--chat-text-heading);
+    color: var(--chat-color-primary);
+    margin-bottom: var(--chat-space-md);
+  }
+}
+
+.summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--chat-space-sm);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  padding: var(--chat-space-sm);
+  background: var(--chat-bg-primary);
+  border-radius: var(--chat-radius-sm);
+  gap: var(--chat-space-xs);
+}
+
+.summary-question {
+  font: var(--chat-text-body);
+  color: var(--chat-color-secondary);
+  flex: 1;
+}
+
+.summary-answer {
+  font: var(--chat-text-body);
+  color: var(--chat-color-primary);
+  font-weight: 500;
+}
+
+.wait-answer {
+  --wait-answer-color: color-mix(
+    in oklab,
+    var(--chat-color-secondary) 40%,
+    #fff
+  );
+
+  font: var(--chat-text-label);
+  color: var(--wait-answer-color);
+  letter-spacing: 0.5px;
+  background: linear-gradient(
+    90deg,
+    var(--wait-answer-color) 0%,
+    var(--wait-answer-color) 25%,
+    #000 40%,
+    #000 60%,
+    var(--wait-answer-color) 75%,
+    var(--wait-answer-color) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: shimmer 1s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wait-answer {
+    animation: none;
+  }
+}

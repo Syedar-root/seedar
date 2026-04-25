@@ -1,0 +1,48 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.step {
+  width: 20px;
+  height: 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.step:hover {
+  transform: scaleY(1.5);
+}
+
+.step-current {
+  background: var(--chat-color-accent);
+  transform: scaleY(1.5);
+}
+
+.step-answered {
+  background: var(--chat-color-secondary);
+}
+
+.step-skipped {
+  background: var(--chat-color-muted);
+  opacity: 0.5;
+}
+
+.step-default {
+  background: var(--chat-color-muted);
+}
+
+.step-default:hover {
+  background: var(--chat-color-secondary);
+  opacity: 0.7;
+}
+
+.counter {
+  font: var(--chat-text-label);
+  color: var(--chat-color-muted);
+  margin-left: var(--chat-space-xs);
+  letter-spacing: var(--chat-text-label-tracking);
+  text-transform: var(--chat-text-label-transform);
+}

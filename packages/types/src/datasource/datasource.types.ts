@@ -13,11 +13,11 @@ export enum DataSourceType {
  * MySQL 数据源配置
  */
 export class MySqlConfig {
-  host: string;
+  host!: string;
   port?: string = '3306';
-  database: string;
-  username: string;
-  password: string;
+  database!: string;
+  username!: string;
+  password!: string;
   iv?: string;
 }
 
@@ -25,11 +25,11 @@ export class MySqlConfig {
  * PostgreSQL 数据源配置
  */
 export class PgConfig {
-  host: string;
+  host!: string;
   port?: string = '5432';
-  database: string;
-  username: string;
-  password: string;
+  database!: string;
+  username!: string;
+  password!: string;
   iv?: string;
 }
 
@@ -37,11 +37,11 @@ export class PgConfig {
  * ClickHouse 数据源配置
  */
 export class ClickHouseConfig {
-  host: string;
+  host!: string;
   port?: string = '8123';
-  database: string;
-  username: string;
-  password: string;
+  database!: string;
+  username!: string;
+  password!: string;
   iv?: string;
 }
 
@@ -49,7 +49,7 @@ export class ClickHouseConfig {
  * CSV 数据源配置
  */
 export class CsvConfig {
-  filePath: string;
+  filePath!: string;
   delimiter?: string = ',';
   encoding?: string = 'utf-8';
 }
@@ -58,7 +58,7 @@ export class CsvConfig {
  * Excel 数据源配置
  */
 export class ExcelConfig {
-  filePath: string;
+  filePath!: string;
   sheetName?: string;
 }
 

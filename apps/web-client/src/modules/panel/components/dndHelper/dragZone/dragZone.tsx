@@ -1,10 +1,7 @@
 import React from "react";
 import { useDrop } from "react-dnd";
-
-export interface DragItem {
-  id: string | number;
-  [key: string]: any;
-}
+import type { DragItem } from "../../../types";
+export type { DragItem } from "../../../types";
 // 🔥 定义组件Props类型
 interface DragZoneProps {
   // 放置成功的回调函数（TS严格约束参数）

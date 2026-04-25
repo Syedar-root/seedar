@@ -1,34 +1,51 @@
 .typeSelector {
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-sm);
 }
 
-.title {
+.title,
+.subTitle {
+  color: var(--text-primary);
   font-size: var(--font-lg);
   font-weight: 600;
-  color: var(--text-primary);
 }
 
-.grid {
+.subTitle {
+  font-size: var(--font-base);
+}
+
+.primaryGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--spacing-sm);
 }
 
-.typeItem {
+.primaryItem,
+.chartPresetItem {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px var(--spacing-sm);
+  width: 100%;
   border: 1px solid var(--border-base);
   border-radius: var(--radius-sm);
   cursor: pointer;
   background: var(--bg-elevated);
-  font-size: var(--font-base);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
 
   &:hover {
     border-color: var(--primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
   }
 
   &.active {
@@ -37,6 +54,45 @@
   }
 }
 
-.label {
+.primaryItem {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  min-height: 76px;
+  padding: 12px;
+  text-align: left;
+}
+
+.primaryLabel,
+.chartPresetLabel {
   color: var(--text-primary);
+  font-size: var(--font-base);
+  font-weight: 600;
+}
+
+.primaryDescription {
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  line-height: 1.4;
+}
+
+.chartPresetGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.chartPresetItem {
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px var(--spacing-sm);
+}
+
+@media (max-width: 768px) {
+  .primaryGrid,
+  .chartPresetGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
