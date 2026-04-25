@@ -43,10 +43,10 @@ flowchart LR
 
 - Git tag 使用 `vX.Y.Z`。
 - Docker 镜像：
-  - `seedarhq/seedar-server:X.Y.Z`
-  - `seedarhq/seedar-server:latest`
-  - `seedarhq/seedar-web:X.Y.Z`
-  - `seedarhq/seedar-web:latest`
+  - `syedarhandsome/seedar-server:X.Y.Z`
+  - `syedarhandsome/seedar-server:latest`
+  - `syedarhandsome/seedar-web:X.Y.Z`
+  - `syedarhandsome/seedar-web:latest`
 - npm CLI 包版本与发布 tag 对齐。
 
 ## Legacy 兼容
@@ -54,6 +54,6 @@ flowchart LR
 `deploy/up-prod.ps1` 与 `deploy/migrate-prod.ps1` 仍保留，但已降级为 legacy 入口：
 
 - 不再本地 build 镜像。
-- 默认拉取 `seedarhq` 下的远端镜像。
+- 默认拉取 `syedarhandsome` 下的远端镜像。
 - 默认版本为 `latest`，也可通过 `SEEDAR_VERSION` 覆盖。
 - 新部署路径应优先使用 `seedar install` / `seedar update`。

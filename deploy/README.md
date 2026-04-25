@@ -37,8 +37,8 @@ The CLI generates:
 ## Release model
 
 - Docker images are published to DockerHub:
-  - `seedarhq/seedar-server:<version>`
-  - `seedarhq/seedar-web:<version>`
+  - `syedarhandsome/seedar-server:<version>`
+  - `syedarhandsome/seedar-web:<version>`
 - CLI is published to npm as `@seedar/cli`.
 - Git tags use `vX.Y.Z`.
 

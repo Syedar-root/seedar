@@ -48,7 +48,10 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "docker_namespace=${DOCKERHUB_USERNAME}" >> "$GITHUB_OUTPUT"
           node -e "const pkg=require('./apps/cli/package.json'); const version=process.argv[1]; if (pkg.version !== version) { console.error(`apps/cli/package.json version ${pkg.version} does not match tag ${version}`); process.exit(1); }" "$VERSION"
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -66,8 +69,8 @@ jobs:
           file: deploy/docker/server.Dockerfile
           push: true
           tags: |
-            seedarhq/seedar-server:${{ steps.release.outputs.version }}
-            seedarhq/seedar-server:latest
+            ${{ steps.release.outputs.docker_namespace }}/seedar-server:${{ steps.release.outputs.version }}
+            ${{ steps.release.outputs.docker_namespace }}/seedar-server:latest
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
@@ -76,8 +79,8 @@ jobs:
           file: deploy/docker/web.Dockerfile
           push: true
           tags: |
-            seedarhq/seedar-web:${{ steps.release.outputs.version }}
-            seedarhq/seedar-web:latest
+            ${{ steps.release.outputs.docker_namespace }}/seedar-web:${{ steps.release.outputs.version }}
+            ${{ steps.release.outputs.docker_namespace }}/seedar-web:latest
 
       - name: Build CLI
         run: pnpm --filter @seedar/cli build

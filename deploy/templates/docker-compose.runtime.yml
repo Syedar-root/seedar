@@ -29,7 +29,7 @@ services:
       - seedar-net
 
   server:
-    image: seedarhq/seedar-server:${SEEDAR_VERSION}
+    image: syedarhandsome/seedar-server:${SEEDAR_VERSION}
     container_name: ${SEEDAR_PROJECT_NAME}-server
     restart: unless-stopped
     depends_on:
@@ -51,7 +51,7 @@ services:
       - seedar-net
 
   migrate:
-    image: seedarhq/seedar-server:${SEEDAR_VERSION}
+    image: syedarhandsome/seedar-server:${SEEDAR_VERSION}
     restart: "no"
     depends_on:
       mysql:
@@ -78,7 +78,7 @@ services:
       - seedar-net
 
   web:
-    image: seedarhq/seedar-web:${SEEDAR_VERSION}
+    image: syedarhandsome/seedar-web:${SEEDAR_VERSION}
     container_name: ${SEEDAR_PROJECT_NAME}-web
     restart: unless-stopped
     depends_on:
