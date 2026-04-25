@@ -124,8 +124,8 @@ jobs:
         working-directory: apps/cli
         shell: bash
         run: |
-          npm version --no-git-tag-version "${{ steps.meta.outputs.test_version }}"
-          PACKAGE_FILE=$(npm pack)
+          pnpm pkg set "version=${{ steps.meta.outputs.test_version }}"
+          PACKAGE_FILE=$(npm pack --silent)
           echo "package_file=$PACKAGE_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Upload CLI test package artifact
@@ -138,7 +138,7 @@ jobs:
       - name: Publish CLI test package
         if: env.HAS_NPM_TOKEN == 'true'
         working-directory: apps/cli
-        run: npm publish --tag test --access public
+        run: pnpm publish --tag test --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
