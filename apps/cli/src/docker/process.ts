@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 
-import type { RunResult, RuntimeLayout } from "./types.js";
+import type { RunResult, RuntimeLayout } from "../shared/types.js";
 
 interface RunCommandOptions {
   cwd?: string;

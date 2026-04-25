@@ -9,10 +9,10 @@ import {
   DEFAULT_PORTS,
   DEFAULT_VERSION,
   REQUIRED_ENV_KEYS,
-} from "./constants.js";
-import { getAvailablePort } from "./ports.js";
-import { buildDefaultEnv, parseEnvFile, pathExists } from "./runtime.js";
-import type { CliFlags, EnvConfig, InstallConfigField, RuntimeLayout } from "./types.js";
+} from "../shared/constants.js";
+import { getAvailablePort } from "../docker/ports.js";
+import { buildDefaultEnv, parseEnvFile, pathExists } from "../runtime/index.js";
+import type { CliFlags, EnvConfig, InstallConfigField, RuntimeLayout } from "../shared/types.js";
 
 const PROMPTABLE_INSTALL_FIELDS = [
   "MYSQL_PORT",

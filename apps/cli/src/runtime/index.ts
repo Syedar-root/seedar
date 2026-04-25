@@ -7,8 +7,8 @@ import {
   COMPOSE_TEMPLATE,
   ENV_RENDER_ORDER,
   REQUIRED_ENV_KEYS,
-} from "./constants.js";
-import type { EnvConfig, InstallState, RuntimeLayout } from "./types.js";
+} from "../shared/constants.js";
+import type { EnvConfig, InstallState, RuntimeLayout } from "../shared/types.js";
 
 export function resolveInstallRoot(): string {
   const override = process.env.SEEDAR_INSTALL_DIR?.trim();
