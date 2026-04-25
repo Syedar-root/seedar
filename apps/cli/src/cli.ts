@@ -10,7 +10,13 @@ import {
   REQUIRED_ENV_KEYS,
   VALID_SERVICES,
 } from "./constants.js";
-import { runCommand, runCommandOrThrow, runDockerCompose, runDockerComposeOrThrow } from "./process.js";
+import {
+  runCommand,
+  runCommandOrThrow,
+  runDockerCompose,
+  runDockerComposeOrThrow,
+  spawnDetached,
+} from "./process.js";
 import { getAvailablePort, isPortAvailable } from "./ports.js";
 import { collectInstallConfig, collectProblemInstallConfig } from "./prompts.js";
 import {
@@ -45,6 +51,9 @@ type PortEnvKey = "MYSQL_PORT" | "SERVER_PORT" | "WEB_PORT";
 
 const PORT_ENV_KEYS: PortEnvKey[] = ["MYSQL_PORT", "SERVER_PORT", "WEB_PORT"];
 const COMPOSE_PORT_CONFLICT_REGEX = /Bind for (?:\[[^\]]+\]|[0-9.]+):(\d+) failed: port is already allocated/i;
+const CLI_PACKAGE_NAME = "@syedar/seedar-cli";
+const CLI_DIVIDER = "=".repeat(68);
+const CLI_SUB_DIVIDER = "-".repeat(68);
 
 function parseArgs(rawArgs: string[]): ParsedCommand {
   const flags: CliFlags = {
@@ -52,6 +61,7 @@ function parseArgs(rawArgs: string[]): ParsedCommand {
     force: false,
     follow: false,
     removeData: false,
+    all: false,
   };
   const positional: string[] = [];
 
@@ -70,6 +80,10 @@ function parseArgs(rawArgs: string[]): ParsedCommand {
     }
     if (arg === "--remove-data") {
       flags.removeData = true;
+      continue;
+    }
+    if (arg === "--all") {
+      flags.all = true;
       continue;
     }
 
@@ -167,11 +181,21 @@ function printInstallSummary(layout: RuntimeLayout, env: EnvConfig): void {
 
 function printInstallStage(title: string): void {
   console.log("");
-  console.log(`==> ${title}`);
+  console.log(CLI_DIVIDER);
+  console.log(`[Seedar] ${title}`);
+  console.log(CLI_SUB_DIVIDER);
 }
 
 function printInstallDetail(message: string): void {
-  console.log(`  - ${message}`);
+  console.log(`[INFO] ${message}`);
+}
+
+function printInstallSuccess(message: string): void {
+  console.log(`[ OK ] ${message}`);
+}
+
+function printInstallWarn(message: string): void {
+  console.log(`[WARN] ${message}`);
 }
 
 async function runInstallFlow(layout: RuntimeLayout, env: EnvConfig): Promise<void> {
@@ -217,6 +241,45 @@ async function cleanupComposeServices(
   }
 
   await runDockerCompose(layout, ["rm", "-sf", ...services]);
+}
+
+async function isGlobalNpmCliInstall(): Promise<boolean> {
+  const entryPath = process.argv[1];
+  if (!entryPath) {
+    return false;
+  }
+
+  const npmRootResult = await runCommand("npm", ["root", "-g"]);
+  if (npmRootResult.code !== 0) {
+    return false;
+  }
+
+  const packageRoot = path.resolve(entryPath, "..", "..");
+  const expectedRoot = path.resolve(npmRootResult.stdout.trim(), ...CLI_PACKAGE_NAME.split("/"));
+  return normalizePathForCompare(packageRoot) === normalizePathForCompare(expectedRoot);
+}
+
+async function scheduleCliSelfUninstall(): Promise<boolean> {
+  if (!(await isGlobalNpmCliInstall())) {
+    return false;
+  }
+
+  if (process.platform === "win32") {
+    spawnDetached(
+      "powershell",
+      [
+        "-NoProfile",
+        "-WindowStyle",
+        "Hidden",
+        "-Command",
+        `Start-Sleep -Seconds 2; npm uninstall -g ${CLI_PACKAGE_NAME}`,
+      ],
+    );
+    return true;
+  }
+
+  spawnDetached("sh", ["-lc", `sleep 2; npm uninstall -g ${CLI_PACKAGE_NAME} >/dev/null 2>&1`]);
+  return true;
 }
 
 function parseComposePortConflict(error: unknown): number | null {
@@ -335,10 +398,10 @@ async function runInstallConfigCheck(
   printInstallDetail("端口冲突将在启动阶段自动避让并持续重试");
   const issues = await collectInstallConfigIssues(env);
   if (issues.length > 0) {
-    printInstallDetail("配置检查未通过：");
+    printInstallWarn("配置检查未通过：");
     console.warn(formatConfigIssues(issues));
   } else {
-    printInstallDetail("配置检查通过");
+    printInstallSuccess("配置检查通过");
   }
 
   return issues;
@@ -353,7 +416,7 @@ async function startMysqlWithRetry(layout: RuntimeLayout, env: EnvConfig): Promi
         ["up", "-d", "mysql"],
         "docker compose up -d mysql 执行失败",
       );
-      printInstallDetail(`MySQL 容器已启动，等待健康检查，端口 ${env.MYSQL_PORT}`);
+      printInstallSuccess(`MySQL 容器已启动，等待健康检查，端口 ${env.MYSQL_PORT}`);
       await waitForServiceHealthy(layout, "mysql");
       return;
     } catch (error) {
@@ -390,7 +453,7 @@ async function startServerAndWebWithRetry(layout: RuntimeLayout, env: EnvConfig)
         ["up", "-d", "server", "web"],
         "docker compose up -d server web 执行失败",
       );
-      printInstallDetail(`Server 端口 ${env.SERVER_PORT}，Web 端口 ${env.WEB_PORT}`);
+      printInstallSuccess(`Server 端口 ${env.SERVER_PORT}，Web 端口 ${env.WEB_PORT}`);
       return;
     } catch (error) {
       const composeConflictPort = parseComposePortConflict(error);
@@ -460,9 +523,29 @@ async function runInstallFlowWithValidatedConfig(
   printInstallStage("拉取镜像");
   printInstallDetail("开始拉取 mysql、server、web 镜像");
   await pullInstallImages(layout);
-  printInstallDetail("镜像拉取完成");
+  printInstallSuccess("镜像拉取完成");
   await runInstallFlow(layout, env);
   await writeCliLog(layout, `install completed version=${env.SEEDAR_VERSION}`);
+}
+
+async function startRuntimeServices(layout: RuntimeLayout, env: EnvConfig): Promise<void> {
+  printInstallStage("启动服务");
+  printInstallDetail(`目标版本：${env.SEEDAR_VERSION}`);
+  await runInstallFlow(layout, env);
+  printInstallSuccess("服务已启动");
+}
+
+async function stopRuntimeServices(layout: RuntimeLayout): Promise<void> {
+  printInstallStage("停止服务");
+  const result = await runDockerCompose(layout, ["stop", "mysql", "server", "web"]);
+  const detail = [result.stdout.trim(), result.stderr.trim()].filter(Boolean).join("\n");
+  if (detail) {
+    console.log(detail);
+  }
+  if (result.code !== 0) {
+    throw new Error(detail || "停止服务失败");
+  }
+  printInstallSuccess("mysql、server、web 已停止");
 }
 
 async function parseComposePsOutput(layout: RuntimeLayout): Promise<Record<string, unknown>[]> {
@@ -748,6 +831,24 @@ async function installCommand(versionArg: string | undefined, flags: CliFlags): 
   printInstallSummary(layout, env);
 }
 
+async function startCommand(): Promise<void> {
+  const layout = getRuntimeLayout();
+  await ensurePrerequisites();
+  await requireRuntimeConfig(layout);
+
+  const env = await readEnvConfig(layout);
+  await writeCliLog(layout, "manual start requested");
+  await startRuntimeServices(layout, env);
+}
+
+async function stopCommand(): Promise<void> {
+  const layout = getRuntimeLayout();
+  await requireRuntimeConfig(layout);
+
+  await writeCliLog(layout, "manual stop requested");
+  await stopRuntimeServices(layout);
+}
+
 async function updateCommand(versionArg: string | undefined): Promise<void> {
   const layout = getRuntimeLayout();
   await ensurePrerequisites();
@@ -800,6 +901,11 @@ async function updateCommand(versionArg: string | undefined): Promise<void> {
 }
 
 async function uninstallCommand(flags: CliFlags): Promise<void> {
+  if (flags.all) {
+    await removeAllCommand(flags);
+    return;
+  }
+
   const layout = getRuntimeLayout();
   await ensurePrerequisites();
   await requireRuntimeConfig(layout);
@@ -835,6 +941,49 @@ async function uninstallCommand(flags: CliFlags): Promise<void> {
   }
 }
 
+async function removeAllCommand(flags: CliFlags): Promise<void> {
+  const layout = getRuntimeLayout();
+  const installRoot = path.resolve(layout.installRoot);
+
+  if (!flags.force) {
+    if (process.stdin.isTTY) {
+      console.log("该操作会删除 Seedar 的容器、配置、数据、日志、备份，并尝试卸载全局 CLI。");
+      throw new Error("请确认后重新执行: seedar uninstall --all --force");
+    }
+    throw new Error("非交互模式下执行 remove all 需要 --force");
+  }
+
+  printInstallStage("移除 Seedar");
+  if (await hasRuntimeConfig(layout)) {
+    printInstallDetail("开始停止并清理容器");
+    const downResult = await runDockerCompose(layout, ["down", "--remove-orphans"]);
+    const detail = [downResult.stdout.trim(), downResult.stderr.trim()].filter(Boolean).join("\n");
+    if (detail) {
+      console.log(detail);
+    }
+    if (downResult.code !== 0) {
+      printInstallWarn("停止容器失败，继续删除本地文件");
+    }
+  } else {
+    printInstallDetail("未检测到运行时配置，跳过容器清理");
+  }
+
+  const dangerReason = getDangerousDeleteReason(installRoot);
+  if (dangerReason) {
+    throw new Error(`拒绝删除危险路径: ${installRoot}（${dangerReason}）`);
+  }
+
+  await rm(installRoot, { recursive: true, force: true });
+  printInstallSuccess(`已删除安装目录：${installRoot}`);
+
+  const cliUninstallScheduled = await scheduleCliSelfUninstall();
+  if (cliUninstallScheduled) {
+    printInstallSuccess(`已安排卸载全局 CLI：${CLI_PACKAGE_NAME}`);
+  } else {
+    printInstallWarn("未检测到 npm 全局安装的 CLI，跳过 CLI 自卸载");
+  }
+}
+
 function normalizePathForCompare(targetPath: string): string {
   return path.resolve(targetPath).replace(/[\\/]+$/, "").toLowerCase();
 }
@@ -857,6 +1006,9 @@ function getDangerousDeleteReason(targetPath: string): string | null {
 }
 
 async function purgeCommand(flags: CliFlags): Promise<void> {
+  await removeAllCommand(flags);
+  return;
+
   const layout = getRuntimeLayout();
   const installRoot = path.resolve(layout.installRoot);
 
@@ -986,10 +1138,13 @@ async function doctorCommand(): Promise<void> {
 function printHelp(): void {
   console.log(`Seedar CLI
 
-用法:
+??:
   seedar install [version]
+  seedar start
+  seedar stop
   seedar update [version]
-  seedar uninstall [--remove-data] [--force]
+  seedar uninstall [--remove-data] [--all] [--force]
+  seedar remove --force
   seedar purge --force
   seedar status
   seedar logs [mysql|server|web|migrate] [--follow]
@@ -1004,11 +1159,20 @@ export async function main(rawArgs: string[]): Promise<void> {
     case "install":
       await installCommand(parsed.positional[0], parsed.flags);
       return;
+    case "start":
+      await startCommand();
+      return;
+    case "stop":
+      await stopCommand();
+      return;
     case "update":
       await updateCommand(parsed.positional[0]);
       return;
     case "uninstall":
       await uninstallCommand(parsed.flags);
+      return;
+    case "remove":
+      await removeAllCommand(parsed.flags);
       return;
     case "purge":
       await purgeCommand(parsed.flags);

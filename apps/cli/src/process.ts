@@ -9,6 +9,22 @@ interface RunCommandOptions {
   shell?: boolean;
 }
 
+export function spawnDetached(
+  command: string,
+  args: string[],
+  options: Omit<RunCommandOptions, "stdio"> = {},
+): void {
+  const child = spawn(command, args, {
+    cwd: options.cwd,
+    env: options.env ?? process.env,
+    stdio: "ignore",
+    shell: options.shell ?? false,
+    detached: true,
+    windowsHide: true,
+  });
+  child.unref();
+}
+
 export async function runCommand(
   command: string,
   args: string[],

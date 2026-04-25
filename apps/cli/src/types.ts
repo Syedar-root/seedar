@@ -61,6 +61,7 @@ export interface CliFlags {
   force: boolean;
   follow: boolean;
   removeData: boolean;
+  all: boolean;
 }
 
 export interface RunResult {
