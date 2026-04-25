@@ -31,6 +31,7 @@ import {
   writeInstallState,
   writeRuntimeFiles,
 } from "./runtime.js";
+import { createSpinner, renderInfo, renderStage, renderSuccess, renderWarn } from "./ui.js";
 import type {
   CliFlags,
   DoctorCheck,
@@ -52,8 +53,6 @@ type PortEnvKey = "MYSQL_PORT" | "SERVER_PORT" | "WEB_PORT";
 const PORT_ENV_KEYS: PortEnvKey[] = ["MYSQL_PORT", "SERVER_PORT", "WEB_PORT"];
 const COMPOSE_PORT_CONFLICT_REGEX = /Bind for (?:\[[^\]]+\]|[0-9.]+):(\d+) failed: port is already allocated/i;
 const CLI_PACKAGE_NAME = "@syedar/seedar-cli";
-const CLI_DIVIDER = "=".repeat(68);
-const CLI_SUB_DIVIDER = "-".repeat(68);
 
 function parseArgs(rawArgs: string[]): ParsedCommand {
   const flags: CliFlags = {
@@ -140,10 +139,12 @@ async function waitForServiceHealthy(
   timeoutMs = 120_000,
 ): Promise<void> {
   const startedAt = Date.now();
+  const spinner = createSpinner(`等待 ${service} 健康检查`).start();
 
   while (Date.now() - startedAt < timeoutMs) {
     const containerId = await getServiceContainerId(layout, service);
     if (!containerId) {
+      spinner.text = `等待 ${service} 容器启动`;
       await wait(2_000);
       continue;
     }
@@ -157,6 +158,7 @@ async function waitForServiceHealthy(
 
     const state = inspectResult.stdout.trim();
     if (state === "healthy" || state === "running") {
+      spinner.succeed(`${service} 已就绪`);
       return;
     }
 
@@ -164,6 +166,7 @@ async function waitForServiceHealthy(
       throw new Error(`${service} 服务状态异常: ${state}`);
     }
 
+    spinner.text = `等待 ${service} 健康检查，当前状态: ${state || "unknown"}`;
     await wait(3_000);
   }
 
@@ -180,22 +183,19 @@ function printInstallSummary(layout: RuntimeLayout, env: EnvConfig): void {
 }
 
 function printInstallStage(title: string): void {
-  console.log("");
-  console.log(CLI_DIVIDER);
-  console.log(`[Seedar] ${title}`);
-  console.log(CLI_SUB_DIVIDER);
+  console.log(renderStage(title));
 }
 
 function printInstallDetail(message: string): void {
-  console.log(`[INFO] ${message}`);
+  console.log(renderInfo(message));
 }
 
 function printInstallSuccess(message: string): void {
-  console.log(`[ OK ] ${message}`);
+  console.log(renderSuccess(message));
 }
 
 function printInstallWarn(message: string): void {
-  console.log(`[WARN] ${message}`);
+  console.log(renderWarn(message));
 }
 
 async function runInstallFlow(layout: RuntimeLayout, env: EnvConfig): Promise<void> {
