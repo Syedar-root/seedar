@@ -17,6 +17,9 @@
     "build": "tsc -p tsconfig.json",
     "type-check": "tsc --noEmit -p tsconfig.json"
   },
+  "dependencies": {
+    "@inquirer/prompts": "^7.10.1"
+  },
   "engines": {
     "node": ">=18"
   },

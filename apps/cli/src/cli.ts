@@ -1,5 +1,4 @@
 import { access, appendFile, mkdir, rm } from "node:fs/promises";
-import net from "node:net";
 import path from "node:path";
 
 import {
@@ -11,6 +10,7 @@ import {
   VALID_SERVICES,
 } from "./constants.js";
 import { runCommand, runCommandOrThrow, runDockerCompose, runDockerComposeOrThrow } from "./process.js";
+import { getAvailablePort, isPortAvailable } from "./ports.js";
 import { collectInstallConfig, ensurePortsAvailable } from "./prompts.js";
 import {
   backupRuntime,
@@ -33,16 +33,11 @@ interface ParsedCommand {
   flags: CliFlags;
 }
 
-async function isPortAvailable(port: number): Promise<boolean> {
-  return await new Promise<boolean>((resolve) => {
-    const server = net.createServer();
-    server.unref();
-    server.on("error", () => resolve(false));
-    server.listen(port, "0.0.0.0", () => {
-      server.close(() => resolve(true));
-    });
-  });
-}
+type PortEnvKey = "MYSQL_PORT" | "SERVER_PORT" | "WEB_PORT";
+
+const PORT_ENV_KEYS: PortEnvKey[] = ["MYSQL_PORT", "SERVER_PORT", "WEB_PORT"];
+const COMPOSE_PORT_CONFLICT_REGEX = /Bind for (?:\[[^\]]+\]|[0-9.]+):(\d+) failed: port is already allocated/i;
+const ENV_PORT_CONFLICT_REGEX = /(MYSQL_PORT|SERVER_PORT|WEB_PORT)=(\d+) 已被占用/i;
 
 function parseArgs(rawArgs: string[]): ParsedCommand {
   const flags: CliFlags = {
@@ -179,6 +174,104 @@ async function runInstallFlow(layout: RuntimeLayout, env: EnvConfig): Promise<vo
     stdio: "inherit",
   });
   await writeCliLog(layout, `安装完成，版本 ${env.SEEDAR_VERSION}`);
+}
+
+function parseComposePortConflict(error: unknown): number | null {
+  const message = error instanceof Error ? error.message : String(error);
+  const matched = COMPOSE_PORT_CONFLICT_REGEX.exec(message);
+  if (!matched) {
+    return null;
+  }
+
+  const port = Number(matched[1]);
+  return Number.isInteger(port) ? port : null;
+}
+
+function parseEnsurePortConflict(error: unknown): { key: PortEnvKey; port: number } | null {
+  const message = error instanceof Error ? error.message : String(error);
+  const matched = ENV_PORT_CONFLICT_REGEX.exec(message);
+  if (!matched) {
+    return null;
+  }
+
+  const key = matched[1] as PortEnvKey;
+  const port = Number(matched[2]);
+  if (!Number.isInteger(port)) {
+    return null;
+  }
+
+  return { key, port };
+}
+
+function findPortKeyByPort(env: EnvConfig, port: number): PortEnvKey | null {
+  const targetPort = String(port);
+  for (const key of PORT_ENV_KEYS) {
+    if (env[key] === targetPort) {
+      return key;
+    }
+  }
+  return null;
+}
+
+async function autoShiftConflictPort(
+  env: EnvConfig,
+  key: PortEnvKey,
+  fromPort: number,
+): Promise<number> {
+  const occupiedByConfig = new Set<number>(
+    PORT_ENV_KEYS.filter((candidateKey) => candidateKey !== key).map((candidateKey) =>
+      Number(env[candidateKey]),
+    ),
+  );
+  const nextPort = await getAvailablePort(fromPort + 1, occupiedByConfig);
+  env[key] = String(nextPort);
+  return nextPort;
+}
+
+async function runInstallFlowWithRetry(layout: RuntimeLayout, env: EnvConfig): Promise<void> {
+  const maxAttempts = 2;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await ensurePortsAvailable(env);
+      await writeRuntimeFiles(layout, env);
+      await runInstallFlow(layout, env);
+      return;
+    } catch (error) {
+      const ensureConflict = parseEnsurePortConflict(error);
+      if (ensureConflict && attempt < maxAttempts) {
+        const shiftedTo = await autoShiftConflictPort(
+          env,
+          ensureConflict.key,
+          ensureConflict.port,
+        );
+        console.warn(
+          `检测到 ${ensureConflict.key}=${ensureConflict.port} 已被占用，自动调整为 ${shiftedTo} 后重试安装。`,
+        );
+        continue;
+      }
+
+      const composeConflictPort = parseComposePortConflict(error);
+      if (composeConflictPort && attempt < maxAttempts) {
+        const conflictKey = findPortKeyByPort(env, composeConflictPort);
+        if (conflictKey) {
+          const shiftedTo = await autoShiftConflictPort(
+            env,
+            conflictKey,
+            composeConflictPort,
+          );
+          console.warn(
+            `安装过程中检测到端口冲突 ${conflictKey}=${composeConflictPort}，自动调整为 ${shiftedTo} 后重试。`,
+          );
+          continue;
+        }
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error("安装重试失败");
 }
 
 async function parseComposePsOutput(layout: RuntimeLayout): Promise<Record<string, unknown>[]> {
@@ -445,15 +538,12 @@ async function installCommand(versionArg: string | undefined, flags: CliFlags): 
   if (state === "uninstalled" && hasConfig) {
     env = await readEnvConfig(layout);
     env.SEEDAR_VERSION = versionArg ?? env.SEEDAR_VERSION;
-    await ensurePortsAvailable(env);
     await writeCliLog(layout, `复用已有配置重新安装，目标版本 ${env.SEEDAR_VERSION}`);
   } else {
     env = await collectInstallConfig(layout, versionArg, flags);
-    await ensurePortsAvailable(env);
   }
 
-  await writeRuntimeFiles(layout, env);
-  await runInstallFlow(layout, env);
+  await runInstallFlowWithRetry(layout, env);
   await writeInstalledVersion(layout, env.SEEDAR_VERSION);
   await writeInstallState(layout, "installed");
   printInstallSummary(layout, env);
