@@ -4,6 +4,39 @@ import { ExceptionFactory } from '../../../../common/exceptions';
 import { MySqlConfig } from '../../datasource.types';
 
 const algorithm = 'aes-128-cbc';
+const AES_KEY_LENGTH = 16;
+
+function readAesSecret(configService: ConfigService): string {
+  const secret = configService.get<string>('AES_SECRET');
+  if (!secret) {
+    throw new Error('未配置 AES_SECRET');
+  }
+  return secret;
+}
+
+function deriveAesKey(secret: string): Buffer {
+  return crypto
+    .createHash('sha256')
+    .update(secret, 'utf8')
+    .digest()
+    .subarray(0, AES_KEY_LENGTH);
+}
+
+function deriveLegacyAesKey(secret: string): Buffer | null {
+  const keyBuffer = Buffer.from(secret, 'utf8');
+  return keyBuffer.length === AES_KEY_LENGTH ? keyBuffer : null;
+}
+
+function decryptWithKey(
+  encryptedHex: string,
+  iv: Buffer,
+  key: Buffer,
+): string {
+  const decipher = crypto.createDecipheriv(algorithm, key, iv);
+  let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
 
 /**
  * 加密配置中的密码字段
@@ -28,11 +61,7 @@ export function configEncryption(
       ? Buffer.from(encryptedConfig.iv, 'hex')
       : crypto.randomBytes(16);
     try {
-      // 获取密钥，确保为 Buffer 类型，且长度符合算法要求
-      const key = configService.get<string>('AES_SECRET');
-      if (!key) {
-        throw new Error('未配置 AES_SECRET');
-      }
+      const key = deriveAesKey(readAesSecret(configService));
 
       // 创建加密器（参数：算法、密钥、iv）
       const cipher = crypto.createCipheriv(algorithm, key, iv);
@@ -66,21 +95,25 @@ export function configDecryption(
 
   if (decryptedConfig.password && decryptedConfig.iv) {
     try {
-      // 获取密钥
-      const key = configService.get<string>('AES_SECRET');
-      if (!key) {
-        throw new Error('未配置 AES_SECRET');
-      }
+      const secret = readAesSecret(configService);
 
       // 将 iv 从 hex 转换为 Buffer
       const iv = Buffer.from(decryptedConfig.iv, 'hex');
 
-      // 创建解密器（参数：算法、密钥、iv）
-      const decipher = crypto.createDecipheriv(algorithm, key, iv);
-
-      // 解密（更新+最终），输入hex格式，输出utf8
-      let decrypted = decipher.update(decryptedConfig.password, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
+      let decrypted: string;
+      try {
+        decrypted = decryptWithKey(
+          decryptedConfig.password,
+          iv,
+          deriveAesKey(secret),
+        );
+      } catch (error) {
+        const legacyKey = deriveLegacyAesKey(secret);
+        if (!legacyKey) {
+          throw error;
+        }
+        decrypted = decryptWithKey(decryptedConfig.password, iv, legacyKey);
+      }
 
       // 从 base64 转换回原始密码
       const originalPassword = Buffer.from(decrypted, 'base64').toString(
