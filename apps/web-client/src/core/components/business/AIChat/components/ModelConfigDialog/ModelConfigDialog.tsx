@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
+import { Tooltip } from "@base-ui/react/tooltip";
 import {
   useCreateAi,
   useDeleteAi,
@@ -8,7 +9,7 @@ import {
 import type { AiResponse } from "#pkg/seedar/types";
 import { AiType } from "#pkg/seedar/types";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { CircleHelp, Plus, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import { Select } from "@/core/components/ui/Select";
 import styles from "./ModelConfigDialog.module.scss";
@@ -81,6 +82,35 @@ const buildModelConfig = (formState: ModelFormState) => {
   };
 };
 
+const getBaseUrlSummary = (baseUrl: string) => {
+  if (!baseUrl) {
+    return "默认地址";
+  }
+
+  try {
+    return new URL(baseUrl).host;
+  } catch {
+    return baseUrl;
+  }
+};
+
+const HelpTip: React.FC<{ content: string }> = ({ content }) => {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger className={styles["help-tip-trigger"]}>
+        <CircleHelp size={13} />
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Positioner sideOffset={8}>
+          <Tooltip.Popup className={styles["help-tip-popup"]}>
+            {content}
+          </Tooltip.Popup>
+        </Tooltip.Positioner>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+};
+
 const ModelConfigDialog: React.FC<ModelConfigDialogProps> = ({
   open,
   models,
@@ -113,6 +143,10 @@ const ModelConfigDialog: React.FC<ModelConfigDialogProps> = ({
 
     return models.find((model) => model.id === selectedModelId) || null;
   }, [models, selectedModelId]);
+
+  const currentModelInfo = useMemo(() => {
+    return models.find((model) => model.id === currentModelId) || null;
+  }, [currentModelId, models]);
 
   const configPreview = useMemo(
     () => JSON.stringify(buildModelConfig(formState), null, 2),
@@ -321,273 +355,317 @@ const ModelConfigDialog: React.FC<ModelConfigDialogProps> = ({
     });
   };
 
-  const dialogTitle = "模型管理";
-  const dialogDescription =
-    "查看已添加模型，并在这里完成模型的新建、编辑和删除。";
-
   return (
     <Dialog.Root open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <Dialog.Portal>
         <Dialog.Backdrop className={styles.backdrop} />
         <Dialog.Popup className={styles.popup}>
-          <div className={styles.content}>
-            <div className={styles.header}>
-              <Dialog.Title className={styles.title}>{dialogTitle}</Dialog.Title>
-              <p className={styles.description}>{dialogDescription}</p>
-            </div>
-
-            <div className={styles.layout}>
-              <section className={styles["list-panel"]}>
-                <div className={styles["panel-header"]}>
-                  <div>
-                    <h3 className={styles["panel-title"]}>已添加模型</h3>
-                    <p className={styles["panel-subtitle"]}>
-                      选择一个模型进入编辑，或新建一个 chat 模型。
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className={styles["ghost-button"]}
-                    onClick={resetFormToCreate}
-                    disabled={isBusy}
-                  >
-                    <Plus size={14} />
-                    <span>新建模型</span>
-                  </button>
-                </div>
-
-                <div className={styles["list-container"]}>
-                  <ScrollArea>
-                    <div className={styles["model-list"]}>
-                      {models.length > 0 ? (
-                        models.map((model) => {
-                          const isSelected = model.id === selectedModelId;
-                          const isCurrent = model.id === currentModelId;
-
-                          return (
-                            <div
-                              key={model.id}
-                              className={styles["model-card"]}
-                              data-active={isSelected || undefined}
-                            >
-                              <button
-                                type="button"
-                                className={styles["model-card-main"]}
-                                onClick={() => loadModelToEditor(model)}
-                              >
-                              <div className={styles["model-card-header"]}>
-                                <span className={styles["model-card-title"]}>
-                                  {model.name}
-                                </span>
-                                <div className={styles["model-card-badges"]}>
-                                  {isCurrent ? (
-                                    <span
-                                      className={styles["model-badge-current"]}
-                                    >
-                                      当前
-                                    </span>
-                                  ) : null}
-                                  <span className={styles["model-badge-type"]}>
-                                    {getStringValue(getLlmConfig(model.config)?.type) ||
-                                      DEFAULT_LLM_TYPE}
-                                  </span>
-                                </div>
-                              </div>
-                              {model.description ? (
-                                <div className={styles["model-card-description"]}>
-                                  {model.description}
-                                </div>
-                              ) : null}
-                              <div className={styles["model-card-footer"]}>
-                                <span className={styles["model-card-meta"]}>
-                                  {getStringValue(
-                                    getLlmConfig(model.config)?.baseUrl,
-                                  ) || "未配置 Base URL"}
-                                </span>
-                              </div>
-                              </button>
-                              {!isCurrent ? (
-                                <button
-                                  type="button"
-                                  className={styles["model-card-action-button"]}
-                                  onClick={() => onCurrentModelChange?.(model.id)}
-                                >
-                                  设为当前
-                                </button>
-                              ) : null}
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className={styles["empty-state"]}>
-                          还没有可用模型，先创建一个吧。
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-              </section>
-
-              <section className={styles["editor-panel"]}>
-                <div className={styles["panel-header"]}>
-                  <div>
-                    <h3 className={styles["panel-title"]}>
-                      {editorMode === "create" ? "新建模型" : "编辑模型"}
-                    </h3>
-                    <p className={styles["panel-subtitle"]}>
-                      主要配置写入 `config.llm`，消息规格仅支持固定三种。
-                    </p>
-                  </div>
-                </div>
-
-                <div className={styles["editor-body"]}>
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="model-name">
-                      模型名称 <span className={styles.required}>*</span>
-                    </label>
-                    <input
-                      id="model-name"
-                      className={styles.input}
-                      value={formState.name}
-                      onChange={(event) =>
-                        handleFieldChange("name", event.target.value)
-                      }
-                      placeholder="例如：默认对话模型"
-                    />
-                  </div>
-
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="model-description">
-                      描述
-                    </label>
-                    <textarea
-                      id="model-description"
-                      className={styles.textarea}
-                      value={formState.description}
-                      onChange={(event) =>
-                        handleFieldChange("description", event.target.value)
-                      }
-                      placeholder="可选，用来说明这个模型的用途"
-                    />
-                  </div>
-
-                  <div className={styles.field}>
-                    <label className={styles.label}>消息规格</label>
-                    <Select
-                      value={formState.llmType}
-                      clearable={false}
-                      options={[...LLM_TYPE_OPTIONS]}
-                      onChange={(value) =>
-                        handleFieldChange("llmType", value || DEFAULT_LLM_TYPE)
-                      }
-                      placeholder="选择消息规格"
-                    />
-                  </div>
-
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="model-api-key">
-                      API Key <span className={styles.required}>*</span>
-                    </label>
-                    <input
-                      id="model-api-key"
-                      type="password"
-                      className={styles.input}
-                      value={formState.apiKey}
-                      onChange={(event) =>
-                        handleFieldChange("apiKey", event.target.value)
-                      }
-                      placeholder="请输入 API Key"
-                    />
-                  </div>
-
-                  <div className={styles.field}>
-                    <label className={styles.label} htmlFor="model-base-url">
-                      Base URL
-                    </label>
-                    <input
-                      id="model-base-url"
-                      className={styles.input}
-                      value={formState.baseUrl}
-                      onChange={(event) =>
-                        handleFieldChange("baseUrl", event.target.value)
-                      }
-                      placeholder="例如：https://api.minimaxi.com/anthropic"
-                    />
-                  </div>
-
-                  <div className={styles.field}>
-                    <label className={styles.label}>配置预览</label>
-                    <pre className={styles["config-preview"]}>{configPreview}</pre>
-                  </div>
-
-                  {error ? (
-                    <div className={styles["error-text"]}>{error}</div>
-                  ) : null}
-                </div>
-
-                <div className={styles.actions}>
-                  <button
-                    type="button"
-                    className={styles["secondary-button"]}
-                    onClick={onClose}
-                    disabled={isBusy}
-                  >
-                    关闭
-                  </button>
-
-                  <div className={styles["actions-right"]}>
-                    {editorMode === "edit" ? (
-                      isDeleteConfirmVisible ? (
-                        <>
-                          <button
-                            type="button"
-                            className={styles["secondary-button"]}
-                            onClick={() => setIsDeleteConfirmVisible(false)}
-                            disabled={isBusy}
-                          >
-                            取消删除
-                          </button>
-                          <button
-                            type="button"
-                            className={styles["danger-button"]}
-                            onClick={handleDelete}
-                            disabled={isBusy}
-                          >
-                            {isDeleting ? "删除中..." : "确认删除"}
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          className={styles["ghost-danger-button"]}
-                          onClick={() => setIsDeleteConfirmVisible(true)}
-                          disabled={isBusy}
-                        >
-                          <Trash2 size={14} />
-                          <span>删除模型</span>
-                        </button>
-                      )
+          <Tooltip.Provider>
+            <div className={styles.content}>
+              <div className={styles.header}>
+                <div className={styles["title-row"]}>
+                  <Dialog.Title className={styles.title}>
+                    模型管理
+                  </Dialog.Title>
+                  <div className={styles["header-meta"]}>
+                    <span className={styles["header-chip"]}>
+                      {models.length} 个模型
+                    </span>
+                    {currentModelInfo ? (
+                      <span className={styles["header-chip-muted"]}>
+                        当前：{currentModelInfo.name}
+                      </span>
                     ) : null}
+                  </div>
+                </div>
+              </div>
 
+              <div className={styles.layout}>
+                <section className={styles["list-panel"]}>
+                  <div className={styles["panel-header"]}>
+                    <div className={styles["panel-heading"]}>
+                      <h3 className={styles["panel-title"]}>已添加模型</h3>
+                      <HelpTip content="点击卡片进入编辑，卡片底部可以直接将模型设为当前。" />
+                    </div>
                     <button
                       type="button"
-                      className={styles["primary-button"]}
-                      onClick={handleSubmit}
+                      className={styles["ghost-button"]}
+                      onClick={resetFormToCreate}
                       disabled={isBusy}
                     >
-                      {isSaving
-                        ? editorMode === "create"
-                          ? "创建中..."
-                          : "保存中..."
-                        : editorMode === "create"
-                          ? "创建模型"
-                          : "保存修改"}
+                      <Plus size={14} />
+                      <span>新建</span>
                     </button>
                   </div>
-                </div>
-              </section>
+
+                  <div className={styles["list-container"]}>
+                    <ScrollArea>
+                      <div className={styles["model-list"]}>
+                        {models.length > 0 ? (
+                          models.map((model) => {
+                            const isSelected = model.id === selectedModelId;
+                            const isCurrent = model.id === currentModelId;
+                            const llmType =
+                              getStringValue(getLlmConfig(model.config)?.type) ||
+                              DEFAULT_LLM_TYPE;
+                            const baseUrlSummary = getBaseUrlSummary(
+                              getStringValue(getLlmConfig(model.config)?.baseUrl),
+                            );
+
+                            return (
+                              <div
+                                key={model.id}
+                                className={styles["model-card"]}
+                                data-active={isSelected || undefined}
+                              >
+                                <button
+                                  type="button"
+                                  className={styles["model-card-main"]}
+                                  onClick={() => loadModelToEditor(model)}
+                                >
+                                  <div className={styles["model-card-header"]}>
+                                    <span className={styles["model-card-title"]}>
+                                      {model.name}
+                                    </span>
+                                    <div className={styles["model-card-badges"]}>
+                                      {isCurrent ? (
+                                        <span
+                                          className={styles["model-badge-current"]}
+                                        >
+                                          当前
+                                        </span>
+                                      ) : null}
+                                      <span className={styles["model-badge-type"]}>
+                                        {llmType}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {model.description ? (
+                                    <div
+                                      className={styles["model-card-description"]}
+                                    >
+                                      {model.description}
+                                    </div>
+                                  ) : null}
+                                  <div className={styles["model-card-footer"]}>
+                                    <span className={styles["model-card-meta"]}>
+                                      {baseUrlSummary}
+                                    </span>
+                                  </div>
+                                </button>
+                                {!isCurrent ? (
+                                  <button
+                                    type="button"
+                                    className={styles["model-card-action-button"]}
+                                    onClick={() => onCurrentModelChange?.(model.id)}
+                                  >
+                                    设为当前
+                                  </button>
+                                ) : null}
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className={styles["empty-state"]}>
+                            还没有可用模型
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </section>
+
+                <section className={styles["editor-panel"]}>
+                  <div className={styles["panel-header"]}>
+                    <div className={styles["panel-heading"]}>
+                      <h3 className={styles["panel-title"]}>
+                        {editorMode === "create" ? "新建模型" : "编辑模型"}
+                      </h3>
+                      <HelpTip content="这里编辑的是 config.llm；提交后会写入模型的 Config 字段。" />
+                    </div>
+                    {editorMode === "edit" && selectedModel ? (
+                      <span className={styles["panel-tag"]}>
+                        {selectedModel.name}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className={styles["editor-body"]}>
+                    <div className={styles["field-grid-single"]}>
+                      <div className={styles.field}>
+                        <label className={styles.label} htmlFor="model-name">
+                          <span>模型名称</span>
+                          <span className={styles.required}>*</span>
+                        </label>
+                        <input
+                          id="model-name"
+                          className={styles.input}
+                          value={formState.name}
+                          onChange={(event) =>
+                            handleFieldChange("name", event.target.value)
+                          }
+                          placeholder="例如：默认对话模型"
+                        />
+                      </div>
+                    </div>
+
+                    <div className={styles["field-grid"]}>
+                      <div className={styles.field}>
+                        <label className={styles.label}>
+                          <span>消息规格</span>
+                          <HelpTip content="决定 config.llm.type，仅支持 openai、anthropic、deepseek 三种。" />
+                        </label>
+                        <Select
+                          value={formState.llmType}
+                          clearable={false}
+                          options={[...LLM_TYPE_OPTIONS]}
+                          onChange={(value) =>
+                            handleFieldChange(
+                              "llmType",
+                              value || DEFAULT_LLM_TYPE,
+                            )
+                          }
+                          placeholder="选择消息规格"
+                        />
+                      </div>
+
+                      <div className={styles.field}>
+                        <label className={styles.label} htmlFor="model-base-url">
+                          <span>Base URL</span>
+                          <HelpTip content="可选；留空时使用服务端或默认配置。" />
+                        </label>
+                        <input
+                          id="model-base-url"
+                          className={styles.input}
+                          value={formState.baseUrl}
+                          onChange={(event) =>
+                            handleFieldChange("baseUrl", event.target.value)
+                          }
+                          placeholder="例如：https://api.minimaxi.com/anthropic"
+                        />
+                      </div>
+                    </div>
+
+                    <div className={styles["field-grid-single"]}>
+                      <div className={styles.field}>
+                        <label className={styles.label} htmlFor="model-api-key">
+                          <span>API Key</span>
+                          <span className={styles.required}>*</span>
+                        </label>
+                        <input
+                          id="model-api-key"
+                          type="password"
+                          className={styles.input}
+                          value={formState.apiKey}
+                          onChange={(event) =>
+                            handleFieldChange("apiKey", event.target.value)
+                          }
+                          placeholder="请输入 API Key"
+                        />
+                      </div>
+                    </div>
+
+                    <div className={styles["field-grid-single"]}>
+                      <div className={styles.field}>
+                        <label
+                          className={styles.label}
+                          htmlFor="model-description"
+                        >
+                          <span>说明</span>
+                        </label>
+                        <textarea
+                          id="model-description"
+                          className={styles.textarea}
+                          value={formState.description}
+                          onChange={(event) =>
+                            handleFieldChange("description", event.target.value)
+                          }
+                          placeholder="可选"
+                        />
+                      </div>
+                    </div>
+
+                    <div className={styles["field-grid-single"]}>
+                      <div className={styles.field}>
+                        <label className={styles.label}>
+                          <span>配置预览</span>
+                          <HelpTip content="提交前将写入 Config 的实际内容。" />
+                        </label>
+                        <pre className={styles["config-preview"]}>
+                          {configPreview}
+                        </pre>
+                      </div>
+                    </div>
+
+                    {error ? (
+                      <div className={styles["error-text"]}>{error}</div>
+                    ) : null}
+                  </div>
+
+                  <div className={styles.actions}>
+                    <button
+                      type="button"
+                      className={styles["secondary-button"]}
+                      onClick={onClose}
+                      disabled={isBusy}
+                    >
+                      关闭
+                    </button>
+
+                    <div className={styles["actions-right"]}>
+                      {editorMode === "edit" ? (
+                        isDeleteConfirmVisible ? (
+                          <>
+                            <button
+                              type="button"
+                              className={styles["secondary-button"]}
+                              onClick={() => setIsDeleteConfirmVisible(false)}
+                              disabled={isBusy}
+                            >
+                              取消删除
+                            </button>
+                            <button
+                              type="button"
+                              className={styles["danger-button"]}
+                              onClick={handleDelete}
+                              disabled={isBusy}
+                            >
+                              {isDeleting ? "删除中..." : "确认删除"}
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className={styles["ghost-danger-button"]}
+                            onClick={() => setIsDeleteConfirmVisible(true)}
+                            disabled={isBusy}
+                          >
+                            <Trash2 size={14} />
+                            <span>删除</span>
+                          </button>
+                        )
+                      ) : null}
+
+                      <button
+                        type="button"
+                        className={styles["primary-button"]}
+                        onClick={handleSubmit}
+                        disabled={isBusy}
+                      >
+                        {isSaving
+                          ? editorMode === "create"
+                            ? "创建中..."
+                            : "保存中..."
+                          : editorMode === "create"
+                            ? "创建模型"
+                            : "保存修改"}
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              </div>
             </div>
-          </div>
+          </Tooltip.Provider>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

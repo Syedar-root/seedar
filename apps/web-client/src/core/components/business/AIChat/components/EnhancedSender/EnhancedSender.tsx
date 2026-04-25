@@ -221,15 +221,18 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
                         className={clsx(
                           styles["selector-menu-item"],
                           styles["selector-menu-item-action-start"],
+                          styles["selector-menu-item-action"],
                         )}
                       >
                         <div className={styles["menu-item-content"]}>
-                          <div className={styles["menu-item-label"]}>
+                          <div
+                            className={clsx(
+                              styles["menu-item-label"],
+                              styles["menu-item-label-strong"],
+                            )}
+                          >
                             <Settings2 size={14} />
-                            <span>模型管理</span>
-                          </div>
-                          <div className={styles["menu-item-description"]}>
-                            查看模型列表，并进行创建、编辑和删除
+                            <span>管理模型</span>
                           </div>
                         </div>
                       </Menu.Item>
