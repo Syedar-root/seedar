@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/Syedar-root/seedar/compare/v1.1.0...v1.1.1) (2026-04-25)
+
+
+### Bug Fixes
+
+* correct dockerhub namespace for image publishing ([1ac6d59](https://github.com/Syedar-root/seedar/commit/1ac6d594840f14072087872dafd7ae273878dbf0))
+* correct dockerhub namespace for image publishing ([e2139c3](https://github.com/Syedar-root/seedar/commit/e2139c3bbefabc76abc093b545fc41c4c9b8e39b))
+
 ## [1.1.0](https://github.com/Syedar-root/seedar/compare/v1.0.0...v1.1.0) (2026-04-25)
 
 
