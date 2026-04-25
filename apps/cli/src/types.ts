@@ -33,6 +33,27 @@ export interface EnvConfig {
   AES_SECRET: string;
 }
 
+export type InstallConfigField =
+  | "SEEDAR_VERSION"
+  | "MYSQL_PORT"
+  | "SERVER_PORT"
+  | "WEB_PORT"
+  | "DB_HOST"
+  | "DB_PORT"
+  | "DB_USERNAME"
+  | "DB_PASSWORD"
+  | "DB_DATABASE"
+  | "MYSQL_ROOT_PASSWORD"
+  | "MYSQL_DATABASE"
+  | "MYSQL_USER"
+  | "MYSQL_PASSWORD"
+  | "AES_SECRET";
+
+export interface InstallConfigIssue {
+  field: InstallConfigField;
+  message: string;
+}
+
 export type InstallState = "installed" | "uninstalled" | "unknown";
 
 export interface CliFlags {

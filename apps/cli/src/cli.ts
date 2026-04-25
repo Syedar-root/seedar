@@ -1,4 +1,5 @@
 import { access, appendFile, mkdir, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import {
@@ -11,12 +12,11 @@ import {
 } from "./constants.js";
 import { runCommand, runCommandOrThrow, runDockerCompose, runDockerComposeOrThrow } from "./process.js";
 import { getAvailablePort, isPortAvailable } from "./ports.js";
-import { collectInstallConfig, ensurePortsAvailable } from "./prompts.js";
+import { collectInstallConfig, collectProblemInstallConfig } from "./prompts.js";
 import {
   backupRuntime,
   getRuntimeLayout,
   hasRuntimeConfig,
-  pathExists,
   readEnvConfig,
   readInstallState,
   readInstalledVersion,
@@ -25,7 +25,15 @@ import {
   writeInstallState,
   writeRuntimeFiles,
 } from "./runtime.js";
-import type { CliFlags, DoctorCheck, EnvConfig, InstallState, RuntimeLayout } from "./types.js";
+import type {
+  CliFlags,
+  DoctorCheck,
+  EnvConfig,
+  InstallConfigField,
+  InstallConfigIssue,
+  InstallState,
+  RuntimeLayout,
+} from "./types.js";
 
 interface ParsedCommand {
   command: string;
@@ -37,7 +45,6 @@ type PortEnvKey = "MYSQL_PORT" | "SERVER_PORT" | "WEB_PORT";
 
 const PORT_ENV_KEYS: PortEnvKey[] = ["MYSQL_PORT", "SERVER_PORT", "WEB_PORT"];
 const COMPOSE_PORT_CONFLICT_REGEX = /Bind for (?:\[[^\]]+\]|[0-9.]+):(\d+) failed: port is already allocated/i;
-const ENV_PORT_CONFLICT_REGEX = /(MYSQL_PORT|SERVER_PORT|WEB_PORT)=(\d+) 已被占用/i;
 
 function parseArgs(rawArgs: string[]): ParsedCommand {
   const flags: CliFlags = {
@@ -158,22 +165,58 @@ function printInstallSummary(layout: RuntimeLayout, env: EnvConfig): void {
   console.log(`版本: ${env.SEEDAR_VERSION}`);
 }
 
+function printInstallStage(title: string): void {
+  console.log("");
+  console.log(`==> ${title}`);
+}
+
+function printInstallDetail(message: string): void {
+  console.log(`  - ${message}`);
+}
+
 async function runInstallFlow(layout: RuntimeLayout, env: EnvConfig): Promise<void> {
-  await writeCliLog(layout, `开始安装，目标版本 ${env.SEEDAR_VERSION}`);
-  await runDockerComposeOrThrow(layout, ["pull", "mysql", "server", "web"], {
-    stdio: "inherit",
-  });
-  await runDockerComposeOrThrow(layout, ["up", "-d", "mysql"], {
-    stdio: "inherit",
-  });
-  await waitForServiceHealthy(layout, "mysql");
+  await startMysqlWithRetry(layout, env);
+
+  printInstallStage("执行数据库迁移");
   await runDockerComposeOrThrow(layout, ["run", "--rm", "migrate"], {
     stdio: "inherit",
   });
-  await runDockerComposeOrThrow(layout, ["up", "-d", "server", "web"], {
+
+  await startServerAndWebWithRetry(layout, env);
+}
+
+async function pullInstallImages(layout: RuntimeLayout): Promise<void> {
+  await runDockerComposeOrThrow(layout, ["pull", "mysql", "server", "web"], {
     stdio: "inherit",
   });
-  await writeCliLog(layout, `安装完成，版本 ${env.SEEDAR_VERSION}`);
+}
+
+async function runComposeCommandWithCapturedOutput(
+  layout: RuntimeLayout,
+  args: string[],
+  fallbackMessage: string,
+): Promise<void> {
+  const result = await runDockerCompose(layout, args);
+  const stdout = result.stdout.trim();
+  const stderr = result.stderr.trim();
+  if (stdout) {
+    console.log(stdout);
+  }
+  if (result.code !== 0) {
+    const detail = [stdout, stderr].filter(Boolean).join("\n");
+    throw new Error(detail || fallbackMessage);
+  }
+}
+
+async function cleanupComposeServices(
+  layout: RuntimeLayout,
+  services: string[],
+): Promise<void> {
+  if (services.length === 0) {
+    return;
+  }
+
+  await runDockerCompose(layout, ["rm", "-sf", ...services]);
 }
 
 function parseComposePortConflict(error: unknown): number | null {
@@ -187,25 +230,13 @@ function parseComposePortConflict(error: unknown): number | null {
   return Number.isInteger(port) ? port : null;
 }
 
-function parseEnsurePortConflict(error: unknown): { key: PortEnvKey; port: number } | null {
-  const message = error instanceof Error ? error.message : String(error);
-  const matched = ENV_PORT_CONFLICT_REGEX.exec(message);
-  if (!matched) {
-    return null;
-  }
-
-  const key = matched[1] as PortEnvKey;
-  const port = Number(matched[2]);
-  if (!Number.isInteger(port)) {
-    return null;
-  }
-
-  return { key, port };
-}
-
-function findPortKeyByPort(env: EnvConfig, port: number): PortEnvKey | null {
+function findPortKeyByPort(
+  env: EnvConfig,
+  port: number,
+  candidateKeys: readonly PortEnvKey[] = PORT_ENV_KEYS,
+): PortEnvKey | null {
   const targetPort = String(port);
-  for (const key of PORT_ENV_KEYS) {
+  for (const key of candidateKeys) {
     if (env[key] === targetPort) {
       return key;
     }
@@ -228,50 +259,210 @@ async function autoShiftConflictPort(
   return nextPort;
 }
 
-async function runInstallFlowWithRetry(layout: RuntimeLayout, env: EnvConfig): Promise<void> {
-  const maxAttempts = 2;
+function isBlank(value: string): boolean {
+  return value.trim().length === 0;
+}
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      await ensurePortsAvailable(env);
-      await writeRuntimeFiles(layout, env);
-      await runInstallFlow(layout, env);
-      return;
-    } catch (error) {
-      const ensureConflict = parseEnsurePortConflict(error);
-      if (ensureConflict && attempt < maxAttempts) {
-        const shiftedTo = await autoShiftConflictPort(
-          env,
-          ensureConflict.key,
-          ensureConflict.port,
-        );
-        console.warn(
-          `检测到 ${ensureConflict.key}=${ensureConflict.port} 已被占用，自动调整为 ${shiftedTo} 后重试安装。`,
-        );
-        continue;
-      }
+function getPortLabel(key: PortEnvKey): string {
+  switch (key) {
+    case "MYSQL_PORT":
+      return "MySQL 端口";
+    case "SERVER_PORT":
+      return "Server 端口";
+    case "WEB_PORT":
+      return "Web 端口";
+  }
+}
 
-      const composeConflictPort = parseComposePortConflict(error);
-      if (composeConflictPort && attempt < maxAttempts) {
-        const conflictKey = findPortKeyByPort(env, composeConflictPort);
-        if (conflictKey) {
-          const shiftedTo = await autoShiftConflictPort(
-            env,
-            conflictKey,
-            composeConflictPort,
-          );
-          console.warn(
-            `安装过程中检测到端口冲突 ${conflictKey}=${composeConflictPort}，自动调整为 ${shiftedTo} 后重试。`,
-          );
-          continue;
-        }
-      }
+function collectIssueFields(issues: InstallConfigIssue[]): InstallConfigField[] {
+  return [...new Set(issues.map((issue) => issue.field))];
+}
 
-      throw error;
+function formatConfigIssues(issues: InstallConfigIssue[]): string {
+  return issues.map((issue) => `- ${issue.field}: ${issue.message}`).join("\n");
+}
+
+async function collectInstallConfigIssues(env: EnvConfig): Promise<InstallConfigIssue[]> {
+  const issues: InstallConfigIssue[] = [];
+
+  if (isBlank(env.SEEDAR_VERSION)) {
+    issues.push({ field: "SEEDAR_VERSION", message: "不能为空" });
+  }
+
+  if (isBlank(env.DB_HOST)) {
+    issues.push({ field: "DB_HOST", message: "不能为空" });
+  }
+
+  const dbPort = Number(env.DB_PORT);
+  if (!Number.isInteger(dbPort) || dbPort < 1 || dbPort > 65535) {
+    issues.push({ field: "DB_PORT", message: "必须是 1-65535 之间的端口" });
+  }
+
+  const textChecks: Array<[InstallConfigField, string]> = [
+    ["DB_DATABASE", env.DB_DATABASE],
+    ["DB_USERNAME", env.DB_USERNAME],
+    ["DB_PASSWORD", env.DB_PASSWORD],
+    ["MYSQL_ROOT_PASSWORD", env.MYSQL_ROOT_PASSWORD],
+    ["AES_SECRET", env.AES_SECRET],
+  ];
+  for (const [field, value] of textChecks) {
+    if (isBlank(value)) {
+      issues.push({ field, message: "不能为空" });
     }
   }
 
-  throw new Error("安装重试失败");
+  for (const key of PORT_ENV_KEYS) {
+    const port = Number(env[key]);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      issues.push({
+        field: key,
+        message: `${getPortLabel(key)} 必须是 1-65535 之间的端口`,
+      });
+    }
+  }
+
+  return issues;
+}
+
+async function runInstallConfigCheck(
+  layout: RuntimeLayout,
+  env: EnvConfig,
+  label: string,
+): Promise<InstallConfigIssue[]> {
+  printInstallStage(label);
+  printInstallDetail("开始检查配置项");
+  await writeRuntimeFiles(layout, env);
+  printInstallDetail("端口冲突将在启动阶段自动避让并持续重试");
+  const issues = await collectInstallConfigIssues(env);
+  if (issues.length > 0) {
+    printInstallDetail("配置检查未通过：");
+    console.warn(formatConfigIssues(issues));
+  } else {
+    printInstallDetail("配置检查通过");
+  }
+
+  return issues;
+}
+
+async function startMysqlWithRetry(layout: RuntimeLayout, env: EnvConfig): Promise<void> {
+  while (true) {
+    printInstallStage("启动 MySQL");
+    try {
+      await runComposeCommandWithCapturedOutput(
+        layout,
+        ["up", "-d", "mysql"],
+        "docker compose up -d mysql 执行失败",
+      );
+      printInstallDetail(`MySQL 容器已启动，等待健康检查，端口 ${env.MYSQL_PORT}`);
+      await waitForServiceHealthy(layout, "mysql");
+      return;
+    } catch (error) {
+      const composeConflictPort = parseComposePortConflict(error);
+      if (!composeConflictPort) {
+        throw error;
+      }
+
+      const conflictKey = findPortKeyByPort(env, composeConflictPort, ["MYSQL_PORT"]);
+      if (!conflictKey) {
+        throw error;
+      }
+
+      await cleanupComposeServices(layout, ["mysql"]);
+      const shiftedTo = await autoShiftConflictPort(env, conflictKey, composeConflictPort);
+      await writeRuntimeFiles(layout, env);
+      printInstallDetail(
+        `${getPortLabel(conflictKey)} ${composeConflictPort} 已冲突，自动避让到 ${shiftedTo}，继续重试`,
+      );
+      await writeCliLog(
+        layout,
+        `mysql startup port shifted ${conflictKey}: ${composeConflictPort} -> ${shiftedTo}`,
+      );
+    }
+  }
+}
+
+async function startServerAndWebWithRetry(layout: RuntimeLayout, env: EnvConfig): Promise<void> {
+  while (true) {
+    printInstallStage("启动 Server 和 Web");
+    try {
+      await runComposeCommandWithCapturedOutput(
+        layout,
+        ["up", "-d", "server", "web"],
+        "docker compose up -d server web 执行失败",
+      );
+      printInstallDetail(`Server 端口 ${env.SERVER_PORT}，Web 端口 ${env.WEB_PORT}`);
+      return;
+    } catch (error) {
+      const composeConflictPort = parseComposePortConflict(error);
+      if (!composeConflictPort) {
+        throw error;
+      }
+
+      const conflictKey =
+        findPortKeyByPort(env, composeConflictPort, ["SERVER_PORT", "WEB_PORT"]) ??
+        findPortKeyByPort(env, composeConflictPort);
+      if (!conflictKey) {
+        throw error;
+      }
+
+      await cleanupComposeServices(layout, ["server", "web"]);
+      const shiftedTo = await autoShiftConflictPort(env, conflictKey, composeConflictPort);
+      await writeRuntimeFiles(layout, env);
+      printInstallDetail(
+        `${getPortLabel(conflictKey)} ${composeConflictPort} 已冲突，自动避让到 ${shiftedTo}，继续重试`,
+      );
+      await writeCliLog(
+        layout,
+        `server/web startup port shifted ${conflictKey}: ${composeConflictPort} -> ${shiftedTo}`,
+      );
+    }
+  }
+}
+
+async function prepareInstallConfig(
+  layout: RuntimeLayout,
+  env: EnvConfig,
+  flags: CliFlags,
+): Promise<EnvConfig> {
+  let issues = await runInstallConfigCheck(layout, env, "检查配置");
+  if (issues.length === 0) {
+    return env;
+  }
+
+  const canReprompt = process.stdin.isTTY && !flags.yes;
+  if (!canReprompt) {
+    throw new Error(
+      `配置检查未通过，请修改 ${layout.envPath} 后重新执行安装。\n${formatConfigIssues(issues)}`,
+    );
+  }
+
+  printInstallStage("补充有问题的配置项");
+  env = await collectProblemInstallConfig(env, collectIssueFields(issues), flags);
+  issues = await runInstallConfigCheck(layout, env, "重新检查配置");
+  if (issues.length === 0) {
+    return env;
+  }
+
+  throw new Error(
+    `配置检查两次仍未通过，请直接修改 ${layout.envPath} 后重新执行安装。\n${formatConfigIssues(issues)}`,
+  );
+}
+
+async function runInstallFlowWithValidatedConfig(
+  layout: RuntimeLayout,
+  env: EnvConfig,
+): Promise<void> {
+  await writeCliLog(layout, `start install target=${env.SEEDAR_VERSION}`);
+  printInstallStage("拉取镜像前确认");
+  printInstallDetail(`目标版本：${env.SEEDAR_VERSION}`);
+  printInstallDetail(`安装目录：${layout.installRoot}`);
+
+  printInstallStage("拉取镜像");
+  printInstallDetail("开始拉取 mysql、server、web 镜像");
+  await pullInstallImages(layout);
+  printInstallDetail("镜像拉取完成");
+  await runInstallFlow(layout, env);
+  await writeCliLog(layout, `install completed version=${env.SEEDAR_VERSION}`);
 }
 
 async function parseComposePsOutput(layout: RuntimeLayout): Promise<Record<string, unknown>[]> {
@@ -531,19 +722,27 @@ async function installCommand(versionArg: string | undefined, flags: CliFlags): 
   const state = await readInstallState(layout);
   const hasConfig = await hasRuntimeConfig(layout);
   if (state === "installed" && hasConfig) {
-    throw new Error(`检测到现有安装目录 ${layout.installRoot}。如需升级请使用 seedar update。`);
+    throw new Error(
+      `检测到现有安装目录 ${layout.installRoot}。如需升级请使用 seedar update。`,
+    );
   }
 
   let env: EnvConfig;
   if (state === "uninstalled" && hasConfig) {
+    printInstallStage("复用已有配置");
     env = await readEnvConfig(layout);
     env.SEEDAR_VERSION = versionArg ?? env.SEEDAR_VERSION;
-    await writeCliLog(layout, `复用已有配置重新安装，目标版本 ${env.SEEDAR_VERSION}`);
+    printInstallDetail(`已复用配置文件：${layout.envPath}`);
+    await writeCliLog(layout, `reuse existing config reinstall target=${env.SEEDAR_VERSION}`);
   } else {
+    printInstallStage("填写配置");
     env = await collectInstallConfig(layout, versionArg, flags);
+    printInstallDetail("配置填写完成");
   }
 
-  await runInstallFlowWithRetry(layout, env);
+  env = await prepareInstallConfig(layout, env, flags);
+  await runInstallFlowWithValidatedConfig(layout, env);
+
   await writeInstalledVersion(layout, env.SEEDAR_VERSION);
   await writeInstallState(layout, "installed");
   printInstallSummary(layout, env);
@@ -634,6 +833,65 @@ async function uninstallCommand(flags: CliFlags): Promise<void> {
   if (!flags.removeData) {
     console.log(`数据保留在: ${layout.dataDir}`);
   }
+}
+
+function normalizePathForCompare(targetPath: string): string {
+  return path.resolve(targetPath).replace(/[\\/]+$/, "").toLowerCase();
+}
+
+function getDangerousDeleteReason(targetPath: string): string | null {
+  const resolved = path.resolve(targetPath);
+  const parsed = path.parse(resolved);
+  const normalizedTarget = normalizePathForCompare(resolved);
+  const normalizedRoot = normalizePathForCompare(parsed.root);
+  const normalizedHome = normalizePathForCompare(os.homedir());
+
+  if (normalizedTarget === normalizedRoot) {
+    return "目标路径是磁盘根目录";
+  }
+  if (normalizedTarget === normalizedHome) {
+    return "目标路径是用户主目录";
+  }
+
+  return null;
+}
+
+async function purgeCommand(flags: CliFlags): Promise<void> {
+  const layout = getRuntimeLayout();
+  const installRoot = path.resolve(layout.installRoot);
+
+  if (!flags.force) {
+    if (process.stdin.isTTY) {
+      console.log("该操作会彻底删除 Seedar 安装目录（含配置、数据、日志与备份）。");
+      throw new Error("请确认后重新执行: seedar purge --force");
+    }
+    throw new Error("非交互模式下执行 purge 需要 --force");
+  }
+
+  const dangerReason = getDangerousDeleteReason(installRoot);
+  if (dangerReason) {
+    throw new Error(`拒绝删除危险路径: ${installRoot}（${dangerReason}）`);
+  }
+
+  await writeCliLog(layout, "开始彻底删除安装目录");
+
+  if (await hasRuntimeConfig(layout)) {
+    const downResult = await runDockerCompose(layout, ["down", "--remove-orphans"]);
+    if (downResult.code !== 0) {
+      const detail = [downResult.stdout.trim(), downResult.stderr.trim()]
+        .filter(Boolean)
+        .join("\n");
+      console.warn(
+        detail
+          ? `停止容器失败，继续删除本地目录:\n${detail}`
+          : "停止容器失败，继续删除本地目录。",
+      );
+    }
+  }
+
+  await rm(installRoot, { recursive: true, force: true });
+  console.log("Seedar 已彻底删除。");
+  console.log(`已删除目录: ${installRoot}`);
 }
 
 async function statusCommand(): Promise<void> {
@@ -732,6 +990,7 @@ function printHelp(): void {
   seedar install [version]
   seedar update [version]
   seedar uninstall [--remove-data] [--force]
+  seedar purge --force
   seedar status
   seedar logs [mysql|server|web|migrate] [--follow]
   seedar doctor
@@ -750,6 +1009,9 @@ export async function main(rawArgs: string[]): Promise<void> {
       return;
     case "uninstall":
       await uninstallCommand(parsed.flags);
+      return;
+    case "purge":
+      await purgeCommand(parsed.flags);
       return;
     case "status":
       await statusCommand();

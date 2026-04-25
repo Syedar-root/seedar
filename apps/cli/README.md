@@ -14,3 +14,13 @@ npx @syedar/seedar-cli@latest install
 npm install -g @syedar/seedar-cli
 seedar status
 ```
+
+## 常用命令
+
+```bash
+# 保留配置与备份（可选删除 data）
+seedar uninstall --remove-data --force
+
+# 彻底删除安装目录（配置/数据/日志/备份全部删除）
+seedar purge --force
+```
