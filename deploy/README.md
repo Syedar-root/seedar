@@ -1,6 +1,6 @@
 # Seedar Production Deployment
 
-The default production path is now the Seedar CLI.
+The default production path is now the Seedar CLI.ok
 
 ## Recommended path
 
