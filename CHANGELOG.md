@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2](https://github.com/Syedar-root/seedar/compare/v1.1.1...v1.1.2) (2026-04-25)
+
+
+### Bug Fixes
+
+* publish cli package under [@syedar](https://github.com/syedar) scope ([a9e7e10](https://github.com/Syedar-root/seedar/commit/a9e7e100a44611aa3028f11e6dc702b27f6114e8))
+* publish cli package under [@syedar](https://github.com/syedar) scope ([abeb97d](https://github.com/Syedar-root/seedar/commit/abeb97dbd707a2912e625abfc54dc0e1d1ca00c8))
+
 ## [1.1.1](https://github.com/Syedar-root/seedar/compare/v1.1.0...v1.1.1) (2026-04-25)
 
 
