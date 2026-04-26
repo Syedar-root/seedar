@@ -1,0 +1,41 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: help;
+  transition: color 0.2s ease;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--text-secondary);
+    outline: none;
+  }
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup {
+  max-width: min(20rem, calc(100vw - 2rem));
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-secondary);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.14);
+  color: var(--text-primary);
+  font-size: var(--font-xs);
+  line-height: 1.5;
+  z-index: 1000;
+}
+
+.arrow {
+  display: flex;
+  color: var(--bg-primary);
+}

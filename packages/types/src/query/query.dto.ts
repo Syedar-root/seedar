@@ -61,7 +61,7 @@ export type QueryDimensionDSL = number | BaseDimensionDSL | DerivedDimensionDSL;
 
 export interface QueryDSL {
   datasetId: number;
-  tableId: number;
+  tableId?: number;
   dimensions?: QueryDimensionDSL[];
   metrics?: Array<{
     id: number;

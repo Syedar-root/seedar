@@ -65,6 +65,7 @@ describe('Dynamic Join Selection', () => {
       description: 'Test dataset for join selection',
       type: 'semantic' as any,
       status: 'active' as any,
+      mainTableId: 1,
       datasource: {
         id: 1,
         name: 'Test Datasource',
@@ -236,6 +237,53 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins).toBeDefined();
       expect(result.joins.length).toBe(1);
       expect(result.joins[0].table).toBe('customers');
+    });
+
+    it('should infer root table from join direction when tableId is omitted', () => {
+      const dsl = {
+        datasetId: 1,
+        dimensions: [6],
+        metrics: [{ id: 1 }],
+      };
+
+      const datasetWithLeftJoin: DatasetResponse = {
+        ...mockDatasetInfo,
+        joins: [
+          {
+            ...mockDatasetInfo.joins![0],
+            joinType: JoinType.LEFT,
+          },
+        ],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        datasetWithLeftJoin,
+        mockTables,
+      );
+
+      expect(result.from.table).toBe('orders');
+      expect(result.from.alias).toBe('t1');
+      expect(result.joins).toHaveLength(1);
+      expect(result.joins[0].table).toBe('customers');
+      expect(result.joins[0].type).toBe(JoinType.LEFT);
+    });
+
+    it('should fall back to mainTableId when root inference is ambiguous', () => {
+      const dsl = {
+        datasetId: 1,
+        dimensions: [6],
+        metrics: [{ id: 1 }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.from.table).toBe('orders');
+      expect(result.from.alias).toBe('t1');
     });
 
     it('should generate joins for multi-table query via metrics', () => {

@@ -1,20 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { Checkbox } from "@base-ui/react/checkbox";
 import { Check, Key, Search } from "lucide-react";
+import clsx from "clsx";
 import { useDatasources } from "#pkg/seedar/ui-react";
+import { HelpTip } from "@/core/components/ui/HelpTip";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import { Select } from "@/core/components/ui/Select";
 import { useDatasetEditorStore } from "../../../../store";
 import type { DatasetFormData } from "../../../../types/editor.types";
 import styles from "./DataSourceStep.module.scss";
-import clsx from "clsx";
 
 interface DataSourceStepProps {
   formData: DatasetFormData;
   onUpdate: (updates: Partial<DatasetFormData>, tag: string) => void;
 }
 
-// const TABLE_LIST_MAX_HEIGHT = "min(52vh, 32rem)";
+const TABLE_LIST_MAX_HEIGHT = "min(52vh, 32rem)";
+const MAIN_TABLE_HELP_TEXT =
+  "默认入口表是查询时的兜底入口。当系统无法根据本次查询自动推断入口表时，会使用这里的表作为查询起点，因此需要提前指定。";
 
 export const DataSourceStep = ({
   formData,
@@ -47,14 +50,16 @@ export const DataSourceStep = ({
       setSelectedTableNames([]);
       setTableSearchKeyword("");
     }
-  }, [selectedDatasourceId]);
+  }, [formData.datasourceId, onUpdate, selectedDatasourceId]);
 
   useEffect(() => {
-    if (selectedDatasourceId) {
-      const id = parseInt(selectedDatasourceId, 10);
-      if (id > 0) {
-        fetchDatasource(id);
-      }
+    if (!selectedDatasourceId) {
+      return;
+    }
+
+    const id = parseInt(selectedDatasourceId, 10);
+    if (id > 0) {
+      fetchDatasource(id);
     }
   }, [selectedDatasourceId, fetchDatasource]);
 
@@ -91,7 +96,7 @@ export const DataSourceStep = ({
     ) {
       onUpdate({ mainTable: "" }, "DataSourceStep mainTable");
     }
-  }, [selectedTableNames]);
+  }, [formData.mainTable, onUpdate, selectedTableNames, tableIdMap]);
 
   const handleTableToggle = (tableName: string, checked: boolean) => {
     if (checked) {
@@ -181,7 +186,7 @@ export const DataSourceStep = ({
                 />
               </div>
 
-              <ScrollArea>
+              <ScrollArea style={{ maxHeight: TABLE_LIST_MAX_HEIGHT }}>
                 {filteredTables.length > 0 ? (
                   <div className={styles.tableGrid}>
                     {filteredTables.map((table) => {
@@ -270,17 +275,20 @@ export const DataSourceStep = ({
       {formData.tables.length > 0 && (
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>
-            选择主表
+            选择默认入口表
             <span className={styles.required}>*</span>
+            <HelpTip content={MAIN_TABLE_HELP_TEXT} />
           </h3>
           <Select
             value={formData.mainTable}
             onChange={handleMainTableChange}
-            placeholder="请选择主表"
+            placeholder="请选择默认入口表"
             options={mainTableOptions}
             clearable={false}
           />
-          <p className={styles.hint}>主表是数据关联的基准表</p>
+          <p className={styles.hint}>
+            默认入口表会作为系统自动判定失败时的查询兜底入口。
+          </p>
         </div>
       )}
     </div>

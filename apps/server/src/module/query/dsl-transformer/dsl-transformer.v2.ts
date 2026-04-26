@@ -51,7 +51,7 @@ import { Operator, TimeFilter, TimeRange } from '@metric-engine/core';
  */
 export interface QueryDSL {
   datasetId: number;
-  tableId: number;
+  tableId?: number;
   dimensions?: QueryDimensionDSL[];
   metrics?: Array<{
     id: number;
@@ -211,8 +211,8 @@ export class DSLTransformerV2 {
     datasetInfo: DatasetResponse,
     tables: any[],
   ): QuerySpec {
-    if (!dsl || !dsl.tableId) {
-      throw new Error('DSL必须包含tableId字段');
+    if (!dsl) {
+      throw new Error('DSL不能为空');
     }
 
     // ========================================================================
@@ -252,17 +252,6 @@ export class DSLTransformerV2 {
     (datasetInfo.joins || []).forEach((join: DatasetJoinResponse) => {
       joinMap.set(join.id, join);
     });
-
-    // 验证主表是否存在
-    const mainTableInfo = tableMap.get(dsl.tableId);
-    if (!mainTableInfo) {
-      throw new Error(`找不到主表: ${dsl.tableId}`);
-    }
-
-    const mainTable = tables.find((t) => t.name === mainTableInfo.tableName);
-    if (!mainTable) {
-      throw new Error(`找不到主表: ${mainTableInfo.tableName}`);
-    }
 
     console.log('表map:', tableMap);
 
@@ -328,7 +317,9 @@ export class DSLTransformerV2 {
     // 然后才能计算需要哪些joins来连接这些表。
 
     const requiredTableIds = new Set<number>();
-    requiredTableIds.add(dsl.tableId); // 主表总是需要的
+    if (dsl.tableId) {
+      requiredTableIds.add(dsl.tableId);
+    }
 
     /**
      * 收集字段所属的表ID
@@ -511,153 +502,160 @@ export class DSLTransformerV2 {
     });
 
     // ========================================================================
-    // 第三阶段：构建Join图并查找Join路径
+    // 第三阶段：确定查询入口表并查找Join路径
     // ========================================================================
-    // 目的：计算从主表到所有依赖表的最短join路径
-    // 输入：joinMap（dataset中的join配置）、requiredTableIds（需要的表ID）
-    // 输出：requiredJoinIds（需要的join ID列表）
-    //
-    // 为什么使用BFS？
-    // 1. BFS保证找到最短路径，避免不必要的join
-    // 2. BFS天然适合无权图的最短路径问题
-    // 3. BFS可以处理多个目标节点（我们需要到达多个表）
+    // 目的：优先根据查询涉及的表和 join 方向自动推导入口表；如存在歧义则回退到 dataset.mainTableId
 
-    /**
-     * 构建Join关系图
-     *
-     * @returns 无向图，Map<tableId, Set<{joinId, targetTableId}>>
-     *
-     * 图结构说明：
-     * - 节点：表ID
-     * - 边：join关系，包含joinId和目标表ID
-     * - 无向图：join可以从左到右，也可以从右到左
-     *
-     * 示例：
-     * 假设有3个表：orders(1), customers(2), products(3)
-     * join配置：
-     * - join1: orders.customer_id = customers.id
-     * - join2: orders.product_id = products.id
-     *
-     * 构建的图：
-     * {
-     *   1 => Set([{joinId: 1, targetTableId: 2}, {joinId: 2, targetTableId: 3}])
-     *   2 => Set([{joinId: 1, targetTableId: 1}])
-     *   3 => Set([{joinId: 2, targetTableId: 1}])
-     * }
-     */
-    const buildJoinGraph = (): Map<
-      number,
-      Set<{ joinId: number; targetTableId: number }>
-    > => {
-      const graph = new Map<
-        number,
-        Set<{ joinId: number; targetTableId: number }>
-      >();
+    type JoinTraversalStep = {
+      joinId: number;
+      fromTableId: number;
+      toTableId: number;
+      directionPenalty: number;
+    };
+
+    type JoinTraversalCost = {
+      penalty: number;
+      steps: number;
+    };
+
+    type JoinPathPlan = {
+      steps: JoinTraversalStep[];
+      totalPenalty: number;
+      totalSteps: number;
+    };
+
+    type JoinTraversalEdge = JoinTraversalStep;
+
+    const compareTraversalCost = (
+      left: JoinTraversalCost,
+      right: JoinTraversalCost,
+    ) => {
+      if (left.penalty !== right.penalty) {
+        return left.penalty - right.penalty;
+      }
+      return left.steps - right.steps;
+    };
+
+    const getTraversalPenalty = (
+      join: DatasetJoinResponse,
+      fromTableId: number,
+    ): number => {
+      switch (join.joinType || JoinType.INNER) {
+        case JoinType.LEFT:
+          return fromTableId === join.leftTableId ? 0 : 1;
+        case JoinType.RIGHT:
+          return fromTableId === join.rightTableId ? 0 : 1;
+        case JoinType.INNER:
+        default:
+          return 0;
+      }
+    };
+
+    const buildJoinGraph = (): Map<number, JoinTraversalEdge[]> => {
+      const graph = new Map<number, JoinTraversalEdge[]>();
+
+      const addEdge = (edge: JoinTraversalEdge) => {
+        const existingEdges = graph.get(edge.fromTableId) || [];
+        existingEdges.push(edge);
+        graph.set(edge.fromTableId, existingEdges);
+      };
 
       joinMap.forEach((join, joinId) => {
-        // 添加左表到右表的连接
-        if (!graph.has(join.leftTableId)) {
-          graph.set(join.leftTableId, new Set());
-        }
-        graph
-          .get(join.leftTableId)!
-          .add({ joinId, targetTableId: join.rightTableId });
-
-        // 添加右表到左表的连接（无向图）
-        if (!graph.has(join.rightTableId)) {
-          graph.set(join.rightTableId, new Set());
-        }
-        graph
-          .get(join.rightTableId)!
-          .add({ joinId, targetTableId: join.leftTableId });
+        addEdge({
+          joinId,
+          fromTableId: join.leftTableId,
+          toTableId: join.rightTableId,
+          directionPenalty: getTraversalPenalty(join, join.leftTableId),
+        });
+        addEdge({
+          joinId,
+          fromTableId: join.rightTableId,
+          toTableId: join.leftTableId,
+          directionPenalty: getTraversalPenalty(join, join.rightTableId),
+        });
       });
 
       return graph;
     };
 
-    /**
-     * 使用BFS查找Join路径
-     *
-     * @param startTableId - 起始表ID（主表）
-     * @param targetTableIds - 目标表ID集合
-     * @returns 需要的join ID数组
-     *
-     * 算法流程：
-     * 1. 从主表开始BFS遍历
-     * 2. 记录到达每个表的路径（经过的join ID）
-     * 3. 如果到达的表在targetTableIds中，记录路径上的所有join
-     * 4. 继续遍历直到所有目标表都被访问
-     *
-     * 为什么这样设计？
-     * - BFS保证最短路径：先访问到的表一定是通过最少join到达的
-     * - 路径记录：每个节点记录到达它的路径，避免回溯
-     * - 多目标：可以同时找到到达多个目标表的路径
-     */
-    type JoinTraversalStep = {
-      joinId: number;
-      fromTableId: number;
-      toTableId: number;
-    };
+    const joinGraph = buildJoinGraph();
 
-    const findJoinPath = (
+    const findJoinPlan = (
       startTableId: number,
       targetTableIds: Set<number>,
-    ): JoinTraversalStep[] => {
-      const joinGraph = buildJoinGraph();
-      const visited = new Set<number>([startTableId]);
-      const queue: number[] = [startTableId];
-      const parentMap = new Map<number, { parentTableId: number; joinId: number }>();
+    ): JoinPathPlan => {
+      const bestCostMap = new Map<number, JoinTraversalCost>();
+      const parentMap = new Map<number, JoinTraversalStep>();
+      const queue: Array<{ tableId: number; cost: JoinTraversalCost }> = [
+        {
+          tableId: startTableId,
+          cost: { penalty: 0, steps: 0 },
+        },
+      ];
+
+      bestCostMap.set(startTableId, { penalty: 0, steps: 0 });
 
       while (queue.length > 0) {
-        const tableId = queue.shift()!;
+        queue.sort((left, right) => compareTraversalCost(left.cost, right.cost));
+        const current = queue.shift()!;
+        const knownBest = bestCostMap.get(current.tableId);
 
-        console.log('targetTableIds:', targetTableIds);
+        if (
+          !knownBest ||
+          compareTraversalCost(current.cost, knownBest) > 0
+        ) {
+          continue;
+        }
 
-        // 遍历邻居节点（可以通过join到达的表）
-        const neighbors = joinGraph.get(tableId) || new Set();
-        for (const neighbor of neighbors) {
-          if (!visited.has(neighbor.targetTableId)) {
-            visited.add(neighbor.targetTableId);
-            parentMap.set(neighbor.targetTableId, {
-              parentTableId: tableId,
-              joinId: neighbor.joinId,
-            });
-            queue.push(neighbor.targetTableId);
+        const neighbors = joinGraph.get(current.tableId) || [];
+        for (const edge of neighbors) {
+          const nextCost = {
+            penalty: current.cost.penalty + edge.directionPenalty,
+            steps: current.cost.steps + 1,
+          };
+          const existingCost = bestCostMap.get(edge.toTableId);
+
+          if (!existingCost || compareTraversalCost(nextCost, existingCost) < 0) {
+            bestCostMap.set(edge.toTableId, nextCost);
+            parentMap.set(edge.toTableId, edge);
+            queue.push({ tableId: edge.toTableId, cost: nextCost });
           }
         }
       }
 
       const orderedSteps: JoinTraversalStep[] = [];
       const addedStepKeys = new Set<string>();
+      let totalPenalty = 0;
+      let totalSteps = 0;
 
       for (const targetTableId of targetTableIds) {
         if (targetTableId === startTableId) {
           continue;
         }
 
-        if (!visited.has(targetTableId)) {
+        const targetCost = bestCostMap.get(targetTableId);
+        if (!targetCost) {
           throw new Error(
-            `主表 ${startTableId} 无法通过数据集 join 到达表 ${targetTableId}`,
+            `入口表 ${startTableId} 无法通过数据集 join 到达表 ${targetTableId}`,
           );
         }
+
+        totalPenalty += targetCost.penalty;
+        totalSteps += targetCost.steps;
 
         const pathSteps: JoinTraversalStep[] = [];
         let currentTableId = targetTableId;
 
         while (currentTableId !== startTableId) {
-          const parent = parentMap.get(currentTableId);
-          if (!parent) {
+          const parentEdge = parentMap.get(currentTableId);
+          if (!parentEdge) {
             throw new Error(
               `缺少从表 ${startTableId} 到表 ${targetTableId} 的 join 路径`,
             );
           }
 
-          pathSteps.push({
-            joinId: parent.joinId,
-            fromTableId: parent.parentTableId,
-            toTableId: currentTableId,
-          });
-          currentTableId = parent.parentTableId;
+          pathSteps.push(parentEdge);
+          currentTableId = parentEdge.fromTableId;
         }
 
         pathSteps.reverse().forEach((step) => {
@@ -669,8 +667,103 @@ export class DSLTransformerV2 {
         });
       }
 
-      return orderedSteps;
+      return {
+        steps: orderedSteps,
+        totalPenalty,
+        totalSteps,
+      };
     };
+
+    const candidateRootTableIds =
+      requiredTableIds.size > 0
+        ? Array.from(requiredTableIds)
+        : Array.from(tableMap.keys());
+
+    const inferRootTableId = (): number => {
+      if (dsl.tableId) {
+        return dsl.tableId;
+      }
+
+      const candidatePlans = candidateRootTableIds
+        .map((tableId) => {
+          try {
+            return {
+              tableId,
+              plan: findJoinPlan(tableId, requiredTableIds),
+            };
+          } catch {
+            return null;
+          }
+        })
+        .filter((item): item is { tableId: number; plan: JoinPathPlan } => !!item);
+
+      candidatePlans.sort((left, right) => {
+        const scoreDiff =
+          compareTraversalCost(
+            {
+              penalty: left.plan.totalPenalty,
+              steps: left.plan.totalSteps,
+            },
+            {
+              penalty: right.plan.totalPenalty,
+              steps: right.plan.totalSteps,
+            },
+          ) || left.tableId - right.tableId;
+        return scoreDiff;
+      });
+
+      const bestCandidate = candidatePlans[0];
+      const secondCandidate = candidatePlans[1];
+      const hasUniqueBestCandidate =
+        !!bestCandidate &&
+        (!secondCandidate ||
+          compareTraversalCost(
+            {
+              penalty: bestCandidate.plan.totalPenalty,
+              steps: bestCandidate.plan.totalSteps,
+            },
+            {
+              penalty: secondCandidate.plan.totalPenalty,
+              steps: secondCandidate.plan.totalSteps,
+            },
+          ) < 0);
+
+      if (hasUniqueBestCandidate) {
+        return bestCandidate.tableId;
+      }
+
+      if (datasetInfo.mainTableId) {
+        try {
+          findJoinPlan(datasetInfo.mainTableId, requiredTableIds);
+          return datasetInfo.mainTableId;
+        } catch {
+          // ignore and continue to throw a clearer error below
+        }
+      }
+
+      if (bestCandidate && !secondCandidate) {
+        return bestCandidate.tableId;
+      }
+
+      throw new Error(
+        '无法自动确定查询入口表，请在 QueryDSL.tableId 中显式指定，或为数据集配置 mainTableId 作为兜底入口表',
+      );
+    };
+
+    const rootTableId = inferRootTableId();
+    requiredTableIds.add(rootTableId);
+
+    const mainTableInfo = tableMap.get(rootTableId);
+    if (!mainTableInfo) {
+      throw new Error(`找不到入口表: ${rootTableId}`);
+    }
+
+    const mainTable = tables.find((t) => t.name === mainTableInfo.tableName);
+    if (!mainTable) {
+      throw new Error(`找不到入口表: ${mainTableInfo.tableName}`);
+    }
+
+    const requiredJoinPlan = findJoinPlan(rootTableId, requiredTableIds);
 
     // ========================================================================
     // 第四阶段：生成Joins并分配表别名
@@ -685,13 +778,14 @@ export class DSLTransformerV2 {
     // 3. join的顺序很重要，必须确保左表的别名已经分配
 
     const tableAliasMap = new Map<number, string>();
-    tableAliasMap.set(dsl.tableId, mainTableAlias);
+    tableAliasMap.set(rootTableId, mainTableAlias);
 
-    const requiredJoinSteps = findJoinPath(dsl.tableId, requiredTableIds);
+    const requiredJoinSteps = requiredJoinPlan.steps;
 
     const joins: JoinSpec[] = [];
     let joinAliasIdx = 2;
 
+    console.log('rootTableId:', rootTableId);
     console.log('requiredJoinSteps:', requiredJoinSteps);
 
     const reverseJoinType = (joinType?: JoinType): JoinType => {

@@ -155,14 +155,15 @@ export const usePanelEditorMutations = ({
 
   const buildDsl = useCallback(
     (baseDsl?: QueryDsl): QueryDsl | undefined => {
-      if (!datasetData?.id || !datasetData.mainTableId) {
+      if (!datasetData?.id) {
         return undefined;
       }
 
+      const { tableId: _tableId, ...baseDslWithoutTableId } = baseDsl ?? {};
+
       return {
-        ...(baseDsl ?? {}),
+        ...baseDslWithoutTableId,
         datasetId: datasetData.id,
-        tableId: datasetData.mainTableId,
         dimensions: serializeDimensions(dimensionItems),
         metrics: dropMetrics.map((metric) => ({
           id: Number(metric.id),
