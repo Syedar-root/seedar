@@ -15,6 +15,7 @@ export interface EnhancedSenderProps {
   models?: ModelItem[];
   currentModel?: string;
   onModelChange?: (modelKey: string) => void;
+  onManageModels?: () => void;
   modes?: ChatModeItem[];
   currentMode?: AiChatMode;
   onModeChange?: (mode: AiChatMode) => void;

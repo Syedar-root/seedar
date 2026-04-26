@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { LayoutDashboard, BarChart3, Database, Plug } from "lucide-react";
-import { Switch } from "antd";
 import { useAppStore } from "@/core/store";
+import { SeeMindSwitch } from "./components/SeeMindSwitch";
 import styles from "./GlobalNavigation.module.scss";
 import type { GlobalNavigationProps, NavItem } from "./types";
 
@@ -59,7 +59,7 @@ export const GlobalNavigation = (_props: GlobalNavigationProps) => {
 
       <div className={styles.spacer} />
 
-      <Switch checked={isSeeMindOn} onChange={toggleSeeMind} />
+      <SeeMindSwitch isActive={isSeeMindOn} onToggle={toggleSeeMind} />
     </nav>
   );
 };

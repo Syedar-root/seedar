@@ -45,7 +45,7 @@ export const DashboardAside = () => {
           <Plus size={16} />
         </button>
       </div>
-      <ScrollArea className={styles.list}>
+      <ScrollArea className={styles.list} contentStyle={{minWidth: 0}}>
         {dashboards?.map((dashboard) => (
           <div
             key={dashboard.id}
