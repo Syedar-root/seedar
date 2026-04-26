@@ -2,13 +2,18 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDatasets } from "#pkg/seedar/ui-react";
 import { Plus, AlertCircle, Loader2, Database } from "lucide-react";
-import { DatasetCard } from "../components/DatasetCard";
+import { DatasetCard, DeleteConfirmDialog } from "../components";
 import styles from "./styles/datasetPage.module.scss";
 import { Select } from "@/core/components/ui/Select";
 
 export const DatasetPage = () => {
   const navigate = useNavigate();
   const { data: datasets, isLoading, error } = useDatasets();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDataset, setSelectedDataset] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [isComposing, setIsComposing] = useState(false);
@@ -46,7 +51,23 @@ export const DatasetPage = () => {
   };
 
   const handleDelete = (id: number) => {
-    console.log("Delete dataset:", id);
+    const dataset = datasets?.find((item) => item.id === id);
+    if (dataset) {
+      setSelectedDataset({
+        id: dataset.id,
+        name: dataset.name,
+      });
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogOpen(false);
+    setSelectedDataset(null);
+  };
+
+  const handleDeleteSuccess = () => {
+    handleDeleteDialogClose();
   };
 
   const filteredDatasets = datasets?.filter((dataset) => {
@@ -149,6 +170,16 @@ export const DatasetPage = () => {
             </div>
           )}
       </main>
+
+      {selectedDataset && (
+        <DeleteConfirmDialog
+          open={deleteDialogOpen}
+          onClose={handleDeleteDialogClose}
+          datasetId={selectedDataset.id}
+          datasetName={selectedDataset.name}
+          onSuccess={handleDeleteSuccess}
+        />
+      )}
     </div>
   );
 };

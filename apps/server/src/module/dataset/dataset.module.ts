@@ -8,6 +8,7 @@ import { DatasourceModule } from '../datasource/datasource.module';
 import { DatasetJoin } from './entities/dataset-join.entity';
 import { DatasetField } from './entities/dataset-field.entity';
 import { DatasetMetric } from './entities/dataset-metric.entity';
+import { Query } from '../query/entities/query.entity';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { DatasetMetric } from './entities/dataset-metric.entity';
       DatasetJoin,
       DatasetField,
       DatasetMetric,
+      Query,
     ]),
     DatasourceModule,
   ],
