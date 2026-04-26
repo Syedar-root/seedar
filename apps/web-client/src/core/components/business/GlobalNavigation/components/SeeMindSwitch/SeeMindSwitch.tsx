@@ -25,7 +25,6 @@ export const SeeMindSwitch = ({
     >
       <span className={styles.switchTrack} aria-hidden="true">
         <span className={styles.switchActiveField} />
-        <span className={styles.switchGrid} />
         <span className={styles.switchText}>
           {seeMindLetters.map((letter, index) => (
             <span key={`${letter}-${index}`} className={styles.switchTextLetter}>
@@ -33,9 +32,7 @@ export const SeeMindSwitch = ({
             </span>
           ))}
         </span>
-        <span className={styles.switchBeam} />
         <span className={styles.switchThumb}>
-          <span className={styles.thumbHalo} />
           <Cpu size={18} strokeWidth={2.1} />
         </span>
       </span>
