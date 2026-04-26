@@ -83,6 +83,10 @@ jobs:
           echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
           echo "test_version=$TEST_VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Setup QEMU
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        uses: docker/setup-qemu-action@v3
+
       - name: Setup Docker Buildx
         if: env.HAS_DOCKER_CREDENTIALS == 'true'
         uses: docker/setup-buildx-action@v3
@@ -100,6 +104,7 @@ jobs:
         with:
           context: .
           file: deploy/docker/server.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.DOCKER_NAMESPACE }}/seedar-server:test
@@ -111,10 +116,28 @@ jobs:
         with:
           context: .
           file: deploy/docker/web.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.DOCKER_NAMESPACE }}/seedar-web:test
             ${{ env.DOCKER_NAMESPACE }}/seedar-web:test-${{ steps.meta.outputs.short_sha }}
+
+      - name: Verify published test image manifests
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SERVER_IMAGE="${{ env.DOCKER_NAMESPACE }}/seedar-server:test-${{ steps.meta.outputs.short_sha }}"
+          WEB_IMAGE="${{ env.DOCKER_NAMESPACE }}/seedar-web:test-${{ steps.meta.outputs.short_sha }}"
+
+          echo "Inspecting $SERVER_IMAGE"
+          docker buildx imagetools inspect "$SERVER_IMAGE"
+          docker buildx imagetools inspect "$SERVER_IMAGE" | grep -q 'linux/arm64'
+
+          echo "Inspecting $WEB_IMAGE"
+          docker buildx imagetools inspect "$WEB_IMAGE"
+          docker buildx imagetools inspect "$WEB_IMAGE" | grep -q 'linux/arm64'
 
       - name: Build CLI
         run: pnpm --filter @syedar/seedar-cli build
