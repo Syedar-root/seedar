@@ -1,9 +1,16 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, BarChart3, Database, Plug } from "lucide-react";
-import { Switch } from "antd";
+import {
+  LayoutDashboard,
+  BarChart3,
+  Database,
+  Plug,
+  MessageCircle,
+} from "lucide-react";
 import { useAppStore } from "@/core/store";
 import styles from "./GlobalNavigation.module.scss";
 import type { GlobalNavigationProps, NavItem } from "./types";
+
+const seeMindLetters = ["S", "E", "E", "M", "I", "N", "D"];
 
 const navItems: NavItem[] = [
   {
@@ -59,7 +66,35 @@ export const GlobalNavigation = (_props: GlobalNavigationProps) => {
 
       <div className={styles.spacer} />
 
-      <Switch checked={isSeeMindOn} onChange={toggleSeeMind} />
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isSeeMindOn}
+        aria-label={
+          isSeeMindOn ? "关闭 SeeMind 侧边对话框" : "打开 SeeMind 侧边对话框"
+        }
+        className={`${styles.seeMindSwitch} ${
+          isSeeMindOn ? styles.seeMindSwitchActive : ""
+        }`}
+        onClick={toggleSeeMind}
+      >
+        <span className={styles.switchTrack} aria-hidden="true">
+          <span className={styles.switchActiveField} />
+          <span className={styles.switchGrid} />
+          <span className={styles.switchText}>
+            {seeMindLetters.map((letter, index) => (
+              <span key={`${letter}-${index}`} className={styles.switchTextLetter}>
+                {letter}
+              </span>
+            ))}
+          </span>
+          <span className={styles.switchBeam} />
+          <span className={styles.switchThumb}>
+            <span className={styles.thumbHalo} />
+            <MessageCircle size={16} strokeWidth={2.1} />
+          </span>
+        </span>
+      </button>
     </nav>
   );
 };
