@@ -11,12 +11,18 @@
   pointer-events: auto;
 }
 
+.listWrapper {
+  max-height: 232px;
+}
+
 .list {
+  padding: 4px;
+}
+
+.listInner {
   list-style: none;
   margin: 0;
-  padding: 4px;
-  max-height: 232px;
-  overflow-y: auto;
+  padding: 0;
 }
 
 .item {

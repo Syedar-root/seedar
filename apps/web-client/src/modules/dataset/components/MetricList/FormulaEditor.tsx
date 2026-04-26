@@ -1,4 +1,8 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { Sender } from "@ant-design/x";
+import type { GetRef } from "antd";
+import type { SlotConfigType } from "@ant-design/x/es/sender/interface";
+import { Search } from "lucide-react";
 import {
   useFormulaParser,
   SuggestionItem,
@@ -10,6 +14,9 @@ import {
 import { FormulaSuggestion } from "./FormulaSuggestion";
 import { ScrollArea } from "@/core/components/ui/ScrollArea/ScrollArea";
 import styles from "./FormulaEditor.module.scss";
+
+const FORMULA_TOKEN_PATTERN = /#([FM])([^#\s+\-*/()]+)/g;
+const FORMULA_PLACEHOLDER = "输入公式，例如：SUM(amount) * price";
 
 interface FormulaEditorProps {
   fields: Array<{
@@ -23,6 +30,118 @@ interface FormulaEditorProps {
   onChange: (value: string) => void;
 }
 
+const createFieldSuggestion = (
+  field: FormulaEditorProps["fields"][number],
+): FieldItem => ({
+  id: field.id,
+  name: field.businessName || field.name,
+  businessName: field.businessName,
+  tableName: field.tableName,
+  type: "field",
+});
+
+const createMetricSuggestion = (
+  metric: FormulaEditorProps["metrics"][number],
+): MetricItem => ({
+  id: metric.id,
+  name: metric.businessName || metric.name,
+  businessName: metric.businessName,
+  type: "metric",
+});
+
+const createTokenSlot = (
+  item: FieldItem | MetricItem,
+  prefix: "F" | "M",
+  uniqueSuffix: string,
+): SlotConfigType => ({
+  type: "tag",
+  key: `${item.type}-${item.id}-${uniqueSuffix}`,
+  props: {
+    label: item.name,
+    value: `#${prefix}${item.id}`,
+  },
+  formatResult: (slotValue: string) =>
+    String(slotValue || `#${prefix}${item.id}`),
+});
+
+const buildFormulaSlotConfig = (
+  expression: string,
+  fields: FormulaEditorProps["fields"],
+  metrics: FormulaEditorProps["metrics"],
+): SlotConfigType[] => {
+  if (!expression) {
+    return [];
+  }
+
+  const fieldMap = new Map(fields.map((field) => [String(field.id), field]));
+  const metricMap = new Map(metrics.map((metric) => [String(metric.id), metric]));
+  const slotConfig: SlotConfigType[] = [];
+  let lastIndex = 0;
+
+  expression.replace(
+    FORMULA_TOKEN_PATTERN,
+    (matched, tokenType: "F" | "M", tokenId: string, offset: number) => {
+      if (offset > lastIndex) {
+        slotConfig.push({
+          type: "text",
+          value: expression.slice(lastIndex, offset),
+        });
+      }
+
+      const sourceItem =
+        tokenType === "F" ? fieldMap.get(tokenId) : metricMap.get(tokenId);
+
+      if (!sourceItem) {
+        slotConfig.push({ type: "text", value: matched });
+      } else if (tokenType === "F") {
+        slotConfig.push(
+          createTokenSlot(createFieldSuggestion(sourceItem), "F", `${offset}`),
+        );
+      } else {
+        slotConfig.push(
+          createTokenSlot(createMetricSuggestion(sourceItem), "M", `${offset}`),
+        );
+      }
+
+      lastIndex = offset + matched.length;
+      return matched;
+    },
+  );
+
+  if (lastIndex < expression.length) {
+    slotConfig.push({
+      type: "text",
+      value: expression.slice(lastIndex),
+    });
+  }
+
+  return slotConfig;
+};
+
+const getTextBeforeCursor = (element: HTMLElement): string => {
+  if (
+    element instanceof HTMLTextAreaElement ||
+    element instanceof HTMLInputElement
+  ) {
+    return element.value.slice(0, element.selectionStart ?? element.value.length);
+  }
+
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    return element.textContent || "";
+  }
+
+  const range = selection.getRangeAt(0);
+  if (!element.contains(range.endContainer)) {
+    return element.textContent || "";
+  }
+
+  const clonedRange = range.cloneRange();
+  clonedRange.selectNodeContents(element);
+  clonedRange.setEnd(range.endContainer, range.endOffset);
+  return clonedRange.toString();
+};
+
 export const FormulaEditor: React.FC<FormulaEditorProps> = ({
   fields,
   metrics,
@@ -30,193 +149,240 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
   onChange,
 }) => {
   const [showSuggestion, setShowSuggestion] = useState(false);
-  const [suggestionFilter, setSuggestionFilter] = useState("");
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [activeTab, setActiveTab] = useState<"function" | "field" | "metric">(
     "function",
   );
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [sidebarSearchKeyword, setSidebarSearchKeyword] = useState("");
+  const [senderSlotConfig, setSenderSlotConfig] = useState<SlotConfigType[]>(() =>
+    buildFormulaSlotConfig(value, fields, metrics),
+  );
+  const [senderInstanceKey, setSenderInstanceKey] = useState(0);
+  const inputRef = useRef<GetRef<typeof Sender>>(null);
+  const lastStorageValueRef = useRef(value);
+  const lastLabelSignatureRef = useRef("");
 
-  const { toDisplay, toStorage, detectSuggestionType, getSuggestionFilter } =
+  const { toStorage, detectSuggestionType, getSuggestionFilter } =
     useFormulaParser({
       fields,
       metrics,
     });
 
-  const displayValue = toDisplay(value);
+  const normalizedSidebarSearchKeyword = sidebarSearchKeyword
+    .trim()
+    .toLowerCase();
+  const labelSignature = useMemo(
+    () =>
+      JSON.stringify({
+        fields: fields.map((field) => ({
+          id: field.id,
+          name: field.name,
+          businessName: field.businessName,
+          tableName: field.tableName,
+        })),
+        metrics: metrics.map((metric) => ({
+          id: metric.id,
+          name: metric.name,
+          businessName: metric.businessName,
+        })),
+      }),
+    [fields, metrics],
+  );
 
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const inputValue = e.target.value;
-      const storageValue = toStorage(inputValue);
+  const filteredFunctions = useMemo(
+    () =>
+      !normalizedSidebarSearchKeyword
+        ? AGGREGATE_FUNCTIONS
+        : AGGREGATE_FUNCTIONS.filter((fn) =>
+            fn.name.toLowerCase().includes(normalizedSidebarSearchKeyword),
+          ),
+    [normalizedSidebarSearchKeyword],
+  );
+
+  const filteredFields = useMemo(
+    () =>
+      !normalizedSidebarSearchKeyword
+        ? fields
+        : fields.filter((field) => {
+            const fieldName = (field.businessName || field.name).toLowerCase();
+            const tableName = field.tableName?.toLowerCase() || "";
+
+            return (
+              fieldName.includes(normalizedSidebarSearchKeyword) ||
+              tableName.includes(normalizedSidebarSearchKeyword)
+            );
+          }),
+    [fields, normalizedSidebarSearchKeyword],
+  );
+
+  const filteredMetrics = useMemo(
+    () =>
+      !normalizedSidebarSearchKeyword
+        ? metrics
+        : metrics.filter((metric) =>
+            (metric.businessName || metric.name)
+              .toLowerCase()
+              .includes(normalizedSidebarSearchKeyword),
+          ),
+    [metrics, normalizedSidebarSearchKeyword],
+  );
+
+  const syncSuggestionsFromCursor = useCallback(() => {
+    const anchorElement = inputRef.current?.inputElement as HTMLElement | null;
+    if (!anchorElement) {
+      setSuggestions([]);
+      setShowSuggestion(false);
+      return;
+    }
+
+    const textBeforeCursor = getTextBeforeCursor(anchorElement);
+    const lastWord = textBeforeCursor.split(/[\s+\-*/()]+/).pop() || "";
+    const suggestionType = detectSuggestionType(lastWord);
+    const filter = getSuggestionFilter(lastWord);
+
+    if (!lastWord) {
+      setSuggestions([]);
+      setShowSuggestion(false);
+      return;
+    }
+
+    if (lastWord.startsWith("#F")) {
+      setSuggestions(
+        fields
+          .filter((field) => {
+            const name = field.businessName || field.name;
+            return name?.toLowerCase().includes(filter.toLowerCase());
+          })
+          .map(createFieldSuggestion),
+      );
+      setShowSuggestion(true);
+      return;
+    }
+
+    if (lastWord.startsWith("#M")) {
+      setSuggestions(
+        metrics
+          .filter((metric) => {
+            const name = metric.businessName || metric.name;
+            return name?.toLowerCase().includes(filter.toLowerCase());
+          })
+          .map(createMetricSuggestion),
+      );
+      setShowSuggestion(true);
+      return;
+    }
+
+    if (suggestionType === "function") {
+      setSuggestions(
+        AGGREGATE_FUNCTIONS.filter((fn) =>
+          fn.name.toLowerCase().includes(filter.toLowerCase()),
+        ),
+      );
+      setShowSuggestion(true);
+      return;
+    }
+
+    setSuggestions([]);
+    setShowSuggestion(false);
+  }, [detectSuggestionType, fields, getSuggestionFilter, metrics]);
+
+  useEffect(() => {
+    const shouldResync =
+      value !== lastStorageValueRef.current ||
+      labelSignature !== lastLabelSignatureRef.current;
+
+    if (!shouldResync) {
+      return;
+    }
+
+    setSenderSlotConfig(buildFormulaSlotConfig(value, fields, metrics));
+    setSenderInstanceKey((previousKey) => previousKey + 1);
+    lastStorageValueRef.current = value;
+    lastLabelSignatureRef.current = labelSignature;
+  }, [fields, labelSignature, metrics, value]);
+
+  const handleSenderChange = useCallback(
+    (nextValue: string) => {
+      const storageValue = toStorage(nextValue);
+      lastStorageValueRef.current = storageValue;
       onChange(storageValue);
 
-      const cursorPos = e.target.selectionStart;
-      const textBeforeCursor = inputValue.slice(0, cursorPos);
-      const lastWord = textBeforeCursor.split(/[\s+\-*/()]+/).pop() || "";
-      const suggestionType = detectSuggestionType(lastWord);
-      const filter = getSuggestionFilter(lastWord);
+      requestAnimationFrame(() => {
+        syncSuggestionsFromCursor();
+      });
+    },
+    [onChange, syncSuggestionsFromCursor, toStorage],
+  );
 
-      if (!lastWord) {
-        setSuggestions([]);
-        setShowSuggestion(false);
+  const insertSuggestionItem = useCallback(
+    (item: SuggestionItem, replaceCharacters?: string) => {
+      if (!inputRef.current) {
         return;
       }
 
-      if (lastWord.startsWith("#F")) {
-        setSuggestionFilter(filter);
-        const filteredFields = fields.filter((field) => {
-          const name = field.businessName || field.name;
-          return name?.toLowerCase().includes(filter.toLowerCase());
-        });
-        setSuggestions(
-          filteredFields.map((f) => ({
-            id: f.id,
-            name: f.businessName || f.name,
-            businessName: f.businessName,
-            tableName: f.tableName,
-            type: "field" as const,
-          })),
-        );
-        setShowSuggestion(true);
-      } else if (lastWord.startsWith("#M")) {
-        setSuggestionFilter(filter);
-        const filteredMetrics = metrics.filter((metric) => {
-          const name = metric.businessName || metric.name;
-          return name?.toLowerCase().includes(filter.toLowerCase());
-        });
-        setSuggestions(
-          filteredMetrics.map((m) => ({
-            id: m.id,
-            name: m.businessName || m.name,
-            businessName: m.businessName,
-            type: "metric" as const,
-          })),
-        );
-        setShowSuggestion(true);
-      } else if (suggestionType === "function") {
-        setSuggestionFilter(filter);
-        const filteredFunctions = AGGREGATE_FUNCTIONS.filter((fn) =>
-          fn.name.toLowerCase().includes(filter.toLowerCase()),
-        );
-        setSuggestions(filteredFunctions);
-        setShowSuggestion(true);
-      } else {
-        setShowSuggestion(false);
-        setSuggestions([]);
-      }
+      const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const insertConfig: SlotConfigType[] =
+        item.type === "function"
+          ? [{ type: "text", value: `${(item as FunctionItem).name}()` }]
+          : item.type === "field"
+            ? [createTokenSlot(item as FieldItem, "F", uniqueSuffix)]
+            : [createTokenSlot(item as MetricItem, "M", uniqueSuffix)];
+
+      inputRef.current.insert?.(insertConfig, "cursor", replaceCharacters);
+      setShowSuggestion(false);
+
+      requestAnimationFrame(() => {
+        inputRef.current?.focus?.();
+        syncSuggestionsFromCursor();
+      });
     },
-    [
-      onChange,
-      toStorage,
-      detectSuggestionType,
-      getSuggestionFilter,
-      fields,
-      metrics,
-    ],
+    [syncSuggestionsFromCursor],
   );
 
   const handleSuggestionSelect = useCallback(
     (item: SuggestionItem) => {
-      const inputEl = inputRef.current;
-      if (!inputEl) return;
+      const anchorElement = inputRef.current?.inputElement as HTMLElement | null;
+      const textBeforeCursor = anchorElement
+        ? getTextBeforeCursor(anchorElement)
+        : "";
+      const lastWord = textBeforeCursor.split(/[\s+\-*/()]+/).pop() || "";
 
-      const cursorPos = inputEl.selectionStart;
-      const textBefore = displayValue.slice(0, cursorPos);
-      const textAfter = displayValue.slice(cursorPos);
-
-      const lastWord = textBefore.split(/[\s+\-*/()]+/).pop() || "";
-      const prefix = lastWord.startsWith("#F")
-        ? "#F"
-        : lastWord.startsWith("#M")
-          ? "#M"
-          : "";
-
-      let insertText: string;
-      let cursorOffset: number;
-
-      if (item.type === "function") {
-        const fn = item as FunctionItem;
-        insertText = `${fn.name}()`;
-        cursorOffset = fn.name.length + 1;
-      } else if (item.type === "field") {
-        const field = item as FieldItem;
-        insertText = prefix ? `#F${field.id}` : field.name;
-        cursorOffset = insertText.length;
-      } else if (item.type === "metric") {
-        const metric = item as MetricItem;
-        insertText = prefix ? `#M${metric.id}` : metric.name;
-        cursorOffset = insertText.length;
-      } else {
-        insertText = (item as unknown as any).name;
-        cursorOffset = insertText.length;
-      }
-
-      const insertPosition = textBefore.length - lastWord.length;
-      const newTextBefore = textBefore.slice(0, insertPosition) + insertText;
-      const newText = newTextBefore + textAfter;
-
-      onChange(toStorage(newText));
-      setShowSuggestion(false);
-
-      setTimeout(() => {
-        const newCursorPos = insertPosition + cursorOffset;
-        inputEl.setSelectionRange(newCursorPos, newCursorPos);
-        inputEl.focus();
-      }, 0);
+      insertSuggestionItem(item, lastWord || undefined);
     },
-    [displayValue, onChange, toStorage],
+    [insertSuggestionItem],
   );
 
   const handleClickInsert = useCallback(
     (item: SuggestionItem) => {
-      handleSuggestionSelect(item);
+      insertSuggestionItem(item);
     },
-    [handleSuggestionSelect],
+    [insertSuggestionItem],
   );
 
   return (
     <div className={styles.container}>
       <div className={styles.editorSection}>
-        <div className={styles.editorWrapper} ref={wrapperRef}>
-          <textarea
+        <div className={styles.editorWrapper}>
+          <Sender
+            key={senderInstanceKey}
             ref={inputRef}
-            className={styles.textarea}
-            value={displayValue}
-            onChange={handleInputChange}
-            placeholder="输入公式，如: SUM(amount) * price"
-            rows={6}
+            classNames={{
+              root: styles.sender,
+              input: styles.senderInput,
+            }}
+            autoSize={{ minRows: 6, maxRows: 10 }}
+            suffix={false}
+            slotConfig={senderSlotConfig}
+            placeholder={FORMULA_PLACEHOLDER}
+            onChange={handleSenderChange}
             onFocus={() => {
-              if (displayValue) {
-                const lastWord = displayValue.split(/[\s+\-*/()]+/).pop() || "";
-                if (lastWord.startsWith("#F") || lastWord.startsWith("#M")) {
-                  const suggestionType = detectSuggestionType(lastWord);
-                  if (suggestionType) {
-                    setSuggestionFilter(getSuggestionFilter(lastWord));
-                    if (lastWord.startsWith("#F")) {
-                      setSuggestions(
-                        fields.map((f) => ({
-                          id: f.id,
-                          name: f.businessName || f.name,
-                          businessName: f.businessName,
-                          tableName: f.tableName,
-                          type: "field" as const,
-                        })),
-                      );
-                    } else if (lastWord.startsWith("#M")) {
-                      setSuggestions(
-                        metrics.map((m) => ({
-                          id: m.id,
-                          name: m.businessName || m.name,
-                          businessName: m.businessName,
-                          type: "metric" as const,
-                        })),
-                      );
-                    }
-                    setShowSuggestion(true);
-                  }
-                }
+              requestAnimationFrame(() => {
+                syncSuggestionsFromCursor();
+              });
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !showSuggestion) {
+                return false;
               }
             }}
           />
@@ -224,7 +390,9 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
             <FormulaSuggestion
               items={suggestions}
               onSelect={handleSuggestionSelect}
-              anchorRef={inputRef}
+              anchorElement={
+                (inputRef.current?.inputElement as HTMLElement | null) || null
+              }
               onClose={() => setShowSuggestion(false)}
             />
           )}
@@ -254,10 +422,33 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
         </div>
 
         <div className={styles.tabContent}>
+          <div className={styles.searchBox}>
+            <Search size={14} className={styles.searchIcon} />
+            <input
+              type="text"
+              className={styles.searchInput}
+              value={sidebarSearchKeyword}
+              onChange={(event) => setSidebarSearchKeyword(event.target.value)}
+              placeholder={
+                activeTab === "function"
+                  ? "搜索函数"
+                  : activeTab === "field"
+                    ? "搜索字段"
+                    : "搜索指标"
+              }
+              aria-label={
+                activeTab === "function"
+                  ? "搜索函数"
+                  : activeTab === "field"
+                    ? "搜索字段"
+                    : "搜索指标"
+              }
+            />
+          </div>
           <ScrollArea style={{ maxHeight: "200px" }}>
             {activeTab === "function" && (
               <div className={styles.itemList}>
-                {AGGREGATE_FUNCTIONS.map((fn) => (
+                {filteredFunctions.map((fn) => (
                   <button
                     key={fn.name}
                     className={styles.itemButton}
@@ -267,24 +458,19 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
                     <span className={styles.itemName}>{fn.name}</span>
                   </button>
                 ))}
+                {filteredFunctions.length === 0 && (
+                  <div className={styles.emptyState}>暂无匹配的函数</div>
+                )}
               </div>
             )}
 
             {activeTab === "field" && (
               <div className={styles.itemList}>
-                {fields.map((field) => (
+                {filteredFields.map((field) => (
                   <button
                     key={field.id}
                     className={styles.itemButton}
-                    onClick={() =>
-                      handleClickInsert({
-                        id: field.id,
-                        name: field.businessName || field.name,
-                        businessName: field.businessName,
-                        tableName: field.tableName,
-                        type: "field",
-                      } as FieldItem)
-                    }
+                    onClick={() => handleClickInsert(createFieldSuggestion(field))}
                   >
                     <span className={styles.fieldBadge}>F</span>
                     <span className={styles.itemName}>
@@ -295,23 +481,19 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
                     )}
                   </button>
                 ))}
+                {filteredFields.length === 0 && (
+                  <div className={styles.emptyState}>暂无匹配的字段</div>
+                )}
               </div>
             )}
 
             {activeTab === "metric" && (
               <div className={styles.itemList}>
-                {metrics.map((metric) => (
+                {filteredMetrics.map((metric) => (
                   <button
                     key={metric.id}
                     className={styles.itemButton}
-                    onClick={() =>
-                      handleClickInsert({
-                        id: metric.id,
-                        name: metric.businessName || metric.name,
-                        businessName: metric.businessName,
-                        type: "metric",
-                      } as MetricItem)
-                    }
+                    onClick={() => handleClickInsert(createMetricSuggestion(metric))}
                   >
                     <span className={styles.metricBadge}>M</span>
                     <span className={styles.itemName}>
@@ -319,6 +501,9 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
                     </span>
                   </button>
                 ))}
+                {filteredMetrics.length === 0 && (
+                  <div className={styles.emptyState}>暂无匹配的指标</div>
+                )}
               </div>
             )}
           </ScrollArea>
