@@ -297,6 +297,35 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins[0].table).toBe('customers');
     });
 
+    it('should assign alias correctly when traversing a join in reverse', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 2,
+        dimensions: [6],
+        metrics: [{ id: 1 }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.from.alias).toBe('t1');
+      expect(result.joins).toHaveLength(1);
+      expect(result.joins[0].table).toBe('orders');
+      expect(result.joins[0].alias).toBe('t2');
+
+      const joinExpr = result.joins[0].on as ComparisonExpr;
+      expect(joinExpr).toBeInstanceOf(ComparisonExpr);
+      expect(joinExpr.left).toBeInstanceOf(FieldRefExpr);
+      expect(joinExpr.right).toBeInstanceOf(FieldRefExpr);
+      expect((joinExpr.left as FieldRefExpr).getQualifiedName()).toBe('t1.id');
+      expect((joinExpr.right as FieldRefExpr).getQualifiedName()).toBe(
+        't2.customer_id',
+      );
+    });
+
     it('should keep backward compatibility for object dimensions with alias', () => {
       const dsl = {
         datasetId: 1,

@@ -29,6 +29,7 @@ import {
   DatasetJoinResponse,
   MetricType,
   MetricAggregateFunction,
+  JoinType,
   PeriodCalculationMode,
   PeriodOverPeriodType,
 } from '@/module/dataset/dataset.types';
@@ -592,52 +593,90 @@ export class DSLTransformerV2 {
      * - 路径记录：每个节点记录到达它的路径，避免回溯
      * - 多目标：可以同时找到到达多个目标表的路径
      */
+    type JoinTraversalStep = {
+      joinId: number;
+      fromTableId: number;
+      toTableId: number;
+    };
+
     const findJoinPath = (
       startTableId: number,
       targetTableIds: Set<number>,
-    ): number[] => {
+    ): JoinTraversalStep[] => {
       const joinGraph = buildJoinGraph();
-      const visited = new Set<number>();
-      const queue: Array<{ tableId: number; path: number[] }> = [
-        { tableId: startTableId, path: [] },
-      ];
-      const requiredJoins = new Set<number>();
+      const visited = new Set<number>([startTableId]);
+      const queue: number[] = [startTableId];
+      const parentMap = new Map<number, { parentTableId: number; joinId: number }>();
 
       while (queue.length > 0) {
-        const { tableId, path } = queue.shift()!;
-
-        if (visited.has(tableId)) {
-          continue;
-        }
-        visited.add(tableId);
+        const tableId = queue.shift()!;
 
         console.log('targetTableIds:', targetTableIds);
-
-        // 如果当前表是目标表之一，记录路径上的所有join
-        if (targetTableIds.has(tableId)) {
-          path.forEach((joinId) => requiredJoins.add(joinId));
-        }
 
         // 遍历邻居节点（可以通过join到达的表）
         const neighbors = joinGraph.get(tableId) || new Set();
         for (const neighbor of neighbors) {
           if (!visited.has(neighbor.targetTableId)) {
-            queue.push({
-              tableId: neighbor.targetTableId,
-              path: [...path, neighbor.joinId],
+            visited.add(neighbor.targetTableId);
+            parentMap.set(neighbor.targetTableId, {
+              parentTableId: tableId,
+              joinId: neighbor.joinId,
             });
+            queue.push(neighbor.targetTableId);
           }
         }
       }
 
-      return Array.from(requiredJoins);
+      const orderedSteps: JoinTraversalStep[] = [];
+      const addedStepKeys = new Set<string>();
+
+      for (const targetTableId of targetTableIds) {
+        if (targetTableId === startTableId) {
+          continue;
+        }
+
+        if (!visited.has(targetTableId)) {
+          throw new Error(
+            `主表 ${startTableId} 无法通过数据集 join 到达表 ${targetTableId}`,
+          );
+        }
+
+        const pathSteps: JoinTraversalStep[] = [];
+        let currentTableId = targetTableId;
+
+        while (currentTableId !== startTableId) {
+          const parent = parentMap.get(currentTableId);
+          if (!parent) {
+            throw new Error(
+              `缺少从表 ${startTableId} 到表 ${targetTableId} 的 join 路径`,
+            );
+          }
+
+          pathSteps.push({
+            joinId: parent.joinId,
+            fromTableId: parent.parentTableId,
+            toTableId: currentTableId,
+          });
+          currentTableId = parent.parentTableId;
+        }
+
+        pathSteps.reverse().forEach((step) => {
+          const stepKey = `${step.joinId}:${step.fromTableId}->${step.toTableId}`;
+          if (!addedStepKeys.has(stepKey)) {
+            addedStepKeys.add(stepKey);
+            orderedSteps.push(step);
+          }
+        });
+      }
+
+      return orderedSteps;
     };
 
     // ========================================================================
     // 第四阶段：生成Joins并分配表别名
     // ========================================================================
     // 目的：根据join路径生成JoinSpec对象，并为每个表分配别名
-    // 输入：requiredJoinIds（需要的join ID列表）
+    // 输入：requiredJoinSteps（需要的有向 join 路径列表）
     // 输出：joins数组（JoinSpec对象）、tableAliasMap（表ID到别名的映射）
     //
     // 关键点：
@@ -648,60 +687,96 @@ export class DSLTransformerV2 {
     const tableAliasMap = new Map<number, string>();
     tableAliasMap.set(dsl.tableId, mainTableAlias);
 
-    const requiredJoinIds = findJoinPath(dsl.tableId, requiredTableIds);
+    const requiredJoinSteps = findJoinPath(dsl.tableId, requiredTableIds);
 
     const joins: JoinSpec[] = [];
     let joinAliasIdx = 2;
 
-    console.log('requiredJoinIds:', requiredJoinIds);
+    console.log('requiredJoinSteps:', requiredJoinSteps);
 
-    // 遍历需要的join ID，生成JoinSpec对象
-    for (const joinId of requiredJoinIds) {
-      const joinInfo = joinMap.get(joinId);
+    const reverseJoinType = (joinType?: JoinType): JoinType => {
+      switch (joinType) {
+        case JoinType.LEFT:
+          return JoinType.RIGHT;
+        case JoinType.RIGHT:
+          return JoinType.LEFT;
+        case JoinType.INNER:
+        default:
+          return JoinType.INNER;
+      }
+    };
+
+    // 遍历需要的有向 join 步骤，生成 JoinSpec 对象
+    for (const joinStep of requiredJoinSteps) {
+      const joinInfo = joinMap.get(joinStep.joinId);
       if (!joinInfo) {
-        throw new Error(`找不到连接: ${joinId}`);
+        throw new Error(`找不到连接: ${joinStep.joinId}`);
       }
 
-      const rightTableInfo = tableMap.get(joinInfo.rightTableId);
-      if (!rightTableInfo) {
-        throw new Error(`找不到右表: ${joinInfo.rightTableId}`);
+      const joinedTableInfo = tableMap.get(joinStep.toTableId);
+      if (!joinedTableInfo) {
+        throw new Error(`找不到 JOIN 表: ${joinStep.toTableId}`);
       }
 
-      const rightTable = tables.find(
-        (t) => t.name === rightTableInfo.tableName,
+      const joinedTable = tables.find(
+        (t) => t.name === joinedTableInfo.tableName,
       );
-      if (!rightTable) {
-        throw new Error(`找不到JOIN表: ${rightTableInfo.tableName}`);
+      if (!joinedTable) {
+        throw new Error(`找不到JOIN表: ${joinedTableInfo.tableName}`);
       }
 
-      // 为右表分配别名
-      const rightTableAlias = `t${joinAliasIdx++}`;
-      tableAliasMap.set(joinInfo.rightTableId, rightTableAlias);
+      const fromTableAlias = tableAliasMap.get(joinStep.fromTableId);
+      if (!fromTableAlias) {
+        throw new Error(`找不到表 ${joinStep.fromTableId} 对应的别名`);
+      }
 
-      // 获取join条件中的字段信息
-      const leftFieldInfo = fieldMapWithDCId.get(Number(joinInfo.leftField));
-      const rightFieldInfo = fieldMapWithDCId.get(Number(joinInfo.rightField));
+      const joinedTableAlias =
+        tableAliasMap.get(joinStep.toTableId) || `t${joinAliasIdx++}`;
+      tableAliasMap.set(joinStep.toTableId, joinedTableAlias);
 
-      // 获取左表别名（应该已经分配过了）
-      const leftTableAlias =
-        tableAliasMap.get(joinInfo.leftTableId) || mainTableAlias;
+      const isForwardJoin =
+        joinInfo.leftTableId === joinStep.fromTableId &&
+        joinInfo.rightTableId === joinStep.toTableId;
+      const isReverseJoin =
+        joinInfo.rightTableId === joinStep.fromTableId &&
+        joinInfo.leftTableId === joinStep.toTableId;
 
-      // 构建join条件表达式：leftField = rightField
+      if (!isForwardJoin && !isReverseJoin) {
+        throw new Error(
+          `join ${joinStep.joinId} 的表方向与路径不匹配: ${joinStep.fromTableId} -> ${joinStep.toTableId}`,
+        );
+      }
+
+      const existingFieldInfo = fieldMapWithDCId.get(
+        Number(isForwardJoin ? joinInfo.leftField : joinInfo.rightField),
+      );
+      const joinedFieldInfo = fieldMapWithDCId.get(
+        Number(isForwardJoin ? joinInfo.rightField : joinInfo.leftField),
+      );
+      const effectiveJoinType = isForwardJoin
+        ? joinInfo.joinType || JoinType.INNER
+        : reverseJoinType(joinInfo.joinType || JoinType.INNER);
+
+      // 构建 join 条件表达式：已在查询树中的表字段 = 新引入表字段
       const onExpr = new ComparisonExpr(
         Operator.EQUALS,
-        new FieldRefExpr(leftFieldInfo?.name || '', undefined, leftTableAlias),
         new FieldRefExpr(
-          rightFieldInfo?.name || '',
+          existingFieldInfo?.name || '',
           undefined,
-          rightTableAlias,
+          fromTableAlias,
+        ),
+        new FieldRefExpr(
+          joinedFieldInfo?.name || '',
+          undefined,
+          joinedTableAlias,
         ),
       );
 
-      // 添加到joins数组
+      // 添加到 joins 数组
       joins.push({
-        type: (joinInfo.joinType || 'inner') as any,
-        table: rightTableInfo.tableName,
-        alias: rightTableAlias,
+        type: effectiveJoinType as any,
+        table: joinedTableInfo.tableName,
+        alias: joinedTableAlias,
         on: onExpr,
       });
     }
