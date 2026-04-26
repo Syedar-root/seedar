@@ -53,11 +53,11 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -86,6 +86,22 @@ jobs:
           tags: |
             ${{ steps.release.outputs.docker_namespace }}/seedar-web:${{ steps.release.outputs.version }}
             ${{ steps.release.outputs.docker_namespace }}/seedar-web:latest
+
+      - name: Verify published image manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SERVER_IMAGE="${{ steps.release.outputs.docker_namespace }}/seedar-server:${{ steps.release.outputs.version }}"
+          WEB_IMAGE="${{ steps.release.outputs.docker_namespace }}/seedar-web:${{ steps.release.outputs.version }}"
+
+          echo "Inspecting $SERVER_IMAGE"
+          docker buildx imagetools inspect "$SERVER_IMAGE"
+          docker buildx imagetools inspect "$SERVER_IMAGE" | grep -q 'linux/arm64'
+
+          echo "Inspecting $WEB_IMAGE"
+          docker buildx imagetools inspect "$WEB_IMAGE"
+          docker buildx imagetools inspect "$WEB_IMAGE" | grep -q 'linux/arm64'
 
       - name: Build CLI
         run: pnpm --filter @syedar/seedar-cli build
