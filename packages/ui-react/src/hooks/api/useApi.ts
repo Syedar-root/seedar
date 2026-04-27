@@ -37,6 +37,8 @@ import type {
   UpdateAiSessionRequest,
   AiChatRequestDto,
   AiAgentStreamChunk,
+  GenerateFieldBusinessNameRequest,
+  GenerateFieldBusinessNameResponse,
 } from "#pkg/seedar/types";
 
 /**
@@ -337,6 +339,13 @@ export const useAiApi = () => {
     return AiApi.streamChat(dto, callbacks);
   };
 
+  const generateFieldBusinessNames = useCallback(
+    (data: GenerateFieldBusinessNameRequest, options?: RequestOptions) => {
+      return AiApi.generateFieldBusinessNames(data, options);
+    },
+    [],
+  );
+
   return {
     findAll,
     findOne,
@@ -347,5 +356,6 @@ export const useAiApi = () => {
     findSession,
     updateSession,
     streamChat,
+    generateFieldBusinessNames,
   };
 };

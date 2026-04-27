@@ -350,6 +350,30 @@ export const useDatasetForm = ({
     [],
   );
 
+  const updateFieldBusinessNames = useCallback(
+    (updates: Array<{ fieldId: string; businessName: string }>) => {
+      const businessNameMap = new Map(
+        updates.map((item) => [item.fieldId, item.businessName]),
+      );
+
+      setFormData((prev) => ({
+        ...prev,
+        fields: prev.fields.map((field) => {
+          const nextBusinessName = businessNameMap.get(field.id);
+          if (!nextBusinessName) {
+            return field;
+          }
+
+          return {
+            ...field,
+            businessName: nextBusinessName.trim() || field.name,
+          };
+        }),
+      }));
+    },
+    [],
+  );
+
   const replaceJoins = useCallback((joins: JoinConfig[]) => {
     setFormData((prev) => ({
       ...prev,
@@ -493,6 +517,7 @@ export const useDatasetForm = ({
     getLockedFields,
     toggleField,
     updateFieldBusinessName,
+    updateFieldBusinessNames,
     addJoin,
     removeJoin,
     updateJoin,

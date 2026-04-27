@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { AiService } from './ai.service';
 import {
   AiAgentStreamChunk,
@@ -53,6 +57,11 @@ import path from 'path';
 import { existsSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { LoggerService } from '@/logger/logger.service';
+import {
+  GenerateFieldBusinessNameRequestDto,
+  GenerateFieldBusinessNameResponseDto,
+} from '../dto';
+import { AiStatus } from '../enums';
 
 @Injectable()
 export class ChatService {
@@ -613,6 +622,9 @@ export class ChatService {
       case 'deepseek':
         return new ChatDeepSeek(llmConfig.model, {
           apiKey: llmConfig.apiKey,
+          modelKwargs:{
+            "tool_choice": "auto",
+          },
           ...config,
         });
       case 'anthropic':
@@ -660,5 +672,72 @@ export class ChatService {
           type: contentBlock?.type || 'text',
         };
     }
+  }
+
+  public async generateFieldBusinessName(
+    request: GenerateFieldBusinessNameRequestDto,
+  ): Promise<GenerateFieldBusinessNameResponseDto> {
+    if (request.fields.length === 0) {
+      return { items: [] };
+    }
+
+    const ai = await this.aiService.findOne(request.aiId);
+    if (ai.status !== AiStatus.ACTIVE) {
+      throw new BadRequestException('当前模型不可用，请先启用可用模型');
+    }
+
+    const llm = this.createLLM(this.getLLMConfig(ai));
+
+    const responseSchema = z.object({
+      items: z.array(
+        z.object({
+          fieldId: z.string(),
+          businessName: z.string().min(1),
+        }),
+      ),
+    });
+
+    const promptTemplate = PromptTemplate.fromTemplate(
+      await loadPrompt('field-business-name'),
+    );
+    const prompt = await promptTemplate.format({
+      requestPayload: JSON.stringify(request, null, 2),
+    });
+
+    const agent = createAgent({
+      model: llm,
+      tools: [],
+      responseFormat: toolStrategy(responseSchema),
+      systemPrompt: prompt,
+    });
+
+    const result = await agent.invoke({
+      messages: [new HumanMessage('请为这些字段生成业务名称。')],
+    });
+
+    const structuredResponse = result.structuredResponse as
+      | { items: Array<{ fieldId: string; businessName: string }> }
+      | undefined;
+
+    if (!structuredResponse?.items) {
+      throw new InternalServerErrorException('生成字段业务名称失败');
+    }
+
+    const generatedNameMap = new Map(
+      structuredResponse.items.map((item) => [
+        item.fieldId,
+        item.businessName.trim(),
+      ]),
+    );
+
+    return {
+      items: request.fields.map((field) => ({
+        fieldId: field.fieldId,
+        businessName:
+          generatedNameMap.get(field.fieldId) ||
+          field.currentBusinessName?.trim() ||
+          field.fieldName,
+      })),
+    };
   }
 }

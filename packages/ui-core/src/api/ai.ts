@@ -10,6 +10,8 @@ import {
   AiChatRequestDto,
   AiAgentStreamChunk,
   PaginatedResult,
+  GenerateFieldBusinessNameRequest,
+  GenerateFieldBusinessNameResponse,
 } from "#pkg/seedar/types";
 
 export class AiApi {
@@ -176,5 +178,16 @@ export class AiApi {
     return {
       close: () => controller.abort(),
     };
+  }
+
+  static async generateFieldBusinessNames(
+    data: GenerateFieldBusinessNameRequest,
+    options?: RequestOptions,
+  ): Promise<GenerateFieldBusinessNameResponse> {
+    return ApiClient.post<GenerateFieldBusinessNameResponse>(
+      "/v1/ai/field-business-name",
+      data,
+      options,
+    );
   }
 }

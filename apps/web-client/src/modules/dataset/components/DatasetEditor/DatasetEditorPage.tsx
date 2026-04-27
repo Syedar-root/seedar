@@ -48,6 +48,9 @@ export interface DatasetEditorPageProps {
   ) => Set<string>;
   toggleField: (fieldId: string, lockedFields: Set<string>) => void;
   updateFieldBusinessName: (fieldId: string, businessName: string) => void;
+  updateFieldBusinessNames: (
+    updates: Array<{ fieldId: string; businessName: string }>,
+  ) => void;
   addJoin: (join: JoinConfig) => void;
   removeJoin: (joinId: string) => void;
   updateJoin: (joinId: string, updates: Partial<JoinConfig>) => void;
@@ -77,6 +80,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
     getLockedFields,
     toggleField,
     updateFieldBusinessName,
+    updateFieldBusinessNames,
     addJoin,
     removeJoin,
     updateJoin,
@@ -144,13 +148,14 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
           <FieldConfigStep
             formData={formData}
             lockedFields={getLockedFields(datasource)}
-            onToggleField={(fieldId) =>
-              toggleField(fieldId, getLockedFields(datasource))
-            }
-            onUpdateFieldBusinessName={updateFieldBusinessName}
-            selectedDatasource={datasource ?? undefined}
-          />
-        );
+              onToggleField={(fieldId) =>
+                toggleField(fieldId, getLockedFields(datasource))
+              }
+              onUpdateFieldBusinessName={updateFieldBusinessName}
+              onUpdateFieldBusinessNames={updateFieldBusinessNames}
+              selectedDatasource={datasource ?? undefined}
+            />
+          );
       case "metricConfig":
         return <MetricConfigStep formData={formData} />;
       case "confirm":

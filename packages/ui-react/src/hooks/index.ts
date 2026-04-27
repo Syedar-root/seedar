@@ -71,4 +71,5 @@ export {
   useCreateAiSession,
   useUpdateAiSession,
   useAiChat,
+  useGenerateFieldBusinessNames,
 } from "./api/useAi";

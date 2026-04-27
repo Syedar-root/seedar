@@ -15,6 +15,7 @@ export interface PaginatedResult<T> {
 
 export interface LLMConfig {
   type: 'openai' | 'anthropic' | 'qwen' | 'local' | 'deepseek';
+  modelKwargs?: Record<string, any>;
   apiKey: string;
   baseUrl?: string;
   model: string;

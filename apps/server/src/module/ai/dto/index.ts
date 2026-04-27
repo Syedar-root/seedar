@@ -5,3 +5,4 @@ export * from './ai-session.response';
 export * from './ai.response';
 export * from './create-ai.request';
 export * from './update-ai.request';
+export * from './generate-field-business-name.request';

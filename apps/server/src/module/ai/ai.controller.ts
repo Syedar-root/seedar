@@ -23,6 +23,8 @@ import {
   AiChatResponseDto,
   AiSessionResponse,
   CreateAiSessionRequest,
+  GenerateFieldBusinessNameRequestDto,
+  GenerateFieldBusinessNameResponseDto,
 } from './dto';
 import { AiChatResumeDto, AiChatScene, PaginatedResult } from './ai.types';
 import { Observable } from 'rxjs';
@@ -71,6 +73,13 @@ export class AiController {
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string): Promise<void> {
     return this.aiService.remove(id);
+  }
+
+  @Post('field-business-name')
+  generateFieldBusinessName(
+    @Body() dto: GenerateFieldBusinessNameRequestDto,
+  ): Promise<GenerateFieldBusinessNameResponseDto> {
+    return this.chatService.generateFieldBusinessName(dto);
   }
 
   @Sse('chat/stream', {
