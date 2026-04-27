@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
-import { Tooltip } from "@base-ui/react/tooltip";
 import {
   useCreateAi,
   useDeleteAi,
@@ -9,9 +8,10 @@ import {
 import type { AiResponse } from "#pkg/seedar/types";
 import { AiType } from "#pkg/seedar/types";
 import { toast } from "sonner";
-import { CircleHelp, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import { Select } from "@/core/components/ui/Select";
+import { HelpTip } from "@/core/components/ui/HelpTip";
 import styles from "./ModelConfigDialog.module.scss";
 import type { ModelConfigDialogProps } from "./types";
 
@@ -27,6 +27,7 @@ interface ModelFormState {
   name: string;
   description: string;
   llmType: string;
+  model: string;
   apiKey: string;
   baseUrl: string;
 }
@@ -35,6 +36,7 @@ const EMPTY_FORM_STATE: ModelFormState = {
   name: "",
   description: "",
   llmType: DEFAULT_LLM_TYPE,
+  model: "",
   apiKey: "",
   baseUrl: "",
 };
@@ -63,6 +65,7 @@ const buildFormState = (model?: AiResponse | null): ModelFormState => {
     name: model?.name ?? "",
     description: model?.description ?? "",
     llmType: getStringValue(llmConfig?.type) || DEFAULT_LLM_TYPE,
+    model: getStringValue(llmConfig?.model),
     apiKey: getStringValue(llmConfig?.apiKey),
     baseUrl: getStringValue(llmConfig?.baseUrl),
   };
@@ -72,6 +75,7 @@ const buildModelConfig = (formState: ModelFormState) => {
   return {
     llm: {
       type: formState.llmType,
+      model: formState.model.trim(),
       apiKey: formState.apiKey.trim(),
       baseUrl: formState.baseUrl.trim(),
     },
@@ -88,40 +92,6 @@ const getBaseUrlSummary = (baseUrl: string) => {
   } catch {
     return baseUrl;
   }
-};
-
-const HelpTipArrow: React.FC = () => {
-  return (
-    <svg viewBox="0 0 10 5" aria-hidden="true" width="10" height="5">
-      <path d="M0 5L5 0L10 5H0Z" fill="currentColor" />
-    </svg>
-  );
-};
-
-const HelpTip: React.FC<{ content: string }> = ({ content }) => {
-  return (
-    <Tooltip.Root>
-      <Tooltip.Trigger className={styles["help-tip-trigger"]}>
-        <span
-          className={styles["help-tip-button"]}
-          aria-label="查看说明"
-          role="img"
-        >
-          <CircleHelp size={13} />
-        </span>
-      </Tooltip.Trigger>
-      <Tooltip.Portal>
-        <Tooltip.Positioner sideOffset={8}>
-          <Tooltip.Popup className={styles["help-tip-popup"]}>
-            <Tooltip.Arrow className={styles["help-tip-arrow"]}>
-              <HelpTipArrow />
-            </Tooltip.Arrow>
-            {content}
-          </Tooltip.Popup>
-        </Tooltip.Positioner>
-      </Tooltip.Portal>
-    </Tooltip.Root>
-  );
 };
 
 const ModelConfigDialog: React.FC<ModelConfigDialogProps> = ({
@@ -219,6 +189,10 @@ const ModelConfigDialog: React.FC<ModelConfigDialogProps> = ({
 
     if (!formState.apiKey.trim()) {
       return "请输入 API Key";
+    }
+
+    if (!formState.model.trim()) {
+      return "请输入服务商 Model";
     }
 
     if (!formState.baseUrl.trim()) {
@@ -339,221 +313,238 @@ const ModelConfigDialog: React.FC<ModelConfigDialogProps> = ({
       <Dialog.Portal>
         <Dialog.Backdrop className={styles.backdrop} />
         <Dialog.Popup className={styles.popup}>
-          <Tooltip.Provider>
-            <div className={styles.content}>
-              <div className={styles.header}>
-                <Dialog.Title className={styles.title}>模型管理</Dialog.Title>
-              </div>
+          <div className={styles.content}>
+            <div className={styles.header}>
+              <Dialog.Title className={styles.title}>模型管理</Dialog.Title>
+            </div>
 
-              <div className={styles.layout}>
-                <section className={styles["list-panel"]}>
-                  <div className={styles["panel-header"]}>
-                    <div className={styles["panel-heading"]}>
-                      <h3 className={styles["panel-title"]}>已添加模型</h3>
-                      <HelpTip content="点击卡片进入编辑；底部按钮可直接设为当前模型。" />
-                    </div>
-                    <button
-                      type="button"
-                      className={styles["ghost-button"]}
-                      onClick={resetFormToCreate}
-                      disabled={isBusy}
-                    >
-                      <Plus size={14} />
-                      <span>新建</span>
-                    </button>
+            <div className={styles.layout}>
+              <section className={styles["list-panel"]}>
+                <div className={styles["panel-header"]}>
+                  <div className={styles["panel-heading"]}>
+                    <h3 className={styles["panel-title"]}>已添加模型</h3>
+                    <HelpTip content="点击卡片进入编辑；底部按钮可直接设为当前模型。" />
                   </div>
+                  <button
+                    type="button"
+                    className={styles["ghost-button"]}
+                    onClick={resetFormToCreate}
+                    disabled={isBusy}
+                  >
+                    <Plus size={14} />
+                    <span>新建</span>
+                  </button>
+                </div>
 
-                  <div className={styles["list-container"]}>
-                    <ScrollArea>
-                      <div className={styles["model-list"]}>
-                        {models.length > 0 ? (
-                          models.map((model) => {
-                            const isSelected = model.id === selectedModelId;
-                            const isCurrent = model.id === currentModelId;
-                            const llmType =
-                              getStringValue(getLlmConfig(model.config)?.type) ||
-                              DEFAULT_LLM_TYPE;
-                            const baseUrlSummary = getBaseUrlSummary(
-                              getStringValue(getLlmConfig(model.config)?.baseUrl),
-                            );
+                <div className={styles["list-container"]}>
+                  <ScrollArea>
+                    <div className={styles["model-list"]}>
+                      {models.length > 0 ? (
+                        models.map((model) => {
+                          const isSelected = model.id === selectedModelId;
+                          const isCurrent = model.id === currentModelId;
+                          const llmType =
+                            getStringValue(getLlmConfig(model.config)?.type) ||
+                            DEFAULT_LLM_TYPE;
+                          const baseUrlSummary = getBaseUrlSummary(
+                            getStringValue(getLlmConfig(model.config)?.baseUrl),
+                          );
 
-                            return (
-                              <div
-                                key={model.id}
-                                className={styles["model-card"]}
-                                data-active={isSelected || undefined}
+                          return (
+                            <div
+                              key={model.id}
+                              className={styles["model-card"]}
+                              data-active={isSelected || undefined}
+                            >
+                              <button
+                                type="button"
+                                className={styles["model-card-main"]}
+                                onClick={() => loadModelToEditor(model)}
                               >
+                                <div className={styles["model-card-header"]}>
+                                  <span className={styles["model-card-title"]}>
+                                    {model.name}
+                                  </span>
+                                  <div className={styles["model-card-badges"]}>
+                                    {isCurrent ? (
+                                      <span
+                                        className={styles["model-badge-current"]}
+                                      >
+                                        当前
+                                      </span>
+                                    ) : null}
+                                    <span className={styles["model-badge-type"]}>
+                                      {llmType}
+                                    </span>
+                                  </div>
+                                </div>
+                                {model.description ? (
+                                  <div
+                                    className={styles["model-card-description"]}
+                                  >
+                                    {model.description}
+                                  </div>
+                                ) : null}
+                                <div className={styles["model-card-footer"]}>
+                                  <span className={styles["model-card-meta"]}>
+                                    {baseUrlSummary}
+                                  </span>
+                                </div>
+                              </button>
+                              {!isCurrent ? (
                                 <button
                                   type="button"
-                                  className={styles["model-card-main"]}
-                                  onClick={() => loadModelToEditor(model)}
+                                  className={styles["model-card-action-button"]}
+                                  onClick={() => onCurrentModelChange?.(model.id)}
                                 >
-                                  <div className={styles["model-card-header"]}>
-                                    <span className={styles["model-card-title"]}>
-                                      {model.name}
-                                    </span>
-                                    <div className={styles["model-card-badges"]}>
-                                      {isCurrent ? (
-                                        <span
-                                          className={styles["model-badge-current"]}
-                                        >
-                                          当前
-                                        </span>
-                                      ) : null}
-                                      <span className={styles["model-badge-type"]}>
-                                        {llmType}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  {model.description ? (
-                                    <div
-                                      className={styles["model-card-description"]}
-                                    >
-                                      {model.description}
-                                    </div>
-                                  ) : null}
-                                  <div className={styles["model-card-footer"]}>
-                                    <span className={styles["model-card-meta"]}>
-                                      {baseUrlSummary}
-                                    </span>
-                                  </div>
+                                  设为当前
                                 </button>
-                                {!isCurrent ? (
-                                  <button
-                                    type="button"
-                                    className={styles["model-card-action-button"]}
-                                    onClick={() => onCurrentModelChange?.(model.id)}
-                                  >
-                                    设为当前
-                                  </button>
-                                ) : null}
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <div className={styles["empty-state"]}>
-                            还没有可用模型
-                          </div>
-                        )}
-                      </div>
-                    </ScrollArea>
+                              ) : null}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className={styles["empty-state"]}>
+                          还没有可用模型
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </section>
+
+              <section className={styles["editor-panel"]}>
+                <div className={styles["panel-header"]}>
+                  <div className={styles["panel-heading"]}>
+                    <h3 className={styles["panel-title"]}>
+                      {editorMode === "create" ? "新建模型" : "编辑模型"}
+                    </h3>
                   </div>
-                </section>
+                  <div className={styles["editor-header-meta"]}>
+                    {editorMode === "edit" && selectedModel ? (
+                      <span className={styles["panel-tag"]}>
+                        {selectedModel.name}
+                      </span>
+                    ) : null}
+                    <HelpTip content="这里编辑的是 config.llm；保存后会写入模型的 Config 字段。" />
+                  </div>
+                </div>
 
-                <section className={styles["editor-panel"]}>
-                  <div className={styles["panel-header"]}>
-                    <div className={styles["panel-heading"]}>
-                      <h3 className={styles["panel-title"]}>
-                        {editorMode === "create" ? "新建模型" : "编辑模型"}
-                      </h3>
+                <div className={styles["editor-body"]}>
+                  <div className={styles["field-section"]}>
+                    <div className={styles["field-grid-single"]}>
+                      <div className={styles.field}>
+                        <label className={styles.label} htmlFor="model-name">
+                          <span>模型名称</span>
+                          <span className={styles.required}>*</span>
+                        </label>
+                        <input
+                          id="model-name"
+                          className={styles.input}
+                          value={formState.name}
+                          onChange={(event) =>
+                            handleFieldChange("name", event.target.value)
+                          }
+                          placeholder="输入系统内模型名称"
+                        />
+                      </div>
                     </div>
-                    <div className={styles["editor-header-meta"]}>
-                      {editorMode === "edit" && selectedModel ? (
-                        <span className={styles["panel-tag"]}>
-                          {selectedModel.name}
-                        </span>
-                      ) : null}
-                      <HelpTip content="这里编辑的是 config.llm；保存后会写入模型的 Config 字段。" />
+
+                    <div className={styles["field-grid-single"]}>
+                      <div className={styles.field}>
+                        <label
+                          className={styles.label}
+                          htmlFor="model-description"
+                        >
+                          <span>说明</span>
+                        </label>
+                        <textarea
+                          id="model-description"
+                          className={styles.textarea}
+                          value={formState.description}
+                          onChange={(event) =>
+                            handleFieldChange("description", event.target.value)
+                          }
+                          placeholder="补充用途说明"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className={styles["editor-body"]}>
-                    <div className={styles["field-section"]}>
-                      <div className={styles["field-grid-single"]}>
-                        <div className={styles.field}>
-                          <label className={styles.label} htmlFor="model-name">
-                            <span>模型名称</span>
-                            <span className={styles.required}>*</span>
-                          </label>
-                          <input
-                            id="model-name"
-                            className={styles.input}
-                            value={formState.name}
-                            onChange={(event) =>
-                              handleFieldChange("name", event.target.value)
-                            }
-                            placeholder="输入模型名称"
-                          />
-                        </div>
+                  <div className={styles["field-section"]}>
+                    <div className={styles["field-grid"]}>
+                      <div className={styles.field}>
+                        <label className={styles.label}>
+                          <span>消息规格</span>
+                          <HelpTip content="决定 config.llm.type，仅支持 openai、anthropic、deepseek 三种。" />
+                        </label>
+                        <Select
+                          value={formState.llmType}
+                          clearable={false}
+                          options={[...LLM_TYPE_OPTIONS]}
+                          onChange={(value) =>
+                            handleFieldChange(
+                              "llmType",
+                              value || DEFAULT_LLM_TYPE,
+                            )
+                          }
+                          placeholder="选择消息规格"
+                        />
                       </div>
 
-                      <div className={styles["field-grid-single"]}>
-                        <div className={styles.field}>
-                          <label
-                            className={styles.label}
-                            htmlFor="model-description"
-                          >
-                            <span>说明</span>
-                          </label>
-                          <textarea
-                            id="model-description"
-                            className={styles.textarea}
-                            value={formState.description}
-                            onChange={(event) =>
-                              handleFieldChange("description", event.target.value)
-                            }
-                            placeholder="补充用途说明"
-                          />
-                        </div>
+                      <div className={styles.field}>
+                        <label className={styles.label} htmlFor="model-provider">
+                          <span>Model</span>
+                          <span className={styles.required}>*</span>
+                          <HelpTip content="这是服务商侧的模型标识，会写入 config.llm.model。它不同于上面的“模型名称”。例如 DeepSeek 或火山方舟里实际调用的模型名，如 doubao-seed-2-0-pro-250415。" />
+                        </label>
+                        <input
+                          id="model-provider"
+                          className={styles.input}
+                          value={formState.model}
+                          onChange={(event) =>
+                            handleFieldChange("model", event.target.value)
+                          }
+                          placeholder="输入服务商模型标识"
+                        />
                       </div>
                     </div>
 
-                    <div className={styles["field-section"]}>
-                      <div className={styles["field-grid"]}>
-                        <div className={styles.field}>
-                          <label className={styles.label}>
-                            <span>消息规格</span>
-                            <HelpTip content="决定 config.llm.type，仅支持 openai、anthropic、deepseek 三种。" />
-                          </label>
-                          <Select
-                            value={formState.llmType}
-                            clearable={false}
-                            options={[...LLM_TYPE_OPTIONS]}
-                            onChange={(value) =>
-                              handleFieldChange(
-                                "llmType",
-                                value || DEFAULT_LLM_TYPE,
-                              )
-                            }
-                            placeholder="选择消息规格"
-                          />
-                        </div>
-
-                        <div className={styles.field}>
-                          <label className={styles.label} htmlFor="model-base-url">
-                            <span>Base URL</span>
-                            <span className={styles.required}>*</span>
-                            <HelpTip content="必填，会写入 config.llm.baseUrl。" />
-                          </label>
-                          <input
-                            id="model-base-url"
-                            className={styles.input}
-                            value={formState.baseUrl}
-                            onChange={(event) =>
-                              handleFieldChange("baseUrl", event.target.value)
-                            }
-                            placeholder="输入 Base URL"
-                          />
-                        </div>
+                    <div className={styles["field-grid-single"]}>
+                      <div className={styles.field}>
+                        <label className={styles.label} htmlFor="model-base-url">
+                          <span>Base URL</span>
+                          <span className={styles.required}>*</span>
+                          <HelpTip content="必填，会写入 config.llm.baseUrl。" />
+                        </label>
+                        <input
+                          id="model-base-url"
+                          className={styles.input}
+                          value={formState.baseUrl}
+                          onChange={(event) =>
+                            handleFieldChange("baseUrl", event.target.value)
+                          }
+                          placeholder="输入 Base URL"
+                        />
                       </div>
+                    </div>
 
-                      <div className={styles["field-grid-single"]}>
-                        <div className={styles.field}>
-                          <label className={styles.label} htmlFor="model-api-key">
-                            <span>API Key</span>
-                            <span className={styles.required}>*</span>
-                          </label>
-                          <input
-                            id="model-api-key"
-                            type="password"
-                            className={styles.input}
-                            value={formState.apiKey}
-                            onChange={(event) =>
-                              handleFieldChange("apiKey", event.target.value)
-                            }
-                            placeholder="输入 API Key"
-                          />
-                        </div>
+                    <div className={styles["field-grid-single"]}>
+                      <div className={styles.field}>
+                        <label className={styles.label} htmlFor="model-api-key">
+                          <span>API Key</span>
+                          <span className={styles.required}>*</span>
+                        </label>
+                        <input
+                          id="model-api-key"
+                          type="password"
+                          className={styles.input}
+                          value={formState.apiKey}
+                          onChange={(event) =>
+                            handleFieldChange("apiKey", event.target.value)
+                          }
+                          placeholder="输入 API Key"
+                        />
                       </div>
                     </div>
 
@@ -622,10 +613,10 @@ const ModelConfigDialog: React.FC<ModelConfigDialogProps> = ({
                       </button>
                     </div>
                   </div>
-                </section>
-              </div>
+                </div>
+              </section>
             </div>
-          </Tooltip.Provider>
+          </div>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

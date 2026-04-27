@@ -14,6 +14,7 @@ import type {
   DatasetFormData,
   FormField,
 } from "../../../../../types/editor.types";
+import { toast } from "sonner";
 
 const isAvailableModel = (ai: AiResponse) => {
   const llmConfig = ai.config?.llm as Record<string, unknown> | undefined;
@@ -123,7 +124,14 @@ export const useFieldBusinessNameGenerator = ({
       })),
     };
 
-    return generateMutation.mutateAsync(payload);
+    return generateMutation.mutateAsync(payload, {
+      onSuccess:()=>{
+        toast.success("生成字段业务名称成功");
+      },
+      onError:()=>{
+        toast.error("生成字段业务名称失败");
+      },
+    });
   };
 
   return {

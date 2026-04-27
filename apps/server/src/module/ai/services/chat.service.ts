@@ -606,10 +606,13 @@ export class ChatService {
    */
   private createLLM(
     llmConfig: LLMConfig,
+    temperature?: number,
+    maxTokens?: number,
+    extraBody?: Record<string, unknown>,
   ): ChatOpenAI | ChatAnthropic | ChatDeepSeek {
     const config: Record<string, unknown> = {
-      temperature: llmConfig.temperature,
-      maxTokens: llmConfig.maxTokens,
+      temperature: temperature ?? llmConfig.temperature,
+      maxTokens: maxTokens ?? llmConfig.maxTokens,
     };
 
     if (llmConfig.baseUrl) {
@@ -624,6 +627,7 @@ export class ChatService {
           apiKey: llmConfig.apiKey,
           modelKwargs:{
             "tool_choice": "auto",
+            ...extraBody,
           },
           ...config,
         });
@@ -686,7 +690,11 @@ export class ChatService {
       throw new BadRequestException('当前模型不可用，请先启用可用模型');
     }
 
-    const llm = this.createLLM(this.getLLMConfig(ai));
+    const llm = this.createLLM(this.getLLMConfig(ai), 0.3, undefined, {
+      "thinking": {
+        "type": "disabled",
+      }
+    });
 
     const responseSchema = z.object({
       items: z.array(
@@ -720,8 +728,14 @@ export class ChatService {
       | undefined;
 
     if (!structuredResponse?.items) {
+      this.logger.error(
+        '生成字段业务名称失败，返回结果格式错误',
+        JSON.stringify(result, null, 2),
+      );
       throw new InternalServerErrorException('生成字段业务名称失败');
     }
+
+    console.log(JSON.stringify(result, null, 2));
 
     const generatedNameMap = new Map(
       structuredResponse.items.map((item) => [

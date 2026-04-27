@@ -146,6 +146,8 @@ export const useGenerateFieldBusinessNames = () => {
 
   return useMutation({
     mutationFn: (data: GenerateFieldBusinessNameRequest) =>
-      aiApi.generateFieldBusinessNames(data),
+      aiApi.generateFieldBusinessNames(data, {
+        timeout: 600000,
+      }),
   });
 };
