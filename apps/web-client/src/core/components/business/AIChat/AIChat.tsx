@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+import { AlertCircle } from "lucide-react";
 import {
   Bubble,
   ThoughtChain,
@@ -60,6 +61,7 @@ const AIChat: React.FC<AIChatProps> = ({
   title,
   onAddChat,
   onShowHistory,
+  error,
   className,
   style,
 }) => {
@@ -413,6 +415,17 @@ const AIChat: React.FC<AIChatProps> = ({
           )}
         </ScrollArea>
       </div>
+
+      {error ? (
+        <div
+          className={styles["error-banner"]}
+          role="alert"
+          aria-live="assertive"
+        >
+          <AlertCircle size={16} />
+          <span>{error}</span>
+        </div>
+      ) : null}
 
       <div className={styles["sender-wrapper"]}>
         <EnhancedSender

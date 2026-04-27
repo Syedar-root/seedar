@@ -85,6 +85,24 @@
   animation: fadeIn 0.3s ease-out;
 }
 
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--chat-space-sm);
+  margin: 0 var(--chat-space-md) var(--chat-space-md);
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, #ef4444 28%, var(--chat-border-default));
+  border-radius: var(--chat-radius-sm);
+  background: color-mix(in srgb, #ef4444 8%, var(--chat-bg-secondary));
+  color: #b91c1c;
+  font: var(--chat-text-label);
+  line-height: 1.5;
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

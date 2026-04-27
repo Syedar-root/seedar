@@ -170,6 +170,7 @@ const AIChatPreview: React.FC = () => {
   const handleAddChat = async () => {
     chatState.setMessages([]);
     setCurrentSession(null);
+    setError(null);
   };
 
   const handleModelChange = (modelKey: string) => {
@@ -231,6 +232,7 @@ const AIChatPreview: React.FC = () => {
           style={{ height: "100%", border: "none" }}
           messages={chatState.messages}
           loading={isLoading}
+          error={error}
           placeholder="输入 / 获取命令"
           title="AI 智能助手"
           onAddChat={handleAddChat}
@@ -274,7 +276,6 @@ const AIChatPreview: React.FC = () => {
             setCurrentModel(nextModel?.id || "");
           }}
         />
-        {error ? <div style={{ color: "red" }}>Error: {error}</div> : null}
       </section>
     </div>
   );

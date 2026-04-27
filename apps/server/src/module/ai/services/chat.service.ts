@@ -217,6 +217,7 @@ export class ChatService {
     scenes?: AiChatScene[],
   ) {
     const ai = await this.aiService.findOne(aiId);
+
     const llmConfig = this.getLLMConfig(ai);
 
     const graphBuilder = new StateGraph(this.State);
@@ -327,6 +328,7 @@ export class ChatService {
     return async (state) => {
       // 步骤 1：创建 Deep Agent
       const llm = this.createLLM(llmConfig);
+
       const essentialTools = this.getEssentialToolNames(mode);
       state.allowTools = this.sanitizeAllowedTools(state.allowTools, mode);
       essentialTools.forEach((tool) => {
@@ -411,6 +413,7 @@ export class ChatService {
     resumePayload?: AiChatResumeDto,
   ): AsyncGenerator<AiAgentStreamChunk, void, unknown> {
     try {
+      // throw new InternalServerErrorException('streamChat not implemented');
       // 步骤 1：获取会话信息
       const session = await this.aiSessionService.findOne(sessionId);
 
@@ -479,10 +482,6 @@ export class ChatService {
             name.test(token.contentBlocks[0].name as string),
           )
         ) {
-          console.log(
-            'hcs blacklist tool_call',
-            token.contentBlocks[0].name as string,
-          );
           blacklistToolCallIds.push(token.contentBlocks[0].id as string);
           continue;
         }
@@ -502,9 +501,9 @@ export class ChatService {
           }
 
           // 类型变化时生成新的 sid
-          if (type !== lastType) {
+          if (messageType !== lastType) {
             currentSid = randomUUID();
-            lastType = type as YieldType;
+            lastType = messageType as YieldType;
           }
 
           const meta = {
@@ -621,6 +620,18 @@ export class ChatService {
       };
     }
 
+    /**
+     * 处理 DeepSeek 模型的额外参数，deepseek 模型不支持在langchain中存在兼容性问题，需要禁用 thinking 参数
+     */
+    if(llmConfig.model.includes('deepseek')){
+      extraBody = {
+        ...extraBody,
+        "thinking": {
+          "type": "disabled",
+        }
+      }
+    }
+
     switch (llmConfig.type) {
       case 'deepseek':
         return new ChatDeepSeek(llmConfig.model, {
@@ -643,6 +654,10 @@ export class ChatService {
       default:
         return new ChatOpenAI(llmConfig.model, {
           apiKey: llmConfig.apiKey,
+          modelKwargs:{
+            "tool_choice": "auto",
+            ...extraBody,
+          },
           ...config,
         });
     }
