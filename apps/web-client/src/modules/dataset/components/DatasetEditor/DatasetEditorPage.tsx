@@ -26,7 +26,7 @@ const STEP_LABELS: Record<EditorSteps, string> = {
   joinConfig: "关联配置",
   fieldConfig: "字段选择",
   metricConfig: "指标配置",
-  confirm: "确认创建",
+  confirm: "确认提交",
 };
 
 export interface DatasetEditorPageProps {
@@ -95,7 +95,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
       setDatasourceId(id);
       fetchDatasource(id);
     }
-  }, [formData.datasourceId]);
+  }, [fetchDatasource, formData.datasourceId, setDatasourceId]);
 
   const timelineSteps: Array<{
     key: string;
@@ -184,8 +184,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
             {isCreateMode ? "创建数据集" : "编辑数据集"}
           </h1>
           <p className={styles.stepIndicator}>
-            步骤 {currentStepIndex + 1} / {steps.length}：
-            {STEP_LABELS[currentStep]}
+            步骤 {currentStepIndex + 1} / {steps.length}：{STEP_LABELS[currentStep]}
           </p>
         </div>
 
@@ -211,12 +210,12 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
                 {isSubmitting ? (
                   <>
                     <div className={styles.buttonSpinner} />
-                    创建中...
+                    {isCreateMode ? "创建中..." : "保存中..."}
                   </>
                 ) : (
                   <>
                     <Check size={16} />
-                    创建数据集
+                    {isCreateMode ? "创建数据集" : "保存修改"}
                   </>
                 )}
               </button>
