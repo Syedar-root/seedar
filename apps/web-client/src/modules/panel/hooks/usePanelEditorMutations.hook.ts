@@ -100,6 +100,7 @@ interface UsePanelEditorMutationsReturn {
   ) => void;
   handleRemoveSortItem: (sortItemId: string) => void;
   handleUpdateTopN: (value?: number) => void;
+  handleApplySortConfig: (nextSortItems: SortItem[], nextTopN?: number) => void;
   handleEditorChange: (
     type: DisplayPanelType,
     config: PanelEditorConfig,
@@ -352,6 +353,28 @@ export const usePanelEditorMutations = ({
       setTopN(normalized);
     },
     [setTopN],
+  );
+
+  const handleApplySortConfig = useCallback(
+    (nextSortItems: SortItem[], nextTopN?: number) => {
+      setSortItems(nextSortItems);
+      if (nextSortItems.length === 0) {
+        setTopN(undefined);
+        return;
+      }
+
+      if (
+        nextTopN === undefined ||
+        nextTopN === null ||
+        Number.isNaN(nextTopN)
+      ) {
+        setTopN(undefined);
+        return;
+      }
+
+      setTopN(Math.max(1, Math.floor(nextTopN)));
+    },
+    [setSortItems, setTopN],
   );
 
   const handleDropField = useCallback(
@@ -980,6 +1003,7 @@ export const usePanelEditorMutations = ({
     handleUpdateSortItem,
     handleRemoveSortItem,
     handleUpdateTopN,
+    handleApplySortConfig,
     handleEditorChange,
     handleSaveItemFormatting,
     handleRemoveItemFormatting,

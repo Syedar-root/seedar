@@ -6,20 +6,6 @@
     color-mix(in srgb, var(--accent-1-border) 55%, var(--accent-2-border) 45%),
     color-mix(in srgb, var(--accent-1-text) 55%, var(--accent-2-text) 45%)
   );
-
-  padding-right: 6px;
-}
-
-.trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  border: none;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  padding: 0;
-  min-width: 0;
 }
 
 .label {
@@ -36,21 +22,4 @@
   color: var(--text-secondary);
   background: var(--bg-base);
   border: 1px solid var(--border-base);
-}
-
-.removeAction {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: none;
-  background: transparent;
-  color: inherit;
-  opacity: 0.6;
-  cursor: pointer;
-
-  &:hover {
-    opacity: 1;
-  }
 }

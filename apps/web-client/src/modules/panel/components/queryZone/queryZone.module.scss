@@ -63,50 +63,51 @@
   flex: 0 0 56px;
 }
 
-.sortControls {
-  margin-left: auto;
+.sortSequence {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-md);
-  flex-shrink: 0;
+  min-width: 0;
 }
 
-.sortSelect {
-  min-width: 180px;
-}
-
-.topNControl {
+.sortEntryButton {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: 6px 10px;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px var(--spacing-md);
+  border: 1px dashed var(--border-base);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border-base);
-  background: var(--bg-elevated);
-}
-
-.topNLabel {
-  font-size: var(--font-sm);
-  font-weight: 600;
+  background: var(--bg-base);
   color: var(--text-secondary);
+  font-size: var(--font-base);
+  font-weight: 500;
+  line-height: 1;
   white-space: nowrap;
-}
-
-.topNInput {
-  width: 96px;
-}
-
-.topNClear {
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: var(--font-sm);
   cursor: pointer;
-  padding: 0;
+  transition:
+    border-color var(--transition-base),
+    color var(--transition-base),
+    background-color var(--transition-base);
 
   &:hover {
     color: var(--text-primary);
+    border-color: var(--primary);
+    background: var(--bg-elevated);
   }
+}
+
+.topNBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-base);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-weight: 600;
 }
 
 @mixin drag-item-style($bg-color, $border-color, $text-color) {

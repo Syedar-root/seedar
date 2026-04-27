@@ -1,12 +1,10 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { InputNumber, Select } from "antd";
 import type {
   DatasetFieldResponse,
   PanelFormattingConfig,
   PanelFormattingRole,
   PanelFormattingTarget,
   PanelSimpleFormattingRule,
-  QueryOrderByDSL,
 } from "#pkg/seedar/types";
 import styles from "./queryZone.module.scss";
 import { DragZone } from "../dndHelper";
@@ -17,6 +15,7 @@ import { MetricItem } from "./components/metricItem/metricItem";
 import { DimensionItem } from "./components/dimensionItem/dimensionItem";
 import { TempMetricItem } from "./components/tempMetricItem/tempMetricItem";
 import { SortItem } from "./components/sortItem";
+import { SortDialog } from "./components/sortDialog";
 import { PopDialog } from "./components/popDialog/popDialog";
 import type {
   DerivedDimensionInput,
@@ -56,13 +55,7 @@ interface QueryZoneProps {
   onRemoveTempMetric?: (tempMetricId: string) => void;
   sortItems?: PanelSortItem[];
   topN?: number;
-  onAddSortItem?: (orderBy: QueryOrderByDSL) => void;
-  onUpdateSortItem?: (
-    sortItemId: string,
-    updates: Partial<PanelSortItem>,
-  ) => void;
-  onRemoveSortItem?: (sortItemId: string) => void;
-  onUpdateTopN?: (value?: number) => void;
+  onApplySortConfig?: (nextSortItems: PanelSortItem[], nextTopN?: number) => void;
   onAddDerivedDimension?: (dimension: DerivedDimensionInput) => void;
   onUpdateDerivedDimension?: (
     dimensionItemId: string | number,
@@ -149,10 +142,7 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
   onRemoveTempMetric,
   sortItems = [],
   topN,
-  onAddSortItem,
-  onUpdateSortItem,
-  onRemoveSortItem,
-  onUpdateTopN,
+  onApplySortConfig,
   onAddDerivedDimension,
   onUpdateDerivedDimension,
   formatting,
@@ -175,7 +165,7 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
   const [activeFormatting, setActiveFormatting] = useState<
     ActiveFormattingState | undefined
   >();
-  const [sortCandidateId, setSortCandidateId] = useState<string | undefined>();
+  const [sortDialogOpen, setSortDialogOpen] = useState(false);
 
   const simpleFormatting = useMemo(
     () => toSimpleFormattingConfig(formatting),
@@ -190,24 +180,6 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
         tempMetrics,
       }),
     [dropFields, dropMetrics, tempMetrics],
-  );
-
-  const activeSortCandidateIds = useMemo(
-    () =>
-      new Set(
-        sortItems.map((item) => `${item.sourceType}:${item.sourceId}`),
-      ),
-    [sortItems],
-  );
-
-  const sortOptions = useMemo(
-    () =>
-      sortCandidates.map((candidate) => ({
-        value: candidate.id,
-        label: candidate.label,
-        disabled: activeSortCandidateIds.has(candidate.id),
-      })),
-    [activeSortCandidateIds, sortCandidates],
   );
 
   const findFormattingRule = useCallback(
@@ -338,48 +310,20 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
     handleCloseFormattingDialog();
   }, [activeFormatting, handleCloseFormattingDialog, onRemoveItemFormatting]);
 
-  const handleAddSortCandidate = useCallback(
-    (candidateId: string | undefined) => {
-      if (!candidateId) {
-        return;
-      }
+  const handleOpenSortDialog = useCallback(() => {
+    setSortDialogOpen(true);
+  }, []);
 
-      const matchedCandidate = sortCandidates.find(
-        (candidate) => candidate.id === candidateId,
-      );
-      if (!matchedCandidate || !onAddSortItem) {
-        return;
-      }
+  const handleCloseSortDialog = useCallback(() => {
+    setSortDialogOpen(false);
+  }, []);
 
-      onAddSortItem(matchedCandidate.orderBy);
-      setSortCandidateId(undefined);
+  const handleSaveSortConfig = useCallback(
+    (nextSortItems: PanelSortItem[], nextTopN?: number) => {
+      onApplySortConfig?.(nextSortItems, nextTopN);
+      setSortDialogOpen(false);
     },
-    [onAddSortItem, sortCandidates],
-  );
-
-  const handleToggleSortDirection = useCallback(
-    (sortItemId: string) => {
-      if (!onUpdateSortItem) {
-        return;
-      }
-
-      const matchedSortItem = sortItems.find((item) => item.id === sortItemId);
-      if (!matchedSortItem) {
-        return;
-      }
-
-      onUpdateSortItem(sortItemId, {
-        dir: matchedSortItem.dir === "desc" ? "asc" : "desc",
-      });
-    },
-    [onUpdateSortItem, sortItems],
-  );
-
-  const handleTopNChange = useCallback(
-    (value: number | null) => {
-      onUpdateTopN?.(value === null ? undefined : value);
-    },
-    [onUpdateTopN],
+    [onApplySortConfig],
   );
 
   const dimensionDerivedMap = dropFields.reduce<Record<string, boolean>>(
@@ -490,52 +434,20 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
       <div className={`${styles.zone} ${styles.compactZone}`}>
         <div className={styles.title}>排序</div>
         <div className={styles.dragZone}>
-          {sortItems.map((item) => (
-            <SortItem
-              key={item.id}
-              sortItem={item}
-              onToggleDirection={handleToggleSortDirection}
-              onRemove={(sortItemId) => onRemoveSortItem?.(sortItemId)}
-            />
-          ))}
-
-          <div className={styles.sortControls}>
-            <Select
-              size="small"
-              className={styles.sortSelect}
-              value={sortCandidateId}
-              onChange={(value) => {
-                setSortCandidateId(value);
-                handleAddSortCandidate(value);
-              }}
-              options={sortOptions}
-              placeholder={
-                sortOptions.length > 0 ? "添加排序字段/指标" : "先选择维度或指标"
-              }
-              popupMatchSelectWidth={false}
-              allowClear
-            />
-            <div className={styles.topNControl}>
-              <span className={styles.topNLabel}>Top N</span>
-              <InputNumber
-                size="small"
-                min={1}
-                value={topN}
-                onChange={handleTopNChange}
-                className={styles.topNInput}
-                placeholder="不限"
-                disabled={sortItems.length === 0}
-              />
-              {topN !== undefined ? (
-                <button
-                  type="button"
-                  className={styles.topNClear}
-                  onClick={() => onUpdateTopN?.(undefined)}
-                >
-                  清除
-                </button>
-              ) : null}
-            </div>
+          <div className={styles.sortSequence}>
+            {sortItems.map((item) => (
+              <SortItem key={item.id} sortItem={item} />
+            ))}
+            {topN !== undefined ? (
+              <div className={styles.topNBadge}>Top {topN}</div>
+            ) : null}
+            <button
+              type="button"
+              className={styles.sortEntryButton}
+              onClick={handleOpenSortDialog}
+            >
+              配置排序
+            </button>
           </div>
         </div>
       </div>
@@ -581,6 +493,14 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
         onClose={handleCloseFormattingDialog}
         onSave={handleSaveFormatting}
         onRemove={handleRemoveFormatting}
+      />
+      <SortDialog
+        open={sortDialogOpen}
+        candidates={sortCandidates}
+        sortItems={sortItems}
+        topN={topN}
+        onClose={handleCloseSortDialog}
+        onSave={handleSaveSortConfig}
       />
     </div>
   );

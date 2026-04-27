@@ -124,6 +124,7 @@ interface UsePanelEditorStateReturn {
   ) => void;
   handleRemoveSortItem: (sortItemId: string) => void;
   handleUpdateTopN: (value?: number) => void;
+  handleApplySortConfig: (nextSortItems: SortItem[], nextTopN?: number) => void;
   handleEditorChange: (
     type: DisplayPanelType,
     config: PanelEditorConfig,
@@ -231,6 +232,7 @@ export const usePanelEditorState = (
     handleUpdateSortItem,
     handleRemoveSortItem,
     handleUpdateTopN,
+    handleApplySortConfig,
     handleEditorChange,
     handleSaveItemFormatting,
     handleRemoveItemFormatting,
@@ -407,6 +409,7 @@ export const usePanelEditorState = (
     handleUpdateSortItem,
     handleRemoveSortItem,
     handleUpdateTopN,
+    handleApplySortConfig,
     handleEditorChange,
     handleSaveItemFormatting,
     handleRemoveItemFormatting,
