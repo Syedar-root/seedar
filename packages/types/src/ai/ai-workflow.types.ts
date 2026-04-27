@@ -2,6 +2,7 @@ import type {
   PeriodCalculationMode,
   PeriodOverPeriodType,
 } from '../dataset';
+import type { QueryOrderDirection } from '../query/query.dto';
 
 export type WorkflowId = string;
 
@@ -56,12 +57,24 @@ export interface PanelQueryStateTempMetricPayload {
   popConfig?: Record<string, unknown>;
 }
 
+export interface PanelQueryStateOrderByPayload {
+  fieldId?: number;
+  metricId?: number;
+  tempMetricId?: string;
+  alias?: string;
+  field?: string;
+  dir?: QueryOrderDirection;
+  direction?: QueryOrderDirection;
+}
+
 export interface PanelQueryStatePayload {
   datasetId?: number;
   dimensions?: PanelQueryStateDimensionPayload[];
   metrics?: PanelQueryStateMetricPayload[];
   filters?: PanelQueryStateFilterPayload[];
   tempMetrics?: PanelQueryStateTempMetricPayload[];
+  orderBy?: PanelQueryStateOrderByPayload[];
+  topN?: number;
 }
 
 export interface WorkflowActionPresentation {

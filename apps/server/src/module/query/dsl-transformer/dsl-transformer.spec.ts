@@ -496,6 +496,72 @@ describe('Dynamic Join Selection', () => {
       expect(result.orderBy).toEqual([{ expr: 'month_bucket', dir: 'desc' }]);
     });
 
+    it('should map topN to limit when orderBy exists', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        metrics: [{ id: 1 }],
+        orderBy: [{ metricId: 1, dir: 'desc' as const }],
+        topN: 5,
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.orderBy).toEqual([{ expr: 'total_amount', dir: 'desc' }]);
+      expect(result.limit).toBe(5);
+    });
+
+    it('should reject topN without orderBy', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        metrics: [{ id: 1 }],
+        topN: 5,
+      };
+
+      expect(() =>
+        DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables),
+      ).toThrow(/topN.*orderBy/i);
+    });
+
+    it('should reject conflicting topN and limit', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        metrics: [{ id: 1 }],
+        orderBy: [{ metricId: 1, dir: 'desc' as const }],
+        topN: 5,
+        limit: 10,
+      };
+
+      expect(() =>
+        DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables),
+      ).toThrow(/topN.*limit/i);
+    });
+
+    it('should reject topN with offset pagination', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        metrics: [{ id: 1 }],
+        orderBy: [{ metricId: 1, dir: 'desc' as const }],
+        topN: 5,
+        offset: 1,
+      };
+
+      expect(() =>
+        DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables),
+      ).toThrow(/topN.*offset/i);
+    });
+
     it('should build bucket derived dimension as ConditionalExpr chain', () => {
       const dsl = {
         datasetId: 1,

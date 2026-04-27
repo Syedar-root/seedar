@@ -59,6 +59,18 @@ export type DerivedDimensionDSL =
 
 export type QueryDimensionDSL = number | BaseDimensionDSL | DerivedDimensionDSL;
 
+export type QueryOrderDirection = "asc" | "desc";
+
+export type QueryOrderByDSL = {
+  fieldId?: number;
+  metricId?: number;
+  tempMetricId?: string;
+  alias?: string;
+  field?: string;
+  dir?: QueryOrderDirection;
+  direction?: QueryOrderDirection;
+};
+
 export interface QueryDSL {
   datasetId: number;
   tableId?: number;
@@ -83,6 +95,8 @@ export interface QueryDSL {
     periodType?: PeriodOverPeriodType;
     calculationMode?: PeriodCalculationMode;
   }>;
+  orderBy?: QueryOrderByDSL[];
+  topN?: number;
   limit?: number;
   offset?: number;
 }

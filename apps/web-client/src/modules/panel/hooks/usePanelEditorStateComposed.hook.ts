@@ -14,6 +14,7 @@ import type {
   PanelFormattingTarget,
   PanelResponse,
   PanelSimpleFormattingRule,
+  QueryOrderByDSL,
   QueryResponse,
 } from "#pkg/seedar/types";
 import {
@@ -31,6 +32,7 @@ import type {
   LocalPanelStatus,
   PeriodOverPeriodConfig,
   QueryDsl,
+  SortItem,
   TempMetricConfig,
   TitleConfig,
 } from "../types";
@@ -57,6 +59,8 @@ export interface PanelEditorSnapshot {
   dropMetrics: DragItem[];
   dropFilters: FilterItem[];
   tempMetrics: TempMetricConfig[];
+  sortItems: SortItem[];
+  topN?: number;
   displayType: DisplayPanelType;
   editorConfig: PanelEditorConfig;
   tempData?: ExecuteQueryResponse;
@@ -72,6 +76,8 @@ interface UsePanelEditorStateReturn {
   dropMetrics: DragItem[];
   dropFilters: FilterItem[];
   tempMetrics: TempMetricConfig[];
+  sortItems: SortItem[];
+  topN?: number;
   displayType: DisplayPanelType;
   editorConfig: PanelEditorConfig;
   tempData: ExecuteQueryResponse | undefined;
@@ -111,6 +117,13 @@ interface UsePanelEditorStateReturn {
     config: PeriodOverPeriodConfig | undefined,
   ) => void;
   handleRemoveTempMetric: (tempMetricId: string) => void;
+  handleAddSortItem: (orderBy: QueryOrderByDSL) => void;
+  handleUpdateSortItem: (
+    sortItemId: string,
+    updates: Partial<SortItem>,
+  ) => void;
+  handleRemoveSortItem: (sortItemId: string) => void;
+  handleUpdateTopN: (value?: number) => void;
   handleEditorChange: (
     type: DisplayPanelType,
     config: PanelEditorConfig,
@@ -139,6 +152,8 @@ export const usePanelEditorState = (
   const [dropMetrics, setDropMetrics] = useState<DragItem[]>([]);
   const [dropFilters, setDropFilters] = useState<FilterItem[]>([]);
   const [tempMetrics, setTempMetrics] = useState<TempMetricConfig[]>([]);
+  const [sortItems, setSortItems] = useState<SortItem[]>([]);
+  const [topN, setTopN] = useState<number | undefined>();
   const [displayType, setDisplayType] = useState<DisplayPanelType>("table");
   const [editorConfig, setEditorConfig] = useState<PanelEditorConfig>({
     color: DEFAULT_COLORS,
@@ -185,6 +200,8 @@ export const usePanelEditorState = (
     setDropMetrics,
     setDropFilters,
     setTempMetrics,
+    setSortItems,
+    setTopN,
   });
 
   const datasetData = selectedDataset ?? remoteDatasetData;
@@ -210,6 +227,10 @@ export const usePanelEditorState = (
     handleUpdateDerivedDimension,
     handleUpdateTempMetric,
     handleRemoveTempMetric,
+    handleAddSortItem,
+    handleUpdateSortItem,
+    handleRemoveSortItem,
+    handleUpdateTopN,
     handleEditorChange,
     handleSaveItemFormatting,
     handleRemoveItemFormatting,
@@ -221,11 +242,15 @@ export const usePanelEditorState = (
     dropMetrics,
     dropFilters,
     tempMetrics,
+    sortItems,
+    topN,
     setSelectedDataset,
     setDimensionItems,
     setDropMetrics,
     setDropFilters,
     setTempMetrics,
+    setSortItems,
+    setTopN,
     setTempData,
     setDisplayType,
     setEditorConfig,
@@ -241,7 +266,12 @@ export const usePanelEditorState = (
 
   const hasDataset = Boolean(datasetData);
   const hasQueryContent = Boolean(
-    dimensionItems.length || dropMetrics.length || dropFilters.length || tempData,
+    dimensionItems.length ||
+      dropMetrics.length ||
+      dropFilters.length ||
+      sortItems.length ||
+      topN !== undefined ||
+      tempData,
   );
   const canRun =
     hasDataset && (dimensionItems.length > 0 || dropMetrics.length > 0);
@@ -292,6 +322,8 @@ export const usePanelEditorState = (
       dropMetrics: cloneSnapshotValue(dropMetrics),
       dropFilters: cloneSnapshotValue(dropFilters),
       tempMetrics: cloneSnapshotValue(tempMetrics),
+      sortItems: cloneSnapshotValue(sortItems),
+      topN,
       displayType,
       editorConfig: cloneSnapshotValue(editorConfig),
       tempData: cloneSnapshotValue(tempData),
@@ -310,6 +342,8 @@ export const usePanelEditorState = (
       selectedDataset,
       tempData,
       tempMetrics,
+      sortItems,
+      topN,
       title,
       titleConfig,
     ],
@@ -320,6 +354,8 @@ export const usePanelEditorState = (
     setDropMetrics(cloneSnapshotValue(snapshot.dropMetrics));
     setDropFilters(cloneSnapshotValue(snapshot.dropFilters));
     setTempMetrics(cloneSnapshotValue(snapshot.tempMetrics));
+    setSortItems(cloneSnapshotValue(snapshot.sortItems));
+    setTopN(snapshot.topN);
     setDisplayType(snapshot.displayType);
     setEditorConfig(cloneSnapshotValue(snapshot.editorConfig));
     setTempData(cloneSnapshotValue(snapshot.tempData));
@@ -335,6 +371,8 @@ export const usePanelEditorState = (
     dropMetrics,
     dropFilters,
     tempMetrics,
+    sortItems,
+    topN,
     displayType,
     editorConfig,
     tempData,
@@ -365,6 +403,10 @@ export const usePanelEditorState = (
     handleUpdateDerivedDimension,
     handleUpdateTempMetric,
     handleRemoveTempMetric,
+    handleAddSortItem,
+    handleUpdateSortItem,
+    handleRemoveSortItem,
+    handleUpdateTopN,
     handleEditorChange,
     handleSaveItemFormatting,
     handleRemoveItemFormatting,

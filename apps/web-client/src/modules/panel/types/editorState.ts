@@ -5,6 +5,8 @@ import {
   type PeriodOverPeriodType,
   type QueryDSL,
   type QueryDimensionDSL,
+  type QueryOrderByDSL,
+  type QueryOrderDirection,
   FieldType,
 } from "#pkg/seedar/types";
 import type { DragItem } from "./dragItem";
@@ -44,6 +46,26 @@ export interface TempMetricConfig {
 export interface PeriodOverPeriodConfig {
   periodType?: PeriodOverPeriodType;
   calculationMode?: PeriodCalculationMode;
+}
+
+export type SortSourceType = "dimension" | "metric" | "temp_metric";
+
+export interface SortItem {
+  id: string;
+  sourceType: SortSourceType;
+  sourceId: string;
+  label: string;
+  orderBy: QueryOrderByDSL;
+  dir: QueryOrderDirection;
+}
+
+export interface SortCandidate {
+  id: string;
+  sourceType: SortSourceType;
+  sourceId: string;
+  label: string;
+  orderBy: QueryOrderByDSL;
+  defaultDir: QueryOrderDirection;
 }
 
 export const CALCULATION_MODE_LABELS: Record<PeriodCalculationMode, string> = {

@@ -46,6 +46,7 @@ import { Operator, TimeFilter, TimeRange } from '@metric-engine/core';
  * @property dimensions - 维度字段列表（字段ID或带别名的字段对象）
  * @property metrics - 指标列表（指标ID或带别名的指标对象）
  * @property filters - 过滤条件列表
+ * @property topN - TopN 条数（业务语义糖，要求存在排序）
  * @property limit - 返回记录数限制
  * @property offset - 分页偏移量
  */
@@ -74,6 +75,7 @@ export interface QueryDSL {
     calculationMode?: PeriodCalculationMode;
   }>;
   orderBy?: QueryOrderByDSL[];
+  topN?: number;
   limit?: number;
   offset?: number;
 }
@@ -213,6 +215,21 @@ export class DSLTransformerV2 {
   ): QuerySpec {
     if (!dsl) {
       throw new Error('DSL不能为空');
+    }
+
+    if (dsl.topN !== undefined) {
+      if (!Number.isInteger(dsl.topN) || dsl.topN <= 0) {
+        throw new Error('topN 必须是大于 0 的整数');
+      }
+      if (!dsl.orderBy || dsl.orderBy.length === 0) {
+        throw new Error('topN 需要配合 orderBy 使用');
+      }
+      if (dsl.limit !== undefined && dsl.limit !== dsl.topN) {
+        throw new Error('topN 与 limit 不能同时指定不同的值');
+      }
+      if (dsl.offset !== undefined && dsl.offset !== 0) {
+        throw new Error('topN 不支持与 offset 同时使用');
+      }
     }
 
     // ========================================================================
@@ -2051,6 +2068,8 @@ export class DSLTransformerV2 {
       }
     });
 
+    const effectiveLimit = dsl.topN ?? dsl.limit;
+
     return {
       from: {
         table: mainTableInfo.tableName,
@@ -2061,7 +2080,7 @@ export class DSLTransformerV2 {
       metrics: [...metrics, ...tempMetricExprs],
       filters,
       orderBy,
-      limit: dsl.limit,
+      limit: effectiveLimit,
       offset: dsl.offset,
     };
   }

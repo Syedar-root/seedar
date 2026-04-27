@@ -59,6 +59,56 @@
   transition: background-color var(--transition-slow);
 }
 
+.compactZone {
+  flex: 0 0 56px;
+}
+
+.sortControls {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.sortSelect {
+  min-width: 180px;
+}
+
+.topNControl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 6px 10px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-base);
+  background: var(--bg-elevated);
+}
+
+.topNLabel {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.topNInput {
+  width: 96px;
+}
+
+.topNClear {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
 @mixin drag-item-style($bg-color, $border-color, $text-color) {
   padding: 6px var(--spacing-md);
   border-radius: var(--radius-lg);
