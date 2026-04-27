@@ -4,8 +4,7 @@ import clsx from "clsx";
 import { Tooltip } from "antd";
 import styles from "./aside.module.scss";
 import { DragItem } from "../dndHelper/drapItem";
-import { Database, GripVertical, Plus, Search, Tags } from "lucide-react";
-import { MetricEditorDialog } from "../metricEditor";
+import { Database, GripVertical, Search, Tags } from "lucide-react";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
 
 const COPY = {
@@ -22,7 +21,6 @@ const COPY = {
   emptyDesc: "数据集选定后，这里会展示可拖拽的字段和指标。",
   fieldsTitle: "字段",
   metricsTitle: "指标",
-  addMetricTitle: "添加指标",
   searchPlaceholder: "搜索字段或指标",
   toggleTableTag: "显示表来源",
   emptySearch: "没有匹配的字段或指标",
@@ -32,12 +30,10 @@ interface AsideProps {
   className?: string;
   fields: DatasetResponse["fields"];
   metrics: DatasetResponse["metrics"];
-  datasetId?: number;
   datasetName?: string;
   hasDataset: boolean;
   canChangeDataset?: boolean;
   onOpenDatasetSelector: () => void;
-  onMetricCreated?: () => void;
 }
 
 const normalizeText = (value: string | undefined) => value?.toLowerCase() || "";
@@ -46,37 +42,13 @@ export const Aside: React.FC<AsideProps> = ({
   className,
   fields,
   metrics,
-  datasetId,
   datasetName,
   hasDataset,
   canChangeDataset = true,
   onOpenDatasetSelector,
-  onMetricCreated,
 }) => {
-  const [isMetricEditorOpen, setIsMetricEditorOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [showTableTag, setShowTableTag] = useState(true);
-
-  const handleOpenMetricEditor = () => {
-    setIsMetricEditorOpen(true);
-  };
-
-  const handleCloseMetricEditor = () => {
-    setIsMetricEditorOpen(false);
-  };
-
-  const handleMetricCreated = () => {
-    setIsMetricEditorOpen(false);
-    onMetricCreated?.();
-  };
-
-  const numericFields = useMemo(
-    () =>
-      fields.filter(
-        (field) => field.type === "number" || field.type === "decimal",
-      ),
-    [fields],
-  );
+  const [showTableTag, setShowTableTag] = useState(false);
 
   const normalizedSearchKeyword = searchKeyword.trim().toLowerCase();
 
@@ -253,15 +225,6 @@ export const Aside: React.FC<AsideProps> = ({
           <div className={styles.sidebarSection}>
             <div className={styles.sectionHeader}>
               <h2 className={styles.sidebarSectionTitle}>{COPY.metricsTitle}</h2>
-              {datasetId ? (
-                <button
-                  className={styles.addButton}
-                  onClick={handleOpenMetricEditor}
-                  title={COPY.addMetricTitle}
-                >
-                  <Plus size={14} />
-                </button>
-              ) : null}
             </div>
             <ScrollArea className={styles.fieldList}>
               <ul className={styles.sidebarList}>{metricItems}</ul>
@@ -273,16 +236,6 @@ export const Aside: React.FC<AsideProps> = ({
         </div>
       )}
 
-      {datasetId && isMetricEditorOpen ? (
-        <MetricEditorDialog
-          datasetId={datasetId}
-          fields={fields}
-          metrics={metrics}
-          numericFields={numericFields}
-          onClose={handleCloseMetricEditor}
-          onSuccess={handleMetricCreated}
-        />
-      ) : null}
     </aside>
   );
 };

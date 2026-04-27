@@ -950,12 +950,10 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
     asideProps: {
       fields: activeDataset?.fields ?? [],
       metrics: activeDataset?.metrics ?? [],
-      datasetId: activeDataset?.id,
       datasetName: activeDataset?.name,
       hasDataset,
       canChangeDataset: !isDatasetLocked,
       onOpenDatasetSelector: handleOpenDatasetSelector,
-      onMetricCreated: handleMetricCreated,
     },
     panelEditorProps: {
       fields: dimensionItems,

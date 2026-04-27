@@ -34,6 +34,7 @@ import { buildSortCandidates } from "../../utils/querySort";
 
 export interface MetricWithPopConfig extends DragItem {
   hasPopConfig?: boolean;
+  timeFieldId?: number;
 }
 
 interface QueryZoneProps {
@@ -455,6 +456,7 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
       <PopDialog
         open={popDialogOpen}
         metric={selectedMetric}
+        availableFields={availableFields}
         initialConfig={
           selectedMetric?.hasPopConfig
             ? tempMetrics.find(

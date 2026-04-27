@@ -46,6 +46,7 @@ export interface TempMetricConfig {
 export interface PeriodOverPeriodConfig {
   periodType?: PeriodOverPeriodType;
   calculationMode?: PeriodCalculationMode;
+  timeFieldId?: number;
 }
 
 export type SortSourceType = "dimension" | "metric" | "temp_metric";

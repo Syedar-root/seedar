@@ -651,7 +651,7 @@ export const usePanelEditorMutations = ({
           baseMetricId: Number(metricId),
           alias: `${baseName}_${periodTypeLabel}_${calculationModeLabel}`,
           businessName: `${baseName} (${periodTypeLabel}${calculationModeLabel})`,
-          timeFieldId: fullMetric?.timeFieldId,
+          timeFieldId: config.timeFieldId ?? fullMetric?.timeFieldId,
           periodType: config.periodType,
           calculationMode: config.calculationMode,
         };
@@ -669,8 +669,9 @@ export const usePanelEditorMutations = ({
         return nextTempMetrics;
       });
 
-      if (fullMetric?.timeFieldId) {
-        const timeField = getDatasetFieldById(fullMetric.timeFieldId);
+      const effectiveTimeFieldId = config?.timeFieldId ?? fullMetric?.timeFieldId;
+      if (effectiveTimeFieldId) {
+        const timeField = getDatasetFieldById(effectiveTimeFieldId);
         if (timeField) {
           setDropFilters((previous) => {
             const existingFilter = previous.find(
