@@ -3,7 +3,27 @@ import { useDatasetForm } from "../hooks/useDatasetForm";
 import { useCreateDataset } from "#pkg/seedar/ui-react";
 import type { EditorMode, DatasetFormData } from "../types/editor.types";
 import { DatasetEditorPage } from "../components/DatasetEditor/DatasetEditorPage";
-import { DatasetType, JoinType } from "#pkg/seedar/types";
+import {
+  DatasetType,
+  JoinType,
+  type CreateDatasetFieldRequest,
+} from "#pkg/seedar/types";
+
+type CreateReadyField = DatasetFormData["fields"][number] & {
+  dataSourceColumnId: number;
+  tableId: number;
+};
+
+const isCreateReadyField = (
+  field: DatasetFormData["fields"][number],
+  selectedTableIds: Set<number>,
+): field is CreateReadyField => {
+  return (
+    typeof field.dataSourceColumnId === "number" &&
+    typeof field.tableId === "number" &&
+    selectedTableIds.has(field.tableId)
+  );
+};
 
 export const DatasetCreatePage = () => {
   const navigate = useNavigate();
@@ -14,12 +34,9 @@ export const DatasetCreatePage = () => {
       data.tables.map((table) => parseInt(table.tableId, 10)),
     );
 
-    const fields = data.fields
-      .filter(
-        (field) =>
-          typeof field.dataSourceColumnId === "number" &&
-          typeof field.tableId === "number" &&
-          selectedTableIds.has(field.tableId),
+    const fields: CreateDatasetFieldRequest[] = data.fields
+      .filter((field): field is CreateReadyField =>
+        isCreateReadyField(field, selectedTableIds),
       )
       .map((field) => ({
         dataSourceColumnId: field.dataSourceColumnId,

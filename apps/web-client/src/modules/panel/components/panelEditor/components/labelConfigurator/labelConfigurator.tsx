@@ -1,5 +1,7 @@
 import styles from "./labelConfigurator.module.scss";
 import type { LabelConfig } from "../../types";
+import { Checkbox } from "@base-ui/react/checkbox";
+import { Check } from "lucide-react";
 
 interface LabelConfiguratorProps {
   config: LabelConfig;
@@ -19,12 +21,15 @@ export const LabelConfigurator: React.FC<LabelConfiguratorProps> = ({
       <div className={styles.title}>标签配置</div>
       <div className={styles.row}>
         <label className={styles.label}>显示标签</label>
-        <input
-          type="checkbox"
+        <Checkbox.Root
           checked={config.visible}
-          onChange={(e) => handleVisibleChange(e.target.checked)}
+          onCheckedChange={handleVisibleChange}
           className={styles.checkbox}
-        />
+        >
+          <Checkbox.Indicator className={styles.checkboxIndicator}>
+            <Check size={14} />
+          </Checkbox.Indicator>
+        </Checkbox.Root>
       </div>
     </div>
   );

@@ -23,6 +23,8 @@ import {
   AiChatResponseDto,
   AiSessionResponse,
   CreateAiSessionRequest,
+  GenerateFieldBusinessNameRequestDto,
+  GenerateFieldBusinessNameResponseDto,
 } from './dto';
 import { AiChatResumeDto, AiChatScene, PaginatedResult } from './ai.types';
 import { Observable } from 'rxjs';
@@ -73,6 +75,13 @@ export class AiController {
     return this.aiService.remove(id);
   }
 
+  @Post('field-business-name')
+  generateFieldBusinessName(
+    @Body() dto: GenerateFieldBusinessNameRequestDto,
+  ): Promise<GenerateFieldBusinessNameResponseDto> {
+    return this.chatService.generateFieldBusinessName(dto);
+  }
+
   @Sse('chat/stream', {
     method: RequestMethod.POST,
   })
@@ -106,6 +115,13 @@ export class AiController {
 
           // ✅ 你的流循环，100% 原代码！
           for await (const chunk of stream) {
+            if (chunk.type === 'error') {
+              subscriber.next({
+                type: 'error',
+                data:chunk,
+              } as MessageEvent);
+              break;
+            }
             if (chunk.done) {
               subscriber.next({
                 type: 'done',
@@ -122,9 +138,9 @@ export class AiController {
           // ✅ 你的错误处理，完全原样保留
           subscriber.next({
             type: 'error',
-            data: JSON.stringify({
-              error: error instanceof Error ? error.message : 'Unknown error',
-            }),
+            data: JSON.stringify(
+              error instanceof Error ? error.message : 'Unknown error',
+            ),
           } as MessageEvent);
         } finally {
           clearInterval(ping);

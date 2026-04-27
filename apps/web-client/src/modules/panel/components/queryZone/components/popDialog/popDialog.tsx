@@ -1,12 +1,16 @@
 import { Dialog } from "@base-ui/react";
 import styles from "./popDialog.module.scss";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Select } from "@/core/components/ui/Select";
-import { PeriodOverPeriodType, PeriodCalculationMode } from "#pkg/seedar/types";
+import {
+  FieldType,
+  PeriodCalculationMode,
+  PeriodOverPeriodType,
+  type DatasetFieldResponse,
+} from "#pkg/seedar/types";
 import { MetricWithPopConfig } from "../../queryZone";
 import type { PeriodOverPeriodConfig, TempMetricConfig } from "../../../../types";
 
-// 周期类型选项
 const PERIOD_TYPE_OPTIONS = [
   { label: "日环比", value: PeriodOverPeriodType.DAY_OVER_DAY },
   { label: "周环比", value: PeriodOverPeriodType.WEEK_OVER_WEEK },
@@ -15,7 +19,6 @@ const PERIOD_TYPE_OPTIONS = [
   { label: "年同比", value: PeriodOverPeriodType.YEAR_OVER_YEAR },
 ];
 
-// 计算模式选项
 const CALCULATION_MODE_OPTIONS = [
   { label: "百分比", value: PeriodCalculationMode.PERCENTAGE },
   { label: "绝对值", value: PeriodCalculationMode.ABSOLUTE },
@@ -24,6 +27,7 @@ const CALCULATION_MODE_OPTIONS = [
 interface PopDialogProps {
   open: boolean;
   metric?: MetricWithPopConfig;
+  availableFields: DatasetFieldResponse[];
   initialConfig?: PeriodOverPeriodConfig | TempMetricConfig;
   onClose: () => void;
   onSave: (config: PeriodOverPeriodConfig) => void;
@@ -32,49 +36,66 @@ interface PopDialogProps {
 export const PopDialog = ({
   open,
   metric,
+  availableFields,
   initialConfig,
   onClose,
   onSave,
 }: PopDialogProps) => {
-  // 本地表单状态
   const [periodType, setPeriodType] = useState<string>("");
   const [calculationMode, setCalculationMode] = useState<string>("");
+  const [timeFieldId, setTimeFieldId] = useState<string>("");
 
-  // 当对话框打开时，初始化表单值
+  const timeFields = useMemo(
+    () =>
+      availableFields.filter(
+        (field) =>
+          field.type === FieldType.DATE || field.type === FieldType.DATETIME,
+      ),
+    [availableFields],
+  );
+
   useEffect(() => {
     if (open) {
       setPeriodType(initialConfig?.periodType || "");
       setCalculationMode(initialConfig?.calculationMode || "");
+      const defaultTimeFieldId =
+        initialConfig?.timeFieldId ??
+        (typeof metric?.timeFieldId === "number" ? metric.timeFieldId : undefined);
+      setTimeFieldId(defaultTimeFieldId ? String(defaultTimeFieldId) : "");
     } else {
       setPeriodType("");
       setCalculationMode("");
+      setTimeFieldId("");
     }
-  }, [open, initialConfig]);
+  }, [initialConfig, metric?.timeFieldId, open]);
 
   const handleSave = useCallback(() => {
-    if (!periodType || !calculationMode) {
+    if (!periodType || !calculationMode || !timeFieldId) {
       return;
     }
 
     onSave({
       periodType: periodType as PeriodOverPeriodType,
       calculationMode: calculationMode as PeriodCalculationMode,
+      timeFieldId: Number(timeFieldId),
     });
-  }, [periodType, calculationMode, onSave]);
+  }, [calculationMode, onSave, periodType, timeFieldId]);
 
-  // 清除配置
   const handleClear = useCallback(() => {
     onSave({
       periodType: undefined,
       calculationMode: undefined,
+      timeFieldId: undefined,
     });
   }, [onSave]);
 
   if (!metric) return null;
 
   const isEditMode =
-    !!initialConfig?.periodType && !!initialConfig?.calculationMode;
-  const canSave = !!periodType && !!calculationMode;
+    !!initialConfig?.periodType &&
+    !!initialConfig?.calculationMode &&
+    !!initialConfig?.timeFieldId;
+  const canSave = !!periodType && !!calculationMode && !!timeFieldId;
 
   return (
     <Dialog.Root open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -107,6 +128,28 @@ export const PopDialog = ({
                 onChange={(value) => setCalculationMode(value || "")}
                 placeholder="请选择计算模式"
                 options={CALCULATION_MODE_OPTIONS}
+                clearable={false}
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>
+                业务时间字段 <span className={styles.required}>*</span>
+              </label>
+              <Select
+                value={timeFieldId}
+                onChange={(value) => setTimeFieldId(value || "")}
+                placeholder="请选择业务时间字段"
+                options={timeFields.map((field) => ({
+                  label: (
+                    <span className={styles.fieldOptionLabel}>
+                      <span>{field.businessName || field.name}</span>
+                      <span className={styles.fieldOptionTable}>
+                        来自: {field.tableName || "未知表"}
+                      </span>
+                    </span>
+                  ),
+                  value: field.id.toString(),
+                }))}
                 clearable={false}
               />
             </div>

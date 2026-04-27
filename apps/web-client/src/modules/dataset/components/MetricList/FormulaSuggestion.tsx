@@ -1,63 +1,70 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
+import { ScrollArea } from "@/core/components/ui/ScrollArea/ScrollArea";
 import {
   SuggestionItem,
   FunctionItem,
   FieldItem,
   MetricItem,
 } from "./useFormulaParser";
-import { createPortal } from "react-dom";
 import styles from "./FormulaSuggestion.module.scss";
 
 interface FormulaSuggestionProps {
   items: SuggestionItem[];
   onSelect: (item: SuggestionItem) => void;
-  anchorRef: React.RefObject<HTMLTextAreaElement>;
+  anchorElement: HTMLElement | null;
   onClose: () => void;
 }
 
 export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
   items,
   onSelect,
-  anchorRef,
+  anchorElement,
   onClose,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
   const popupRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
 
   useEffect(() => {
     setSelectedIndex(0);
   }, [items]);
 
   useEffect(() => {
-    const anchor = anchorRef.current;
-    if (!anchor) return;
+    if (!anchorElement) return;
 
-    const rect = anchor.getBoundingClientRect();
+    const rect = anchorElement.getBoundingClientRect();
     setPosition({
       top: rect.bottom + window.scrollY + 4,
       left: rect.left + window.scrollX,
       width: rect.width,
     });
-  }, [anchorRef, items]);
+  }, [anchorElement, items]);
+
+  useEffect(() => {
+    const selectedItem = itemRefs.current[selectedIndex];
+    selectedItem?.scrollIntoView({
+      block: "nearest",
+    });
+  }, [items, selectedIndex]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
         popupRef.current &&
         !popupRef.current.contains(e.target as Node) &&
-        anchorRef.current &&
-        !anchorRef.current.contains(e.target as Node)
+        anchorElement &&
+        !anchorElement.contains(e.target as Node)
       ) {
         onClose();
       }
     };
 
     const handleScroll = () => {
-      const anchor = anchorRef.current;
-      if (!anchor) return;
+      if (!anchorElement) return;
 
-      const rect = anchor.getBoundingClientRect();
+      const rect = anchorElement.getBoundingClientRect();
       setPosition({
         top: rect.bottom + window.scrollY + 4,
         left: rect.left + window.scrollX,
@@ -74,7 +81,7 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
       window.removeEventListener("scroll", handleScroll, true);
       window.removeEventListener("resize", handleScroll);
     };
-  }, [anchorRef, onClose]);
+  }, [anchorElement, onClose]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -111,7 +118,11 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
       const fn = item as FunctionItem;
       return (
         <li
+          ref={(node) => {
+            itemRefs.current[index] = node;
+          }}
           key={fn.name}
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => onSelect(fn)}
           className={`${styles.item} ${index === selectedIndex ? styles.selected : ""}`}
         >
@@ -126,7 +137,11 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
       const field = item as FieldItem;
       return (
         <li
+          ref={(node) => {
+            itemRefs.current[index] = node;
+          }}
           key={`field-${field.id}`}
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => onSelect(field)}
           className={`${styles.item} ${index === selectedIndex ? styles.selected : ""}`}
         >
@@ -134,10 +149,9 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
           <span className={styles.itemName}>
             {field.name}{" "}
             {field.tableName && (
-              <span className={styles.tableTag}>来自: {field.tableName}</span>
+              <span className={styles.tableTag}>来自：{field.tableName}</span>
             )}
           </span>
-
           <span className={styles.itemId}>#F{field.id}</span>
         </li>
       );
@@ -147,7 +161,11 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
       const metric = item as MetricItem;
       return (
         <li
+          ref={(node) => {
+            itemRefs.current[index] = node;
+          }}
           key={`metric-${metric.id}`}
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => onSelect(metric)}
           className={`${styles.item} ${index === selectedIndex ? styles.selected : ""}`}
         >
@@ -162,21 +180,20 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
   };
 
   useEffect(() => {
-    const anchor = anchorRef.current;
-    if (!anchor) return;
+    if (!anchorElement) return;
 
     const handleKeyDownWrapper = (e: KeyboardEvent) => {
       handleKeyDownRef.current(e);
     };
 
-    anchor.addEventListener("keydown", handleKeyDownWrapper, true);
+    anchorElement.addEventListener("keydown", handleKeyDownWrapper, true);
 
     return () => {
-      anchor.removeEventListener("keydown", handleKeyDownWrapper, true);
+      anchorElement.removeEventListener("keydown", handleKeyDownWrapper, true);
     };
-  }, [anchorRef]);
+  }, [anchorElement]);
 
-  if (!anchorRef.current) return null;
+  if (!anchorElement) return null;
 
   return createPortal(
     <div
@@ -190,13 +207,17 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
         zIndex: 9999,
       }}
     >
-      <ul className={styles.list}>
+      <div className={styles.listWrapper}>
+        <ScrollArea className={styles.list} style={{ height: "232px" }}>
         {items.length === 0 ? (
-          <li className={styles.empty}>没有找到匹配的项</li>
+          <div className={styles.empty}>没有找到匹配项</div>
         ) : (
-          items.map((item, index) => renderItem(item, index))
+          <ul className={styles.listInner}>
+            {items.map((item, index) => renderItem(item, index))}
+          </ul>
         )}
-      </ul>
+        </ScrollArea>
+      </div>
     </div>,
     document.body,
   );

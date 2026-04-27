@@ -14,6 +14,7 @@ import type {
   AiChatRequestDto,
   AiAgentStreamChunk,
   PaginatedResult,
+  GenerateFieldBusinessNameRequest,
 } from '#pkg/seedar/types';
 
 const aiKeys = {
@@ -138,4 +139,15 @@ export const useAiChat = () => {
   return {
     streamChat,
   };
+};
+
+export const useGenerateFieldBusinessNames = () => {
+  const aiApi = useAiApi();
+
+  return useMutation({
+    mutationFn: (data: GenerateFieldBusinessNameRequest) =>
+      aiApi.generateFieldBusinessNames(data, {
+        timeout: 600000,
+      }),
+  });
 };

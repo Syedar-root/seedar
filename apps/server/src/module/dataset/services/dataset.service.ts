@@ -5,7 +5,7 @@ import { Dataset } from '../entities/dataset.entity';
 import { DatasetTable } from '../entities/dataset-table.entity';
 import { DatasetJoin } from '../entities/dataset-join.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Not } from 'typeorm';
 import { DatasourceService } from '@/module/datasource/service/datasource.service';
 import { DatasourceTableService } from '@/module/datasource/service/datasource-table.service';
 import {
@@ -21,6 +21,8 @@ import { ExceptionFactory } from '@/common/exceptions';
 import { DatasetField } from '../entities/dataset-field.entity';
 import { DatasetMetric } from '../entities/dataset-metric.entity';
 import { DatasourceColumnService } from '@/module/datasource/service/datasource-column.service';
+import { Query } from '@/module/query/entities/query.entity';
+import { LoggerService } from '@/logger/logger.service';
 import {
   fieldManager,
   metricManager,
@@ -30,6 +32,10 @@ import {
 
 @Injectable()
 export class DatasetService {
+  constructor(private readonly logger: LoggerService) {
+    this.logger.setContext('DatasetService');
+  }
+
   @InjectRepository(Dataset)
   private readonly datasetRepository!: Repository<Dataset>;
 
@@ -44,6 +50,9 @@ export class DatasetService {
 
   @InjectRepository(DatasetMetric)
   private readonly datasetMetricRepository!: Repository<DatasetMetric>;
+
+  @InjectRepository(Query)
+  private readonly queryRepository!: Repository<Query>;
 
   @Inject(DatasourceService)
   private readonly datasourceService!: DatasourceService;
@@ -296,6 +305,7 @@ export class DatasetService {
   async findAllWithDetails() {
     // 1. 查询所有数据集及关联的数据源和主表
     const datasets = await this.datasetRepository.find({
+      where: { status: Not(DatasetStatus.DELETED) },
       relations: ['datasource', 'mainTable'],
     });
 
@@ -363,7 +373,7 @@ export class DatasetService {
   async findOne(id: number): Promise<DatasetResponse | null> {
     // 查询数据集基本信息及关联的数据源和主表
     const dataset = await this.datasetRepository.findOne({
-      where: { id },
+      where: { id, status: Not(DatasetStatus.DELETED) },
       relations: ['datasource', 'mainTable'],
     });
 
@@ -543,7 +553,7 @@ export class DatasetService {
 
     // 1. 验证数据集是否存在
     const dataset = await this.datasetRepository.findOne({
-      where: { id: dataSetId },
+      where: { id: dataSetId, status: Not(DatasetStatus.DELETED) },
     });
 
     if (!dataset) {
@@ -586,7 +596,38 @@ export class DatasetService {
     return this.findOne(dataSetId);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} dataset`;
+  async remove(id: number): Promise<void> {
+    const dataset = await this.datasetRepository.findOne({
+      where: { id },
+    });
+
+    if (!dataset) {
+      ExceptionFactory.notFound('数据集不存在');
+    }
+
+    if (dataset.status === DatasetStatus.DELETED) {
+      ExceptionFactory.badRequest('数据集已删除，请勿重复操作');
+    }
+
+    const dependentQueries = await this.queryRepository.find({
+      where: { datasetId: id },
+      select: ['id', 'name'],
+      order: { createdAt: 'ASC' },
+    });
+
+    if (dependentQueries.length > 0) {
+      ExceptionFactory.badRequest('该数据集已被查询引用，删除前请先移除相关查询', {
+        queries: dependentQueries.map((query) => ({
+          id: query.id,
+          name: query.name,
+        })),
+      });
+    }
+
+    await this.datasetRepository.update(id, {
+      status: DatasetStatus.DELETED,
+    });
+
+    this.logger.log(`数据集已软删除: ${id}`, 'RemoveDataset');
   }
 }

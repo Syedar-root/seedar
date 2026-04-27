@@ -101,17 +101,61 @@ export const useDatasetForm = ({
     },
     joinConfig: () => {
       if (formData.tables.length <= 1) return true;
-      const tableIds = new Set(formData.tables.map((t) => t.tableId));
-      const joinedTables = new Set<string>();
-      formData.joins.forEach((join) => {
-        joinedTables.add(join.leftTable);
-        joinedTables.add(join.rightTable);
+      const tableIds = formData.tables.map((table) => table.tableId);
+      const startTableId = formData.mainTable || tableIds[0];
+      if (!startTableId) {
+        return false;
+      }
+
+      const adjacencyMap = new Map<string, Set<string>>();
+      tableIds.forEach((tableId) => {
+        adjacencyMap.set(tableId, new Set());
       });
-      const unjoinedTables = [...tableIds].filter(
-        (id) => !joinedTables.has(id),
+
+      formData.joins.forEach((join) => {
+        if (
+          adjacencyMap.has(join.leftTable) &&
+          adjacencyMap.has(join.rightTable)
+        ) {
+          adjacencyMap.get(join.leftTable)?.add(join.rightTable);
+          adjacencyMap.get(join.rightTable)?.add(join.leftTable);
+        }
+      });
+
+      const visited = new Set<string>();
+      const queue = [startTableId];
+
+      while (queue.length > 0) {
+        const currentTableId = queue.shift();
+        if (!currentTableId || visited.has(currentTableId)) {
+          continue;
+        }
+
+        visited.add(currentTableId);
+        adjacencyMap.get(currentTableId)?.forEach((nextTableId) => {
+          if (!visited.has(nextTableId)) {
+            queue.push(nextTableId);
+          }
+        });
+      }
+
+      const unreachableTableIds = tableIds.filter(
+        (tableId) => !visited.has(tableId),
       );
-      if (unjoinedTables.length > 0) {
-        toast.error(`表 ${unjoinedTables.join(", ")} 没有任何关联关系`);
+
+      if (unreachableTableIds.length > 0) {
+        const unreachableTableNames = unreachableTableIds.map(
+          (tableId) =>
+            formData.tables.find((table) => table.tableId === tableId)
+              ?.tableName || tableId,
+        );
+        const entryTableName =
+          formData.tables.find((table) => table.tableId === startTableId)
+            ?.tableName || startTableId;
+
+        toast.error(
+          `以下表与默认入口表 ${entryTableName} 不连通：${unreachableTableNames.join("、")}`,
+        );
         return false;
       }
       return true;
@@ -306,6 +350,37 @@ export const useDatasetForm = ({
     [],
   );
 
+  const updateFieldBusinessNames = useCallback(
+    (updates: Array<{ fieldId: string; businessName: string }>) => {
+      const businessNameMap = new Map(
+        updates.map((item) => [item.fieldId, item.businessName]),
+      );
+
+      setFormData((prev) => ({
+        ...prev,
+        fields: prev.fields.map((field) => {
+          const nextBusinessName = businessNameMap.get(field.id);
+          if (!nextBusinessName) {
+            return field;
+          }
+
+          return {
+            ...field,
+            businessName: nextBusinessName.trim() || field.name,
+          };
+        }),
+      }));
+    },
+    [],
+  );
+
+  const replaceJoins = useCallback((joins: JoinConfig[]) => {
+    setFormData((prev) => ({
+      ...prev,
+      joins,
+    }));
+  }, []);
+
   const addMetric = useCallback((metric: MetricConfig) => {
     setFormData((prev) => ({
       ...prev,
@@ -442,9 +517,11 @@ export const useDatasetForm = ({
     getLockedFields,
     toggleField,
     updateFieldBusinessName,
+    updateFieldBusinessNames,
     addJoin,
     removeJoin,
     updateJoin,
+    replaceJoins,
     addMetric,
     removeMetric,
     updateMetric,

@@ -165,14 +165,15 @@ export const usePanelActions = ({
 
   const buildDslFallback = useCallback(
     (baseDsl?: QueryDsl): QueryDsl | undefined => {
-      if (!effectiveDataset?.id || !effectiveDataset.mainTableId) {
+      if (!effectiveDataset?.id) {
         return undefined;
       }
 
+      const { tableId: _tableId, ...baseDslWithoutTableId } = baseDsl ?? {};
+
       return {
-        ...(baseDsl ?? {}),
+        ...baseDslWithoutTableId,
         datasetId: effectiveDataset.id,
-        tableId: effectiveDataset.mainTableId,
         // joins: effectiveDataset.joins || [],
         dimensions: dropFields.map((field) => {
           const dimensionDsl = field.dimensionDsl as QueryDimensionDSL | undefined;

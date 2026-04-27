@@ -1,11 +1,15 @@
-import { AlertCircle, Lock, Key } from "lucide-react";
-import { useState } from "react";
+import { Dialog } from "@base-ui/react/dialog";
+import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, Key, Lock, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
+import { Select } from "@/core/components/ui/Select";
 import type {
   DatasetFormData,
   FormField,
 } from "../../../../types/editor.types";
 import type { DatasourceResponse } from "#pkg/seedar/types";
+import { useFieldBusinessNameGenerator } from "./hooks/useFieldBusinessNameGenerator.hook";
 import styles from "./FieldConfigStep.module.scss";
 
 interface FieldConfigStepProps {
@@ -13,6 +17,9 @@ interface FieldConfigStepProps {
   lockedFields: Set<string>;
   onToggleField: (fieldId: string) => void;
   onUpdateFieldBusinessName: (fieldId: string, businessName: string) => void;
+  onUpdateFieldBusinessNames: (
+    updates: Array<{ fieldId: string; businessName: string }>,
+  ) => void;
   selectedDatasource?: DatasourceResponse;
 }
 
@@ -33,13 +40,44 @@ export const FieldConfigStep = ({
   lockedFields,
   onToggleField,
   onUpdateFieldBusinessName,
+  onUpdateFieldBusinessNames,
   selectedDatasource,
 }: FieldConfigStepProps) => {
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
+  const [selectedModelId, setSelectedModelId] = useState("");
+
+  const { availableModels, isGenerating, generateBusinessNames } =
+    useFieldBusinessNameGenerator({
+      formData,
+      selectedDatasource,
+    });
+
+  const modelOptions = useMemo(
+    () =>
+      availableModels.map((model) => ({
+        label: model.name,
+        value: model.id,
+      })),
+    [availableModels],
+  );
+
+  useEffect(() => {
+    setSelectedModelId((previous) => {
+      if (
+        previous &&
+        availableModels.some((model) => model.id === previous)
+      ) {
+        return previous;
+      }
+
+      return availableModels[0]?.id || "";
+    });
+  }, [availableModels]);
 
   const fieldsByTable: TableFields[] = formData.tables.map((table) => {
     const datasourceTable = selectedDatasource?.tables?.find(
-      (dt) => dt.tableName === table.tableName,
+      (item) => item.tableName === table.tableName,
     );
     const fields = datasourceTable?.columns
       ? datasourceTable.columns.map((column) => ({
@@ -61,38 +99,103 @@ export const FieldConfigStep = ({
   const selectedCount = formData.fields.length;
 
   const getSelectedField = (fieldId: string): FormField | undefined => {
-    return formData.fields.find((f) => f.id === fieldId);
+    return formData.fields.find((field) => field.id === fieldId);
   };
 
   const handleInputChange = (fieldId: string, value: string) => {
-    setInputValues((prev) => ({ ...prev, [fieldId]: value }));
+    setInputValues((previous) => ({ ...previous, [fieldId]: value }));
   };
 
   const handleInputBlur = (fieldId: string, originalName: string) => {
     const value = inputValues[fieldId];
-    if (value !== undefined) {
-      const finalValue = value.trim() || originalName;
-      onUpdateFieldBusinessName(fieldId, finalValue);
-      setInputValues((prev) => {
-        const newValues = { ...prev };
-        delete newValues[fieldId];
-        return newValues;
+    if (value === undefined) {
+      return;
+    }
+
+    const finalValue = value.trim() || originalName;
+    onUpdateFieldBusinessName(fieldId, finalValue);
+    setInputValues((previous) => {
+      const nextValues = { ...previous };
+      delete nextValues[fieldId];
+      return nextValues;
+    });
+  };
+
+  const applyGeneratedBusinessNames = (
+    items: Array<{ fieldId: string; businessName: string }>,
+  ) => {
+    onUpdateFieldBusinessNames(items);
+
+    setInputValues((previous) => {
+      const nextValues = { ...previous };
+      items.forEach((item) => {
+        delete nextValues[item.fieldId];
       });
+      return nextValues;
+    });
+  };
+
+  const requestGenerateBusinessNames = async (aiId: string) => {
+    const response = await generateBusinessNames(formData.fields, aiId);
+    applyGeneratedBusinessNames(response.items);
+    toast.success(`已为 ${response.items.length} 个字段生成业务名称`);
+  };
+
+  const handleGenerateBusinessNames = async () => {
+    if (formData.fields.length === 0) {
+      toast.error("请先至少选择一个字段");
+      return;
+    }
+
+    if (!selectedDatasource) {
+      toast.error("请先选择数据源和表");
+      return;
+    }
+
+    if (availableModels.length === 0) {
+      toast.error("还没有可用模型，请先在模型配置中启用并配置模型");
+      return;
+    }
+
+    if (availableModels.length > 1) {
+      setIsModelDialogOpen(true);
+      return;
+    }
+
+    try {
+      await requestGenerateBusinessNames(availableModels[0].id);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "生成业务名称失败，请稍后重试",
+      );
+    }
+  };
+
+  const handleConfirmModelGenerate = async () => {
+    if (!selectedModelId) {
+      toast.error("请选择一个可用模型");
+      return;
+    }
+
+    try {
+      await requestGenerateBusinessNames(selectedModelId);
+      setIsModelDialogOpen(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "生成业务名称失败，请稍后重试",
+      );
     }
   };
 
   const getTableSelectState = (table: TableFields) => {
-    const selectedFieldIds = new Set(formData.fields.map((f) => f.id));
+    const selectedFieldIds = new Set(formData.fields.map((field) => field.id));
     const totalFields = table.fields.length;
-    const selectedCount = table.fields.filter((f) =>
-      selectedFieldIds.has(f.id),
-    ).length;
-    const lockedCount = table.fields.filter((f) =>
-      lockedFields.has(f.id),
+    const lockedCount = table.fields.filter((field) =>
+      lockedFields.has(field.id),
     ).length;
     const selectableCount = totalFields - lockedCount;
     const selectableSelectedCount = table.fields.filter(
-      (f) => selectedFieldIds.has(f.id) && !lockedFields.has(f.id),
+      (field) => selectedFieldIds.has(field.id) && !lockedFields.has(field.id),
     ).length;
 
     return {
@@ -105,11 +208,13 @@ export const FieldConfigStep = ({
   };
 
   const handleToggleTable = (table: TableFields) => {
-    const selectedFieldIds = new Set(formData.fields.map((f) => f.id));
+    const selectedFieldIds = new Set(formData.fields.map((field) => field.id));
     const { isChecked } = getTableSelectState(table);
 
     table.fields.forEach((field) => {
-      if (lockedFields.has(field.id)) return;
+      if (lockedFields.has(field.id)) {
+        return;
+      }
 
       const isSelected = selectedFieldIds.has(field.id);
       if (isChecked && isSelected) {
@@ -129,9 +234,24 @@ export const FieldConfigStep = ({
             选择需要包含在数据集中的字段。Join 关联字段和指标引用字段已锁定。
           </p>
         </div>
-        <div className={styles.stat}>
-          已选择 <span className={styles.statNumber}>{selectedCount}</span>{" "}
-          个字段
+
+        <div className={styles.headerAside}>
+          <button
+            type="button"
+            className={styles.generateButton}
+            onClick={handleGenerateBusinessNames}
+            disabled={
+              isGenerating || selectedCount === 0 || !selectedDatasource
+            }
+          >
+            <Sparkles size={16} />
+            {isGenerating ? "生成中..." : "Seemind 生成业务名称"}
+          </button>
+
+          <div className={styles.stat}>
+            已选择 <span className={styles.statNumber}>{selectedCount}</span>{" "}
+            个字段
+          </div>
         </div>
       </div>
 
@@ -186,12 +306,16 @@ export const FieldConfigStep = ({
                           checked={isSelected}
                           disabled={isLocked}
                           onChange={() => !isLocked && onToggleField(field.id)}
-                          className={`${styles.checkbox} ${isLocked ? styles.checkboxLocked : ""}`}
+                          className={`${styles.checkbox} ${
+                            isLocked ? styles.checkboxLocked : ""
+                          }`}
                         />
                       </td>
+
                       <td className={styles.nameColumn}>
                         <span className={styles.fieldName}>{field.name}</span>
                       </td>
+
                       <td className={styles.businessNameColumn}>
                         {isSelected && (
                           <input
@@ -201,8 +325,8 @@ export const FieldConfigStep = ({
                                 ? inputValues[field.id]
                                 : selectedField?.businessName || field.name
                             }
-                            onChange={(e) =>
-                              handleInputChange(field.id, e.target.value)
+                            onChange={(event) =>
+                              handleInputChange(field.id, event.target.value)
                             }
                             onBlur={() => handleInputBlur(field.id, field.name)}
                             className={styles.businessNameInput}
@@ -210,6 +334,7 @@ export const FieldConfigStep = ({
                           />
                         )}
                       </td>
+
                       <td className={styles.flagsColumn}>
                         <div className={styles.flags}>
                           {field.isPrimaryKey && (
@@ -235,6 +360,59 @@ export const FieldConfigStep = ({
           <span>请至少选择一个字段</span>
         </div>
       )}
+
+      <Dialog.Root
+        open={isModelDialogOpen}
+        onOpenChange={(open) => {
+          if (!isGenerating) {
+            setIsModelDialogOpen(open);
+          }
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Backdrop className={styles.dialogBackdrop} />
+          <Dialog.Popup className={styles.dialogPopup}>
+            <div className={styles.dialogContent}>
+              <Dialog.Title className={styles.dialogTitle}>
+                选择生成模型
+              </Dialog.Title>
+              <Dialog.Description className={styles.dialogDescription}>
+                检测到有多个可用模型，请先选择本次用于生成字段业务名称的模型。
+              </Dialog.Description>
+
+              <div className={styles.dialogForm}>
+                <label className={styles.dialogLabel}>可用模型</label>
+                <Select
+                  value={selectedModelId}
+                  onChange={(value) => setSelectedModelId(value ?? "")}
+                  options={modelOptions}
+                  placeholder="请选择模型"
+                  clearable={false}
+                />
+              </div>
+
+              <div className={styles.dialogActions}>
+                <button
+                  type="button"
+                  className={styles.dialogSecondaryButton}
+                  onClick={() => setIsModelDialogOpen(false)}
+                  disabled={isGenerating}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  className={styles.dialogPrimaryButton}
+                  onClick={handleConfirmModelGenerate}
+                  disabled={isGenerating || !selectedModelId}
+                >
+                  {isGenerating ? "生成中..." : "确认并生成"}
+                </button>
+              </div>
+            </div>
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 };

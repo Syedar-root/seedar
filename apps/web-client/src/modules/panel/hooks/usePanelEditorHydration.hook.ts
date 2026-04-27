@@ -10,6 +10,7 @@ import type {
   FilterItem,
   LocalPanelStatus,
   DimensionItem,
+  SortItem,
   TempMetricConfig,
   TitleConfig,
 } from "../types";
@@ -36,6 +37,10 @@ import {
   stripChartEditorMeta,
   VISUAL_CHART_SPEC_KEYS,
 } from "../utils/panelEditorState";
+import {
+  buildSortCandidates,
+  hydrateSortItems,
+} from "../utils/querySort";
 
 interface UsePanelEditorHydrationParams {
   panelId?: string;
@@ -53,6 +58,8 @@ interface UsePanelEditorHydrationParams {
   setDropMetrics: Dispatch<SetStateAction<DragItem[]>>;
   setDropFilters: Dispatch<SetStateAction<FilterItem[]>>;
   setTempMetrics: Dispatch<SetStateAction<TempMetricConfig[]>>;
+  setSortItems: Dispatch<SetStateAction<SortItem[]>>;
+  setTopN: Dispatch<SetStateAction<number | undefined>>;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -187,7 +194,7 @@ const hydrateChartEditorConfig = (
   mappingKeys.forEach((key) => {
     const value = chartSpec[key];
     if (typeof value === "string") {
-      nextConfig[key] = value;
+      (nextConfig as Record<string, unknown>)[key] = value;
     }
   });
 
@@ -278,6 +285,8 @@ export const usePanelEditorHydration = ({
   setDropMetrics,
   setDropFilters,
   setTempMetrics,
+  setSortItems,
+  setTopN,
 }: UsePanelEditorHydrationParams): void => {
   useEffect(() => {
     if (!panelId) {
@@ -376,9 +385,11 @@ export const usePanelEditorHydration = ({
     }
 
     setSelectedDataset(remoteDatasetData);
-    setDimensionItems(
-      hydrateDimensions(queryData.dsl?.dimensions, remoteDatasetData.fields),
+    const nextDimensionItems = hydrateDimensions(
+      queryData.dsl?.dimensions,
+      remoteDatasetData.fields,
     );
+    setDimensionItems(nextDimensionItems);
 
     const nextMetrics = (
       (queryData.dsl?.metrics as Array<{ id: number }> | undefined) ?? []
@@ -413,6 +424,29 @@ export const usePanelEditorHydration = ({
       (queryData.dsl?.tempMetrics as TempMetricConfig[] | undefined) ?? [];
     setTempMetrics(nextTempMetrics);
 
+    const nextSortCandidates = buildSortCandidates({
+      dimensions: nextDimensionItems,
+      metrics: nextMetrics,
+      tempMetrics: nextTempMetrics,
+    });
+    setSortItems(
+      hydrateSortItems(queryData.dsl?.orderBy, nextSortCandidates),
+    );
+
+    const persistedTopN =
+      typeof queryData.dsl?.topN === "number"
+        ? queryData.dsl.topN
+        : queryData.dsl?.offset
+          ? undefined
+          : queryData.dsl?.limit;
+    setTopN(
+      nextSortCandidates.length > 0 &&
+        typeof persistedTopN === "number" &&
+        persistedTopN > 0
+        ? persistedTopN
+        : undefined,
+    );
+
     hydratedQueryRef.current = queryData.id;
   }, [
     hydratedQueryRef,
@@ -422,6 +456,8 @@ export const usePanelEditorHydration = ({
     setDropFilters,
     setDropMetrics,
     setSelectedDataset,
+    setSortItems,
+    setTopN,
     setTempMetrics,
   ]);
 };

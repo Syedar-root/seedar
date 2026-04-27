@@ -10,6 +10,8 @@ import {
   AiChatRequestDto,
   AiAgentStreamChunk,
   PaginatedResult,
+  GenerateFieldBusinessNameRequest,
+  GenerateFieldBusinessNameResponse,
 } from "#pkg/seedar/types";
 
 export class AiApi {
@@ -153,7 +155,30 @@ export class AiApi {
                     callbacks.onDone?.(JSON.parse(event.data as string));
                     break;
                   case "error":
-                    callbacks.onError?.(event.data as string);
+                    if (typeof event.data === "string") {
+                      try {
+                        const parsed = JSON.parse(event.data);
+
+                        if (typeof parsed === "string") {
+                          callbacks.onError?.(parsed);
+                        } else if (
+                          parsed &&
+                          typeof parsed === "object" &&
+                          "error" in parsed &&
+                          typeof parsed.error === "string"
+                        ) {
+                          callbacks.onError?.(parsed.error);
+                        } else {
+                          callbacks.onError?.(event.data);
+                        }
+                      } catch {
+                        callbacks.onError?.(event.data);
+                      }
+                    } else if (event.data.type === 'error') {
+                      callbacks.onError?.(event.data.content as string);
+                    } else {
+                      callbacks.onError?.("Unknown error");
+                    }
                     break;
                 }
               } catch (e) {
@@ -176,5 +201,16 @@ export class AiApi {
     return {
       close: () => controller.abort(),
     };
+  }
+
+  static async generateFieldBusinessNames(
+    data: GenerateFieldBusinessNameRequest,
+    options?: RequestOptions,
+  ): Promise<GenerateFieldBusinessNameResponse> {
+    return ApiClient.post<GenerateFieldBusinessNameResponse>(
+      "/v1/ai/field-business-name",
+      data,
+      options,
+    );
   }
 }

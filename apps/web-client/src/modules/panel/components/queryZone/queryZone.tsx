@@ -1,4 +1,11 @@
-﻿import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
+import type {
+  DatasetFieldResponse,
+  PanelFormattingConfig,
+  PanelFormattingRole,
+  PanelFormattingTarget,
+  PanelSimpleFormattingRule,
+} from "#pkg/seedar/types";
 import styles from "./queryZone.module.scss";
 import { DragZone } from "../dndHelper";
 import { DragItem } from "../dndHelper/dragZone/dragZone";
@@ -7,29 +14,27 @@ import { FilterItem as FilterItemType } from "./types";
 import { MetricItem } from "./components/metricItem/metricItem";
 import { DimensionItem } from "./components/dimensionItem/dimensionItem";
 import { TempMetricItem } from "./components/tempMetricItem/tempMetricItem";
+import { SortItem } from "./components/sortItem";
+import { SortDialog } from "./components/sortDialog";
 import { PopDialog } from "./components/popDialog/popDialog";
-import {
-  PanelFormattingConfig,
-  PanelFormattingRole,
-  PanelFormattingTarget,
-  PanelSimpleFormattingRule,
-} from "#pkg/seedar/types";
 import type {
   DerivedDimensionInput,
   DimensionItem as PanelDimensionItem,
   PeriodOverPeriodConfig,
+  SortItem as PanelSortItem,
   TempMetricConfig,
 } from "../../types";
-import type { DatasetFieldResponse } from "#pkg/seedar/types";
 import { DerivedDimensionDialog } from "./components/derivedDimensionDialog/derivedDimensionDialog";
 import { FormattingDialog } from "./components/formattingDialog/formattingDialog";
 import {
   findSimpleFormattingRule,
   toSimpleFormattingConfig,
 } from "../../utils/formatting";
+import { buildSortCandidates } from "../../utils/querySort";
 
 export interface MetricWithPopConfig extends DragItem {
   hasPopConfig?: boolean;
+  timeFieldId?: number;
 }
 
 interface QueryZoneProps {
@@ -49,6 +54,9 @@ interface QueryZoneProps {
   ) => void;
   tempMetrics?: TempMetricConfig[];
   onRemoveTempMetric?: (tempMetricId: string) => void;
+  sortItems?: PanelSortItem[];
+  topN?: number;
+  onApplySortConfig?: (nextSortItems: PanelSortItem[], nextTopN?: number) => void;
   onAddDerivedDimension?: (dimension: DerivedDimensionInput) => void;
   onUpdateDerivedDimension?: (
     dimensionItemId: string | number,
@@ -115,7 +123,9 @@ const buildDimensionFormattingTarget = (
   };
 };
 
-const buildMetricFormattingTarget = (metric: MetricWithPopConfig): PanelFormattingTarget => ({
+const buildMetricFormattingTarget = (
+  metric: MetricWithPopConfig,
+): PanelFormattingTarget => ({
   kind: "metric",
   id: String(metric.id),
 });
@@ -131,6 +141,9 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
   onUpdateMetricPopConfig,
   tempMetrics = [],
   onRemoveTempMetric,
+  sortItems = [],
+  topN,
+  onApplySortConfig,
   onAddDerivedDimension,
   onUpdateDerivedDimension,
   formatting,
@@ -153,10 +166,21 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
   const [activeFormatting, setActiveFormatting] = useState<
     ActiveFormattingState | undefined
   >();
+  const [sortDialogOpen, setSortDialogOpen] = useState(false);
 
   const simpleFormatting = useMemo(
     () => toSimpleFormattingConfig(formatting),
     [formatting],
+  );
+
+  const sortCandidates = useMemo(
+    () =>
+      buildSortCandidates({
+        dimensions: dropFields,
+        metrics: dropMetrics,
+        tempMetrics,
+      }),
+    [dropFields, dropMetrics, tempMetrics],
   );
 
   const findFormattingRule = useCallback(
@@ -287,6 +311,22 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
     handleCloseFormattingDialog();
   }, [activeFormatting, handleCloseFormattingDialog, onRemoveItemFormatting]);
 
+  const handleOpenSortDialog = useCallback(() => {
+    setSortDialogOpen(true);
+  }, []);
+
+  const handleCloseSortDialog = useCallback(() => {
+    setSortDialogOpen(false);
+  }, []);
+
+  const handleSaveSortConfig = useCallback(
+    (nextSortItems: PanelSortItem[], nextTopN?: number) => {
+      onApplySortConfig?.(nextSortItems, nextTopN);
+      setSortDialogOpen(false);
+    },
+    [onApplySortConfig],
+  );
+
   const dimensionDerivedMap = dropFields.reduce<Record<string, boolean>>(
     (acc, dimension) => {
       if (dimension.isDerived) {
@@ -341,6 +381,7 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
           })}
         </DragZone>
       </div>
+
       <div className={styles.zone}>
         <div className={styles.title}>指标</div>
         <DragZone
@@ -371,6 +412,7 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
           ))}
         </DragZone>
       </div>
+
       <div className={styles.zone}>
         <div className={styles.title}>筛选</div>
         <DragZone
@@ -389,9 +431,32 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
           ))}
         </DragZone>
       </div>
+
+      <div className={`${styles.zone} ${styles.compactZone}`}>
+        <div className={styles.title}>排序</div>
+        <div className={styles.dragZone}>
+          <div className={styles.sortSequence}>
+            {sortItems.map((item) => (
+              <SortItem key={item.id} sortItem={item} />
+            ))}
+            {topN !== undefined ? (
+              <div className={styles.topNBadge}>Top {topN}</div>
+            ) : null}
+            <button
+              type="button"
+              className={styles.sortEntryButton}
+              onClick={handleOpenSortDialog}
+            >
+              配置排序
+            </button>
+          </div>
+        </div>
+      </div>
+
       <PopDialog
         open={popDialogOpen}
         metric={selectedMetric}
+        availableFields={availableFields}
         initialConfig={
           selectedMetric?.hasPopConfig
             ? tempMetrics.find(
@@ -402,6 +467,7 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
         onClose={handleClosePopDialog}
         onSave={handleSavePopConfig}
       />
+
       <DerivedDimensionDialog
         open={derivedDialogOpen}
         availableFields={availableFields}
@@ -420,6 +486,7 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
         onClose={handleCloseDerivedDialog}
         onSave={handleSaveDerivedDimension}
       />
+
       <FormattingDialog
         open={formatDialogOpen}
         role={activeFormatting?.role || "metric"}
@@ -429,7 +496,14 @@ export const QueryZone: React.FC<QueryZoneProps> = ({
         onSave={handleSaveFormatting}
         onRemove={handleRemoveFormatting}
       />
+      <SortDialog
+        open={sortDialogOpen}
+        candidates={sortCandidates}
+        sortItems={sortItems}
+        topN={topN}
+        onClose={handleCloseSortDialog}
+        onSave={handleSaveSortConfig}
+      />
     </div>
   );
 };
-

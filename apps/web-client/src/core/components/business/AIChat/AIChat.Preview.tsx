@@ -19,6 +19,38 @@ import { formatMessageForDisplay } from "./utils/command.utils";
 import { MessageSquareText, Workflow } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
+const AI_CHAT_SESSION_STORAGE_KEY = "seedar.ai-chat.preview.session";
+
+interface AIChatPreviewCache {
+  messages: ChatMessage[];
+  currentModel: string;
+  currentMode: AiChatMode;
+  error: string | null;
+  currentSession: AiSessionResponse | null;
+  handledInterruptIds: string[];
+}
+
+const readPreviewCache = (): AIChatPreviewCache | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(AI_CHAT_SESSION_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as AIChatPreviewCache) : null;
+  } catch {
+    return null;
+  }
+};
+
+const clearPreviewCache = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.removeItem(AI_CHAT_SESSION_STORAGE_KEY);
+};
+
 const AI_CHAT_COMMANDS_RECORD = {
   dataQuery: {
     key: "data-query",
@@ -38,17 +70,25 @@ const AI_CHAT_COMMANDS_RECORD = {
 } satisfies Record<string, CommandItem>;
 
 const AIChatPreview: React.FC = () => {
-  const [currentModel, setCurrentModel] = useState("gpt-4");
-  const [currentMode, setCurrentMode] = useState<AiChatMode>("chat");
+  const cachedState = useMemo(() => readPreviewCache(), []);
+  const [currentModel, setCurrentModel] = useState(
+    cachedState?.currentModel || "gpt-4",
+  );
+  const [currentMode, setCurrentMode] = useState<AiChatMode>(
+    cachedState?.currentMode || "chat",
+  );
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(cachedState?.error || null);
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [currentSession, setCurrentSession] =
-    useState<AiSessionResponse | null>(null);
+    useState<AiSessionResponse | null>(cachedState?.currentSession || null);
+  const [handledInterruptIds, setHandledInterruptIds] = useState<string[]>(
+    cachedState?.handledInterruptIds || [],
+  );
   const location = useLocation();
   const activeScenes = useAiChatScenesStore((state) => state.scenes);
 
-  const chatState = useChatState([]);
+  const chatState = useChatState(cachedState?.messages || []);
   const { handleSSEData } = useSSEHandler({
     onNewMessage: chatState.addMessage,
     onUpdateMessage: chatState.updateMessage,
@@ -156,6 +196,8 @@ const AIChatPreview: React.FC = () => {
     enabled: !isLoading,
     messages: chatState.messages,
     onUpdateMessage: chatState.updateMessage,
+    persistedHandledInterruptIds: handledInterruptIds,
+    onHandledInterruptIdsChange: setHandledInterruptIds,
     onResume: async (resumePayload) => {
       setIsLoading(true);
       try {
@@ -170,6 +212,9 @@ const AIChatPreview: React.FC = () => {
   const handleAddChat = async () => {
     chatState.setMessages([]);
     setCurrentSession(null);
+    setError(null);
+    setHandledInterruptIds([]);
+    clearPreviewCache();
   };
 
   const handleModelChange = (modelKey: string) => {
@@ -224,6 +269,33 @@ const AIChatPreview: React.FC = () => {
     });
   }, [models]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const snapshot: AIChatPreviewCache = {
+      messages: chatState.messages,
+      currentModel,
+      currentMode,
+      error,
+      currentSession,
+      handledInterruptIds,
+    };
+
+    window.sessionStorage.setItem(
+      AI_CHAT_SESSION_STORAGE_KEY,
+      JSON.stringify(snapshot),
+    );
+  }, [
+    chatState.messages,
+    currentModel,
+    currentMode,
+    error,
+    currentSession,
+    handledInterruptIds,
+  ]);
+
   return (
     <div className={styles["preview-container"]}>
       <section className={styles["preview-section"]}>
@@ -231,6 +303,7 @@ const AIChatPreview: React.FC = () => {
           style={{ height: "100%", border: "none" }}
           messages={chatState.messages}
           loading={isLoading}
+          error={error}
           placeholder="输入 / 获取命令"
           title="AI 智能助手"
           onAddChat={handleAddChat}
@@ -274,7 +347,6 @@ const AIChatPreview: React.FC = () => {
             setCurrentModel(nextModel?.id || "");
           }}
         />
-        {error ? <div style={{ color: "red" }}>Error: {error}</div> : null}
       </section>
     </div>
   );

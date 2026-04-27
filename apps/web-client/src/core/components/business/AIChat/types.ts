@@ -179,6 +179,7 @@ export interface AIChatProps {
   title?: React.ReactNode;
   onAddChat?: () => void;
   onShowHistory?: () => void;
+  error?: string | null;
   aiId?: string;
   initialSessionId?: string;
   onSessionChange?: (sessionId: string) => void;

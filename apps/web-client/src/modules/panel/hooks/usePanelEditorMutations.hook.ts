@@ -3,6 +3,7 @@ import {
   PeriodOverPeriodType,
   type DatasetResponse,
   type PanelQueryStatePayload,
+  type QueryOrderByDSL,
 } from "#pkg/seedar/types";
 import type {
   DragItem,
@@ -11,6 +12,7 @@ import type {
   FilterItem,
   PeriodOverPeriodConfig,
   QueryDsl,
+  SortItem,
   TempMetricConfig,
   TitleConfig,
 } from "../types";
@@ -36,6 +38,12 @@ import {
   isSameFormattingTarget,
   toSimpleFormattingConfig,
 } from "../utils/formatting";
+import {
+  buildSortCandidates,
+  createSortItemFromCandidate,
+  hydrateSortItems,
+  syncSortItemsWithCandidates,
+} from "../utils/querySort";
 
 interface UsePanelEditorMutationsParams {
   datasetData?: DatasetResponse;
@@ -43,11 +51,15 @@ interface UsePanelEditorMutationsParams {
   dropMetrics: DragItem[];
   dropFilters: FilterItem[];
   tempMetrics: TempMetricConfig[];
+  sortItems: SortItem[];
+  topN?: number;
   setSelectedDataset: Dispatch<SetStateAction<DatasetResponse | undefined>>;
   setDimensionItems: Dispatch<SetStateAction<DimensionItem[]>>;
   setDropMetrics: Dispatch<SetStateAction<DragItem[]>>;
   setDropFilters: Dispatch<SetStateAction<FilterItem[]>>;
   setTempMetrics: Dispatch<SetStateAction<TempMetricConfig[]>>;
+  setSortItems: Dispatch<SetStateAction<SortItem[]>>;
+  setTopN: Dispatch<SetStateAction<number | undefined>>;
   setTempData: Dispatch<SetStateAction<ExecuteQueryResponse | undefined>>;
   setDisplayType: Dispatch<SetStateAction<DisplayPanelType>>;
   setEditorConfig: Dispatch<SetStateAction<PanelEditorConfig>>;
@@ -81,6 +93,14 @@ interface UsePanelEditorMutationsReturn {
     config: PeriodOverPeriodConfig | undefined,
   ) => void;
   handleRemoveTempMetric: (tempMetricId: string) => void;
+  handleAddSortItem: (orderBy: QueryOrderByDSL) => void;
+  handleUpdateSortItem: (
+    sortItemId: string,
+    updates: Partial<SortItem>,
+  ) => void;
+  handleRemoveSortItem: (sortItemId: string) => void;
+  handleUpdateTopN: (value?: number) => void;
+  handleApplySortConfig: (nextSortItems: SortItem[], nextTopN?: number) => void;
   handleEditorChange: (
     type: DisplayPanelType,
     config: PanelEditorConfig,
@@ -112,11 +132,15 @@ export const usePanelEditorMutations = ({
   dropMetrics,
   dropFilters,
   tempMetrics,
+  sortItems,
+  topN,
   setSelectedDataset,
   setDimensionItems,
   setDropMetrics,
   setDropFilters,
   setTempMetrics,
+  setSortItems,
+  setTopN,
   setTempData,
   setDisplayType,
   setEditorConfig,
@@ -129,13 +153,17 @@ export const usePanelEditorMutations = ({
     setDropMetrics([]);
     setDropFilters([]);
     setTempMetrics([]);
+    setSortItems([]);
+    setTopN(undefined);
     setTempData(undefined);
   }, [
     setDimensionItems,
     setDropFilters,
     setDropMetrics,
+    setSortItems,
     setTempData,
     setTempMetrics,
+    setTopN,
   ]);
 
   const selectDataset = useCallback(
@@ -153,16 +181,31 @@ export const usePanelEditorMutations = ({
     [resetForDatasetChange, setSelectedDataset],
   );
 
+  const getSortCandidates = useCallback(
+    (
+      nextDimensions: DimensionItem[] = dimensionItems,
+      nextMetrics: DragItem[] = dropMetrics,
+      nextTempMetrics: TempMetricConfig[] = tempMetrics,
+    ) =>
+      buildSortCandidates({
+        dimensions: nextDimensions,
+        metrics: nextMetrics,
+        tempMetrics: nextTempMetrics,
+      }),
+    [dimensionItems, dropMetrics, tempMetrics],
+  );
+
   const buildDsl = useCallback(
     (baseDsl?: QueryDsl): QueryDsl | undefined => {
-      if (!datasetData?.id || !datasetData.mainTableId) {
+      if (!datasetData?.id) {
         return undefined;
       }
 
+      const { tableId: _tableId, ...baseDslWithoutTableId } = baseDsl ?? {};
+
       return {
-        ...(baseDsl ?? {}),
+        ...baseDslWithoutTableId,
         datasetId: datasetData.id,
-        tableId: datasetData.mainTableId,
         dimensions: serializeDimensions(dimensionItems),
         metrics: dropMetrics.map((metric) => ({
           id: Number(metric.id),
@@ -174,9 +217,164 @@ export const usePanelEditorMutations = ({
           value: filter.value,
         })),
         tempMetrics: tempMetrics.length > 0 ? tempMetrics : undefined,
+        orderBy:
+          sortItems.length > 0
+            ? sortItems.map((item) => ({
+                ...item.orderBy,
+                dir: item.dir,
+              }))
+            : undefined,
+        topN: sortItems.length > 0 ? topN : undefined,
       };
     },
-    [datasetData, dimensionItems, dropFilters, dropMetrics, tempMetrics],
+    [
+      datasetData,
+      dimensionItems,
+      dropFilters,
+      dropMetrics,
+      sortItems,
+      tempMetrics,
+      topN,
+    ],
+  );
+
+  const syncSortItemsState = useCallback(
+    (
+      nextDimensions: DimensionItem[] = dimensionItems,
+      nextMetrics: DragItem[] = dropMetrics,
+      nextTempMetrics: TempMetricConfig[] = tempMetrics,
+    ) => {
+      const candidates = getSortCandidates(
+        nextDimensions,
+        nextMetrics,
+        nextTempMetrics,
+      );
+      setSortItems((previous) => {
+        const nextSortItems = syncSortItemsWithCandidates(previous, candidates);
+        if (nextSortItems.length === 0) {
+          setTopN(undefined);
+        }
+        return nextSortItems;
+      });
+    },
+    [
+      dimensionItems,
+      dropMetrics,
+      getSortCandidates,
+      setSortItems,
+      setTopN,
+      tempMetrics,
+    ],
+  );
+
+  const handleAddSortItem = useCallback(
+    (orderBy: QueryOrderByDSL) => {
+      const candidates = getSortCandidates();
+      const matchedCandidate = candidates.find((candidate) => {
+        if (candidate.orderBy.tempMetricId && orderBy.tempMetricId) {
+          return candidate.orderBy.tempMetricId === orderBy.tempMetricId;
+        }
+        if (
+          candidate.orderBy.metricId !== undefined &&
+          orderBy.metricId !== undefined
+        ) {
+          return candidate.orderBy.metricId === orderBy.metricId;
+        }
+        if (candidate.orderBy.alias && orderBy.alias) {
+          return candidate.orderBy.alias === orderBy.alias;
+        }
+        if (
+          candidate.orderBy.fieldId !== undefined &&
+          orderBy.fieldId !== undefined
+        ) {
+          return candidate.orderBy.fieldId === orderBy.fieldId;
+        }
+        return false;
+      });
+
+      if (!matchedCandidate) {
+        return;
+      }
+
+      const nextSortItem = createSortItemFromCandidate(matchedCandidate);
+      setSortItems((previous) => {
+        if (
+          previous.some(
+            (item) =>
+              item.sourceType === nextSortItem.sourceType &&
+              item.sourceId === nextSortItem.sourceId,
+          )
+        ) {
+          return previous;
+        }
+        return [...previous, nextSortItem];
+      });
+    },
+    [getSortCandidates, setSortItems],
+  );
+
+  const handleUpdateSortItem = useCallback(
+    (sortItemId: string, updates: Partial<SortItem>) => {
+      setSortItems((previous) =>
+        previous.map((item) =>
+          item.id === sortItemId
+            ? {
+                ...item,
+                ...updates,
+              }
+            : item,
+        ),
+      );
+    },
+    [setSortItems],
+  );
+
+  const handleRemoveSortItem = useCallback(
+    (sortItemId: string) => {
+      setSortItems((previous) => {
+        const nextSortItems = previous.filter((item) => item.id !== sortItemId);
+        if (nextSortItems.length === 0) {
+          setTopN(undefined);
+        }
+        return nextSortItems;
+      });
+    },
+    [setSortItems, setTopN],
+  );
+
+  const handleUpdateTopN = useCallback(
+    (value?: number) => {
+      if (value === undefined || value === null || Number.isNaN(value)) {
+        setTopN(undefined);
+        return;
+      }
+
+      const normalized = Math.max(1, Math.floor(value));
+      setTopN(normalized);
+    },
+    [setTopN],
+  );
+
+  const handleApplySortConfig = useCallback(
+    (nextSortItems: SortItem[], nextTopN?: number) => {
+      setSortItems(nextSortItems);
+      if (nextSortItems.length === 0) {
+        setTopN(undefined);
+        return;
+      }
+
+      if (
+        nextTopN === undefined ||
+        nextTopN === null ||
+        Number.isNaN(nextTopN)
+      ) {
+        setTopN(undefined);
+        return;
+      }
+
+      setTopN(Math.max(1, Math.floor(nextTopN)));
+    },
+    [setSortItems, setTopN],
   );
 
   const handleDropField = useCallback(
@@ -211,19 +409,23 @@ export const usePanelEditorMutations = ({
           datasetFields: datasetData.fields,
         });
 
-        return [...previous, nextItem];
+        const nextDimensions = [...previous, nextItem];
+        syncSortItemsState(nextDimensions, dropMetrics, tempMetrics);
+        return nextDimensions;
       });
     },
-    [datasetData, setDimensionItems],
+    [datasetData, dropMetrics, setDimensionItems, syncSortItemsState, tempMetrics],
   );
 
   const handleRemoveField = useCallback(
     (item: DragItem) => {
-      setDimensionItems((previous) =>
-        previous.filter((entry) => entry.id !== item.id),
-      );
+      setDimensionItems((previous) => {
+        const nextDimensions = previous.filter((entry) => entry.id !== item.id);
+        syncSortItemsState(nextDimensions, dropMetrics, tempMetrics);
+        return nextDimensions;
+      });
     },
-    [setDimensionItems],
+    [dropMetrics, setDimensionItems, syncSortItemsState, tempMetrics],
   );
 
   const handleAddDerivedDimension = useCallback(
@@ -232,19 +434,30 @@ export const usePanelEditorMutations = ({
         return;
       }
 
-      setDimensionItems((previous) => [
-        ...previous,
-        buildDerivedDimensionItem({
-          dimensionDsl: {
-            ...dimension,
-            alias: dimension.alias.trim(),
-          },
-          datasetFields: datasetData.fields,
-          nextId: nextDerivedDimensionId,
-        }),
-      ]);
+      setDimensionItems((previous) => {
+        const nextDimensions = [
+          ...previous,
+          buildDerivedDimensionItem({
+            dimensionDsl: {
+              ...dimension,
+              alias: dimension.alias.trim(),
+            },
+            datasetFields: datasetData.fields,
+            nextId: nextDerivedDimensionId,
+          }),
+        ];
+        syncSortItemsState(nextDimensions, dropMetrics, tempMetrics);
+        return nextDimensions;
+      });
     },
-    [datasetData, nextDerivedDimensionId, setDimensionItems],
+    [
+      datasetData,
+      dropMetrics,
+      nextDerivedDimensionId,
+      setDimensionItems,
+      syncSortItemsState,
+      tempMetrics,
+    ],
   );
 
   const handleUpdateDerivedDimension = useCallback(
@@ -253,8 +466,8 @@ export const usePanelEditorMutations = ({
         return;
       }
 
-      setDimensionItems((previous) =>
-        previous.map((entry) => {
+      setDimensionItems((previous) => {
+        const nextDimensions = previous.map((entry) => {
           if (entry.id !== dimensionItemId || !entry.isDerived) {
             return entry;
           }
@@ -268,10 +481,19 @@ export const usePanelEditorMutations = ({
             id: entry.id,
             nextId: nextDerivedDimensionId,
           });
-        }),
-      );
+        });
+        syncSortItemsState(nextDimensions, dropMetrics, tempMetrics);
+        return nextDimensions;
+      });
     },
-    [datasetData, nextDerivedDimensionId, setDimensionItems],
+    [
+      datasetData,
+      dropMetrics,
+      nextDerivedDimensionId,
+      setDimensionItems,
+      syncSortItemsState,
+      tempMetrics,
+    ],
   );
 
   const handleDropMetric = useCallback(
@@ -287,19 +509,33 @@ export const usePanelEditorMutations = ({
         const metric = datasetData.metrics.find(
           (entry) => entry.id === item.id,
         );
-        return metric ? [...previous, metric] : previous;
+        if (!metric) {
+          return previous;
+        }
+
+        const nextMetrics = [...previous, metric];
+        syncSortItemsState(dimensionItems, nextMetrics, tempMetrics);
+        return nextMetrics;
       });
     },
-    [datasetData, setDropMetrics],
+    [
+      datasetData,
+      dimensionItems,
+      setDropMetrics,
+      syncSortItemsState,
+      tempMetrics,
+    ],
   );
 
   const handleRemoveMetric = useCallback(
     (item: DragItem) => {
-      setDropMetrics((previous) =>
-        previous.filter((entry) => entry.id !== item.id),
-      );
+      setDropMetrics((previous) => {
+        const nextMetrics = previous.filter((entry) => entry.id !== item.id);
+        syncSortItemsState(dimensionItems, nextMetrics, tempMetrics);
+        return nextMetrics;
+      });
     },
-    [setDropMetrics],
+    [dimensionItems, setDropMetrics, syncSortItemsState, tempMetrics],
   );
 
   const handleDropFilter = useCallback(
@@ -390,7 +626,11 @@ export const usePanelEditorMutations = ({
 
         if (!config?.periodType || !config?.calculationMode) {
           if (existingIndex >= 0) {
-            return previous.filter((_, index) => index !== existingIndex);
+            const nextTempMetrics = previous.filter(
+              (_, index) => index !== existingIndex,
+            );
+            syncSortItemsState(dimensionItems, dropMetrics, nextTempMetrics);
+            return nextTempMetrics;
           }
           return previous;
         }
@@ -411,22 +651,27 @@ export const usePanelEditorMutations = ({
           baseMetricId: Number(metricId),
           alias: `${baseName}_${periodTypeLabel}_${calculationModeLabel}`,
           businessName: `${baseName} (${periodTypeLabel}${calculationModeLabel})`,
-          timeFieldId: fullMetric?.timeFieldId,
+          timeFieldId: config.timeFieldId ?? fullMetric?.timeFieldId,
           periodType: config.periodType,
           calculationMode: config.calculationMode,
         };
 
         if (existingIndex >= 0) {
-          return previous.map((metricItem, index) =>
+          const nextTempMetrics = previous.map((metricItem, index) =>
             index === existingIndex ? newTempMetric : metricItem,
           );
+          syncSortItemsState(dimensionItems, dropMetrics, nextTempMetrics);
+          return nextTempMetrics;
         }
 
-        return [...previous, newTempMetric];
+        const nextTempMetrics = [...previous, newTempMetric];
+        syncSortItemsState(dimensionItems, dropMetrics, nextTempMetrics);
+        return nextTempMetrics;
       });
 
-      if (fullMetric?.timeFieldId) {
-        const timeField = getDatasetFieldById(fullMetric.timeFieldId);
+      const effectiveTimeFieldId = config?.timeFieldId ?? fullMetric?.timeFieldId;
+      if (effectiveTimeFieldId) {
+        const timeField = getDatasetFieldById(effectiveTimeFieldId);
         if (timeField) {
           setDropFilters((previous) => {
             const existingFilter = previous.find(
@@ -450,22 +695,28 @@ export const usePanelEditorMutations = ({
       }
     },
     [
+      dimensionItems,
       datasetData,
       dropMetrics,
       getDatasetFieldById,
       getPeriodTypeLabel,
       setDropFilters,
       setTempMetrics,
+      syncSortItemsState,
     ],
   );
 
   const handleRemoveTempMetric = useCallback(
     (tempMetricId: string) => {
-      setTempMetrics((previous) =>
-        previous.filter((metric) => metric.id !== tempMetricId),
-      );
+      setTempMetrics((previous) => {
+        const nextTempMetrics = previous.filter(
+          (metric) => metric.id !== tempMetricId,
+        );
+        syncSortItemsState(dimensionItems, dropMetrics, nextTempMetrics);
+        return nextTempMetrics;
+      });
     },
-    [setTempMetrics],
+    [dimensionItems, dropMetrics, setTempMetrics, syncSortItemsState],
   );
 
   const handleEditorChange = useCallback(
@@ -553,6 +804,8 @@ export const usePanelEditorMutations = ({
       const baseDropMetrics = hasDatasetChanged ? [] : dropMetrics;
       const baseDropFilters = hasDatasetChanged ? [] : dropFilters;
       const baseTempMetrics = hasDatasetChanged ? [] : tempMetrics;
+      const baseSortItems = hasDatasetChanged ? [] : sortItems;
+      const baseTopN = hasDatasetChanged ? undefined : topN;
 
       const nextDimensionItems =
         payload.dimensions === undefined
@@ -684,11 +937,31 @@ export const usePanelEditorMutations = ({
               };
             });
 
+      const nextSortCandidates = buildSortCandidates({
+        dimensions: nextDimensionItems,
+        metrics: nextDropMetrics,
+        tempMetrics: nextTempMetrics,
+      });
+
+      const nextSortItems =
+        payload.orderBy === undefined
+          ? syncSortItemsWithCandidates(baseSortItems, nextSortCandidates)
+          : hydrateSortItems(payload.orderBy, nextSortCandidates);
+
+      const nextTopN =
+        nextSortItems.length === 0
+          ? undefined
+          : payload.topN === undefined
+            ? baseTopN
+            : payload.topN;
+
       setSelectedDataset(nextDataset);
       setDimensionItems(nextDimensionItems);
       setDropMetrics(nextDropMetrics);
       setDropFilters(nextDropFilters);
       setTempMetrics(nextTempMetrics);
+      setSortItems(nextSortItems);
+      setTopN(nextTopN);
       setTempData(undefined);
     },
     [
@@ -701,9 +974,13 @@ export const usePanelEditorMutations = ({
       setDropFilters,
       setDropMetrics,
       setSelectedDataset,
+      setSortItems,
       setTempData,
       setTempMetrics,
+      setTopN,
+      sortItems,
       tempMetrics,
+      topN,
     ],
   );
 
@@ -723,6 +1000,11 @@ export const usePanelEditorMutations = ({
     handleUpdateDerivedDimension,
     handleUpdateTempMetric,
     handleRemoveTempMetric,
+    handleAddSortItem,
+    handleUpdateSortItem,
+    handleRemoveSortItem,
+    handleUpdateTopN,
+    handleApplySortConfig,
     handleEditorChange,
     handleSaveItemFormatting,
     handleRemoveItemFormatting,

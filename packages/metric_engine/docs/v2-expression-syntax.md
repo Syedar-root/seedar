@@ -232,6 +232,120 @@ paid_at IS NOT NULL
 - SQL 风格 CASE WHEN（只支持三元运算符）
 - AND/OR 组合条件（需通过多个 filter 实现）
 - 表达式字符串解析 IN/BETWEEN/LIKE/IS NULL（需直接构造 AST 对象）
+
+---
+
+## 排序与 TopN
+
+`metricEngineV2` 原生通过 `QuerySpec.orderBy + QuerySpec.limit` 支持排序和 TopN。
+
+其中：
+
+- 排序使用 `orderBy`
+- TopN 本质上使用“先排序，再 limit N”
+- 引擎层没有单独的 `topN` AST / `QuerySpec.topN` 字段
+
+### 1. 引擎层 `QuerySpec` 写法
+
+```typescript
+{
+  dimensions: [
+    new FieldRefExpr("category", "orders", "t1"),
+  ],
+  metrics: [
+    new AggExpr("SUM", new FieldRefExpr("amount", "orders", "t1"), false, {
+      alias: "total_amount",
+    }),
+  ],
+  orderBy: [{ expr: "total_amount", dir: "desc" }],
+  limit: 10,
+}
+```
+
+语义等价于：
+
+```sql
+GROUP BY category
+ORDER BY total_amount DESC
+LIMIT 10
+```
+
+### 2. 业务层 `DSLTransformerV2` 写法
+
+业务侧 DSL 当前支持以下排序输入：
+
+```typescript
+type QueryOrderByDSL = {
+  fieldId?: number;
+  metricId?: number;
+  tempMetricId?: string;
+  alias?: string;
+  field?: string;
+  dir?: "asc" | "desc";
+  direction?: "asc" | "desc";
+};
+```
+
+示例：
+
+```typescript
+{
+  datasetId: 1,
+  dimensions: [12],
+  metrics: [{ id: 101 }],
+  orderBy: [{ metricId: 101, dir: "desc" }],
+  limit: 10,
+}
+```
+
+### 3. 业务层 `topN` 语义糖
+
+`DSLTransformerV2` 额外支持：
+
+```typescript
+{
+  topN: number
+}
+```
+
+说明：
+
+- `topN` 只存在于业务层 DSL，用于表达“按当前排序取前 N 条”
+- 转换后会映射为引擎层的 `limit`
+- `topN` 必须配合 `orderBy` 使用，否则会直接报错
+- `topN` 必须是大于 0 的整数
+- `topN` 不支持和 `offset` 同时使用
+- 如果同时传入 `topN` 与 `limit`，两者必须相同，否则会报错
+
+示例：
+
+```typescript
+{
+  datasetId: 1,
+  dimensions: [12],
+  metrics: [{ id: 101 }],
+  orderBy: [{ metricId: 101, dir: "desc" }],
+  topN: 5,
+}
+```
+
+会被转换为：
+
+```typescript
+{
+  orderBy: [{ expr: "total_amount", dir: "desc" }],
+  limit: 5,
+}
+```
+
+### 4. 派生维度 / 临时指标排序
+
+- 普通字段维度可通过 `fieldId` 排序
+- 派生维度建议通过 `alias` 排序
+- 普通指标可通过 `metricId` 排序
+- 同环比临时指标可通过 `tempMetricId` 排序
+
+同一个字段如果同时出现在多个维度表达式中（例如原字段 + `time_grain` 衍生维度），应改用 `alias` 排序，避免歧义。
 ---
 
 ## V2.1 同环比补充

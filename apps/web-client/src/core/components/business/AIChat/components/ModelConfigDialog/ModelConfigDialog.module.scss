@@ -150,46 +150,6 @@
   color: var(--chat-color-tertiary);
 }
 
-.help-tip-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  // cursor: help;
-}
-
-.help-tip-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--chat-color-tertiary);
-  cursor: help;
-  line-height: 0;
-}
-
-.help-tip-popup {
-  max-width: 240px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--chat-bg-secondary) 96%, #fff 4%);
-  color: var(--chat-color-primary);
-  border: 1px solid var(--chat-border-default);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.16);
-  font: var(--chat-text-label);
-  line-height: 1.45;
-}
-
-.help-tip-arrow {
-  display: flex;
-  color: color-mix(in oklab, var(--chat-bg-secondary) 96%, #fff 4%);
-  filter: drop-shadow(0 -1px 0 var(--chat-border-default));
-}
-
 .list-container {
   min-height: 0;
   flex: 1;

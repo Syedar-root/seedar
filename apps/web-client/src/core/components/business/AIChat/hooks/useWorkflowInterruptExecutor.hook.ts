@@ -16,6 +16,8 @@ interface UseWorkflowInterruptExecutorParams {
   messages: ChatMessage[];
   onResume: (resumePayload: AiChatResumeDto) => Promise<unknown>;
   onUpdateMessage: (id: string, updates: MessageUpdate) => void;
+  persistedHandledInterruptIds?: string[];
+  onHandledInterruptIdsChange?: (interruptIds: string[]) => void;
 }
 
 const getLatestWorkflowInterrupt = (messages: ChatMessage[]) => {
@@ -42,6 +44,8 @@ export const useWorkflowInterruptExecutor = ({
   messages,
   onResume,
   onUpdateMessage,
+  persistedHandledInterruptIds = [],
+  onHandledInterruptIdsChange,
 }: UseWorkflowInterruptExecutorParams) => {
   const navigate = useNavigate();
   const handledInterruptIdsRef = useRef(new Set<string>());
@@ -51,10 +55,15 @@ export const useWorkflowInterruptExecutor = ({
   );
 
   useEffect(() => {
+    handledInterruptIdsRef.current = new Set(persistedHandledInterruptIds);
+  }, [persistedHandledInterruptIds]);
+
+  useEffect(() => {
     if (messages.length === 0) {
       handledInterruptIdsRef.current.clear();
+      onHandledInterruptIdsChange?.([]);
     }
-  }, [messages.length]);
+  }, [messages.length, onHandledInterruptIdsChange]);
 
   useEffect(() => {
     if (!enabled) {
@@ -71,6 +80,9 @@ export const useWorkflowInterruptExecutor = ({
     }
 
     handledInterruptIdsRef.current.add(interruptId);
+    onHandledInterruptIdsChange?.([
+      ...handledInterruptIdsRef.current,
+    ]);
 
     void (async () => {
       const interrupt = latestWorkflowInterrupt.interrupt as WorkflowRunInterrupt;
@@ -97,6 +109,9 @@ export const useWorkflowInterruptExecutor = ({
         });
       } catch (error) {
         handledInterruptIdsRef.current.delete(interruptId);
+        onHandledInterruptIdsChange?.([
+          ...handledInterruptIdsRef.current,
+        ]);
         throw error;
       }
     })().catch((error) => {

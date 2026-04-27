@@ -8,6 +8,7 @@ import type {
   PanelQueryStateDimensionPayload,
   PanelQueryStateFilterPayload,
   PanelQueryStateMetricPayload,
+  PanelQueryStateOrderByPayload,
   PanelQueryStateTempMetricPayload,
 } from './ai-workflow.types';
 
@@ -51,6 +52,17 @@ const panelQueryStateTempMetricPayloadSchema:
     popConfig: z.record(z.string(), z.unknown()).optional(),
   });
 
+const panelQueryStateOrderByPayloadSchema:
+  z.ZodType<PanelQueryStateOrderByPayload> = z.object({
+    fieldId: z.number().int().optional(),
+    metricId: z.number().int().optional(),
+    tempMetricId: z.string().optional(),
+    alias: z.string().optional(),
+    field: z.string().optional(),
+    dir: z.enum(['asc', 'desc']).optional(),
+    direction: z.enum(['asc', 'desc']).optional(),
+  });
+
 export const panelQueryStatePayloadSchema: z.ZodType<PanelQueryStatePayload> =
   z.object({
     datasetId: z.number().int().optional(),
@@ -58,6 +70,8 @@ export const panelQueryStatePayloadSchema: z.ZodType<PanelQueryStatePayload> =
     metrics: z.array(panelQueryStateMetricPayloadSchema).optional(),
     filters: z.array(panelQueryStateFilterPayloadSchema).optional(),
     tempMetrics: z.array(panelQueryStateTempMetricPayloadSchema).optional(),
+    orderBy: z.array(panelQueryStateOrderByPayloadSchema).optional(),
+    topN: z.number().int().positive().optional(),
   });
 
 export interface QueryCurrentPanelAsTableWorkflowParams
@@ -92,6 +106,8 @@ const normalizeQueryCurrentPanelAsTableWorkflowParams = (
           metrics: record.metrics,
           filters: record.filters,
           tempMetrics: record.tempMetrics,
+          orderBy: record.orderBy,
+          topN: record.topN,
         };
 
   return {

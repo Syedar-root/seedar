@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { AiService } from './ai.service';
 import {
   AiAgentStreamChunk,
@@ -53,6 +57,11 @@ import path from 'path';
 import { existsSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { LoggerService } from '@/logger/logger.service';
+import {
+  GenerateFieldBusinessNameRequestDto,
+  GenerateFieldBusinessNameResponseDto,
+} from '../dto';
+import { AiStatus } from '../enums';
 
 @Injectable()
 export class ChatService {
@@ -208,6 +217,7 @@ export class ChatService {
     scenes?: AiChatScene[],
   ) {
     const ai = await this.aiService.findOne(aiId);
+
     const llmConfig = this.getLLMConfig(ai);
 
     const graphBuilder = new StateGraph(this.State);
@@ -318,6 +328,7 @@ export class ChatService {
     return async (state) => {
       // 步骤 1：创建 Deep Agent
       const llm = this.createLLM(llmConfig);
+
       const essentialTools = this.getEssentialToolNames(mode);
       state.allowTools = this.sanitizeAllowedTools(state.allowTools, mode);
       essentialTools.forEach((tool) => {
@@ -386,11 +397,11 @@ export class ChatService {
   ];
 
   /**
-   * 澶勭悊娴佸紡瀵硅瘽璇锋眰
-   * @param aiId AI 瀹炰緥 ID
-   * @param message 鐢ㄦ埛娑堟伅
-   * @param sessionId 浼氳瘽 ID
-   * @yields 娴佸紡鍝嶅簲鏁版嵁
+   * 处理流式对话请求
+   * @param aiId AI 实例 ID
+   * @param message 用户消息
+   * @param sessionId 会话 ID
+   * @yields 流式响应数据
    */
   async *streamChat(
     aiId: string,
@@ -402,6 +413,7 @@ export class ChatService {
     resumePayload?: AiChatResumeDto,
   ): AsyncGenerator<AiAgentStreamChunk, void, unknown> {
     try {
+      // throw new InternalServerErrorException('streamChat not implemented');
       // 步骤 1：获取会话信息
       const session = await this.aiSessionService.findOne(sessionId);
 
@@ -470,10 +482,6 @@ export class ChatService {
             name.test(token.contentBlocks[0].name as string),
           )
         ) {
-          console.log(
-            'hcs blacklist tool_call',
-            token.contentBlocks[0].name as string,
-          );
           blacklistToolCallIds.push(token.contentBlocks[0].id as string);
           continue;
         }
@@ -493,9 +501,9 @@ export class ChatService {
           }
 
           // 类型变化时生成新的 sid
-          if (type !== lastType) {
+          if (messageType !== lastType) {
             currentSid = randomUUID();
-            lastType = type as YieldType;
+            lastType = messageType as YieldType;
           }
 
           const meta = {
@@ -597,10 +605,13 @@ export class ChatService {
    */
   private createLLM(
     llmConfig: LLMConfig,
+    temperature?: number,
+    maxTokens?: number,
+    extraBody?: Record<string, unknown>,
   ): ChatOpenAI | ChatAnthropic | ChatDeepSeek {
     const config: Record<string, unknown> = {
-      temperature: llmConfig.temperature,
-      maxTokens: llmConfig.maxTokens,
+      temperature: temperature ?? llmConfig.temperature,
+      maxTokens: maxTokens ?? llmConfig.maxTokens,
     };
 
     if (llmConfig.baseUrl) {
@@ -609,10 +620,26 @@ export class ChatService {
       };
     }
 
+    /**
+     * 处理 DeepSeek 模型的额外参数，deepseek 模型不支持在langchain中存在兼容性问题，需要禁用 thinking 参数
+     */
+    if(llmConfig.model.includes('deepseek')){
+      extraBody = {
+        ...extraBody,
+        "thinking": {
+          "type": "disabled",
+        }
+      }
+    }
+
     switch (llmConfig.type) {
       case 'deepseek':
         return new ChatDeepSeek(llmConfig.model, {
           apiKey: llmConfig.apiKey,
+          modelKwargs:{
+            "tool_choice": "auto",
+            ...extraBody,
+          },
           ...config,
         });
       case 'anthropic':
@@ -627,6 +654,10 @@ export class ChatService {
       default:
         return new ChatOpenAI(llmConfig.model, {
           apiKey: llmConfig.apiKey,
+          modelKwargs:{
+            "tool_choice": "auto",
+            ...extraBody,
+          },
           ...config,
         });
     }
@@ -660,5 +691,82 @@ export class ChatService {
           type: contentBlock?.type || 'text',
         };
     }
+  }
+
+  public async generateFieldBusinessName(
+    request: GenerateFieldBusinessNameRequestDto,
+  ): Promise<GenerateFieldBusinessNameResponseDto> {
+    if (request.fields.length === 0) {
+      return { items: [] };
+    }
+
+    const ai = await this.aiService.findOne(request.aiId);
+    if (ai.status !== AiStatus.ACTIVE) {
+      throw new BadRequestException('当前模型不可用，请先启用可用模型');
+    }
+
+    const llm = this.createLLM(this.getLLMConfig(ai), 0.3, undefined, {
+      "thinking": {
+        "type": "disabled",
+      }
+    });
+
+    const responseSchema = z.object({
+      items: z.array(
+        z.object({
+          fieldId: z.string(),
+          businessName: z.string().min(1),
+        }),
+      ),
+    });
+
+    const promptTemplate = PromptTemplate.fromTemplate(
+      await loadPrompt('field-business-name'),
+    );
+    const prompt = await promptTemplate.format({
+      requestPayload: JSON.stringify(request, null, 2),
+    });
+
+    const agent = createAgent({
+      model: llm,
+      tools: [],
+      responseFormat: toolStrategy(responseSchema),
+      systemPrompt: prompt,
+    });
+
+    const result = await agent.invoke({
+      messages: [new HumanMessage('请为这些字段生成业务名称。')],
+    });
+
+    const structuredResponse = result.structuredResponse as
+      | { items: Array<{ fieldId: string; businessName: string }> }
+      | undefined;
+
+    if (!structuredResponse?.items) {
+      this.logger.error(
+        '生成字段业务名称失败，返回结果格式错误',
+        JSON.stringify(result, null, 2),
+      );
+      throw new InternalServerErrorException('生成字段业务名称失败');
+    }
+
+    console.log(JSON.stringify(result, null, 2));
+
+    const generatedNameMap = new Map(
+      structuredResponse.items.map((item) => [
+        item.fieldId,
+        item.businessName.trim(),
+      ]),
+    );
+
+    return {
+      items: request.fields.map((field) => ({
+        fieldId: field.fieldId,
+        businessName:
+          generatedNameMap.get(field.fieldId) ||
+          field.currentBusinessName?.trim() ||
+          field.fieldName,
+      })),
+    };
   }
 }

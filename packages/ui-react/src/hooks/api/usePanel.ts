@@ -17,6 +17,14 @@ const panelKeys = {
   detail: (id: string) => [...panelKeys.details(), id] as const,
 };
 
+const queryKeys = {
+  all: ['queries'] as const,
+};
+
+const dashboardKeys = {
+  all: ['dashboards'] as const,
+};
+
 export const usePanels = () => {
   const panelApi = usePanelApi();
 
@@ -72,6 +80,8 @@ export const useDeletePanel = () => {
     mutationFn: (id: string) => panelApi.remove(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: panelKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 };
