@@ -27,6 +27,7 @@ interface AIChatPreviewCache {
   currentMode: AiChatMode;
   error: string | null;
   currentSession: AiSessionResponse | null;
+  handledInterruptIds: string[];
 }
 
 const readPreviewCache = (): AIChatPreviewCache | null => {
@@ -81,6 +82,9 @@ const AIChatPreview: React.FC = () => {
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [currentSession, setCurrentSession] =
     useState<AiSessionResponse | null>(cachedState?.currentSession || null);
+  const [handledInterruptIds, setHandledInterruptIds] = useState<string[]>(
+    cachedState?.handledInterruptIds || [],
+  );
   const location = useLocation();
   const activeScenes = useAiChatScenesStore((state) => state.scenes);
 
@@ -192,6 +196,8 @@ const AIChatPreview: React.FC = () => {
     enabled: !isLoading,
     messages: chatState.messages,
     onUpdateMessage: chatState.updateMessage,
+    persistedHandledInterruptIds: handledInterruptIds,
+    onHandledInterruptIdsChange: setHandledInterruptIds,
     onResume: async (resumePayload) => {
       setIsLoading(true);
       try {
@@ -207,6 +213,7 @@ const AIChatPreview: React.FC = () => {
     chatState.setMessages([]);
     setCurrentSession(null);
     setError(null);
+    setHandledInterruptIds([]);
     clearPreviewCache();
   };
 
@@ -273,6 +280,7 @@ const AIChatPreview: React.FC = () => {
       currentMode,
       error,
       currentSession,
+      handledInterruptIds,
     };
 
     window.sessionStorage.setItem(
@@ -285,6 +293,7 @@ const AIChatPreview: React.FC = () => {
     currentMode,
     error,
     currentSession,
+    handledInterruptIds,
   ]);
 
   return (
