@@ -11,7 +11,7 @@ export const DatasetMetadataBar = ({ dataset }: DatasetMetadataBarProps) => {
       {dataset.mainTable && (
         <>
           <div className={styles.metaItem}>
-            <span className={styles.metaLabel}>主表</span>
+          <span className={styles.metaLabel}>默认入口表</span>
             <span className={styles.metaValue}>{dataset.mainTable.datasetName || dataset.mainTable.tableName}</span>
           </div>
           <div className={styles.metaDivider} />

@@ -51,6 +51,7 @@ export interface DatasetEditorPageProps {
   addJoin: (join: JoinConfig) => void;
   removeJoin: (joinId: string) => void;
   updateJoin: (joinId: string, updates: Partial<JoinConfig>) => void;
+  replaceJoins: (joins: JoinConfig[]) => void;
   addMetric: (metric: MetricConfig) => void;
   removeMetric: (metricId: string) => void;
   updateMetric: (metricId: string, updates: Partial<MetricConfig>) => void;
@@ -79,6 +80,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
     addJoin,
     removeJoin,
     updateJoin,
+    replaceJoins,
     addMetric,
     removeMetric,
     updateMetric,
@@ -133,6 +135,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
               onAddJoin={addJoin}
               onRemoveJoin={removeJoin}
               onUpdateJoin={updateJoin}
+              onReplaceJoins={replaceJoins}
             />
           </ReactFlowProvider>
         );

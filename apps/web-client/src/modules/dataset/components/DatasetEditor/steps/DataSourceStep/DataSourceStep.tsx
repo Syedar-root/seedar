@@ -15,7 +15,9 @@ interface DataSourceStepProps {
   onUpdate: (updates: Partial<DatasetFormData>, tag: string) => void;
 }
 
-const TABLE_LIST_MAX_HEIGHT = "min(52vh, 32rem)";
+// 表列表最大高度（这个暂时不用）
+// const TABLE_LIST_MAX_HEIGHT = "min(52vh, 32rem)";
+
 const MAIN_TABLE_HELP_TEXT =
   "默认入口表是查询时的兜底入口。当系统无法根据本次查询自动推断入口表时，会使用这里的表作为查询起点，因此需要提前指定。";
 
@@ -186,7 +188,7 @@ export const DataSourceStep = ({
                 />
               </div>
 
-              <ScrollArea style={{ maxHeight: TABLE_LIST_MAX_HEIGHT }}>
+              <ScrollArea>
                 {filteredTables.length > 0 ? (
                   <div className={styles.tableGrid}>
                     {filteredTables.map((table) => {
