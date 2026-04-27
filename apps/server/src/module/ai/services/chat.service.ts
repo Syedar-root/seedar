@@ -397,11 +397,11 @@ export class ChatService {
   ];
 
   /**
-   * 澶勭悊娴佸紡瀵硅瘽璇锋眰
-   * @param aiId AI 瀹炰緥 ID
-   * @param message 鐢ㄦ埛娑堟伅
-   * @param sessionId 浼氳瘽 ID
-   * @yields 娴佸紡鍝嶅簲鏁版嵁
+   * 处理流式对话请求
+   * @param aiId AI 实例 ID
+   * @param message 用户消息
+   * @param sessionId 会话 ID
+   * @yields 流式响应数据
    */
   async *streamChat(
     aiId: string,

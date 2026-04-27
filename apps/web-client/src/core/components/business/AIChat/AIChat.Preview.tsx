@@ -19,6 +19,37 @@ import { formatMessageForDisplay } from "./utils/command.utils";
 import { MessageSquareText, Workflow } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
+const AI_CHAT_SESSION_STORAGE_KEY = "seedar.ai-chat.preview.session";
+
+interface AIChatPreviewCache {
+  messages: ChatMessage[];
+  currentModel: string;
+  currentMode: AiChatMode;
+  error: string | null;
+  currentSession: AiSessionResponse | null;
+}
+
+const readPreviewCache = (): AIChatPreviewCache | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(AI_CHAT_SESSION_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as AIChatPreviewCache) : null;
+  } catch {
+    return null;
+  }
+};
+
+const clearPreviewCache = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.removeItem(AI_CHAT_SESSION_STORAGE_KEY);
+};
+
 const AI_CHAT_COMMANDS_RECORD = {
   dataQuery: {
     key: "data-query",
@@ -38,17 +69,22 @@ const AI_CHAT_COMMANDS_RECORD = {
 } satisfies Record<string, CommandItem>;
 
 const AIChatPreview: React.FC = () => {
-  const [currentModel, setCurrentModel] = useState("gpt-4");
-  const [currentMode, setCurrentMode] = useState<AiChatMode>("chat");
+  const cachedState = useMemo(() => readPreviewCache(), []);
+  const [currentModel, setCurrentModel] = useState(
+    cachedState?.currentModel || "gpt-4",
+  );
+  const [currentMode, setCurrentMode] = useState<AiChatMode>(
+    cachedState?.currentMode || "chat",
+  );
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(cachedState?.error || null);
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [currentSession, setCurrentSession] =
-    useState<AiSessionResponse | null>(null);
+    useState<AiSessionResponse | null>(cachedState?.currentSession || null);
   const location = useLocation();
   const activeScenes = useAiChatScenesStore((state) => state.scenes);
 
-  const chatState = useChatState([]);
+  const chatState = useChatState(cachedState?.messages || []);
   const { handleSSEData } = useSSEHandler({
     onNewMessage: chatState.addMessage,
     onUpdateMessage: chatState.updateMessage,
@@ -171,6 +207,7 @@ const AIChatPreview: React.FC = () => {
     chatState.setMessages([]);
     setCurrentSession(null);
     setError(null);
+    clearPreviewCache();
   };
 
   const handleModelChange = (modelKey: string) => {
@@ -224,6 +261,31 @@ const AIChatPreview: React.FC = () => {
       return models[0]?.key || "";
     });
   }, [models]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const snapshot: AIChatPreviewCache = {
+      messages: chatState.messages,
+      currentModel,
+      currentMode,
+      error,
+      currentSession,
+    };
+
+    window.sessionStorage.setItem(
+      AI_CHAT_SESSION_STORAGE_KEY,
+      JSON.stringify(snapshot),
+    );
+  }, [
+    chatState.messages,
+    currentModel,
+    currentMode,
+    error,
+    currentSession,
+  ]);
 
   return (
     <div className={styles["preview-container"]}>

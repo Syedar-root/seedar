@@ -1,5 +1,6 @@
 import type { ChangeEvent } from "react";
 import { useEffect, useMemo } from "react";
+import { ColorPicker } from "antd";
 
 import type { ComboboxOptionGroup } from "@/core/components/ui/Combobox";
 import { Combobox } from "@/core/components/ui/Combobox";
@@ -180,10 +181,7 @@ export const CardConfigPanel: React.FC<ConfigPanelProps> = ({
     </div>
   );
 
-  const renderPickMode = (
-    key: "valuePickMode",
-    label: string,
-  ) => (
+  const renderPickMode = (key: "valuePickMode", label: string) => (
     <label className={styles.fieldItem}>
       <span className={styles.label}>{label}</span>
       <select
@@ -267,7 +265,7 @@ export const CardConfigPanel: React.FC<ConfigPanelProps> = ({
               className={styles.input}
               value={cardConfig.prefix || ""}
               onChange={handleTextChange("prefix")}
-              placeholder="例如 ￥、$"
+              placeholder="例如 ￥"
             />
           </label>
           <label className={styles.fieldItem}>
@@ -490,11 +488,16 @@ export const CardConfigPanel: React.FC<ConfigPanelProps> = ({
             </label>
             <label className={styles.fieldItem}>
               <span className={styles.label}>进度颜色</span>
-              <input
-                className={styles.colorInput}
-                type="color"
+              <ColorPicker
+                className={styles.antdColorPicker}
                 value={cardConfig.progressColor || "#6366f1"}
-                onChange={handleTextChange("progressColor")}
+                showText
+                format="hex"
+                onChange={(value) =>
+                  updateCardConfig({
+                    progressColor: value.toHexString(),
+                  })
+                }
               />
             </label>
           </div>

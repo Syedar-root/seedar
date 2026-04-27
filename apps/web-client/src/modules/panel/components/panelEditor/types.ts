@@ -171,15 +171,15 @@ export const FIELD_LABELS: Record<string, string> = {
 };
 
 export const LEGEND_ORIENT_OPTIONS: { value: LegendOrient; label: string }[] = [
-  { value: "top", label: "Top" },
-  { value: "bottom", label: "Bottom" },
-  { value: "left", label: "Left" },
-  { value: "right", label: "Right" },
+  { value: "top", label: "顶部" },
+  { value: "bottom", label: "底部" },
+  { value: "left", label: "左侧" },
+  { value: "right", label: "右侧" },
 ];
 
 export const LEGEND_LAYOUT_OPTIONS: { value: LegendLayout; label: string }[] = [
-  { value: "horizontal", label: "Horizontal" },
-  { value: "vertical", label: "Vertical" },
+  { value: "horizontal", label: "横向" },
+  { value: "vertical", label: "纵向" },
 ];
 
 export const BAR_DIRECTION_OPTIONS: { value: BarDirection; label: string }[] = [

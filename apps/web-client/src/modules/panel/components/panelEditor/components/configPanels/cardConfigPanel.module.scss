@@ -112,6 +112,20 @@
   padding: 4px;
 }
 
+.antdColorPicker {
+  width: 100%;
+  min-height: 36px;
+
+  &:hover {
+    border-color: var(--primary) !important;
+  }
+
+  &[class*="active"] {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent 80%) !important;
+   }
+}
+
 .checkboxField {
   display: inline-flex;
   align-items: center;

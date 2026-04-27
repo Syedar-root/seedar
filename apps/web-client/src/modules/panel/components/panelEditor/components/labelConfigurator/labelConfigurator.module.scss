@@ -25,7 +25,25 @@
 .checkbox {
   width: 16px;
   height: 16px;
+  border: 1px solid var(--border-base);
+  border-radius: 2px;
+  background: var(--bg-elevated);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &[data-checked] {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+}
+
+.checkboxIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-inverse);
 }
 
 .select {
