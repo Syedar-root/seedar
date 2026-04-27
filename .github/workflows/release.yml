@@ -9,8 +9,12 @@ permissions:
   contents: read
 
 jobs:
-  publish:
+  validate:
     runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      docker_namespace: ${{ steps.release.outputs.docker_namespace }}
 
     steps:
       - name: Checkout
@@ -53,6 +57,14 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
+  publish-server-image:
+    needs: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -73,8 +85,39 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ steps.release.outputs.docker_namespace }}/seedar-server:${{ steps.release.outputs.version }}
-            ${{ steps.release.outputs.docker_namespace }}/seedar-server:latest
+            ${{ needs.validate.outputs.docker_namespace }}/seedar-server:${{ needs.validate.outputs.version }}
+            ${{ needs.validate.outputs.docker_namespace }}/seedar-server:latest
+
+      - name: Verify published server image manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SERVER_IMAGE="${{ needs.validate.outputs.docker_namespace }}/seedar-server:${{ needs.validate.outputs.version }}"
+
+          echo "Inspecting $SERVER_IMAGE"
+          docker buildx imagetools inspect "$SERVER_IMAGE"
+          docker buildx imagetools inspect "$SERVER_IMAGE" | grep -q 'linux/arm64'
+
+  publish-web-image:
+    needs: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
@@ -84,24 +127,42 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ steps.release.outputs.docker_namespace }}/seedar-web:${{ steps.release.outputs.version }}
-            ${{ steps.release.outputs.docker_namespace }}/seedar-web:latest
+            ${{ needs.validate.outputs.docker_namespace }}/seedar-web:${{ needs.validate.outputs.version }}
+            ${{ needs.validate.outputs.docker_namespace }}/seedar-web:latest
 
-      - name: Verify published image manifests
+      - name: Verify published web image manifest
         shell: bash
         run: |
           set -euo pipefail
 
-          SERVER_IMAGE="${{ steps.release.outputs.docker_namespace }}/seedar-server:${{ steps.release.outputs.version }}"
-          WEB_IMAGE="${{ steps.release.outputs.docker_namespace }}/seedar-web:${{ steps.release.outputs.version }}"
-
-          echo "Inspecting $SERVER_IMAGE"
-          docker buildx imagetools inspect "$SERVER_IMAGE"
-          docker buildx imagetools inspect "$SERVER_IMAGE" | grep -q 'linux/arm64'
+          WEB_IMAGE="${{ needs.validate.outputs.docker_namespace }}/seedar-web:${{ needs.validate.outputs.version }}"
 
           echo "Inspecting $WEB_IMAGE"
           docker buildx imagetools inspect "$WEB_IMAGE"
           docker buildx imagetools inspect "$WEB_IMAGE" | grep -q 'linux/arm64'
+
+  publish-cli:
+    needs: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.25.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build CLI
         run: pnpm --filter @syedar/seedar-cli build
