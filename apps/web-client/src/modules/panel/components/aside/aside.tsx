@@ -1,30 +1,31 @@
-﻿import type { DatasetResponse } from "#pkg/seedar/types";
+import type { DatasetResponse } from "#pkg/seedar/types";
 import { useMemo, useState } from "react";
 import clsx from "clsx";
+import { Tooltip } from "antd";
 import styles from "./aside.module.scss";
 import { DragItem } from "../dndHelper/drapItem";
-import { Database, GripVertical, Plus } from "lucide-react";
+import { Database, GripVertical, Plus, Search, Tags } from "lucide-react";
 import { MetricEditorDialog } from "../metricEditor";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
 
 const COPY = {
-  datasetLabel: "\u6570\u636e\u96c6",
-  datasetHintSelected:
-    "\u5b57\u6bb5\u548c\u6307\u6807\u4f1a\u8ddf\u968f\u5f53\u524d\u6570\u636e\u96c6\u53d8\u5316",
-  datasetEmptyTitle: "\u5c1a\u672a\u9009\u62e9\u6570\u636e\u96c6",
-  datasetHintEmpty:
-    "\u5148\u9009\u62e9\u4e00\u4e2a\u6570\u636e\u96c6\uff0c\u518d\u62d6\u62fd\u5b57\u6bb5\u548c\u6307\u6807\u6784\u5efa\u67e5\u8be2",
-  datasetActionChange: "\u66f4\u6362\u6570\u636e\u96c6",
-  datasetActionLocked: "\u6570\u636e\u96c6\u5df2\u9501\u5b9a",
-  datasetActionSelect: "\u9009\u62e9\u6570\u636e\u96c6",
-  sidebarDesc: "\u9009\u62e9\u5b57\u6bb5\u548c\u6307\u6807\uff0c\u6784\u5efa\u67e5\u8be2",
-  sidebarHint: "\u62d6\u62fd\u5230\u53f3\u4fa7\u533a\u57df\u5373\u53ef\u4f7f\u7528",
-  emptyTitle: "\u7b49\u5f85\u6570\u636e\u96c6",
-  emptyDesc:
-    "\u6570\u636e\u96c6\u9009\u5b9a\u540e\uff0c\u8fd9\u91cc\u4f1a\u5c55\u793a\u53ef\u62d6\u62fd\u7684\u5b57\u6bb5\u548c\u6307\u6807\u3002",
-  fieldsTitle: "\u5b57\u6bb5",
-  metricsTitle: "\u6307\u6807",
-  addMetricTitle: "\u6dfb\u52a0\u6307\u6807",
+  datasetLabel: "数据集",
+  datasetHintSelected: "字段和指标会跟随当前数据集变化",
+  datasetEmptyTitle: "尚未选择数据集",
+  datasetHintEmpty: "先选择一个数据集，再拖拽字段和指标构建查询",
+  datasetActionChange: "更换数据集",
+  datasetActionLocked: "数据集已锁定",
+  datasetActionSelect: "选择数据集",
+  sidebarDesc: "选择字段和指标，构建查询",
+  sidebarHint: "拖拽到右侧区域即可使用",
+  emptyTitle: "等待数据集",
+  emptyDesc: "数据集选定后，这里会展示可拖拽的字段和指标。",
+  fieldsTitle: "字段",
+  metricsTitle: "指标",
+  addMetricTitle: "添加指标",
+  searchPlaceholder: "搜索字段或指标",
+  toggleTableTag: "显示表来源",
+  emptySearch: "没有匹配的字段或指标",
 } as const;
 
 interface AsideProps {
@@ -39,6 +40,8 @@ interface AsideProps {
   onMetricCreated?: () => void;
 }
 
+const normalizeText = (value: string | undefined) => value?.toLowerCase() || "";
+
 export const Aside: React.FC<AsideProps> = ({
   className,
   fields,
@@ -51,6 +54,8 @@ export const Aside: React.FC<AsideProps> = ({
   onMetricCreated,
 }) => {
   const [isMetricEditorOpen, setIsMetricEditorOpen] = useState(false);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [showTableTag, setShowTableTag] = useState(true);
 
   const handleOpenMetricEditor = () => {
     setIsMetricEditorOpen(true);
@@ -73,44 +78,97 @@ export const Aside: React.FC<AsideProps> = ({
     [fields],
   );
 
+  const normalizedSearchKeyword = searchKeyword.trim().toLowerCase();
+
+  const filteredFields = useMemo(() => {
+    if (!normalizedSearchKeyword) {
+      return fields;
+    }
+
+    return fields.filter((field) => {
+      const targetTexts = [
+        normalizeText(field.businessName),
+        normalizeText(field.name),
+        normalizeText(field.tableName),
+      ];
+
+      return targetTexts.some((text) => text.includes(normalizedSearchKeyword));
+    });
+  }, [fields, normalizedSearchKeyword]);
+
+  const filteredMetrics = useMemo(() => {
+    if (!normalizedSearchKeyword) {
+      return metrics;
+    }
+
+    return metrics.filter((metric) => {
+      const targetTexts = [
+        normalizeText(metric.businessName),
+        normalizeText(metric.name),
+      ];
+
+      return targetTexts.some((text) => text.includes(normalizedSearchKeyword));
+    });
+  }, [metrics, normalizedSearchKeyword]);
+
   const fieldItems = useMemo(
     () =>
-      fields.map((field) => (
-        <DragItem
-          className={styles.dragItem}
-          key={field.id}
-          dragId={field.id}
-          itemType="fieldItem"
-          dragingStyle={{
-            opacity: 0.5,
-            backgroundColor: "var(--accent-1)",
-          }}
-        >
-          <GripVertical className={styles.dragHandle} />
-          {field.businessName || field.name}
-        </DragItem>
-      )),
-    [fields],
+      filteredFields.map((field) => {
+        const fieldLabel = field.businessName || field.name;
+        const tableLabel = field.tableName;
+
+        return (
+          <DragItem
+            className={styles.dragItem}
+            key={field.id}
+            dragId={field.id}
+            itemType="fieldItem"
+            dragingStyle={{
+              opacity: 0.5,
+              backgroundColor: "var(--accent-1)",
+            }}
+          >
+            <GripVertical className={styles.dragHandle} />
+            <div className={styles.dragContent}>
+              <Tooltip title={fieldLabel}>
+                <span className={styles.itemLabel}>{fieldLabel}</span>
+              </Tooltip>
+              {showTableTag && tableLabel ? (
+                <span className={styles.tableTag}>{tableLabel}</span>
+              ) : null}
+            </div>
+          </DragItem>
+        );
+      }),
+    [filteredFields, showTableTag],
   );
 
   const metricItems = useMemo(
     () =>
-      metrics.map((metric) => (
-        <DragItem
-          className={styles.dragItem}
-          key={metric.id}
-          dragId={metric.id}
-          itemType="metricItem"
-          dragingStyle={{
-            opacity: 0.5,
-            backgroundColor: "var(--accent-2)",
-          }}
-        >
-          <GripVertical className={styles.dragHandle} />
-          {metric.businessName || metric.name}
-        </DragItem>
-      )),
-    [metrics],
+      filteredMetrics.map((metric) => {
+        const metricLabel = metric.businessName || metric.name;
+
+        return (
+          <DragItem
+            className={styles.dragItem}
+            key={metric.id}
+            dragId={metric.id}
+            itemType="metricItem"
+            dragingStyle={{
+              opacity: 0.5,
+              backgroundColor: "var(--accent-2)",
+            }}
+          >
+            <GripVertical className={styles.dragHandle} />
+            <div className={styles.dragContent}>
+              <Tooltip title={metricLabel}>
+                <span className={styles.itemLabel}>{metricLabel}</span>
+              </Tooltip>
+            </div>
+          </DragItem>
+        );
+      }),
+    [filteredMetrics],
   );
 
   return (
@@ -151,6 +209,29 @@ export const Aside: React.FC<AsideProps> = ({
       <div className={styles.sidebarHeader}>
         <span className={styles.sidebarDesc}>{COPY.sidebarDesc}</span>
         <span className={styles.sidebarHint}>{COPY.sidebarHint}</span>
+        {hasDataset ? (
+          <div className={styles.toolbar}>
+            <label className={styles.searchBox}>
+              <Search size={14} className={styles.searchIcon} />
+              <input
+                className={styles.searchInput}
+                value={searchKeyword}
+                onChange={(event) => setSearchKeyword(event.target.value)}
+                placeholder={COPY.searchPlaceholder}
+              />
+            </label>
+            <button
+              type="button"
+              className={clsx(styles.toggleTagButton, {
+                [styles.toggleTagButtonActive]: showTableTag,
+              })}
+              onClick={() => setShowTableTag((current) => !current)}
+            >
+              <Tags size={14} />
+              {COPY.toggleTableTag}
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {!hasDataset ? (
@@ -186,6 +267,9 @@ export const Aside: React.FC<AsideProps> = ({
               <ul className={styles.sidebarList}>{metricItems}</ul>
             </ScrollArea>
           </div>
+          {fieldItems.length === 0 && metricItems.length === 0 ? (
+            <div className={styles.searchEmpty}>{COPY.emptySearch}</div>
+          ) : null}
         </div>
       )}
 
