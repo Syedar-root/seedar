@@ -8,7 +8,7 @@ import {
   ScrollText,
 } from "lucide-react";
 import { Tooltip } from "@base-ui/react/tooltip";
-import { DatasetResponse, DatasetStatus } from "#pkg/seedar/types";
+import { DatasetResponse } from "#pkg/seedar/types";
 import styles from "./DatasetCard.module.scss";
 import tooltipStyles from "./tooltip.module.scss";
 
@@ -25,10 +25,6 @@ export const DatasetCard = ({
   onEdit,
   onDelete,
 }: DatasetCardProps) => {
-  const getStatusText = (status: DatasetStatus) => {
-    return status === DatasetStatus.ACTIVE ? "启用" : "禁用";
-  };
-
   return (
     <div className={styles.card}>
       <div className={styles.header}>
@@ -49,12 +45,6 @@ export const DatasetCard = ({
             </Tooltip.Portal>
           </Tooltip.Root>
         </Tooltip.Provider>
-        <div
-          className={`${styles.status} ${styles[`status-${dataset.status}`]}`}
-        >
-          <span className={styles.statusDot} />
-          {getStatusText(dataset.status)}
-        </div>
       </div>
 
       <div className={styles.content}>
