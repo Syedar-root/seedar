@@ -21,8 +21,7 @@
 }
 
 .input,
-.textarea,
-.select {
+.textarea {
   width: 100%;
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--font-sm);
@@ -48,16 +47,6 @@
   resize: vertical;
   min-height: 80px;
   font-family: inherit;
-}
-
-.select {
-  cursor: pointer;
-}
-
-.hint {
-  font-size: var(--font-xs);
-  color: var(--text-tertiary);
-  margin: 0;
 }
 
 @media (max-width: 768px) {
