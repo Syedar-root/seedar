@@ -87,7 +87,7 @@
 
 .error-banner {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--chat-space-sm);
   margin: 0 var(--chat-space-md) var(--chat-space-md);
   padding: 10px 14px;
@@ -100,6 +100,15 @@
 
   svg {
     flex-shrink: 0;
+  }
+
+  span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    word-break: break-word;
   }
 }
 
