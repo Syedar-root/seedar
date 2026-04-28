@@ -1,4 +1,4 @@
-import { DatasetResponse } from '@/module/dataset/dataset.types';
+import { DatasetMetricResponse, DatasetResponse } from '@/module/dataset/dataset.types';
 import path from 'path';
 import fs from 'fs/promises';
 
@@ -11,14 +11,19 @@ const getDatasetInfoCompact = (
         mainTable: undefined,
         tables: response.tables.map((table) => ({
           ...table,
-          datasetName: undefined,
         })),
         fields: response.fields.map((field) => ({
           ...field,
           datasourceColumnId: undefined,
         })),
         metrics: response.metrics.map((metric) => ({
-          ...metric,
+           id: metric.id,
+           name: metric.name,
+           alias: metric.alias,
+           description: metric.description,
+           businessName: metric.businessName,
+           metricType: metric.metricType,
+           distinct: metric.distinct,
           expression: undefined,
         })),
       }
