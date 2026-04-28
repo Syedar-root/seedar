@@ -134,6 +134,8 @@
 
 .primaryAction:hover {
   opacity: 0.9;
+  color: var(--text-inverse);
+  background: var(--primary-hover);
   border-color: var(--primary);
 }
 
