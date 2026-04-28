@@ -46,6 +46,9 @@ const COPY = {
   missingChartType: "请先选择图表类型",
 } as const;
 
+const VCHART_SPEC_DOC_URL =
+  "https://visactor.io/vchart/guide/tutorial_docs/Basic/A_Basic_Spec";
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
@@ -336,6 +339,17 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
             <div className={styles.meta}>
               <p className={styles.hint}>{COPY.advancedHint}</p>
               <p className={styles.subHint}>{COPY.advancedSubHint}</p>
+              <p className={styles.docHint}>
+                <span>Spec 配置可参考</span>
+                <a
+                  className={styles.docLink}
+                  href={VCHART_SPEC_DOC_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  VisActor VChart 官方文档
+                </a>
+              </p>
               <p className={styles.supportedTypes}>
                 <span>{COPY.supportedTypesLabel}：</span>
                 <code>{supportedTypeText}</code>

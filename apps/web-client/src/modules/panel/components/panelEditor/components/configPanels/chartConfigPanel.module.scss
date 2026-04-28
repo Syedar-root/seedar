@@ -66,6 +66,24 @@
   line-height: 1.4;
 }
 
+.docHint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.docLink {
+  margin-left: 4px;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.docLink:hover {
+  color: var(--primary-hover);
+}
+
 .supportedTypes {
   margin: 0;
   display: flex;
