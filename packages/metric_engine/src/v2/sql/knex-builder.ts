@@ -629,40 +629,81 @@ export class KnexQueryBuilder {
     if (metric.functionName && metric.arg !== undefined && !metric.args) {
       const argStr = this.buildExprWithAlias(metric.arg, aliasMap);
       const distinct = metric.distinct;
+      const rawArg = this.isRawAggregateArgument(metric.arg);
 
       // 使用 qb.select() 配合 ?? 占位符来设置别名
       // ?? 会自动添加反引号
       switch (metric.functionName.toUpperCase()) {
         case "COUNT":
           if (distinct) {
-            qb.select(
-              this.knex.raw(`COUNT(DISTINCT ??) as ??`, [argStr, alias]),
-            );
+            if (rawArg) {
+              qb.select(
+                this.knex.raw(`COUNT(DISTINCT ${argStr}) as ??`, [alias]),
+              );
+            } else {
+              qb.select(
+                this.knex.raw(`COUNT(DISTINCT ??) as ??`, [argStr, alias]),
+              );
+            }
           } else {
-            qb.select(this.knex.raw(`COUNT(??) as ??`, [argStr, alias]));
+            if (rawArg) {
+              qb.select(this.knex.raw(`COUNT(${argStr}) as ??`, [alias]));
+            } else {
+              qb.select(this.knex.raw(`COUNT(??) as ??`, [argStr, alias]));
+            }
           }
           break;
         case "DISTINCT_COUNT":
           // DISTINCT_COUNT 已经是去重计数语义，直接转换为 COUNT(DISTINCT ...)
-          qb.select(this.knex.raw(`COUNT(DISTINCT ??) as ??`, [argStr, alias]));
+          if (rawArg) {
+            qb.select(
+              this.knex.raw(`COUNT(DISTINCT ${argStr}) as ??`, [alias]),
+            );
+          } else {
+            qb.select(
+              this.knex.raw(`COUNT(DISTINCT ??) as ??`, [argStr, alias]),
+            );
+          }
           break;
         case "SUM":
-          qb.select(this.knex.raw(`SUM(??) as ??`, [argStr, alias]));
+          if (rawArg) {
+            qb.select(this.knex.raw(`SUM(${argStr}) as ??`, [alias]));
+          } else {
+            qb.select(this.knex.raw(`SUM(??) as ??`, [argStr, alias]));
+          }
           break;
         case "AVG":
-          qb.select(this.knex.raw(`AVG(??) as ??`, [argStr, alias]));
+          if (rawArg) {
+            qb.select(this.knex.raw(`AVG(${argStr}) as ??`, [alias]));
+          } else {
+            qb.select(this.knex.raw(`AVG(??) as ??`, [argStr, alias]));
+          }
           break;
         case "MIN":
-          qb.select(this.knex.raw(`MIN(??) as ??`, [argStr, alias]));
+          if (rawArg) {
+            qb.select(this.knex.raw(`MIN(${argStr}) as ??`, [alias]));
+          } else {
+            qb.select(this.knex.raw(`MIN(??) as ??`, [argStr, alias]));
+          }
           break;
         case "MAX":
-          qb.select(this.knex.raw(`MAX(??) as ??`, [argStr, alias]));
+          if (rawArg) {
+            qb.select(this.knex.raw(`MAX(${argStr}) as ??`, [alias]));
+          } else {
+            qb.select(this.knex.raw(`MAX(??) as ??`, [argStr, alias]));
+          }
           break;
         default:
           // 其他函数
-          qb.select(
-            this.knex.raw(`${metric.functionName}(??) as ??`, [argStr, alias]),
-          );
+          if (rawArg) {
+            qb.select(
+              this.knex.raw(`${metric.functionName}(${argStr}) as ??`, [alias]),
+            );
+          } else {
+            qb.select(
+              this.knex.raw(`${metric.functionName}(??) as ??`, [argStr, alias]),
+            );
+          }
       }
       return;
     }
@@ -675,6 +716,14 @@ export class KnexQueryBuilder {
 
   private isFieldRefExpr(expr: any): boolean {
     return !!(expr && typeof expr.getQualifiedName === "function");
+  }
+
+  private isRawAggregateArgument(expr: any): boolean {
+    if (!expr) {
+      return false;
+    }
+
+    return !this.isFieldRefExpr(expr) && typeof expr !== "string";
   }
 
   private requireExpressionDimensionAlias(expr: any, index: number): string {
