@@ -182,16 +182,19 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
       const nextDraft = formatSpecJson(
         stripFormattingFromSpec(config.advancedSpec),
       );
-      if (nextDraft !== specDraft) {
-        setSpecDraft(nextDraft);
-      }
+      setSpecDraft((currentDraft) =>
+        currentDraft === nextDraft ? currentDraft : nextDraft,
+      );
       return;
     }
 
-    if (!specDraft.trim() && visualSpec) {
-      setSpecDraft(formatSpecJson(visualSpec));
+    if (visualSpec) {
+      const visualDraft = formatSpecJson(visualSpec);
+      setSpecDraft((currentDraft) =>
+        currentDraft.trim() ? currentDraft : visualDraft,
+      );
     }
-  }, [config.advancedSpec, isAdvancedMode, specDraft, visualSpec]);
+  }, [config.advancedSpec, isAdvancedMode, visualSpec]);
 
   const parseDraftSpec = () => {
     try {
