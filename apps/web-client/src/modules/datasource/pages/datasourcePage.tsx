@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDatasources } from "#pkg/seedar/ui-react";
 import { Plus, AlertCircle, Loader2, Database } from "lucide-react";
+import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import {
   CreateDatasourceDialog,
   DatasourceCard,
@@ -27,7 +28,7 @@ export const DatasourcePage = () => {
     setIsDialogOpen(false);
   };
 
-  const handleCreateSuccess = (datasourceId: number) => {
+  const handleCreateSuccess = (_datasourceId: number) => {
     setIsDialogOpen(false);
   };
 
@@ -67,46 +68,52 @@ export const DatasourcePage = () => {
           创建数据源
         </button>
       </header>
-      <main className={styles.content}>
-        {isLoading && (
-          <div className={styles.loadingState}>
-            <Loader2 size={32} className={styles.loadingSpinner} />
-            <p className={styles.loadingText}>正在加载数据源...</p>
-          </div>
-        )}
 
-        {error && (
-          <div className={styles.errorState}>
-            <AlertCircle size={32} className={styles.errorIcon} />
-            <p className={styles.errorText}>
-              加载失败：{error.message || "请稍后重试"}
-            </p>
-          </div>
-        )}
+      <ScrollArea
+        style={{ flex: 1, minHeight: 0 }}
+        contentStyle={{ minWidth: 0 }}
+      >
+        <main className={styles.content}>
+          {isLoading && (
+            <div className={styles.loadingState}>
+              <Loader2 size={32} className={styles.loadingSpinner} />
+              <p className={styles.loadingText}>正在加载数据源...</p>
+            </div>
+          )}
 
-        {!isLoading && !error && (!datasources || datasources.length === 0) && (
-          <div className={styles.emptyState}>
-            <Database size={48} className={styles.emptyIcon} />
-            <h3 className={styles.emptyTitle}>暂无数据源</h3>
-            <p className={styles.emptyDesc}>
-              点击"创建数据源"按钮添加您的第一个数据源
-            </p>
-          </div>
-        )}
+          {error && (
+            <div className={styles.errorState}>
+              <AlertCircle size={32} className={styles.errorIcon} />
+              <p className={styles.errorText}>
+                加载失败：{error.message || "请稍后重试"}
+              </p>
+            </div>
+          )}
 
-        {!isLoading && !error && datasources && datasources.length > 0 && (
-          <div className={styles.grid}>
-            {datasources.map((datasource) => (
-              <DatasourceCard
-                key={datasource.id}
-                datasource={datasource}
-                onViewDetails={handleViewDetails}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        )}
-      </main>
+          {!isLoading && !error && (!datasources || datasources.length === 0) && (
+            <div className={styles.emptyState}>
+              <Database size={48} className={styles.emptyIcon} />
+              <h3 className={styles.emptyTitle}>暂无数据源</h3>
+              <p className={styles.emptyDesc}>
+                点击“创建数据源”按钮添加您的第一个数据源
+              </p>
+            </div>
+          )}
+
+          {!isLoading && !error && datasources && datasources.length > 0 && (
+            <div className={styles.grid}>
+              {datasources.map((datasource) => (
+                <DatasourceCard
+                  key={datasource.id}
+                  datasource={datasource}
+                  onViewDetails={handleViewDetails}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )}
+        </main>
+      </ScrollArea>
 
       <CreateDatasourceDialog
         open={isDialogOpen}

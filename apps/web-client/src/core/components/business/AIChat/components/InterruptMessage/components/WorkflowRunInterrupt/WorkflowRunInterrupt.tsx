@@ -49,6 +49,7 @@ const WorkflowRunInterrupt: React.FC<InterruptRendererProps> = ({
   const { request, interruptId } = interruptValue;
   const template = getFrontendWorkflowTemplate(request.workflowId);
   const execution = message?.workflowExecution;
+  const workflowTitle = template?.title ?? request.workflowId;
 
   const items: ThoughtChainItemType[] =
     template?.actions.map((action, index) => {
@@ -77,7 +78,7 @@ const WorkflowRunInterrupt: React.FC<InterruptRendererProps> = ({
   return (
     <div className={styles["container"]}>
       <div className={styles["header-row"]}>
-        <div className={styles["header"]}>{request.workflowId}</div>
+        <div className={styles["header"]}>{workflowTitle}</div>
         <div className={styles["status"]}>{summaryText}</div>
       </div>
       <div className={styles["meta"]}>interruptId: {interruptId}</div>

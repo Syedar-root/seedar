@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { BusinessException } from '@/common/exceptions';
 import { AiService } from './ai.service';
 import {
   AiAgentStreamChunk,
@@ -87,6 +88,15 @@ export class ChatService {
     'convert-to-backend': [],
   };
 
+  private readonly DEMAND_SKILL_MAP = {
+    'data-query': ['data-query'],
+    'chart-recommend': [
+      'chart-recommend',
+      'vchart-development-assistant',
+    ],
+    'convert-to-backend': [],
+  };
+
   private readonly CORE_TOOL_NAMES = [
     'askQuestion',
     'getCurrentTime',
@@ -149,6 +159,33 @@ export class ChatService {
     return null;
   }
 
+  private getRecoverableToolErrorMessage(error: unknown): string {
+    const toolInvocationError = this.getToolInvocationError(error);
+    if (toolInvocationError) {
+      return `工具参数校验失败，请修正后重新调用该工具。错误信息：${toolInvocationError.message}`;
+    }
+
+    if (error instanceof BusinessException) {
+      const response = error.getResponse();
+      if (
+        response &&
+        typeof response === 'object' &&
+        'message' in response &&
+        typeof response.message === 'string'
+      ) {
+        return `工具执行失败，请根据错误信息调整后重试。错误信息：${response.message}`;
+      }
+
+      return `工具执行失败，请根据错误信息调整后重试。错误信息：${error.message}`;
+    }
+
+    if (error instanceof Error) {
+      return `工具执行失败，请根据错误信息调整后重试。错误信息：${error.message}`;
+    }
+
+    return '工具执行失败，请调整参数或调用方式后重试。';
+  }
+
   private createCatchToolExceptionMiddleware() {
     return createMiddleware({
       name: 'catchToolException',
@@ -161,6 +198,14 @@ export class ChatService {
           }
 
           const toolInvocationError = this.getToolInvocationError(error);
+          if (error instanceof BusinessException) {
+            this.logger.warn(error);
+            return new ToolMessage({
+              content: this.getRecoverableToolErrorMessage(error),
+              tool_call_id: request.toolCall.id || '',
+            });
+          }
+
           if (toolInvocationError) {
             this.logger.warn(toolInvocationError);
             return new ToolMessage({
@@ -170,7 +215,10 @@ export class ChatService {
           }
 
           this.logger.error(error);
-          throw error;
+          return new ToolMessage({
+            content: this.getRecoverableToolErrorMessage(error),
+            tool_call_id: request.toolCall.id || '',
+          });
         }
       },
     });
@@ -307,7 +355,12 @@ export class ChatService {
           ]),
         ),
         allowSkills: Array.from(
-          new Set([...state.allowSkills, ...maybeUserDemands]),
+          new Set([
+            ...state.allowSkills,
+            ...maybeUserDemands.flatMap(
+              (demand) => this.DEMAND_SKILL_MAP[demand] || [demand],
+            ),
+          ]),
         ),
       };
     };

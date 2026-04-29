@@ -7,4 +7,8 @@ export interface ChartProps {
   spec: ISpec;
   queryId?: string;
   data?: ExecuteQueryResponse;
+  onRenderStatusChange?: (status: {
+    ok: boolean;
+    error?: Error;
+  }) => void;
 }

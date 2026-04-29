@@ -3,7 +3,10 @@ import type {
   WorkflowAction,
   WorkflowId,
 } from './ai-workflow.types';
-import { queryCurrentPanelAsTableWorkflowParamsSchema } from './ai-workflow.schema';
+import {
+  queryCurrentPanelAsChartWorkflowParamsSchema,
+  queryCurrentPanelAsTableWorkflowParamsSchema,
+} from './ai-workflow.schema';
 
 export interface WorkflowTemplate<
   TParams extends object = Record<string, unknown>,
@@ -16,6 +19,9 @@ export interface WorkflowTemplate<
 }
 
 export const FRONTEND_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+  // ----------------------------------------------------------------------------
+  // Template: query_current_panel_as_table_v1
+  // ----------------------------------------------------------------------------
   {
     id: 'query_current_panel_as_table_v1',
     title: '查询数据并以表格展示到当前面板',
@@ -34,6 +40,28 @@ export const FRONTEND_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
         payload: {
           displayType: 'table',
         },
+      },
+      {
+        page: 'panel',
+        type: 'trigger_action',
+        target: 'run_preview',
+      },
+    ],
+  },
+  // ----------------------------------------------------------------------------
+  // Template: query_current_panel_as_chart_v1
+  // ----------------------------------------------------------------------------
+  {
+    id: 'query_current_panel_as_chart_v1',
+    title: '基于当前面板数据配置图表到当前面板',
+    description:
+      '执行前应先参考 vchart-development-assistant skill 学习并生成合法的 VChart chart spec；该流程不修改当前查询条件，只通过高级 Spec 将当前面板配置为图表展示',
+    paramsSchema: queryCurrentPanelAsChartWorkflowParamsSchema,
+    actions: [
+      {
+        page: 'panel',
+        type: 'trigger_action',
+        target: 'set_advanced_spec',
       },
       {
         page: 'panel',

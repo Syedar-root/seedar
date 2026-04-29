@@ -16,6 +16,10 @@ export interface SeedarPanelProps extends Omit<GridPanelProps, "headerExtra"> {
   style?: CSSProperties;
   headerExtra?: (panelId: string) => ReactNode;
   data?: ExecuteQueryResponse;
+  onChartRenderStatusChange?: (status: {
+    ok: boolean;
+    error?: Error;
+  }) => void;
 }
 
 export type PanelContentDescriptor =
