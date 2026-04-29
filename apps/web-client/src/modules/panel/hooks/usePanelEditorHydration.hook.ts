@@ -223,7 +223,19 @@ const hydrateChartEditorConfig = (
 
   const label = chartSpec.label;
   if (isRecord(label) && typeof label.visible === "boolean") {
-    nextConfig.label = { visible: label.visible };
+    nextConfig.label = {
+      visible: label.visible,
+      sourceField:
+        label.sourceField === "xField" ||
+        label.sourceField === "yField" ||
+        label.sourceField === "seriesField" ||
+        label.sourceField === "categoryField" ||
+        label.sourceField === "valueField" ||
+        label.sourceField === "sizeField" ||
+        label.sourceField === "auto"
+          ? label.sourceField
+          : undefined,
+    };
   }
 
   const legends = chartSpec.legends;

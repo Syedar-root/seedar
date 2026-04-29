@@ -18,9 +18,18 @@ export type DisplayPanelType =
 export type ChartType = "line" | "bar" | "area" | "pie" | "scatter" | "radar";
 export type BarDirection = "vertical" | "horizontal";
 export type TrendDirection = "up" | "down" | "none";
+export type LabelSourceField =
+  | "auto"
+  | "xField"
+  | "yField"
+  | "seriesField"
+  | "categoryField"
+  | "valueField"
+  | "sizeField";
 
 export interface LabelConfig {
   visible: boolean;
+  sourceField?: LabelSourceField;
 }
 
 export type LegendOrient = "left" | "top" | "right" | "bottom";
@@ -168,6 +177,16 @@ export const FIELD_LABELS: Record<string, string> = {
   categoryField: "分类字段/指标",
   valueField: "值字段/指标",
   sizeField: "大小字段/指标",
+};
+
+export const LABEL_SOURCE_FIELD_LABELS: Record<LabelSourceField, string> = {
+  auto: "自动",
+  xField: FIELD_LABELS.xField,
+  yField: FIELD_LABELS.yField,
+  seriesField: FIELD_LABELS.seriesField,
+  categoryField: FIELD_LABELS.categoryField,
+  valueField: FIELD_LABELS.valueField,
+  sizeField: FIELD_LABELS.sizeField,
 };
 
 export const LEGEND_ORIENT_OPTIONS: { value: LegendOrient; label: string }[] = [

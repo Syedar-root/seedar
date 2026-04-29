@@ -77,6 +77,13 @@ const enhanceLabelFormatting = <T extends ISpec>(
 ): T => {
   const nextSpec = spec as unknown as Record<string, unknown>;
   const type = String(nextSpec.type || "");
+  const configuredSourceField =
+    nextSpec.label &&
+    typeof nextSpec.label === "object" &&
+    typeof (nextSpec.label as Record<string, unknown>).sourceField === "string"
+      ? ((nextSpec.label as Record<string, unknown>)
+          .sourceField as string)
+      : undefined;
 
   const valueField =
     toFieldName(nextSpec.yField as string | string[] | undefined) ||
@@ -91,9 +98,18 @@ const enhanceLabelFormatting = <T extends ISpec>(
     formatMethod: (text: string | string[], datum?: ChartDatum) => {
       const textValue = Array.isArray(text) ? text[0] : text;
       const fallbackField =
-        type === "pie" || type === "rose" || type === "radar" || type === "funnel"
-          ? toFieldName(nextSpec.valueField as string | string[] | undefined)
-          : valueField;
+        configuredSourceField && configuredSourceField !== "auto"
+          ? toFieldName(
+              nextSpec[configuredSourceField] as string | string[] | undefined,
+            ) || configuredSourceField
+          : type === "pie" ||
+              type === "rose" ||
+              type === "radar" ||
+              type === "funnel"
+            ? toFieldName(
+                nextSpec.valueField as string | string[] | undefined,
+              )
+            : valueField;
       const value =
         datum && fallbackField && datum[fallbackField] !== undefined
           ? datum[fallbackField]

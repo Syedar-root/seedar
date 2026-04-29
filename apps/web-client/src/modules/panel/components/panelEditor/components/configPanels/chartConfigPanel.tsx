@@ -452,6 +452,7 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
             />
           )}
           <LabelConfigurator
+            chartType={chartType}
             config={config.label || { visible: false }}
             onChange={(label) => onChange({ label })}
           />
