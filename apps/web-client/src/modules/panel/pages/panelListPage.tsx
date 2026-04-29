@@ -37,15 +37,15 @@ export const PanelListPage = () => {
           className={styles.searchInput}
           placeholder="搜索面板..."
           value={searchInput}
-          onChange={(e) => handleSearchChange(e.target.value)}
+          onChange={(event) => handleSearchChange(event.target.value)}
           onCompositionStart={handleSearchCompositionStart}
-          onCompositionEnd={(e) => {
-            handleSearchCompositionEnd((e.target as HTMLInputElement).value);
+          onCompositionEnd={(event) => {
+            handleSearchCompositionEnd((event.target as HTMLInputElement).value);
           }}
         />
         <Select
           value={statusFilter}
-          onChange={(val) => handleStatusFilterChange(val ?? "")}
+          onChange={(value) => handleStatusFilterChange(value ?? "")}
           label="状态"
           placeholder="全部状态"
           options={[
@@ -69,7 +69,9 @@ export const PanelListPage = () => {
                 onClick={() => handleOpenPanel(panel.id)}
               >
                 <div className={styles.cardHeader}>
-                  <h2 className={styles.cardTitle}>{panel.title || "未命名面板"}</h2>
+                  <h2 className={styles.cardTitle}>
+                    {panel.title || "未命名面板"}
+                  </h2>
                   <span
                     className={`${styles.badge} ${
                       panel.status === PanelStatus.PUBLISHED
@@ -81,9 +83,12 @@ export const PanelListPage = () => {
                   </span>
                 </div>
                 <div className={styles.cardMeta}>
-                  创建于{new Date(panel.createdAt).toLocaleDateString()}
+                  创建于 {new Date(panel.createdAt).toLocaleDateString()}
                 </div>
-                <div className={styles.cardActions} onClick={(e) => e.stopPropagation()}>
+                <div
+                  className={styles.cardActions}
+                  onClick={(event) => event.stopPropagation()}
+                >
                   <button
                     className={styles.btnGhost}
                     onClick={() => handleStatusToggle(panel)}
@@ -92,12 +97,16 @@ export const PanelListPage = () => {
                     {panel.status === PanelStatus.DRAFT ? "发布" : "撤销"}
                   </button>
                   <Popconfirm
+                    overlayClassName={styles.deletePopconfirm}
                     title="确认删除该面板？"
                     onConfirm={() => handleDelete(panel.id)}
                     okText="确认"
                     cancelText="取消"
                   >
-                    <button className={`${styles.btnGhost} ${styles.btnDanger}`} type="button">
+                    <button
+                      className={`${styles.btnGhost} ${styles.btnDanger}`}
+                      type="button"
+                    >
                       <Trash2 size={14} />
                     </button>
                   </Popconfirm>
