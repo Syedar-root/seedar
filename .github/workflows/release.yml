@@ -57,15 +57,36 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
 
-  publish-server-image:
+      - name: Build web dist
+        run: |
+          pnpm --filter @seedar/types build
+          pnpm --filter @seedar/web-client build
+
+      - name: Upload web dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist-release
+          path: apps/web-client/dist
+          if-no-files-found: error
+
+  build-server-image:
     needs: validate
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            platform_id: amd64
+          - platform: linux/arm64
+            platform_id: arm64
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup QEMU
+        if: matrix.platform_id == 'arm64'
         uses: docker/setup-qemu-action@v3
 
       - name: Setup Docker Buildx
@@ -77,37 +98,102 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push server image
+      - name: Build and push server image by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/docker/server.Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ needs.validate.outputs.docker_namespace }}/seedar-server:${{ needs.validate.outputs.version }}
-            ${{ needs.validate.outputs.docker_namespace }}/seedar-server:latest
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ needs.validate.outputs.docker_namespace }}/seedar-server,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=seedar-server-image-${{ matrix.platform_id }}
+          cache-to: type=gha,mode=max,scope=seedar-server-image-${{ matrix.platform_id }}
 
-      - name: Verify published server image manifest
+      - name: Export server digest
+        shell: bash
+        run: |
+          mkdir -p /tmp/digests
+          DIGEST="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - name: Upload server digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-digests-${{ matrix.platform_id }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+
+  publish-server-image:
+    needs:
+      - validate
+      - build-server-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download server digest artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: server-digests-*
+          path: /tmp/digests
+          merge-multiple: true
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create and verify server image manifest
         shell: bash
         run: |
           set -euo pipefail
 
           SERVER_IMAGE="${{ needs.validate.outputs.docker_namespace }}/seedar-server:${{ needs.validate.outputs.version }}"
+          SERVER_REPO="${{ needs.validate.outputs.docker_namespace }}/seedar-server"
+
+          cd /tmp/digests
+
+          DIGEST_ARGS=()
+          for DIGEST_FILE in *; do
+            DIGEST_ARGS+=("${SERVER_REPO}@sha256:${DIGEST_FILE}")
+          done
+
+          docker buildx imagetools create \
+            -t "${SERVER_REPO}:${{ needs.validate.outputs.version }}" \
+            -t "${SERVER_REPO}:latest" \
+            "${DIGEST_ARGS[@]}"
 
           echo "Inspecting $SERVER_IMAGE"
           docker buildx imagetools inspect "$SERVER_IMAGE"
           docker buildx imagetools inspect "$SERVER_IMAGE" | grep -q 'linux/arm64'
 
-  publish-web-image:
+  build-web-image:
     needs: validate
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            platform_id: amd64
+          - platform: linux/arm64
+            platform_id: arm64
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Download web dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist-release
+          path: apps/web-client/dist
+
       - name: Setup QEMU
+        if: matrix.platform_id == 'arm64'
         uses: docker/setup-qemu-action@v3
 
       - name: Setup Docker Buildx
@@ -119,23 +205,73 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push web image
+      - name: Build and push web image by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/docker/web.Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ needs.validate.outputs.docker_namespace }}/seedar-web:${{ needs.validate.outputs.version }}
-            ${{ needs.validate.outputs.docker_namespace }}/seedar-web:latest
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ needs.validate.outputs.docker_namespace }}/seedar-web,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=seedar-web-image-${{ matrix.platform_id }}
+          cache-to: type=gha,mode=max,scope=seedar-web-image-${{ matrix.platform_id }}
 
-      - name: Verify published web image manifest
+      - name: Export web digest
+        shell: bash
+        run: |
+          mkdir -p /tmp/digests
+          DIGEST="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - name: Upload web digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-digests-${{ matrix.platform_id }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+
+  publish-web-image:
+    needs:
+      - validate
+      - build-web-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download web digest artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: web-digests-*
+          path: /tmp/digests
+          merge-multiple: true
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create and verify web image manifest
         shell: bash
         run: |
           set -euo pipefail
 
           WEB_IMAGE="${{ needs.validate.outputs.docker_namespace }}/seedar-web:${{ needs.validate.outputs.version }}"
+          WEB_REPO="${{ needs.validate.outputs.docker_namespace }}/seedar-web"
+
+          cd /tmp/digests
+
+          DIGEST_ARGS=()
+          for DIGEST_FILE in *; do
+            DIGEST_ARGS+=("${WEB_REPO}@sha256:${DIGEST_FILE}")
+          done
+
+          docker buildx imagetools create \
+            -t "${WEB_REPO}:${{ needs.validate.outputs.version }}" \
+            -t "${WEB_REPO}:latest" \
+            "${DIGEST_ARGS[@]}"
 
           echo "Inspecting $WEB_IMAGE"
           docker buildx imagetools inspect "$WEB_IMAGE"

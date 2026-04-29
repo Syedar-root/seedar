@@ -119,7 +119,9 @@ export const PanelPage = () => {
             </div>
           </div>
 
-          <QueryZone {...queryZoneProps} />
+          <div className={styles.queryZoneArea}>
+            <QueryZone {...queryZoneProps} />
+          </div>
 
           <div className={styles.operations}>
             <button

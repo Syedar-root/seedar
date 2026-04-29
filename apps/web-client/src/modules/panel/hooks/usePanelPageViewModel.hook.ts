@@ -44,6 +44,11 @@ import {
   type PreviewPanel,
   type SidePaneKey,
 } from "../utils/panelPage.utils";
+import {
+  buildPanelSceneSummaryForAi,
+  buildPanelVisualizationSnapshotForAi,
+  serializePanelDslForAi,
+} from "../utils/panelAiScene";
 
 interface PanelWorkflowSnapshot {
   editor: PanelEditorSnapshot;
@@ -147,6 +152,12 @@ interface WorkflowError {
 
 type ChartRenderStatus = "idle" | "pending" | "success" | "error";
 
+interface ChartRenderWaiter {
+  resolve: () => void;
+  reject: (error: WorkflowError) => void;
+  timeoutId: ReturnType<typeof setTimeout>;
+}
+
 const createWorkflowError = (code: string, message: string): WorkflowError => ({
   code,
   message,
@@ -176,6 +187,7 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
   const workflowSnapshotRef = useRef<PanelWorkflowSnapshot | null>(null);
   const chartRenderStatusRef = useRef<ChartRenderStatus>("idle");
   const chartRenderErrorRef = useRef<Error | null>(null);
+  const chartRenderWaiterRef = useRef<ChartRenderWaiter | null>(null);
   const currentDisplayTypeRef = useRef<DisplayPanelType>("table");
   const workflowPreviewContextRef = useRef<WorkflowPreviewContext>({
     hasDataset: false,
@@ -236,22 +248,75 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
     () => buildCurrentDsl(buildDsl, queryData?.dsl as QueryDSL | undefined),
     [buildDsl, queryData?.dsl],
   );
+  const aiDsl = useMemo(
+    () => serializePanelDslForAi(currentDsl, activeDataset),
+    [activeDataset, currentDsl],
+  );
+  const visualizationSnapshot = useMemo(
+    () =>
+      buildPanelVisualizationSnapshotForAi({
+        displayType,
+        editorConfig,
+        dimensionItems,
+        dropMetrics,
+        dropFilters,
+        tempMetrics,
+      }),
+    [dimensionItems, displayType, dropFilters, dropMetrics, editorConfig, tempMetrics],
+  );
+  const panelSceneSummary = useMemo(
+    () =>
+      buildPanelSceneSummaryForAi({
+        datasetName: activeDataset?.name,
+        displayType,
+        editorConfig,
+        dimensionItems,
+        dropMetrics,
+        dropFilters,
+        tempMetrics,
+      }),
+    [
+      activeDataset?.name,
+      dimensionItems,
+      displayType,
+      dropFilters,
+      dropMetrics,
+      editorConfig,
+      tempMetrics,
+    ],
+  );
   const panelScene = useMemo<AiChatScene>(
     () => ({
       path: `/panel/${panelData?.id ?? panelId ?? "create"}`,
       panelId: panelData?.id ?? panelId,
       datasetId: activeDataset?.id,
+      datasetName: activeDataset?.name,
       queryId: queryData?.id,
       title,
-      dsl: currentDsl,
+      dsl: aiDsl,
+      selectedDimensionNames: panelSceneSummary.selectedDimensionNames,
+      selectedMetricNames: panelSceneSummary.selectedMetricNames,
+      selectedFilterNames: panelSceneSummary.selectedFilterNames,
+      tempMetricNames: panelSceneSummary.tempMetricNames,
+      fieldBindingsSummary: panelSceneSummary.fieldBindingsSummary,
+      sceneSummaryText: panelSceneSummary.readableText,
+      visualizationSnapshot,
     }),
     [
       activeDataset?.id,
-      currentDsl,
+      activeDataset?.name,
+      aiDsl,
+      panelSceneSummary.fieldBindingsSummary,
+      panelSceneSummary.readableText,
+      panelSceneSummary.selectedDimensionNames,
+      panelSceneSummary.selectedFilterNames,
+      panelSceneSummary.selectedMetricNames,
+      panelSceneSummary.tempMetricNames,
       panelData?.id,
       panelId,
       queryData?.id,
       title,
+      visualizationSnapshot,
     ],
   );
 
@@ -535,12 +600,45 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
     toast.success(PANEL_PAGE_COPY.workflowChangesDiscarded);
   }, [restoreWorkflowSnapshot]);
 
+  const clearChartRenderWaiter = useCallback(() => {
+    const waiter = chartRenderWaiterRef.current;
+    if (!waiter) {
+      return;
+    }
+
+    clearTimeout(waiter.timeoutId);
+    chartRenderWaiterRef.current = null;
+  }, []);
+
+  const createChartPreviewFailure = useCallback(() => {
+    const error = chartRenderErrorRef.current;
+    return createWorkflowError(
+      "WORKFLOW_RUN_PREVIEW_FAILED",
+      error?.message
+        ? `${PANEL_PAGE_COPY.previewFailed}: ${error.message}`
+        : PANEL_PAGE_COPY.previewFailed,
+    );
+  }, []);
+
   const handleChartRenderStatusChange = useCallback(
     (status: { ok: boolean; error?: Error }) => {
       chartRenderStatusRef.current = status.ok ? "success" : "error";
       chartRenderErrorRef.current = status.ok ? null : (status.error ?? null);
+
+       const waiter = chartRenderWaiterRef.current;
+       if (!waiter) {
+         return;
+       }
+
+       clearChartRenderWaiter();
+       if (status.ok) {
+         waiter.resolve();
+         return;
+       }
+
+       waiter.reject(createChartPreviewFailure());
     },
-    [],
+    [clearChartRenderWaiter, createChartPreviewFailure],
   );
 
   const waitForChartRenderResult = useCallback(async () => {
@@ -549,34 +647,34 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
       return;
     }
 
-    const waitForNextFrame = () =>
-      new Promise<void>((resolve) => {
-        if (typeof window === "undefined") {
-          setTimeout(resolve, 16);
-          return;
-        }
-
-        window.requestAnimationFrame(() => resolve());
-      });
-
-    for (let index = 0; index < 20; index += 1) {
-      await waitForNextFrame();
-
-      if (chartRenderStatusRef.current === "success") {
-        return;
-      }
-
-      if (chartRenderStatusRef.current === "error") {
-        const error = chartRenderErrorRef.current;
-        throw createWorkflowError(
-          "WORKFLOW_RUN_PREVIEW_FAILED",
-          error?.message
-            ? `${PANEL_PAGE_COPY.previewFailed}: ${error.message}`
-            : PANEL_PAGE_COPY.previewFailed,
-        );
-      }
+    if (chartRenderStatusRef.current === "success") {
+      return;
     }
-  }, []);
+
+    if (chartRenderStatusRef.current === "error") {
+      throw createChartPreviewFailure();
+    }
+
+    clearChartRenderWaiter();
+
+    await new Promise<void>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        chartRenderWaiterRef.current = null;
+        reject(
+          createWorkflowError(
+            "WORKFLOW_RUN_PREVIEW_TIMEOUT",
+            PANEL_PAGE_COPY.previewFailed,
+          ),
+        );
+      }, 1500);
+
+      chartRenderWaiterRef.current = {
+        resolve,
+        reject,
+        timeoutId,
+      };
+    });
+  }, [clearChartRenderWaiter, createChartPreviewFailure]);
 
   const onPrimarySave = useCallback(() => {
     if (!hasDataset) {

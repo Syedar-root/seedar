@@ -1,16 +1,18 @@
-import { Database, Trash2, Eye } from "lucide-react";
-import { DatasourceResponse, DataSourceStatus } from "#pkg/seedar/types";
+import { Database, Eye, PencilLine, Trash2 } from "lucide-react";
+import { DataSourceStatus, DatasourceResponse } from "#pkg/seedar/types";
 import styles from "./datasourceCard.module.scss";
 
 interface DatasourceCardProps {
   datasource: DatasourceResponse;
   onViewDetails?: (id: number) => void;
+  onEdit?: (id: number) => void;
   onDelete?: (id: number) => void;
 }
 
 export const DatasourceCard = ({
   datasource,
   onViewDetails,
+  onEdit,
   onDelete,
 }: DatasourceCardProps) => {
   const getStatusText = (status: DataSourceStatus) => {
@@ -97,6 +99,7 @@ export const DatasourceCard = ({
 
       <div className={styles.footer}>
         <button
+          type="button"
           className={styles.actionButton}
           onClick={() => onViewDetails?.(datasource.id)}
           title="查看详情"
@@ -105,9 +108,19 @@ export const DatasourceCard = ({
           <span>详情</span>
         </button>
         <button
+          type="button"
+          className={styles.actionButton}
+          onClick={() => onEdit?.(datasource.id)}
+          title="编辑数据源"
+        >
+          <PencilLine size={16} />
+          <span>编辑</span>
+        </button>
+        <button
+          type="button"
           className={styles.actionButton}
           onClick={() => onDelete?.(datasource.id)}
-          title="删除"
+          title="删除数据源"
         >
           <Trash2 size={16} />
           <span>删除</span>

@@ -12,11 +12,11 @@ COPY apps/server/package.json apps/server/package.json
 COPY packages/metric_engine/package.json packages/metric_engine/package.json
 COPY packages/types/package.json packages/types/package.json
 
+RUN pnpm install --frozen-lockfile
+
 COPY apps/server apps/server
 COPY packages/metric_engine packages/metric_engine
 COPY packages/types packages/types
-
-RUN pnpm install --frozen-lockfile
 
 RUN pnpm --filter @seedar/types build \
   && pnpm --filter @metric-engine/core build \

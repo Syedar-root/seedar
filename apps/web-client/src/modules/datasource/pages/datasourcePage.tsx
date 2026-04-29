@@ -1,50 +1,70 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDatasources } from "#pkg/seedar/ui-react";
-import { Plus, AlertCircle, Loader2, Database } from "lucide-react";
+import type { DatasourceResponse } from "#pkg/seedar/types";
+import { AlertCircle, Database, Loader2, Plus } from "lucide-react";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import {
   CreateDatasourceDialog,
   DatasourceCard,
+  DatasourceFormDialog,
   DeleteConfirmDialog,
 } from "../components";
 import styles from "./datasource.module.scss";
 
 export const DatasourcePage = () => {
   const navigate = useNavigate();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedDatasource, setSelectedDatasource] = useState<{
-    id: number;
-    name: string;
-  } | null>(null);
+  const [selectedDatasource, setSelectedDatasource] =
+    useState<DatasourceResponse | null>(null);
   const { data: datasources, isLoading, error } = useDatasources();
 
   const handleCreateDatasource = () => {
-    setIsDialogOpen(true);
+    setIsCreateDialogOpen(true);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
+  const handleCreateDialogClose = () => {
+    setIsCreateDialogOpen(false);
   };
 
   const handleCreateSuccess = (_datasourceId: number) => {
-    setIsDialogOpen(false);
+    setIsCreateDialogOpen(false);
   };
 
   const handleViewDetails = (id: number) => {
     navigate(`/datasource/${id}`);
   };
 
-  const handleDelete = (id: number) => {
-    const datasource = datasources?.find((ds) => ds.id === id);
-    if (datasource) {
-      setSelectedDatasource({
-        id: datasource.id,
-        name: datasource.name,
-      });
-      setDeleteDialogOpen(true);
+  const handleEdit = (id: number) => {
+    const datasource = datasources?.find((item) => item.id === id);
+    if (!datasource) {
+      return;
     }
+
+    setSelectedDatasource(datasource);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditDialogClose = () => {
+    setIsEditDialogOpen(false);
+    setSelectedDatasource(null);
+  };
+
+  const handleEditSuccess = (_datasourceId: number) => {
+    setIsEditDialogOpen(false);
+    setSelectedDatasource(null);
+  };
+
+  const handleDelete = (id: number) => {
+    const datasource = datasources?.find((item) => item.id === id);
+    if (!datasource) {
+      return;
+    }
+
+    setSelectedDatasource(datasource);
+    setDeleteDialogOpen(true);
   };
 
   const handleDeleteDialogClose = () => {
@@ -61,6 +81,7 @@ export const DatasourcePage = () => {
       <header className={styles.header}>
         <h1 className={styles.title}>数据源管理</h1>
         <button
+          type="button"
           className={styles.createButton}
           onClick={handleCreateDatasource}
         >
@@ -107,6 +128,7 @@ export const DatasourcePage = () => {
                   key={datasource.id}
                   datasource={datasource}
                   onViewDetails={handleViewDetails}
+                  onEdit={handleEdit}
                   onDelete={handleDelete}
                 />
               ))}
@@ -116,10 +138,20 @@ export const DatasourcePage = () => {
       </ScrollArea>
 
       <CreateDatasourceDialog
-        open={isDialogOpen}
-        onClose={handleDialogClose}
+        open={isCreateDialogOpen}
+        onClose={handleCreateDialogClose}
         onSuccess={handleCreateSuccess}
       />
+
+      {selectedDatasource && (
+        <DatasourceFormDialog
+          open={isEditDialogOpen}
+          mode="edit"
+          datasource={selectedDatasource}
+          onClose={handleEditDialogClose}
+          onSuccess={handleEditSuccess}
+        />
+      )}
 
       {selectedDatasource && (
         <DeleteConfirmDialog

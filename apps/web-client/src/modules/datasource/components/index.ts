@@ -4,6 +4,7 @@ export { DatasourceTypeSelector } from "./DatasourceTypeSelector";
 export { ConnectionForm } from "./ConnectionForm/ConnectionForm";
 export { ConnectionTest } from "./ConnectionTest/ConnectionTest";
 export { CreateDatasourceDialog } from "./CreateDatasourceDialog/CreateDatasourceDialog";
+export { DatasourceFormDialog } from "./DatasourceFormDialog";
 export { TableStructure } from "./TableStructure/TableStructure";
 export { DeleteConfirmDialog } from "./DeleteConfirmDialog/DeleteConfirmDialog";
 export { DatasourceHero } from "./DatasourceHero/DatasourceHero";

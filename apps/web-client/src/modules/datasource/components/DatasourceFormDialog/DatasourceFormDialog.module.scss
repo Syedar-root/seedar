@@ -22,7 +22,7 @@
   transform: translate(-50%, -50%);
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
-  width: 600px;
+  width: min(600px, calc(100vw - 32px));
   max-height: 85vh;
   overflow: hidden;
   display: flex;
@@ -88,7 +88,9 @@
   font-size: var(--font-base);
   background: var(--bg-elevated);
   color: var(--text-primary);
-  transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+  transition:
+    border-color var(--transition-fast) ease,
+    box-shadow var(--transition-fast) ease;
 }
 
 .input:focus {
@@ -103,6 +105,16 @@
 
 .input::placeholder {
   color: var(--text-tertiary);
+}
+
+.tips {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-base);
+  background: color-mix(in srgb, var(--warning-light) 70%, transparent);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  line-height: 1.6;
 }
 
 .errorText {
@@ -139,7 +151,9 @@
   font-size: var(--font-base);
   color: var(--text-primary);
   font-weight: 500;
-  transition: background-color var(--transition-fast) ease, border-color var(--transition-fast) ease;
+  transition:
+    background-color var(--transition-fast) ease,
+    border-color var(--transition-fast) ease;
 }
 
 .cancelButton:hover {
@@ -161,7 +175,9 @@
   cursor: pointer;
   font-size: var(--font-base);
   font-weight: 500;
-  transition: background-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+  transition:
+    background-color var(--transition-fast) ease,
+    box-shadow var(--transition-fast) ease;
 }
 
 .saveButton:hover:not(:disabled) {

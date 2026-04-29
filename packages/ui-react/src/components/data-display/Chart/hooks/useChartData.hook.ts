@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useExecuteQuery } from "../../../../hooks";
 import { applyFormattingToQueryData } from "../../../../utils/formatting/applyQueryFormatting";
+import { applyChartFormattingToSpec } from "../utils/chartFormatting";
 import { transformData } from "../utils/transformChartSpec";
 import type { ChartProps } from "../types";
 
@@ -73,8 +74,14 @@ export const useChartData = ({
       return undefined;
     }
 
+    const nextSpec = applyChartFormattingToSpec({
+      spec: transformed,
+      data: rawData,
+      formatting,
+    });
+
     return {
-      ...transformed,
+      ...nextSpec,
       autoFit: true,
     };
   }, [rawData, spec]);

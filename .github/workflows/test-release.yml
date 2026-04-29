@@ -43,6 +43,13 @@ jobs:
       - name: Build workspace
         run: pnpm build
 
+      - name: Upload web dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist-test
+          path: apps/web-client/dist
+          if-no-files-found: error
+
       - name: Validate CLI typecheck
         run: pnpm typecheck:cli
 
@@ -61,19 +68,27 @@ jobs:
           echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
           echo "test_version=$TEST_VERSION" >> "$GITHUB_OUTPUT"
 
-  publish-test-server-image:
+  build-test-server-image:
     needs: validate
     runs-on: ubuntu-latest
     env:
       DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
       HAS_DOCKER_CREDENTIALS: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            platform_id: amd64
+          - platform: linux/arm64
+            platform_id: arm64
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup QEMU
-        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        if: env.HAS_DOCKER_CREDENTIALS == 'true' && matrix.platform_id == 'arm64'
         uses: docker/setup-qemu-action@v3
 
       - name: Setup Docker Buildx
@@ -87,25 +102,87 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push server test image
+      - name: Build and push server test image by digest
         if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/docker/server.Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ env.DOCKER_NAMESPACE }}/seedar-server:test
-            ${{ env.DOCKER_NAMESPACE }}/seedar-server:test-${{ needs.validate.outputs.short_sha }}
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.DOCKER_NAMESPACE }}/seedar-server,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=seedar-server-image-${{ matrix.platform_id }}
+          cache-to: type=gha,mode=max,scope=seedar-server-image-${{ matrix.platform_id }}
 
-      - name: Verify published server test image manifest
+      - name: Export server digest
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        shell: bash
+        run: |
+          mkdir -p /tmp/digests
+          DIGEST="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - name: Upload server digest artifact
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-server-digests-${{ matrix.platform_id }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+
+      - name: Skip Docker image publish
+        if: env.HAS_DOCKER_CREDENTIALS != 'true'
+        run: echo "DockerHub credentials are not configured. Skipping test image publish."
+
+  publish-test-server-image:
+    needs:
+      - validate
+      - build-test-server-image
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
+      HAS_DOCKER_CREDENTIALS: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+
+    steps:
+      - name: Download server digest artifacts
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-server-digests-*
+          path: /tmp/digests
+          merge-multiple: true
+
+      - name: Setup Docker Buildx
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create and verify server test image manifest
         if: env.HAS_DOCKER_CREDENTIALS == 'true'
         shell: bash
         run: |
           set -euo pipefail
 
           SERVER_IMAGE="${{ env.DOCKER_NAMESPACE }}/seedar-server:test-${{ needs.validate.outputs.short_sha }}"
+          SERVER_REPO="${{ env.DOCKER_NAMESPACE }}/seedar-server"
+
+          cd /tmp/digests
+
+          DIGEST_ARGS=()
+          for DIGEST_FILE in *; do
+            DIGEST_ARGS+=("${SERVER_REPO}@sha256:${DIGEST_FILE}")
+          done
+
+          docker buildx imagetools create \
+            -t "${SERVER_REPO}:test" \
+            -t "${SERVER_REPO}:test-${{ needs.validate.outputs.short_sha }}" \
+            "${DIGEST_ARGS[@]}"
 
           echo "Inspecting $SERVER_IMAGE"
           docker buildx imagetools inspect "$SERVER_IMAGE"
@@ -115,19 +192,34 @@ jobs:
         if: env.HAS_DOCKER_CREDENTIALS != 'true'
         run: echo "DockerHub credentials are not configured. Skipping test image publish."
 
-  publish-test-web-image:
+  build-test-web-image:
     needs: validate
     runs-on: ubuntu-latest
     env:
       DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
       HAS_DOCKER_CREDENTIALS: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            platform_id: amd64
+          - platform: linux/arm64
+            platform_id: arm64
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup QEMU
+      - name: Download web dist artifact
         if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist-test
+          path: apps/web-client/dist
+
+      - name: Setup QEMU
+        if: env.HAS_DOCKER_CREDENTIALS == 'true' && matrix.platform_id == 'arm64'
         uses: docker/setup-qemu-action@v3
 
       - name: Setup Docker Buildx
@@ -141,25 +233,87 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push web test image
+      - name: Build and push web test image by digest
         if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/docker/web.Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ env.DOCKER_NAMESPACE }}/seedar-web:test
-            ${{ env.DOCKER_NAMESPACE }}/seedar-web:test-${{ needs.validate.outputs.short_sha }}
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.DOCKER_NAMESPACE }}/seedar-web,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=seedar-web-image-${{ matrix.platform_id }}
+          cache-to: type=gha,mode=max,scope=seedar-web-image-${{ matrix.platform_id }}
 
-      - name: Verify published web test image manifest
+      - name: Export web digest
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        shell: bash
+        run: |
+          mkdir -p /tmp/digests
+          DIGEST="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - name: Upload web digest artifact
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-web-digests-${{ matrix.platform_id }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+
+      - name: Skip Docker image publish
+        if: env.HAS_DOCKER_CREDENTIALS != 'true'
+        run: echo "DockerHub credentials are not configured. Skipping test image publish."
+
+  publish-test-web-image:
+    needs:
+      - validate
+      - build-test-web-image
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
+      HAS_DOCKER_CREDENTIALS: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+
+    steps:
+      - name: Download web digest artifacts
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-web-digests-*
+          path: /tmp/digests
+          merge-multiple: true
+
+      - name: Setup Docker Buildx
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        if: env.HAS_DOCKER_CREDENTIALS == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create and verify web test image manifest
         if: env.HAS_DOCKER_CREDENTIALS == 'true'
         shell: bash
         run: |
           set -euo pipefail
 
           WEB_IMAGE="${{ env.DOCKER_NAMESPACE }}/seedar-web:test-${{ needs.validate.outputs.short_sha }}"
+          WEB_REPO="${{ env.DOCKER_NAMESPACE }}/seedar-web"
+
+          cd /tmp/digests
+
+          DIGEST_ARGS=()
+          for DIGEST_FILE in *; do
+            DIGEST_ARGS+=("${WEB_REPO}@sha256:${DIGEST_FILE}")
+          done
+
+          docker buildx imagetools create \
+            -t "${WEB_REPO}:test" \
+            -t "${WEB_REPO}:test-${{ needs.validate.outputs.short_sha }}" \
+            "${DIGEST_ARGS[@]}"
 
           echo "Inspecting $WEB_IMAGE"
           docker buildx imagetools inspect "$WEB_IMAGE"
