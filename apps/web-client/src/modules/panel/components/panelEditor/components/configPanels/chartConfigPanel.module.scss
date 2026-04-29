@@ -102,15 +102,31 @@
 }
 
 .actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.secondaryActions {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-xs);
+  min-width: 0;
+}
+
+.primaryActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 .action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
   border: 1px solid var(--border-base);
   border-radius: var(--radius-sm);
   padding: 6px var(--spacing-sm);
@@ -130,6 +146,25 @@
   color: var(--text-inverse);
   background: var(--primary);
   border-color: var(--primary);
+}
+
+.iconAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-slow);
+}
+
+.iconAction:hover {
+  color: var(--text-primary);
+  border-color: var(--border-dark);
 }
 
 .primaryAction:hover {
@@ -188,8 +223,106 @@
   font-size: 12px;
 }
 
+.dialogBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 17, 23, 0.44);
+  z-index: 1200;
+}
+
+.dialogPopup {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1100px, calc(100vw - 32px));
+  height: min(88vh, 860px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 1201;
+  overflow: hidden;
+}
+
+.dialogContent {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  min-height: 0;
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dialogClose {
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  background: var(--bg-base);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all var(--transition-slow);
+}
+
+.dialogClose:hover {
+  color: var(--text-primary);
+  border-color: var(--border-dark);
+  background: var(--bg-hover);
+}
+
+.dialogToolbar {
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  padding: var(--spacing-sm);
+}
+
+.dialogEditorWrap {
+  min-height: 100%;
+}
+
+.dialogEditor {
+  min-height: min(68vh, 680px);
+}
+
 @media (max-width: 720px) {
   .actions {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .secondaryActions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .primaryActions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .iconAction {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .dialogPopup {
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
   }
 }

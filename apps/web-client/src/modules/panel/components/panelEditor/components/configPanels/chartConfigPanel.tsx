@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Dialog } from "@base-ui/react/dialog";
+import { Maximize2 } from "lucide-react";
 import { toast } from "sonner";
+import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import { FieldMapper } from "../fieldMapper/fieldMapper";
 import { LabelConfigurator } from "../labelConfigurator/labelConfigurator";
 import { LegendConfigurator } from "../legendConfigurator/legendConfigurator";
@@ -15,9 +18,9 @@ import {
   DEFAULT_COLORS,
   DEFAULT_LEGENDS_CONFIG,
   createDefaultAxisConfig,
-  type PanelEditorConfig,
-  type ConfigPanelProps,
   type ChartType,
+  type ConfigPanelProps,
+  type PanelEditorConfig,
 } from "../../types";
 import styles from "./chartConfigPanel.module.scss";
 
@@ -32,6 +35,9 @@ const COPY = {
   validateJson: "校验",
   applyToPreview: "应用到预览",
   availableFields: "可用字段",
+  expandEditor: "放大编辑",
+  expandedTitle: "高级 Spec 编辑器",
+  expandedClose: "关闭",
   jsonPlaceholder: `{
   "type": "bar",
   "xField": "date",
@@ -39,7 +45,8 @@ const COPY = {
 }`,
   invalidJson: "JSON 格式不正确，请检查后重试",
   invalidRoot: "Spec 必须是 JSON 对象",
-  customTypeHint: "检测到自定义 type，将按原始 Spec 预览，字段需你自行确认。",
+  customTypeHint:
+    "检测到自定义 type，将按原始 Spec 预览，字段需你自行确认。",
   validatePassed: "Spec JSON 校验通过",
   applySuccess: "Spec 已应用到预览",
   typeMismatch: "Spec.type 与当前图表类型不一致，已按 Spec.type 预览",
@@ -132,6 +139,7 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
 }) => {
   const [specDraft, setSpecDraft] = useState("");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isExpandedEditorOpen, setIsExpandedEditorOpen] = useState(false);
   const visualSnapshotRef = useRef<Partial<PanelEditorConfig> | null>(null);
   const chartType = config.type as ChartType;
   const fieldConfig = chartType ? CHART_FIELD_CONFIGS[chartType] : null;
@@ -157,6 +165,7 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
     if (!chartType) {
       return undefined;
     }
+
     const spec = buildChartSpecFromEditorConfig(chartType, {
       ...config,
       isAdvancedSpecMode: false,
@@ -192,6 +201,7 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
         toast.error(COPY.invalidRoot);
         return undefined;
       }
+
       setErrorMessage("");
       return parsed;
     } catch {
@@ -319,6 +329,46 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
     setErrorMessage("");
   };
 
+  const renderAdvancedActions = (showExpandAction = true) => (
+    <div className={styles.actions}>
+      <div className={styles.secondaryActions}>
+        {showExpandAction ? (
+          <button
+            type="button"
+            className={styles.iconAction}
+            onClick={() => setIsExpandedEditorOpen(true)}
+            title={COPY.expandEditor}
+            aria-label={COPY.expandEditor}
+          >
+            <Maximize2 size={16} />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={styles.action}
+          onClick={handleGenerateFromVisual}
+        >
+          {COPY.generateFromVisual}
+        </button>
+        <button type="button" className={styles.action} onClick={handleFormatJson}>
+          {COPY.formatJson}
+        </button>
+        <button type="button" className={styles.action} onClick={handleValidate}>
+          {COPY.validateJson}
+        </button>
+      </div>
+      <div className={styles.primaryActions}>
+        <button
+          type="button"
+          className={`${styles.action} ${styles.primaryAction}`}
+          onClick={handleApply}
+        >
+          {COPY.applyToPreview}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <div className={styles.modeSwitcher}>
@@ -360,29 +410,9 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
                 <code>{supportedTypeText}</code>
               </p>
             </div>
-            <div className={styles.actions}>
-              <button
-                type="button"
-                className={styles.action}
-                onClick={handleGenerateFromVisual}
-              >
-                {COPY.generateFromVisual}
-              </button>
-              <button type="button" className={styles.action} onClick={handleFormatJson}>
-                {COPY.formatJson}
-              </button>
-              <button type="button" className={styles.action} onClick={handleValidate}>
-                {COPY.validateJson}
-              </button>
-              <button
-                type="button"
-                className={`${styles.action} ${styles.primaryAction}`}
-                onClick={handleApply}
-              >
-                {COPY.applyToPreview}
-              </button>
-            </div>
+            {renderAdvancedActions()}
           </div>
+
           <textarea
             className={styles.editor}
             value={specDraft}
@@ -393,7 +423,9 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
             placeholder={COPY.jsonPlaceholder}
             spellCheck={false}
           />
+
           {errorMessage ? <div className={styles.error}>{errorMessage}</div> : null}
+
           <div className={styles.fieldTips}>
             <span className={styles.fieldTipsTitle}>{COPY.availableFields}</span>
             <div className={styles.fieldList}>
@@ -436,6 +468,55 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
           />
         </>
       )}
+
+      <Dialog.Root
+        open={isExpandedEditorOpen}
+        onOpenChange={setIsExpandedEditorOpen}
+      >
+        <Dialog.Portal>
+          <Dialog.Backdrop className={styles.dialogBackdrop} />
+          <Dialog.Popup className={styles.dialogPopup}>
+            <div className={styles.dialogContent}>
+              <div className={styles.dialogHeader}>
+                <Dialog.Title className={styles.dialogTitle}>
+                  {COPY.expandedTitle}
+                </Dialog.Title>
+                <button
+                  type="button"
+                  className={styles.dialogClose}
+                  onClick={() => setIsExpandedEditorOpen(false)}
+                >
+                  {COPY.expandedClose}
+                </button>
+              </div>
+
+              <div className={styles.dialogToolbar}>
+                {renderAdvancedActions(false)}
+              </div>
+
+              <ScrollArea
+                style={{ flex: 1, minHeight: 0 }}
+                contentStyle={{ minWidth: 0 }}
+              >
+                <div className={styles.dialogEditorWrap}>
+                  <textarea
+                    className={`${styles.editor} ${styles.dialogEditor}`}
+                    value={specDraft}
+                    onChange={(event) => {
+                      setSpecDraft(event.target.value);
+                      setErrorMessage("");
+                    }}
+                    placeholder={COPY.jsonPlaceholder}
+                    spellCheck={false}
+                  />
+                </div>
+              </ScrollArea>
+
+              {errorMessage ? <div className={styles.error}>{errorMessage}</div> : null}
+            </div>
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 };

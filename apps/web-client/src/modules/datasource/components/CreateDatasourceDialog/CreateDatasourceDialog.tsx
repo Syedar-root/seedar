@@ -4,6 +4,7 @@ import {
   useCreateDatasource,
   useTestDatasourceConnection,
 } from "#pkg/seedar/ui-react";
+import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import type {
   CreateDatasourceRequest,
   DataSourceType,
@@ -189,54 +190,59 @@ export const CreateDatasourceDialog: React.FC<CreateDatasourceDialogProps> = ({
               创建数据源
             </Dialog.Title>
 
-            <div className={styles.form}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  数据源名称<span className={styles.required}>*</span>
-                </label>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={connectionConfig.name}
-                  onChange={(e) =>
-                    handleConnectionConfigChange({
-                      ...connectionConfig,
-                      name: e.target.value,
-                    })
-                  }
-                  placeholder="请输入数据源名称"
-                  aria-required="true"
-                  aria-describedby={error ? "name-error" : undefined}
-                />
-              </div>
-
-              <DatasourceTypeSelector
-                value={datasourceType}
-                onChange={handleDatasourceTypeChange}
-              />
-
-              <ConnectionForm
-                type={datasourceType}
-                config={connectionConfig}
-                onChange={handleConnectionConfigChange}
-              />
-
-              <ConnectionTest
-                config={connectionConfig}
-                onTest={handleTestConnection}
-              />
-
-              {error && (
-                <div
-                  className={styles.errorText}
-                  id="name-error"
-                  role="alert"
-                  aria-live="polite"
-                >
-                  {error}
+            <ScrollArea
+              style={{ flex: 1, minHeight: 0 }}
+              contentStyle={{ minWidth: 0 }}
+            >
+              <div className={styles.form}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>
+                    数据源名称 <span className={styles.required}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={connectionConfig.name}
+                    onChange={(e) =>
+                      handleConnectionConfigChange({
+                        ...connectionConfig,
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder="请输入数据源名称"
+                    aria-required="true"
+                    aria-describedby={error ? "name-error" : undefined}
+                  />
                 </div>
-              )}
-            </div>
+
+                <DatasourceTypeSelector
+                  value={datasourceType}
+                  onChange={handleDatasourceTypeChange}
+                />
+
+                <ConnectionForm
+                  type={datasourceType}
+                  config={connectionConfig}
+                  onChange={handleConnectionConfigChange}
+                />
+
+                <ConnectionTest
+                  config={connectionConfig}
+                  onTest={handleTestConnection}
+                />
+
+                {error && (
+                  <div
+                    className={styles.errorText}
+                    id="name-error"
+                    role="alert"
+                    aria-live="polite"
+                  >
+                    {error}
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
 
             <div className={styles.actions}>
               <button className={styles.cancelButton} onClick={onClose}>
