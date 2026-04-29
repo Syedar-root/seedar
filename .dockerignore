@@ -1,0 +1,16 @@
+.git
+.github
+.codex
+.claude
+.cursor
+.trae
+.vscode
+node_modules
+docs
+scripts
+CHANGELOG.md
+CLAUDE.md
+DESIGN.md
+commit_msg.txt
+skills-lock.json
+新建 文本文档.txt
