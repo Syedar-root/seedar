@@ -1,4 +1,8 @@
-import { DatasetMetricResponse, DatasetResponse } from '@/module/dataset/dataset.types';
+import {
+  DatasetMetricResponse,
+  DatasetResponse,
+} from '@/module/dataset/dataset.types';
+import { DatasourceResponse } from '@/module/datasource/dto/datasource.response';
 import path from 'path';
 import fs from 'fs/promises';
 
@@ -25,6 +29,34 @@ const getDatasetInfoCompact = (
            metricType: metric.metricType,
            distinct: metric.distinct,
           expression: undefined,
+        })),
+      }
+    : null;
+
+const getDatasourceInfoCompact = (
+  response: DatasourceResponse | null,
+): DatasourceResponse | null =>
+  response
+    ? {
+        ...response,
+        tables: response.tables?.map((table) => ({
+          tableId: table.tableId,
+          tableName: table.tableName,
+          columns: table.columns.map((column) => ({
+            columnId: column.columnId,
+            columnName: column.columnName,
+            rawDataType: column.rawDataType,
+            normalizedType: column.normalizedType,
+            nullable: column.nullable,
+            isPrimaryKey: column.isPrimaryKey,
+          })),
+        })),
+        foreignKeys: response.foreignKeys?.map((foreignKey) => ({
+          fkName: foreignKey.fkName,
+          sourceTableName: foreignKey.sourceTableName,
+          sourceColumnName: foreignKey.sourceColumnName,
+          targetTableName: foreignKey.targetTableName,
+          targetColumnName: foreignKey.targetColumnName,
         })),
       }
     : null;
@@ -56,4 +88,9 @@ const loadPrompt = async (promptName: string, mode?: string) => {
     `Prompt not found: ${promptName}${mode ? ` (mode: ${mode})` : ''}`,
   );
 };
-export { getDatasetInfoCompact, loadSkill, loadPrompt };
+export {
+  getDatasetInfoCompact,
+  getDatasourceInfoCompact,
+  loadSkill,
+  loadPrompt,
+};
