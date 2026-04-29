@@ -141,6 +141,77 @@ const buildTooltipContent = (
     ),
 });
 
+const buildDimensionTooltipPattern = (
+  type: string,
+  options: ReturnType<typeof createChartValueFormatter>,
+  fields: {
+    xField?: string;
+    yField?: string;
+    categoryField?: string;
+    valueField?: string;
+    seriesField?: string;
+    sizeField?: string;
+  },
+) => {
+  const {
+    xField,
+    yField,
+    categoryField,
+    valueField,
+    seriesField,
+    sizeField,
+  } = fields;
+
+  const titleField =
+    type === "pie" || type === "rose" || type === "radar" || type === "funnel"
+      ? categoryField
+      : xField || categoryField;
+
+  const content = [];
+
+  if (titleField) {
+    content.push(
+      buildTooltipContent(titleField, titleField, options),
+    );
+  }
+
+  if (type === "pie" || type === "rose" || type === "radar" || type === "funnel") {
+    if (valueField) {
+      content.push(buildTooltipContent(valueField, valueField, options));
+    }
+  } else {
+    if (yField) {
+      content.push(buildTooltipContent(yField, yField, options));
+    }
+    if (seriesField) {
+      content.push(buildTooltipContent(seriesField, seriesField, options));
+    }
+    if (sizeField) {
+      content.push(buildTooltipContent(sizeField, sizeField, options));
+    }
+  }
+
+  if (content.length === 0) {
+    return undefined;
+  }
+
+  return {
+    title: titleField
+      ? {
+          value: (datum: ChartDatum) =>
+            String(
+              options.formatFieldValue(
+                titleField,
+                datum?.[titleField],
+                "tooltip",
+              ),
+            ),
+        }
+      : undefined,
+    content,
+  };
+};
+
 const enhanceTooltipFormatting = <T extends ISpec>(
   spec: T,
   rawRows: ChartDatum[],
@@ -229,16 +300,39 @@ const enhanceTooltipFormatting = <T extends ISpec>(
     return spec;
   }
 
-  nextSpec.tooltip = {
-    ...(typeof nextSpec.tooltip === "object" && nextSpec.tooltip
+  const dimensionPattern = buildDimensionTooltipPattern(type, options, {
+    xField,
+    yField,
+    categoryField,
+    valueField,
+    seriesField,
+    sizeField,
+  });
+
+  const existingTooltip =
+    typeof nextSpec.tooltip === "object" && nextSpec.tooltip
       ? (nextSpec.tooltip as Record<string, unknown>)
-      : {}),
+      : {};
+
+  nextSpec.tooltip = {
+    ...existingTooltip,
     mark: {
-      ...(isPlainObject(nextSpec.tooltip) && isPlainObject(nextSpec.tooltip.mark)
-        ? (nextSpec.tooltip.mark as Record<string, unknown>)
+      ...(isPlainObject(existingTooltip) && isPlainObject(existingTooltip.mark)
+        ? (existingTooltip.mark as Record<string, unknown>)
         : {}),
       content: tooltipContent,
     },
+    ...(dimensionPattern
+      ? {
+          dimension: {
+            ...(isPlainObject(existingTooltip) &&
+            isPlainObject(existingTooltip.dimension)
+              ? (existingTooltip.dimension as Record<string, unknown>)
+              : {}),
+            ...dimensionPattern,
+          },
+        }
+      : {}),
   };
 
   return nextSpec as T;
