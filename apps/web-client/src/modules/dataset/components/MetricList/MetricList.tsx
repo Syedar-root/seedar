@@ -6,9 +6,9 @@ import {
   MetricType,
 } from "#pkg/seedar/types";
 import { Switch } from "@/core/components/ui/Switch";
-import { MetricDialog } from "./MetricDialog";
+import { MetricDialog } from "./components/MetricDialog";
 import { MetricListProps } from "./types";
-import { getMetricTypeLabel } from "./metricExpression";
+import { getMetricTypeLabel } from "./utils/metricExpression";
 import styles from "./MetricList.module.scss";
 
 type DisplayMode = "business" | "original";

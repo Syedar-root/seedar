@@ -6,7 +6,7 @@ import {
   FunctionItem,
   FieldItem,
   MetricItem,
-} from "./useFormulaParser";
+} from "../../useFormulaParser";
 import styles from "./FormulaSuggestion.module.scss";
 
 interface FormulaSuggestionProps {

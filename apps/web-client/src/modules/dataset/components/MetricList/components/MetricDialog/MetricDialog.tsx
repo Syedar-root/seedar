@@ -8,8 +8,8 @@ import {
   MetricType,
 } from "#pkg/seedar/types";
 import styles from "./MetricDialog.module.scss";
-import { FormulaEditor } from "./FormulaEditor";
-import { useFormulaParser } from "./useFormulaParser";
+import { FormulaEditor } from "../FormulaEditor";
+import { useFormulaParser } from "../../useFormulaParser";
 
 interface MetricDialogProps {
   open: boolean;
