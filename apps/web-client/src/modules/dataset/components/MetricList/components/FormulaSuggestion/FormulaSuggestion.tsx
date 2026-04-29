@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+﻿import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ScrollArea } from "@/core/components/ui/ScrollArea/ScrollArea";
 import {
@@ -6,7 +6,7 @@ import {
   FunctionItem,
   FieldItem,
   MetricItem,
-} from "./useFormulaParser";
+} from "../../useFormulaParser";
 import styles from "./FormulaSuggestion.module.scss";
 
 interface FormulaSuggestionProps {
@@ -15,6 +15,14 @@ interface FormulaSuggestionProps {
   anchorElement: HTMLElement | null;
   onClose: () => void;
 }
+
+const getFieldSourceLabel = (field: FieldItem): string | null => {
+  if (!field.tableName) {
+    return null;
+  }
+
+  return `${field.tableName}.${field.name}`;
+};
 
 export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
   items,
@@ -127,7 +135,9 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
           className={`${styles.item} ${index === selectedIndex ? styles.selected : ""}`}
         >
           <span className={styles.functionBadge}>fn</span>
-          <span className={styles.itemName}>{fn.name}</span>
+          <span className={styles.itemName} title={fn.name}>
+            {fn.name}
+          </span>
           <span className={styles.itemDesc}>{fn.description}</span>
         </li>
       );
@@ -135,6 +145,8 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
 
     if (item.type === "field") {
       const field = item as FieldItem;
+      const sourceLabel = getFieldSourceLabel(field);
+
       return (
         <li
           ref={(node) => {
@@ -146,12 +158,17 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
           className={`${styles.item} ${index === selectedIndex ? styles.selected : ""}`}
         >
           <span className={styles.fieldBadge}>F</span>
-          <span className={styles.itemName}>
-            {field.name}{" "}
-            {field.tableName && (
-              <span className={styles.tableTag}>来自：{field.tableName}</span>
-            )}
+          <span
+            className={styles.itemName}
+            title={field.businessName || field.name}
+          >
+            {field.businessName || field.name}
           </span>
+          {sourceLabel ? (
+            <span className={styles.tableTag} title={sourceLabel}>
+              {sourceLabel}
+            </span>
+          ) : null}
           <span className={styles.itemId}>#F{field.id}</span>
         </li>
       );
@@ -170,7 +187,12 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
           className={`${styles.item} ${index === selectedIndex ? styles.selected : ""}`}
         >
           <span className={styles.metricBadge}>M</span>
-          <span className={styles.itemName}>{metric.name}</span>
+          <span
+            className={styles.itemName}
+            title={metric.businessName || metric.name}
+          >
+            {metric.businessName || metric.name}
+          </span>
           <span className={styles.itemId}>#M{metric.id}</span>
         </li>
       );
@@ -209,13 +231,13 @@ export const FormulaSuggestion: React.FC<FormulaSuggestionProps> = ({
     >
       <div className={styles.listWrapper}>
         <ScrollArea className={styles.list} style={{ height: "232px" }}>
-        {items.length === 0 ? (
-          <div className={styles.empty}>没有找到匹配项</div>
-        ) : (
-          <ul className={styles.listInner}>
-            {items.map((item, index) => renderItem(item, index))}
-          </ul>
-        )}
+          {items.length === 0 ? (
+            <div className={styles.empty}>没有找到匹配项</div>
+          ) : (
+            <ul className={styles.listInner}>
+              {items.map((item, index) => renderItem(item, index))}
+            </ul>
+          )}
         </ScrollArea>
       </div>
     </div>,

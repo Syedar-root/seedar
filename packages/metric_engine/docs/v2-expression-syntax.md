@@ -16,6 +16,12 @@
 =  ==  !=  <>  >  <  >=  <=
 ```
 
+说明：
+
+- `=` 与 `==` 都表示“等于”
+- 在表达式解析阶段，`=` 会被当作合法比较运算符处理
+- 生成 SQL 时，`=` / `==` 最终都会输出为 SQL 的 `=`
+
 ### 筛选运算符
 ```typescript
 IN        // 列表匹配
@@ -58,6 +64,14 @@ COUNT(t1.user_id)
 COUNT(DISTINCT t1.order_id)
 COUNT(DISTINCT t1.user_id)
 ```
+
+补充说明：
+
+- `COUNT(comparison)` 支持条件计数语义
+- `SUM(comparison)` 支持条件求和语义
+- 当聚合参数是比较表达式时，引擎会自动改写为条件表达式再生成 SQL
+- 例如 `COUNT(status = 'paid')` 会等价改写为 `COUNT(CASE WHEN status = 'paid' THEN 1 END)`
+- 例如 `SUM(status = 'paid')` 会等价改写为 `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)`
 
 ### 3. 引用字段/指标（DSLTransformerV2 预处理）
 ```javascript
@@ -106,7 +120,34 @@ COUNT(DISTINCT (status == 'paid' ? user_id : null))
 COUNT(DISTINCT CASE WHEN status = 'paid' THEN user_id END)
 ```
 
-### 5. 多指标运算
+### 5. 条件计数简写
+```javascript
+COUNT(status = 'paid')
+COUNT(#F29 = 'Yes')
+```
+```sql
+COUNT(CASE WHEN status = 'paid' THEN 1 END)
+COUNT(CASE WHEN t1.survey_answer = 'Yes' THEN 1 END)
+```
+
+适用场景：
+
+- 统计满足某个条件的记录数
+- 希望直接写成 `COUNT(condition)`，而不是手写三元表达式
+
+等价写法：
+
+```javascript
+COUNT(status = 'paid')
+```
+
+等价于：
+
+```javascript
+COUNT(status = 'paid' ? 1 : null)
+```
+
+### 6. 多指标运算
 ```javascript
 #M100 * 1.1
 ```
@@ -114,13 +155,26 @@ COUNT(DISTINCT CASE WHEN status = 'paid' THEN user_id END)
 (revenue) * 1.1
 ```
 
-### 6. 复杂算术表达式
+### 7. 复杂算术表达式
 ```javascript
 (SUM(amount) - SUM(cost)) / SUM(cost) * 100
 ```
 ```sql
 ((SUM(t1.amount)) - (SUM(t1.cost))) / (SUM(t1.cost)) * 100
 ```
+
+### 8. 条件计数参与算术运算
+```javascript
+COUNT(#F29 = 'Yes') / #M3
+```
+```sql
+COUNT(CASE WHEN t1.survey_answer = 'Yes' THEN 1 END) / (metric_m3)
+```
+
+说明：
+
+- 这类写法适合“满足条件的数量 / 总量”这类比率指标
+- `#F / #M` 仍然先由 `DSLTransformerV2` 预处理展开，再进入表达式引擎解析
 
 ---
 

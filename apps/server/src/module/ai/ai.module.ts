@@ -9,12 +9,14 @@ import { AiSession } from './entities/ai-session.entity';
 import { DatasetService } from '../dataset/services/dataset.service';
 import { ToolService } from './services/tool.service';
 import { DatasetModule } from '../dataset/dataset.module';
+import { DatasourceModule } from '../datasource/datasource.module';
 import { QueryModule } from '../query/query.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Ai, AiSession]),
     DatasetModule,
+    DatasourceModule,
     QueryModule,
   ],
   controllers: [AiController],

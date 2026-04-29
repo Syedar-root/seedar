@@ -1,21 +1,26 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+﻿import { useState, useCallback, useRef, useMemo } from "react";
 import { Sender } from "@ant-design/x";
 import type { GetRef } from "antd";
 import type { SlotConfigType } from "@ant-design/x/es/sender/interface";
 import { Search } from "lucide-react";
+import type { ReactNode } from "react";
 import {
   useFormulaParser,
   SuggestionItem,
   AGGREGATE_FUNCTIONS,
   FunctionItem,
-  FieldItem,
-  MetricItem,
-} from "./useFormulaParser";
-import { FormulaSuggestion } from "./FormulaSuggestion";
+} from "../../useFormulaParser";
+import { FormulaSuggestion } from "../FormulaSuggestion";
 import { ScrollArea } from "@/core/components/ui/ScrollArea/ScrollArea";
 import styles from "./FormulaEditor.module.scss";
+import {
+  buildFormulaSlotConfig,
+  createFieldSuggestion,
+  createMetricSuggestion,
+  getFieldSourceLabel,
+  getTextBeforeCursor,
+} from "../../utils/formulaEditor.utils";
 
-const FORMULA_TOKEN_PATTERN = /#([FM])([^#\s+\-*/()]+)/g;
 const FORMULA_PLACEHOLDER = "输入公式，例如：SUM(amount) * price";
 
 interface FormulaEditorProps {
@@ -30,137 +35,45 @@ interface FormulaEditorProps {
   onChange: (value: string) => void;
 }
 
-const createFieldSuggestion = (
-  field: FormulaEditorProps["fields"][number],
-): FieldItem => ({
-  id: field.id,
-  name: field.businessName || field.name,
-  businessName: field.businessName,
-  tableName: field.tableName,
-  type: "field",
-});
-
-const createMetricSuggestion = (
-  metric: FormulaEditorProps["metrics"][number],
-): MetricItem => ({
-  id: metric.id,
-  name: metric.businessName || metric.name,
-  businessName: metric.businessName,
-  type: "metric",
-});
-
-const createTokenSlot = (
-  item: FieldItem | MetricItem,
-  prefix: "F" | "M",
-  uniqueSuffix: string,
-): SlotConfigType => ({
-  type: "tag",
-  key: `${item.type}-${item.id}-${uniqueSuffix}`,
-  props: {
-    label: item.name,
-    value: `#${prefix}${item.id}`,
-  },
-  formatResult: (slotValue: string) =>
-    String(slotValue || `#${prefix}${item.id}`),
-});
-
-const buildFormulaSlotConfig = (
-  expression: string,
-  fields: FormulaEditorProps["fields"],
-  metrics: FormulaEditorProps["metrics"],
-): SlotConfigType[] => {
-  if (!expression) {
-    return [];
-  }
-
-  const fieldMap = new Map(fields.map((field) => [String(field.id), field]));
-  const metricMap = new Map(metrics.map((metric) => [String(metric.id), metric]));
-  const slotConfig: SlotConfigType[] = [];
-  let lastIndex = 0;
-
-  expression.replace(
-    FORMULA_TOKEN_PATTERN,
-    (matched, tokenType: "F" | "M", tokenId: string, offset: number) => {
-      if (offset > lastIndex) {
-        slotConfig.push({
-          type: "text",
-          value: expression.slice(lastIndex, offset),
-        });
-      }
-
-      const sourceItem =
-        tokenType === "F" ? fieldMap.get(tokenId) : metricMap.get(tokenId);
-
-      if (!sourceItem) {
-        slotConfig.push({ type: "text", value: matched });
-      } else if (tokenType === "F") {
-        slotConfig.push(
-          createTokenSlot(createFieldSuggestion(sourceItem), "F", `${offset}`),
-        );
-      } else {
-        slotConfig.push(
-          createTokenSlot(createMetricSuggestion(sourceItem), "M", `${offset}`),
-        );
-      }
-
-      lastIndex = offset + matched.length;
-      return matched;
-    },
-  );
-
-  if (lastIndex < expression.length) {
-    slotConfig.push({
-      type: "text",
-      value: expression.slice(lastIndex),
-    });
-  }
-
-  return slotConfig;
-};
-
-const getTextBeforeCursor = (element: HTMLElement): string => {
-  if (
-    element instanceof HTMLTextAreaElement ||
-    element instanceof HTMLInputElement
-  ) {
-    return element.value.slice(0, element.selectionStart ?? element.value.length);
-  }
-
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) {
-    return element.textContent || "";
-  }
-
-  const range = selection.getRangeAt(0);
-  if (!element.contains(range.endContainer)) {
-    return element.textContent || "";
-  }
-
-  const clonedRange = range.cloneRange();
-  clonedRange.selectNodeContents(element);
-  clonedRange.setEnd(range.endContainer, range.endOffset);
-  return clonedRange.toString();
-};
-
 export const FormulaEditor: React.FC<FormulaEditorProps> = ({
   fields,
   metrics,
   value,
   onChange,
 }) => {
+  const renderTokenLabel = useCallback(
+    (item: SuggestionItem): ReactNode => {
+      if (item.type === "field") {
+        return (
+          <span className={styles.fieldTokenLabel}>
+            {item.businessName || item.name}
+          </span>
+        );
+      }
+
+      if (item.type === "metric") {
+        return (
+          <span className={styles.metricTokenLabel}>
+            {item.businessName || item.name}
+          </span>
+        );
+      }
+
+      return item.name;
+    },
+    [],
+  );
+
   const [showSuggestion, setShowSuggestion] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [activeTab, setActiveTab] = useState<"function" | "field" | "metric">(
     "function",
   );
   const [sidebarSearchKeyword, setSidebarSearchKeyword] = useState("");
-  const [senderSlotConfig, setSenderSlotConfig] = useState<SlotConfigType[]>(() =>
-    buildFormulaSlotConfig(value, fields, metrics),
+  const [senderSlotConfig] = useState<SlotConfigType[]>(() =>
+    buildFormulaSlotConfig(value, fields, metrics, renderTokenLabel),
   );
-  const [senderInstanceKey, setSenderInstanceKey] = useState(0);
   const inputRef = useRef<GetRef<typeof Sender>>(null);
-  const lastStorageValueRef = useRef(value);
-  const lastLabelSignatureRef = useRef("");
 
   const { toStorage, detectSuggestionType, getSuggestionFilter } =
     useFormulaParser({
@@ -171,24 +84,6 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
   const normalizedSidebarSearchKeyword = sidebarSearchKeyword
     .trim()
     .toLowerCase();
-  const labelSignature = useMemo(
-    () =>
-      JSON.stringify({
-        fields: fields.map((field) => ({
-          id: field.id,
-          name: field.name,
-          businessName: field.businessName,
-          tableName: field.tableName,
-        })),
-        metrics: metrics.map((metric) => ({
-          id: metric.id,
-          name: metric.name,
-          businessName: metric.businessName,
-        })),
-      }),
-    [fields, metrics],
-  );
-
   const filteredFunctions = useMemo(
     () =>
       !normalizedSidebarSearchKeyword
@@ -250,8 +145,8 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
       setSuggestions(
         fields
           .filter((field) => {
-            const name = field.businessName || field.name;
-            return name?.toLowerCase().includes(filter.toLowerCase());
+            const displayName = field.businessName || field.name;
+            return displayName?.toLowerCase().includes(filter.toLowerCase());
           })
           .map(createFieldSuggestion),
       );
@@ -263,8 +158,8 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
       setSuggestions(
         metrics
           .filter((metric) => {
-            const name = metric.businessName || metric.name;
-            return name?.toLowerCase().includes(filter.toLowerCase());
+            const displayName = metric.businessName || metric.name;
+            return displayName?.toLowerCase().includes(filter.toLowerCase());
           })
           .map(createMetricSuggestion),
       );
@@ -286,32 +181,20 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
     setShowSuggestion(false);
   }, [detectSuggestionType, fields, getSuggestionFilter, metrics]);
 
-  useEffect(() => {
-    const shouldResync =
-      value !== lastStorageValueRef.current ||
-      labelSignature !== lastLabelSignatureRef.current;
-
-    if (!shouldResync) {
-      return;
-    }
-
-    setSenderSlotConfig(buildFormulaSlotConfig(value, fields, metrics));
-    setSenderInstanceKey((previousKey) => previousKey + 1);
-    lastStorageValueRef.current = value;
-    lastLabelSignatureRef.current = labelSignature;
-  }, [fields, labelSignature, metrics, value]);
-
   const handleSenderChange = useCallback(
     (nextValue: string) => {
       const storageValue = toStorage(nextValue);
-      lastStorageValueRef.current = storageValue;
+      if (storageValue === value) {
+        return;
+      }
+
       onChange(storageValue);
 
       requestAnimationFrame(() => {
         syncSuggestionsFromCursor();
       });
     },
-    [onChange, syncSuggestionsFromCursor, toStorage],
+    [onChange, syncSuggestionsFromCursor, toStorage, value],
   );
 
   const insertSuggestionItem = useCallback(
@@ -321,12 +204,39 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
       }
 
       const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      const insertConfig: SlotConfigType[] =
-        item.type === "function"
-          ? [{ type: "text", value: `${(item as FunctionItem).name}()` }]
-          : item.type === "field"
-            ? [createTokenSlot(item as FieldItem, "F", uniqueSuffix)]
-            : [createTokenSlot(item as MetricItem, "M", uniqueSuffix)];
+      let insertConfig: SlotConfigType[];
+
+      if (item.type === "function") {
+        insertConfig = [{ type: "text", value: `${(item as FunctionItem).name}()` }];
+      } else if (item.type === "field") {
+        const fieldItem = item;
+        insertConfig = [
+          {
+            type: "tag",
+            key: `${fieldItem.type}-${fieldItem.id}-${uniqueSuffix}`,
+            props: {
+              label: renderTokenLabel(fieldItem),
+              value: `#F${fieldItem.id}`,
+            },
+            formatResult: (slotValue: string) =>
+              String(slotValue || `#F${fieldItem.id}`),
+          },
+        ];
+      } else {
+        const metricItem = item;
+        insertConfig = [
+          {
+            type: "tag",
+            key: `${metricItem.type}-${metricItem.id}-${uniqueSuffix}`,
+            props: {
+              label: renderTokenLabel(metricItem),
+              value: `#M${metricItem.id}`,
+            },
+            formatResult: (slotValue: string) =>
+              String(slotValue || `#M${metricItem.id}`),
+          },
+        ];
+      }
 
       inputRef.current.insert?.(insertConfig, "cursor", replaceCharacters);
       setShowSuggestion(false);
@@ -364,7 +274,6 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
       <div className={styles.editorSection}>
         <div className={styles.editorWrapper}>
           <Sender
-            key={senderInstanceKey}
             ref={inputRef}
             classNames={{
               root: styles.sender,
@@ -455,7 +364,9 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
                     onClick={() => handleClickInsert(fn)}
                   >
                     <span className={styles.functionBadge}>fn</span>
-                    <span className={styles.itemName}>{fn.name}</span>
+                    <span className={styles.itemName} title={fn.name}>
+                      {fn.name}
+                    </span>
                   </button>
                 ))}
                 {filteredFunctions.length === 0 && (
@@ -466,21 +377,28 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
 
             {activeTab === "field" && (
               <div className={styles.itemList}>
-                {filteredFields.map((field) => (
-                  <button
-                    key={field.id}
-                    className={styles.itemButton}
-                    onClick={() => handleClickInsert(createFieldSuggestion(field))}
-                  >
-                    <span className={styles.fieldBadge}>F</span>
-                    <span className={styles.itemName}>
-                      {field.businessName || field.name}
-                    </span>
-                    {field.tableName && (
-                      <span className={styles.tableTag}>{field.tableName}</span>
-                    )}
-                  </button>
-                ))}
+                {filteredFields.map((field) => {
+                  const sourceLabel = getFieldSourceLabel(field);
+                  const displayName = field.businessName || field.name;
+
+                  return (
+                    <button
+                      key={field.id}
+                      className={styles.itemButton}
+                      onClick={() => handleClickInsert(createFieldSuggestion(field))}
+                    >
+                      <span className={styles.fieldBadge}>F</span>
+                      <span className={styles.itemName} title={displayName}>
+                        {displayName}
+                      </span>
+                      {sourceLabel ? (
+                        <span className={styles.tableTag} title={sourceLabel}>
+                          {sourceLabel}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
                 {filteredFields.length === 0 && (
                   <div className={styles.emptyState}>暂无匹配的字段</div>
                 )}
@@ -489,18 +407,22 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
 
             {activeTab === "metric" && (
               <div className={styles.itemList}>
-                {filteredMetrics.map((metric) => (
-                  <button
-                    key={metric.id}
-                    className={styles.itemButton}
-                    onClick={() => handleClickInsert(createMetricSuggestion(metric))}
-                  >
-                    <span className={styles.metricBadge}>M</span>
-                    <span className={styles.itemName}>
-                      {metric.businessName || metric.name}
-                    </span>
-                  </button>
-                ))}
+                {filteredMetrics.map((metric) => {
+                  const displayName = metric.businessName || metric.name;
+
+                  return (
+                    <button
+                      key={metric.id}
+                      className={styles.itemButton}
+                      onClick={() => handleClickInsert(createMetricSuggestion(metric))}
+                    >
+                      <span className={styles.metricBadge}>M</span>
+                      <span className={styles.itemName} title={displayName}>
+                        {displayName}
+                      </span>
+                    </button>
+                  );
+                })}
                 {filteredMetrics.length === 0 && (
                   <div className={styles.emptyState}>暂无匹配的指标</div>
                 )}

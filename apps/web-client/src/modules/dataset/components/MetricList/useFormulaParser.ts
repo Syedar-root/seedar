@@ -69,11 +69,11 @@ export function useFormulaParser({ fields, metrics }: UseFormulaParserProps) {
   const toDisplay = useCallback(
     (expression: string): string => {
       return expression
-        .replace(/#M([^#\s+\-*/()]+)/g, (_, id) => {
+        .replace(/#M(\d+)/g, (_, id) => {
           const numId = isNaN(Number(id)) ? id : Number(id);
           return getMetricName(numId);
         })
-        .replace(/#F([^#\s+\-*/()]+)/g, (_, id) => {
+        .replace(/#F(\d+)/g, (_, id) => {
           const numId = isNaN(Number(id)) ? id : Number(id);
           return getFieldName(numId);
         });
@@ -138,11 +138,11 @@ export function useFormulaParser({ fields, metrics }: UseFormulaParserProps) {
       });
 
       fields.forEach((field) => {
-        const name = field.businessName || field.name;
-        if (name?.toLowerCase().includes(lowerFilter)) {
+        const displayName = field.businessName || field.name;
+        if (displayName?.toLowerCase().includes(lowerFilter)) {
           items.push({
             id: field.id,
-            name,
+            name: field.name,
             businessName: field.businessName,
             type: "field",
           });
@@ -150,11 +150,11 @@ export function useFormulaParser({ fields, metrics }: UseFormulaParserProps) {
       });
 
       metrics.forEach((metric) => {
-        const name = metric.businessName || metric.name;
-        if (name?.toLowerCase().includes(lowerFilter)) {
+        const displayName = metric.businessName || metric.name;
+        if (displayName?.toLowerCase().includes(lowerFilter)) {
           items.push({
             id: metric.id,
-            name,
+            name: metric.name,
             businessName: metric.businessName,
             type: "metric",
           });

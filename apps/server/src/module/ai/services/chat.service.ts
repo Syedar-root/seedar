@@ -78,7 +78,7 @@ export class ChatService {
   `;
 
   private readonly DEMAND_TOOL_MAP = {
-    'data-query': ['getDataAtTemp', 'getDatasetInfo'],
+    'data-query': ['getDataAtTemp', 'getDatasetInfo', 'getDatasourceInfo'],
     'chart-recommend': [
       'askQuestion',
       'getCurrentTime',

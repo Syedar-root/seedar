@@ -270,7 +270,6 @@ export class DSLTransformerV2 {
       joinMap.set(join.id, join);
     });
 
-    console.log('表map:', tableMap);
 
     const mainTableAlias = 't1';
 
@@ -802,8 +801,6 @@ export class DSLTransformerV2 {
     const joins: JoinSpec[] = [];
     let joinAliasIdx = 2;
 
-    console.log('rootTableId:', rootTableId);
-    console.log('requiredJoinSteps:', requiredJoinSteps);
 
     const reverseJoinType = (joinType?: JoinType): JoinType => {
       switch (joinType) {
@@ -892,7 +889,6 @@ export class DSLTransformerV2 {
       });
     }
 
-    console.log('tableAliasMap:', tableAliasMap);
 
     /**
      * 获取表别名
@@ -975,8 +971,6 @@ export class DSLTransformerV2 {
      */
     const preprocessExpression = (expression: string): string => {
       let result = expression;
-
-      console.log('原始表达式:', expression);
 
       // 先替换 #M 指标引用
       result = result.replace(/#M(\d+(?:,\d+)*)/g, (_match, ids) => {

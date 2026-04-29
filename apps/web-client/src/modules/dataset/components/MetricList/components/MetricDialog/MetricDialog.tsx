@@ -8,8 +8,8 @@ import {
   MetricType,
 } from "#pkg/seedar/types";
 import styles from "./MetricDialog.module.scss";
-import { FormulaEditor } from "./FormulaEditor";
-import { useFormulaParser } from "./useFormulaParser";
+import { FormulaEditor } from "../FormulaEditor";
+import { useFormulaParser } from "../../useFormulaParser";
 
 interface MetricDialogProps {
   open: boolean;
@@ -99,13 +99,14 @@ export const MetricDialog: React.FC<MetricDialogProps> = ({
     const storageExpression = toStorage(expression);
 
     const metricData: DatasetMetricResponse = {
+      ...(editMetric || {}),
       id: editMetric?.id || 0,
       name,
       businessName: businessName || undefined,
       description: description || undefined,
       expression: storageExpression,
       alias: businessName || name,
-      metricType: MetricType.AGGREGATE,
+      metricType: editMetric?.metricType || MetricType.AGGREGATE,
       distinct: editMetric?.distinct || false,
       timeFieldId: timeFieldId ? parseInt(timeFieldId, 10) : undefined,
     };
@@ -199,6 +200,7 @@ export const MetricDialog: React.FC<MetricDialogProps> = ({
                 </div>
                 <div className={styles.formulaSection}>
                   <FormulaEditor
+                    key={editMetric?.id ?? "new-metric"}
                     fields={fields.map((f) => ({
                       id: f.id,
                       name: f.name,

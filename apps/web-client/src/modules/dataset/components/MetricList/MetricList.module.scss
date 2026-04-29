@@ -100,12 +100,53 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  flex-wrap: wrap;
 }
 
 .metricName {
   font-size: var(--font-base);
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.typeTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.typeAggregate {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.typeRowLevel {
+  background: color-mix(in srgb, var(--info) 16%, transparent);
+  color: var(--info);
+}
+
+.typePostAggregate {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--warning);
+}
+
+.typeArithmetic {
+  background: color-mix(in srgb, var(--primary-active) 16%, transparent);
+  color: var(--primary-active);
+}
+
+.typePeriod {
+  background: color-mix(in srgb, var(--accent-1-text) 14%, transparent);
+  color: var(--accent-1-text);
+}
+
+.typeDefault {
+  background: var(--bg-base);
+  color: var(--text-secondary);
 }
 
 .metricActions {

@@ -13,6 +13,7 @@ import {
   PeriodCalculationMode,
 } from '../../dataset/dataset.types';
 import {
+  BinaryExpr,
   InExpr,
   BetweenExpr,
   LikeExpr,
@@ -649,6 +650,62 @@ describe('Dynamic Join Selection', () => {
       expect(dimensionExpr).toBeInstanceOf(FieldRefExpr);
       expect(dimensionExpr.meta?.alias).toBe('order_id_expr');
       expect(dimensionExpr.meta?.businessName).toBe('order_id_expr');
+    });
+
+    it('should parse COUNT(comparison) expression metrics into conditional count semantics', () => {
+      const expressionMetric = {
+        id: 3,
+        name: 'yes_rate',
+        businessName: 'Yes Rate',
+        metricType: MetricType.ARITHMETIC,
+        expression: "COUNT(#F9 = 'Yes') / #M2",
+      } as DatasetMetricResponse;
+
+      const datasetInfo = {
+        ...mockDatasetInfo,
+        fields: [
+          ...(mockDatasetInfo.fields || []),
+          {
+            id: 9,
+            tableId: 1,
+            name: 'survey_answer',
+            businessName: 'Survey Answer',
+            type: 'string' as any,
+            datasourceColumnId: 9,
+          } as DatasetFieldResponse,
+        ],
+        metrics: [...(mockDatasetInfo.metrics || []), expressionMetric],
+      } as DatasetResponse;
+
+      const result = DSLTransformerV2.transform(
+        {
+          datasetId: 1,
+          tableId: 1,
+          dimensions: [1],
+          metrics: [{ id: 3 }],
+        },
+        datasetInfo,
+        mockTables,
+      );
+
+      const [metricExpr] = result.metrics as [BinaryExpr];
+      expect(metricExpr).toBeInstanceOf(BinaryExpr);
+      expect(metricExpr.operator).toBe('/');
+
+      const numerator = metricExpr.left as AggExpr;
+      expect(numerator).toBeInstanceOf(AggExpr);
+      expect(numerator.functionName).toBe('COUNT');
+      expect(numerator.arg).toBeInstanceOf(ConditionalExpr);
+
+      const conditionalArg = numerator.arg as ConditionalExpr;
+      expect(conditionalArg.condition).toBeInstanceOf(ComparisonExpr);
+      expect((conditionalArg.condition as ComparisonExpr).operator).toBe('=');
+      expect(conditionalArg.consequent).toEqual(new LiteralExpr(1));
+      expect(conditionalArg.alternate).toEqual(new LiteralExpr(null));
+
+      const denominator = metricExpr.right as AggExpr;
+      expect(denominator).toBeInstanceOf(AggExpr);
+      expect(denominator.functionName).toBe('COUNT');
     });
 
     it('should collect joins from derived dimensions on non-main table', () => {

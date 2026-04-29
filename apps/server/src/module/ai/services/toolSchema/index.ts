@@ -16,6 +16,12 @@ const getDatasetInfoSchema = z.object({
 
 type GetDatasetInfoParams = z.infer<typeof getDatasetInfoSchema>;
 
+const getDatasourceInfoSchema = z.object({
+  datasourceId: z.union([z.string(), z.number()]).describe('数据源 ID'),
+});
+
+type GetDatasourceInfoParams = z.infer<typeof getDatasourceInfoSchema>;
+
 const operatorList = ['=', '!=', '>', '>=', '<', '<='] as const;
 
 const getDataAtTempSchema = z.object({
@@ -98,11 +104,13 @@ type ToolMarketExecutorParams = z.infer<typeof toolMarketExecutorSchema>;
 export {
   askQuestionSchema,
   getDataAtTempSchema,
+  getDatasourceInfoSchema,
   getDatasetInfoSchema,
   startWorkflowSchema,
   toolMarketExecutorSchema,
   type AskQuestionParams,
   type GetDataAtTempParams,
+  type GetDatasourceInfoParams,
   type GetDatasetInfoParams,
   type StartWorkflowParams,
   type ToolMarketExecutorParams,
