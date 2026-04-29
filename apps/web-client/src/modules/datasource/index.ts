@@ -6,5 +6,6 @@ export { DatasourceTypeSelector } from "./components/DatasourceTypeSelector/Data
 export { ConnectionForm } from "./components/ConnectionForm";
 export { ConnectionTest } from "./components/ConnectionTest";
 export { CreateDatasourceDialog } from "./components/CreateDatasourceDialog";
+export { DatasourceFormDialog } from "./components/DatasourceFormDialog";
 export { TableStructure } from "./components/TableStructure";
 export { DeleteConfirmDialog } from "./components/DeleteConfirmDialog";
