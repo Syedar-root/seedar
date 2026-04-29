@@ -28,6 +28,15 @@ export const PANEL_WORKFLOW_DISPLAY_TYPES: DisplayPanelType[] = [
   "radar",
 ];
 
+export const PANEL_WORKFLOW_ADVANCED_SPEC_DISPLAY_TYPES: DisplayPanelType[] = [
+  "line",
+  "bar",
+  "area",
+  "pie",
+  "scatter",
+  "radar",
+];
+
 export const PANEL_PAGE_COPY = {
   statusUnsaved: "未保存",
   statusDraft: "草稿",
@@ -71,6 +80,12 @@ export const PANEL_PAGE_COPY = {
     "接受后，这一轮 AI 修改会成为新的起点。撤销后，会完整回到本轮 AI 修改开始前的状态。",
   workflowDiscardAction: "撤销本轮 AI 修改",
   workflowAcceptAction: "接受并作为当前结果",
+  advancedSpecPayloadInvalid:
+    "缺少合法的高级 Spec payload，无法配置图表",
+  advancedSpecDisplayTypeInvalid:
+    "高级 Spec 缺少合法的图表类型，无法配置图表",
+  advancedSpecTypeInvalid:
+    "高级 Spec 缺少合法的 spec.type，无法配置图表",
 } as const;
 
 export const PANEL_STATUS_LABELS = {

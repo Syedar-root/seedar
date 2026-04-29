@@ -18,7 +18,10 @@ import { Aside } from "../components/aside";
 import { DatasetSelector } from "../components/datasetSelector";
 import { EditableTitle } from "../components/editableTitle";
 import { PanelEditor } from "../components/panelEditor";
-import type { DisplayPanelType } from "../components/panelEditor/types";
+import type {
+  ChartType,
+  DisplayPanelType,
+} from "../components/panelEditor/types";
 import { QueryZone } from "../components/queryZone/queryZone";
 import type { PanelEditorSnapshot } from "./usePanelEditorStateComposed.hook";
 import { useDatasetSelector } from "./useDatasetSelector";
@@ -34,6 +37,7 @@ import {
   getPreviewRowCount,
   getViewportMode,
   PANEL_PAGE_COPY,
+  PANEL_WORKFLOW_ADVANCED_SPEC_DISPLAY_TYPES,
   PANEL_STATUS_LABELS,
   PANEL_WORKFLOW_DISPLAY_TYPES,
   type LayoutMode,
@@ -141,6 +145,9 @@ const createWorkflowError = (code: string, message: string): WorkflowError => ({
   code,
   message,
 });
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
 /**
  * 聚合 PanelPage 所需的业务状态与事件，确保页面层仅负责布局和组件编排。
@@ -808,6 +815,65 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
         });
         return {
           displayType: nextDisplayType,
+        };
+      },
+      set_advanced_spec: (action) => {
+        captureWorkflowSnapshot();
+
+        if (!isRecord(action.payload)) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            PANEL_PAGE_COPY.advancedSpecPayloadInvalid,
+          );
+        }
+
+        const payload = action.payload;
+        const spec = payload.spec;
+        if (!isRecord(spec)) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            PANEL_PAGE_COPY.advancedSpecPayloadInvalid,
+          );
+        }
+
+        const specType =
+          typeof spec.type === "string" ? spec.type : undefined;
+        if (!specType?.trim()) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            PANEL_PAGE_COPY.advancedSpecTypeInvalid,
+          );
+        }
+
+        const nextDisplayType =
+          displayType !== "table" && displayType !== "card"
+            ? displayType
+            : PANEL_WORKFLOW_ADVANCED_SPEC_DISPLAY_TYPES.includes(
+                  specType as DisplayPanelType,
+                )
+              ? (specType as DisplayPanelType)
+              : "bar";
+
+        if (!PANEL_WORKFLOW_ADVANCED_SPEC_DISPLAY_TYPES.includes(nextDisplayType)) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            PANEL_PAGE_COPY.advancedSpecDisplayTypeInvalid,
+          );
+        }
+
+        flushSync(() => {
+          handleEditorChange(nextDisplayType as DisplayPanelType, {
+            ...editorConfig,
+            type: nextDisplayType as ChartType,
+            isAdvancedSpecMode: true,
+            advancedSpec: { ...spec },
+          });
+        });
+
+        return {
+          displayType: nextDisplayType,
+          advancedSpecMode: true,
+          specType: specType ?? null,
         };
       },
       run_preview: async () => {

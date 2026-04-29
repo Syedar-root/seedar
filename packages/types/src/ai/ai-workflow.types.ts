@@ -21,6 +21,12 @@ export type WorkflowPage =
   | 'panel'
   | 'dataset';
 
+// ----------------------------------------------------------------------------
+// Template: query_current_panel_as_table_v1
+// Template: query_current_panel_as_chart_v1
+// Shared panel workflow payloads
+// ----------------------------------------------------------------------------
+
 export interface PanelQueryStateDimensionPayload {
   fieldId?: number;
   alias?: string;
@@ -77,6 +83,26 @@ export interface PanelQueryStatePayload {
   topN?: number;
 }
 
+// ----------------------------------------------------------------------------
+// Template: query_current_panel_as_chart_v1
+// ----------------------------------------------------------------------------
+
+export const PANEL_WORKFLOW_CHART_DISPLAY_TYPES = [
+  'line',
+  'bar',
+  'area',
+  'pie',
+  'scatter',
+  'radar',
+] as const;
+
+export type PanelWorkflowChartDisplayType =
+  typeof PANEL_WORKFLOW_CHART_DISPLAY_TYPES[number];
+
+export interface PanelWorkflowSetAdvancedSpecPayload {
+  spec: Record<string, unknown>;
+}
+
 export interface WorkflowActionPresentation {
   title: string;
   description?: string;
@@ -94,6 +120,7 @@ export type PanelWorkflowTriggerActionTarget =
   | 'set_query_state'
   | 'set_panel_title'
   | 'set_display_type'
+  | 'set_advanced_spec'
   | 'run_preview';
 
 export type DatasetWorkflowNavigateTarget =
@@ -166,6 +193,10 @@ export const PANEL_WORKFLOW_TRIGGER_ACTION_PRESENTATION: Record<
   set_display_type: {
     title: '切换展示类型',
     description: '将当前图表切换到目标展示形式。',
+  },
+  set_advanced_spec: {
+    title: '配置高级 Spec',
+    description: '将当前图表切换到高级 Spec 模式，并写入图表配置。',
   },
   run_preview: {
     title: '执行预览',

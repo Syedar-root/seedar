@@ -3,14 +3,19 @@ import {
   PeriodCalculationMode,
   PeriodOverPeriodType,
 } from '../dataset';
-import type {
-  PanelQueryStatePayload,
-  PanelQueryStateDimensionPayload,
-  PanelQueryStateFilterPayload,
-  PanelQueryStateMetricPayload,
-  PanelQueryStateOrderByPayload,
-  PanelQueryStateTempMetricPayload,
+import {
+  type PanelQueryStateDimensionPayload,
+  type PanelQueryStateFilterPayload,
+  type PanelQueryStateMetricPayload,
+  type PanelQueryStateOrderByPayload,
+  type PanelQueryStatePayload,
+  type PanelQueryStateTempMetricPayload,
+  type PanelWorkflowSetAdvancedSpecPayload,
 } from './ai-workflow.types';
+
+// ----------------------------------------------------------------------------
+// Shared schema helpers
+// ----------------------------------------------------------------------------
 
 const panelQueryStateDimensionPayloadSchema:
   z.ZodType<PanelQueryStateDimensionPayload> = z.object({
@@ -74,6 +79,26 @@ export const panelQueryStatePayloadSchema: z.ZodType<PanelQueryStatePayload> =
     topN: z.number().int().positive().optional(),
   });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+const buildPanelQueryStateFromRecord = (record: Record<string, unknown>) =>
+  isRecord(record.queryState)
+    ? { ...record.queryState }
+    : {
+        datasetId: record.datasetId,
+        dimensions: record.dimensions,
+        metrics: record.metrics,
+        filters: record.filters,
+        tempMetrics: record.tempMetrics,
+        orderBy: record.orderBy,
+        topN: record.topN,
+      };
+
+// ----------------------------------------------------------------------------
+// Template: query_current_panel_as_table_v1
+// ----------------------------------------------------------------------------
+
 export interface QueryCurrentPanelAsTableWorkflowParams
   extends Record<string, unknown> {
   set_query_state: PanelQueryStatePayload;
@@ -82,36 +107,17 @@ export interface QueryCurrentPanelAsTableWorkflowParams
 const normalizeQueryCurrentPanelAsTableWorkflowParams = (
   input: unknown,
 ): QueryCurrentPanelAsTableWorkflowParams | unknown => {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+  if (!isRecord(input)) {
     return input;
   }
 
-  const record = input as Record<string, unknown>;
-  if (
-    record.set_query_state &&
-    typeof record.set_query_state === 'object' &&
-    !Array.isArray(record.set_query_state)
-  ) {
+  const record = input;
+  if (isRecord(record.set_query_state)) {
     return record;
   }
 
-  const queryState =
-    record.queryState &&
-    typeof record.queryState === 'object' &&
-    !Array.isArray(record.queryState)
-      ? { ...(record.queryState as Record<string, unknown>) }
-      : {
-          datasetId: record.datasetId,
-          dimensions: record.dimensions,
-          metrics: record.metrics,
-          filters: record.filters,
-          tempMetrics: record.tempMetrics,
-          orderBy: record.orderBy,
-          topN: record.topN,
-        };
-
   return {
-    set_query_state: queryState,
+    set_query_state: buildPanelQueryStateFromRecord(record),
   };
 };
 
@@ -120,5 +126,58 @@ export const queryCurrentPanelAsTableWorkflowParamsSchema:
     normalizeQueryCurrentPanelAsTableWorkflowParams,
     z.object({
       set_query_state: panelQueryStatePayloadSchema,
+    }),
+  );
+
+// ----------------------------------------------------------------------------
+// Template: query_current_panel_as_chart_v1
+// ----------------------------------------------------------------------------
+
+const panelWorkflowSetAdvancedSpecPayloadSchema:
+  z.ZodType<PanelWorkflowSetAdvancedSpecPayload> = z
+    .object({
+      spec: z.record(z.string(), z.unknown()),
+    })
+    .refine(
+      (payload) =>
+        typeof payload.spec.type === 'string' && payload.spec.type.trim().length > 0,
+      {
+        message: 'set_advanced_spec.spec.type 必须是非空字符串',
+      },
+    );
+
+export interface QueryCurrentPanelAsChartWorkflowParams
+  extends Record<string, unknown> {
+  set_advanced_spec: PanelWorkflowSetAdvancedSpecPayload;
+}
+
+const normalizeQueryCurrentPanelAsChartWorkflowParams = (
+  input: unknown,
+): QueryCurrentPanelAsChartWorkflowParams | unknown => {
+  if (!isRecord(input)) {
+    return input;
+  }
+
+  const record = input;
+  const advancedSpecPayload = isRecord(record.set_advanced_spec)
+    ? record.set_advanced_spec
+    : isRecord(record.advancedSpec)
+      ? { spec: record.advancedSpec }
+      : isRecord(record.spec)
+        ? { spec: record.spec }
+        : isRecord(record.chartSpec)
+          ? { spec: record.chartSpec }
+          : undefined;
+
+  return {
+    set_advanced_spec: advancedSpecPayload,
+  };
+};
+
+export const queryCurrentPanelAsChartWorkflowParamsSchema:
+  z.ZodType<QueryCurrentPanelAsChartWorkflowParams> = z.preprocess(
+    normalizeQueryCurrentPanelAsChartWorkflowParams,
+    z.object({
+      set_advanced_spec: panelWorkflowSetAdvancedSpecPayloadSchema,
     }),
   );
