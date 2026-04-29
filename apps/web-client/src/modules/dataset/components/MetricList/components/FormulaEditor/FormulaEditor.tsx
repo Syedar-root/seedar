@@ -3,6 +3,7 @@ import { Sender } from "@ant-design/x";
 import type { GetRef } from "antd";
 import type { SlotConfigType } from "@ant-design/x/es/sender/interface";
 import { Search } from "lucide-react";
+import type { ReactNode } from "react";
 import {
   useFormulaParser,
   SuggestionItem,
@@ -40,6 +41,29 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
   value,
   onChange,
 }) => {
+  const renderTokenLabel = useCallback(
+    (item: SuggestionItem): ReactNode => {
+      if (item.type === "field") {
+        return (
+          <span className={styles.fieldTokenLabel}>
+            {item.businessName || item.name}
+          </span>
+        );
+      }
+
+      if (item.type === "metric") {
+        return (
+          <span className={styles.metricTokenLabel}>
+            {item.businessName || item.name}
+          </span>
+        );
+      }
+
+      return item.name;
+    },
+    [],
+  );
+
   const [showSuggestion, setShowSuggestion] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [activeTab, setActiveTab] = useState<"function" | "field" | "metric">(
@@ -47,7 +71,7 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
   );
   const [sidebarSearchKeyword, setSidebarSearchKeyword] = useState("");
   const [senderSlotConfig] = useState<SlotConfigType[]>(() =>
-    buildFormulaSlotConfig(value, fields, metrics),
+    buildFormulaSlotConfig(value, fields, metrics, renderTokenLabel),
   );
   const inputRef = useRef<GetRef<typeof Sender>>(null);
 
@@ -191,7 +215,7 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
             type: "tag",
             key: `${fieldItem.type}-${fieldItem.id}-${uniqueSuffix}`,
             props: {
-              label: fieldItem.businessName || fieldItem.name,
+              label: renderTokenLabel(fieldItem),
               value: `#F${fieldItem.id}`,
             },
             formatResult: (slotValue: string) =>
@@ -205,7 +229,7 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
             type: "tag",
             key: `${metricItem.type}-${metricItem.id}-${uniqueSuffix}`,
             props: {
-              label: metricItem.businessName || metricItem.name,
+              label: renderTokenLabel(metricItem),
               value: `#M${metricItem.id}`,
             },
             formatResult: (slotValue: string) =>

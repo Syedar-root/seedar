@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { SlotConfigType } from "@ant-design/x/es/sender/interface";
 import { FieldItem, MetricItem } from "../useFormulaParser";
 
@@ -41,15 +42,20 @@ export const getFieldSourceLabel = (
   return `${field.tableName}.${field.name}`;
 };
 
+type TokenLabelRenderer = (item: FieldItem | MetricItem) => ReactNode;
+
 const createTokenSlot = (
   item: FieldItem | MetricItem,
   prefix: "F" | "M",
   uniqueSuffix: string,
+  renderTokenLabel?: TokenLabelRenderer,
 ): SlotConfigType => ({
   type: "tag",
   key: `${item.type}-${item.id}-${uniqueSuffix}`,
   props: {
-    label: item.businessName || item.name,
+    label: renderTokenLabel
+      ? renderTokenLabel(item)
+      : item.businessName || item.name,
     value: `#${prefix}${item.id}`,
   },
   formatResult: (slotValue: string) =>
@@ -60,6 +66,7 @@ export const buildFormulaSlotConfig = (
   expression: string,
   fields: FormulaField[],
   metrics: FormulaMetric[],
+  renderTokenLabel?: TokenLabelRenderer,
 ): SlotConfigType[] => {
   if (!expression) {
     return [];
@@ -87,11 +94,21 @@ export const buildFormulaSlotConfig = (
         slotConfig.push({ type: "text", value: matched });
       } else if (tokenType === "F") {
         slotConfig.push(
-          createTokenSlot(createFieldSuggestion(sourceItem), "F", `${offset}`),
+          createTokenSlot(
+            createFieldSuggestion(sourceItem),
+            "F",
+            `${offset}`,
+            renderTokenLabel,
+          ),
         );
       } else {
         slotConfig.push(
-          createTokenSlot(createMetricSuggestion(sourceItem), "M", `${offset}`),
+          createTokenSlot(
+            createMetricSuggestion(sourceItem),
+            "M",
+            `${offset}`,
+            renderTokenLabel,
+          ),
         );
       }
 

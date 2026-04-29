@@ -123,7 +123,11 @@ export const DatasetDetailPage = () => {
 
   return (
     <div className={styles.container}>
-      <DatasetHero dataset={dataset} onBack={() => navigate("/dataset")} />
+      <DatasetHero
+        dataset={dataset}
+        onBack={() => navigate("/dataset")}
+        onEdit={() => navigate(`/dataset/${datasetId}/edit`)}
+      />
 
       <main className={styles.mainContent}>
         {/* <DatasetMetadataBar dataset={dataset} /> */}

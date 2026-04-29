@@ -42,7 +42,7 @@
   }
 
   :global(.ant-sender-input-content) {
-    font-family: inherit;
+    font-family: var(--font-mono);
     font-size: var(--font-base);
     line-height: 1.6;
     color: var(--text-primary);
