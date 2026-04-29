@@ -44,6 +44,11 @@ import {
   type PreviewPanel,
   type SidePaneKey,
 } from "../utils/panelPage.utils";
+import {
+  buildPanelSceneSummaryForAi,
+  buildPanelVisualizationSnapshotForAi,
+  serializePanelDslForAi,
+} from "../utils/panelAiScene";
 
 interface PanelWorkflowSnapshot {
   editor: PanelEditorSnapshot;
@@ -243,22 +248,75 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
     () => buildCurrentDsl(buildDsl, queryData?.dsl as QueryDSL | undefined),
     [buildDsl, queryData?.dsl],
   );
+  const aiDsl = useMemo(
+    () => serializePanelDslForAi(currentDsl, activeDataset),
+    [activeDataset, currentDsl],
+  );
+  const visualizationSnapshot = useMemo(
+    () =>
+      buildPanelVisualizationSnapshotForAi({
+        displayType,
+        editorConfig,
+        dimensionItems,
+        dropMetrics,
+        dropFilters,
+        tempMetrics,
+      }),
+    [dimensionItems, displayType, dropFilters, dropMetrics, editorConfig, tempMetrics],
+  );
+  const panelSceneSummary = useMemo(
+    () =>
+      buildPanelSceneSummaryForAi({
+        datasetName: activeDataset?.name,
+        displayType,
+        editorConfig,
+        dimensionItems,
+        dropMetrics,
+        dropFilters,
+        tempMetrics,
+      }),
+    [
+      activeDataset?.name,
+      dimensionItems,
+      displayType,
+      dropFilters,
+      dropMetrics,
+      editorConfig,
+      tempMetrics,
+    ],
+  );
   const panelScene = useMemo<AiChatScene>(
     () => ({
       path: `/panel/${panelData?.id ?? panelId ?? "create"}`,
       panelId: panelData?.id ?? panelId,
       datasetId: activeDataset?.id,
+      datasetName: activeDataset?.name,
       queryId: queryData?.id,
       title,
-      dsl: currentDsl,
+      dsl: aiDsl,
+      selectedDimensionNames: panelSceneSummary.selectedDimensionNames,
+      selectedMetricNames: panelSceneSummary.selectedMetricNames,
+      selectedFilterNames: panelSceneSummary.selectedFilterNames,
+      tempMetricNames: panelSceneSummary.tempMetricNames,
+      fieldBindingsSummary: panelSceneSummary.fieldBindingsSummary,
+      sceneSummaryText: panelSceneSummary.readableText,
+      visualizationSnapshot,
     }),
     [
       activeDataset?.id,
-      currentDsl,
+      activeDataset?.name,
+      aiDsl,
+      panelSceneSummary.fieldBindingsSummary,
+      panelSceneSummary.readableText,
+      panelSceneSummary.selectedDimensionNames,
+      panelSceneSummary.selectedFilterNames,
+      panelSceneSummary.selectedMetricNames,
+      panelSceneSummary.tempMetricNames,
       panelData?.id,
       panelId,
       queryData?.id,
       title,
+      visualizationSnapshot,
     ],
   );
 
