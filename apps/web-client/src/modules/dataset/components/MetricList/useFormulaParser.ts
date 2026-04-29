@@ -69,11 +69,11 @@ export function useFormulaParser({ fields, metrics }: UseFormulaParserProps) {
   const toDisplay = useCallback(
     (expression: string): string => {
       return expression
-        .replace(/#M([^#\s+\-*/()]+)/g, (_, id) => {
+        .replace(/#M(\d+)/g, (_, id) => {
           const numId = isNaN(Number(id)) ? id : Number(id);
           return getMetricName(numId);
         })
-        .replace(/#F([^#\s+\-*/()]+)/g, (_, id) => {
+        .replace(/#F(\d+)/g, (_, id) => {
           const numId = isNaN(Number(id)) ? id : Number(id);
           return getFieldName(numId);
         });

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { Sender } from "@ant-design/x";
 import type { GetRef } from "antd";
 import type { SlotConfigType } from "@ant-design/x/es/sender/interface";
@@ -15,7 +15,7 @@ import { FormulaSuggestion } from "./FormulaSuggestion";
 import { ScrollArea } from "@/core/components/ui/ScrollArea/ScrollArea";
 import styles from "./FormulaEditor.module.scss";
 
-const FORMULA_TOKEN_PATTERN = /#([FM])([^#\s+\-*/()]+)/g;
+const FORMULA_TOKEN_PATTERN = /#([FM])(\d+)/g;
 const FORMULA_PLACEHOLDER = "输入公式，例如：SUM(amount) * price";
 
 interface FormulaEditorProps {
@@ -57,7 +57,15 @@ const createTokenSlot = (
   type: "tag",
   key: `${item.type}-${item.id}-${uniqueSuffix}`,
   props: {
-    label: item.name,
+    label: (
+      <span
+        className={
+          item.type === "field" ? styles.fieldTokenLabel : styles.metricTokenLabel
+        }
+      >
+        {item.name}
+      </span>
+    ),
     value: `#${prefix}${item.id}`,
   },
   formatResult: (slotValue: string) =>
@@ -157,10 +165,7 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
   const [senderSlotConfig, setSenderSlotConfig] = useState<SlotConfigType[]>(() =>
     buildFormulaSlotConfig(value, fields, metrics),
   );
-  const [senderInstanceKey, setSenderInstanceKey] = useState(0);
   const inputRef = useRef<GetRef<typeof Sender>>(null);
-  const lastStorageValueRef = useRef(value);
-  const lastLabelSignatureRef = useRef("");
 
   const { toStorage, detectSuggestionType, getSuggestionFilter } =
     useFormulaParser({
@@ -171,24 +176,6 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
   const normalizedSidebarSearchKeyword = sidebarSearchKeyword
     .trim()
     .toLowerCase();
-  const labelSignature = useMemo(
-    () =>
-      JSON.stringify({
-        fields: fields.map((field) => ({
-          id: field.id,
-          name: field.name,
-          businessName: field.businessName,
-          tableName: field.tableName,
-        })),
-        metrics: metrics.map((metric) => ({
-          id: metric.id,
-          name: metric.name,
-          businessName: metric.businessName,
-        })),
-      }),
-    [fields, metrics],
-  );
-
   const filteredFunctions = useMemo(
     () =>
       !normalizedSidebarSearchKeyword
@@ -286,32 +273,20 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
     setShowSuggestion(false);
   }, [detectSuggestionType, fields, getSuggestionFilter, metrics]);
 
-  useEffect(() => {
-    const shouldResync =
-      value !== lastStorageValueRef.current ||
-      labelSignature !== lastLabelSignatureRef.current;
-
-    if (!shouldResync) {
-      return;
-    }
-
-    setSenderSlotConfig(buildFormulaSlotConfig(value, fields, metrics));
-    setSenderInstanceKey((previousKey) => previousKey + 1);
-    lastStorageValueRef.current = value;
-    lastLabelSignatureRef.current = labelSignature;
-  }, [fields, labelSignature, metrics, value]);
-
   const handleSenderChange = useCallback(
     (nextValue: string) => {
       const storageValue = toStorage(nextValue);
-      lastStorageValueRef.current = storageValue;
+      if (storageValue === value) {
+        return;
+      }
+
       onChange(storageValue);
 
       requestAnimationFrame(() => {
         syncSuggestionsFromCursor();
       });
     },
-    [onChange, syncSuggestionsFromCursor, toStorage],
+    [onChange, syncSuggestionsFromCursor, toStorage, value],
   );
 
   const insertSuggestionItem = useCallback(
@@ -364,7 +339,6 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
       <div className={styles.editorSection}>
         <div className={styles.editorWrapper}>
           <Sender
-            key={senderInstanceKey}
             ref={inputRef}
             classNames={{
               root: styles.sender,

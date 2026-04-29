@@ -1,9 +1,14 @@
 import { useState, useMemo } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { DatasetMetricResponse, DatasetFieldResponse } from "#pkg/seedar/types";
+import {
+  DatasetMetricResponse,
+  DatasetFieldResponse,
+  MetricType,
+} from "#pkg/seedar/types";
 import { Switch } from "@/core/components/ui/Switch";
 import { MetricDialog } from "./MetricDialog";
 import { MetricListProps } from "./types";
+import { getMetricTypeLabel } from "./metricExpression";
 import styles from "./MetricList.module.scss";
 
 type DisplayMode = "business" | "original";
@@ -53,6 +58,25 @@ const resolveExpression = (
   return resolved;
 };
 
+const getMetricTypeClass = (
+  metricType?: DatasetMetricResponse["metricType"],
+): string => {
+  switch (metricType) {
+    case MetricType.AGGREGATE:
+      return styles.typeAggregate;
+    case MetricType.ROW_LEVEL:
+      return styles.typeRowLevel;
+    case MetricType.POST_AGGREGATE:
+      return styles.typePostAggregate;
+    case MetricType.ARITHMETIC:
+      return styles.typeArithmetic;
+    case MetricType.PERIOD_OVER_PERIOD:
+      return styles.typePeriod;
+    default:
+      return styles.typeDefault;
+  }
+};
+
 export const MetricList = ({
   metrics,
   fields,
@@ -76,7 +100,6 @@ export const MetricList = ({
   }, [metrics, fields, displayMode]);
 
   const handleAddMetric = () => {
-    console.log("hcs ");
     setEditMetric(undefined);
     setDialogOpen(true);
   };
@@ -123,14 +146,16 @@ export const MetricList = ({
         <div className={styles.emptyState}>
           <p className={styles.emptyText}>暂无指标</p>
         </div>
-        <MetricDialog
-          open={dialogOpen}
-          onClose={handleCloseDialog}
-          onSave={handleSaveMetric}
-          fields={fields}
-          metrics={metrics}
-          editMetric={editMetric}
-        />
+        {dialogOpen && (
+          <MetricDialog
+            open={dialogOpen}
+            onClose={handleCloseDialog}
+            onSave={handleSaveMetric}
+            fields={fields}
+            metrics={metrics}
+            editMetric={editMetric}
+          />
+        )}
       </div>
     );
   }
@@ -164,6 +189,11 @@ export const MetricList = ({
                 <span className={styles.metricName}>
                   {metric.businessName || metric.name}
                 </span>
+                <span
+                  className={`${styles.typeTag} ${getMetricTypeClass(metric.metricType)}`}
+                >
+                  {getMetricTypeLabel(metric.metricType)}
+                </span>
               </div>
               <div className={styles.metricActions}>
                 <button
@@ -190,14 +220,16 @@ export const MetricList = ({
         ))}
       </div>
 
-      <MetricDialog
-        open={dialogOpen}
-        onClose={handleCloseDialog}
-        onSave={handleSaveMetric}
-        fields={fields}
-        metrics={metrics}
-        editMetric={editMetric}
-      />
+      {dialogOpen && (
+        <MetricDialog
+          open={dialogOpen}
+          onClose={handleCloseDialog}
+          onSave={handleSaveMetric}
+          fields={fields}
+          metrics={metrics}
+          editMetric={editMetric}
+        />
+      )}
     </div>
   );
 };
