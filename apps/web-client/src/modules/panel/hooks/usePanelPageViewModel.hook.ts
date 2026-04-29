@@ -109,6 +109,10 @@ interface PanelPagePreview {
   cardConfig: ReturnType<typeof usePanelEditorState>["editorConfig"]["card"];
   emptyText: string;
   panelId?: string;
+  onChartRenderStatusChange: (status: {
+    ok: boolean;
+    error?: Error;
+  }) => void;
 }
 
 export interface UsePanelPageViewModelReturn {
@@ -141,6 +145,8 @@ interface WorkflowError {
   message: string;
 }
 
+type ChartRenderStatus = "idle" | "pending" | "success" | "error";
+
 const createWorkflowError = (code: string, message: string): WorkflowError => ({
   code,
   message,
@@ -168,6 +174,9 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
   const [hasPendingWorkflowChanges, setHasPendingWorkflowChanges] =
     useState(false);
   const workflowSnapshotRef = useRef<PanelWorkflowSnapshot | null>(null);
+  const chartRenderStatusRef = useRef<ChartRenderStatus>("idle");
+  const chartRenderErrorRef = useRef<Error | null>(null);
+  const currentDisplayTypeRef = useRef<DisplayPanelType>("table");
   const workflowPreviewContextRef = useRef<WorkflowPreviewContext>({
     hasDataset: false,
     canRun: false,
@@ -292,6 +301,7 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
   });
 
   const previewSpec = usePreviewSpec(displayType, editorConfig);
+  currentDisplayTypeRef.current = displayType;
   workflowPreviewContextRef.current = {
     hasDataset,
     canRun,
@@ -524,6 +534,49 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
     restoreWorkflowSnapshot();
     toast.success(PANEL_PAGE_COPY.workflowChangesDiscarded);
   }, [restoreWorkflowSnapshot]);
+
+  const handleChartRenderStatusChange = useCallback(
+    (status: { ok: boolean; error?: Error }) => {
+      chartRenderStatusRef.current = status.ok ? "success" : "error";
+      chartRenderErrorRef.current = status.ok ? null : (status.error ?? null);
+    },
+    [],
+  );
+
+  const waitForChartRenderResult = useCallback(async () => {
+    const currentDisplayType = currentDisplayTypeRef.current;
+    if (currentDisplayType === "table" || currentDisplayType === "card") {
+      return;
+    }
+
+    const waitForNextFrame = () =>
+      new Promise<void>((resolve) => {
+        if (typeof window === "undefined") {
+          setTimeout(resolve, 16);
+          return;
+        }
+
+        window.requestAnimationFrame(() => resolve());
+      });
+
+    for (let index = 0; index < 20; index += 1) {
+      await waitForNextFrame();
+
+      if (chartRenderStatusRef.current === "success") {
+        return;
+      }
+
+      if (chartRenderStatusRef.current === "error") {
+        const error = chartRenderErrorRef.current;
+        throw createWorkflowError(
+          "WORKFLOW_RUN_PREVIEW_FAILED",
+          error?.message
+            ? `${PANEL_PAGE_COPY.previewFailed}: ${error.message}`
+            : PANEL_PAGE_COPY.previewFailed,
+        );
+      }
+    }
+  }, []);
 
   const onPrimarySave = useCallback(() => {
     if (!hasDataset) {
@@ -903,6 +956,9 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           );
         }
 
+        chartRenderStatusRef.current = "pending";
+        chartRenderErrorRef.current = null;
+
         const previewResult = await runPreview(dsl);
         if (!previewResult) {
           throw createWorkflowError(
@@ -910,6 +966,8 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
             PANEL_PAGE_COPY.previewFailed,
           );
         }
+
+        await waitForChartRenderResult();
 
         return {
           previewExecuted: true,
@@ -1005,6 +1063,7 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
       cardConfig: editorConfig.card,
       emptyText: PANEL_PAGE_COPY.previewEmpty,
       panelId,
+      onChartRenderStatusChange: handleChartRenderStatusChange,
     },
     copy: {
       sideFields: PANEL_PAGE_COPY.sideFields,

@@ -9,7 +9,8 @@ import type { SeedarPanelProps } from "../types";
 export const useSeedarPanelContent = ({
   data,
   finalPanel,
-}: Pick<SeedarPanelProps, "data"> & {
+  onChartRenderStatusChange,
+}: Pick<SeedarPanelProps, "data" | "onChartRenderStatusChange"> & {
   finalPanel?: SeedarPanelProps["panel"];
 }) =>
   useMemo(() => {
@@ -17,7 +18,12 @@ export const useSeedarPanelContent = ({
 
     if (descriptor.kind === "chart") {
       return (
-        <Chart spec={descriptor.spec} queryId={descriptor.queryId} data={data} />
+        <Chart
+          spec={descriptor.spec}
+          queryId={descriptor.queryId}
+          data={data}
+          onRenderStatusChange={onChartRenderStatusChange}
+        />
       );
     }
 
@@ -47,4 +53,4 @@ export const useSeedarPanelContent = ({
     }
 
     return null;
-  }, [data, finalPanel]);
+  }, [data, finalPanel, onChartRenderStatusChange]);

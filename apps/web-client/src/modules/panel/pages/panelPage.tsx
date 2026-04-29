@@ -209,6 +209,7 @@ export const PanelPage = () => {
                 panelId={preview.panelId ?? preview.panel.id}
                 data={preview.tempData}
                 panel={preview.panel}
+                onChartRenderStatusChange={preview.onChartRenderStatusChange}
               />
             )
           ) : (

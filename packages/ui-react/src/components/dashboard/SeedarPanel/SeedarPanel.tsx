@@ -8,7 +8,16 @@ import type { SeedarPanelProps } from "./types";
 
 export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
   (
-    { panelId, panel, className = "", style = {}, headerExtra, data, ...rest },
+    {
+      panelId,
+      panel,
+      className = "",
+      style = {},
+      headerExtra,
+      data,
+      onChartRenderStatusChange,
+      ...rest
+    },
     ref,
   ) => {
     const { finalPanel, isPending, isError } = useSeedarPanelData({
@@ -18,6 +27,7 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
     const content = useSeedarPanelContent({
       data,
       finalPanel,
+      onChartRenderStatusChange,
     });
 
     if (!finalPanel && isPending) {

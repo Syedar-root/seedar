@@ -165,16 +165,21 @@ export const ChartConfigPanel: React.FC<ConfigPanelProps> = ({
   }, [chartType, config]);
 
   useEffect(() => {
-    if (!isAdvancedMode || specDraft.trim()) {
+    if (!isAdvancedMode) {
       return;
     }
 
     if (isRecord(config.advancedSpec)) {
-      setSpecDraft(formatSpecJson(stripFormattingFromSpec(config.advancedSpec)));
+      const nextDraft = formatSpecJson(
+        stripFormattingFromSpec(config.advancedSpec),
+      );
+      if (nextDraft !== specDraft) {
+        setSpecDraft(nextDraft);
+      }
       return;
     }
 
-    if (visualSpec) {
+    if (!specDraft.trim() && visualSpec) {
       setSpecDraft(formatSpecJson(visualSpec));
     }
   }, [config.advancedSpec, isAdvancedMode, specDraft, visualSpec]);
