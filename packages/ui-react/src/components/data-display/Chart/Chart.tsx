@@ -1,6 +1,6 @@
 import { type ISpec, VChart } from "@visactor/react-vchart";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 import { useChartData } from "./hooks/useChartData.hook";
 import type { ChartProps } from "./types";
@@ -31,18 +31,11 @@ const ChartErrorFallback: React.FC<FallbackProps> = ({ error }) => (
 const ChartContent: React.FC<{
   resolvedSpec: ISpec;
   vchartProps: React.ComponentProps<typeof VChart>;
-  boundaryResetKey: string;
   onRenderStatusChange?: (status: {
     ok: boolean;
     error?: Error;
   }) => void;
-}> = ({ resolvedSpec, vchartProps, boundaryResetKey, onRenderStatusChange }) => {
-  useEffect(() => {
-    onRenderStatusChange?.({
-      ok: true,
-    });
-  }, [boundaryResetKey, onRenderStatusChange]);
-
+}> = ({ resolvedSpec, vchartProps, onRenderStatusChange }) => {
   return (
     <div
       style={{
@@ -52,7 +45,23 @@ const ChartContent: React.FC<{
         overflow: "hidden",
       }}
     >
-      <VChart spec={{ ...resolvedSpec }} {...vchartProps} />
+      <VChart
+        spec={{ ...resolvedSpec }}
+        {...vchartProps}
+        onRenderFinished={(event) => {
+          vchartProps.onRenderFinished?.(event);
+          onRenderStatusChange?.({
+            ok: true,
+          });
+        }}
+        onError={(error) => {
+          vchartProps.onError?.(error);
+          onRenderStatusChange?.({
+            ok: false,
+            error: error instanceof Error ? error : new Error(String(error)),
+          });
+        }}
+      />
     </div>
   );
 };
@@ -90,7 +99,6 @@ export const Chart: React.FC<ChartProps> = ({
       <ChartContent
         resolvedSpec={resolvedSpec}
         vchartProps={vchartProps}
-        boundaryResetKey={boundaryResetKey}
         onRenderStatusChange={onRenderStatusChange}
       />
     </ErrorBoundary>
