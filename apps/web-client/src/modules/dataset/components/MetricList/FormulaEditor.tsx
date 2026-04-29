@@ -34,7 +34,7 @@ const createFieldSuggestion = (
   field: FormulaEditorProps["fields"][number],
 ): FieldItem => ({
   id: field.id,
-  name: field.businessName || field.name,
+  name: field.name,
   businessName: field.businessName,
   tableName: field.tableName,
   type: "field",
@@ -44,10 +44,20 @@ const createMetricSuggestion = (
   metric: FormulaEditorProps["metrics"][number],
 ): MetricItem => ({
   id: metric.id,
-  name: metric.businessName || metric.name,
+  name: metric.name,
   businessName: metric.businessName,
   type: "metric",
 });
+
+const getFieldSourceLabel = (
+  field: FormulaEditorProps["fields"][number] | FieldItem,
+): string | null => {
+  if (!field.tableName) {
+    return null;
+  }
+
+  return `${field.tableName}.${field.name}`;
+};
 
 const createTokenSlot = (
   item: FieldItem | MetricItem,
@@ -63,7 +73,7 @@ const createTokenSlot = (
           item.type === "field" ? styles.fieldTokenLabel : styles.metricTokenLabel
         }
       >
-        {item.name}
+        {item.businessName || item.name}
       </span>
     ),
     value: `#${prefix}${item.id}`,
@@ -237,8 +247,8 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
       setSuggestions(
         fields
           .filter((field) => {
-            const name = field.businessName || field.name;
-            return name?.toLowerCase().includes(filter.toLowerCase());
+            const displayName = field.businessName || field.name;
+            return displayName?.toLowerCase().includes(filter.toLowerCase());
           })
           .map(createFieldSuggestion),
       );
@@ -250,8 +260,8 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
       setSuggestions(
         metrics
           .filter((metric) => {
-            const name = metric.businessName || metric.name;
-            return name?.toLowerCase().includes(filter.toLowerCase());
+            const displayName = metric.businessName || metric.name;
+            return displayName?.toLowerCase().includes(filter.toLowerCase());
           })
           .map(createMetricSuggestion),
       );
@@ -447,11 +457,19 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
                     onClick={() => handleClickInsert(createFieldSuggestion(field))}
                   >
                     <span className={styles.fieldBadge}>F</span>
-                    <span className={styles.itemName}>
+                    <span
+                      className={styles.itemName}
+                      title={field.businessName || field.name}
+                    >
                       {field.businessName || field.name}
                     </span>
-                    {field.tableName && (
-                      <span className={styles.tableTag}>{field.tableName}</span>
+                    {getFieldSourceLabel(field) && (
+                      <span
+                        className={styles.tableTag}
+                        title={getFieldSourceLabel(field) || undefined}
+                      >
+                        {getFieldSourceLabel(field)}
+                      </span>
                     )}
                   </button>
                 ))}
@@ -470,7 +488,10 @@ export const FormulaEditor: React.FC<FormulaEditorProps> = ({
                     onClick={() => handleClickInsert(createMetricSuggestion(metric))}
                   >
                     <span className={styles.metricBadge}>M</span>
-                    <span className={styles.itemName}>
+                    <span
+                      className={styles.itemName}
+                      title={metric.businessName || metric.name}
+                    >
                       {metric.businessName || metric.name}
                     </span>
                   </button>

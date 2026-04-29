@@ -78,9 +78,13 @@
 }
 
 .itemName {
-  flex: 1;
+  flex: 1 1 50%;
   font-size: var(--font-base);
   font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .itemDesc {
@@ -100,5 +104,12 @@
   background: var(--bg-elevated);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
-  margin-left: var(--spacing-xs);
+  flex: 1 1 50%;
+  min-width: 0;
+  max-width: none;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
