@@ -18,6 +18,7 @@ import { DatasourceService } from '@/module/datasource/service/datasource.servic
 import { QueryService } from '@/module/query/query.service';
 import { ToolConfig } from '../ai.types';
 import {
+  buildStartWorkflowGuardMessage,
   getDatasetInfoCompact,
   getDatasourceInfoCompact,
 } from './helper';
@@ -262,11 +263,12 @@ export class ToolService {
     const workflow = getFrontendWorkflowTemplate(workflowId);
 
     if (!workflow) {
-      throw new BusinessException(
-        ExceptionType.AI_AGENT_TOOL_FAILED,
-        `workflow ${workflowId} 不存在`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      return `workflow ${workflowId} 不存在，请先调用 workflowMarket 确认可用 workflow。`;
+    }
+
+    const guardMessage = buildStartWorkflowGuardMessage(workflowId, params);
+    if (guardMessage) {
+      return guardMessage;
     }
 
     const parsedParams = workflow.paramsSchema
@@ -277,11 +279,7 @@ export class ToolService {
         };
 
     if (!parsedParams.success) {
-      throw new BusinessException(
-        ExceptionType.AI_AGENT_TOOL_FAILED,
-        `workflow ${workflowId} 参数校验失败：${parsedParams.error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      return `workflow ${workflowId} 参数校验失败：${parsedParams.error.message}。请按 workflowMarket 返回的 paramsSchema 修正后重试。`;
     }
 
     const request: StartWorkflowRequest = {

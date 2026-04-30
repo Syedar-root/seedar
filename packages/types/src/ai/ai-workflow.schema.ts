@@ -138,13 +138,27 @@ const panelWorkflowSetAdvancedSpecPayloadSchema:
     .object({
       spec: z.record(z.string(), z.unknown()),
     })
-    .refine(
-      (payload) =>
-        typeof payload.spec.type === 'string' && payload.spec.type.trim().length > 0,
-      {
-        message: 'set_advanced_spec.spec.type 必须是非空字符串',
-      },
-    );
+    .superRefine((payload, ctx) => {
+      if (
+        typeof payload.spec.type !== 'string' ||
+        payload.spec.type.trim().length === 0
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'set_advanced_spec.spec.type 必须是非空字符串',
+          path: ['spec', 'type'],
+        });
+      }
+
+      if (Object.prototype.hasOwnProperty.call(payload.spec, 'data')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'set_advanced_spec.spec 不允许包含 data；当前面板数据会由前端自动注入，请只传 spec 结构与字段映射',
+          path: ['spec', 'data'],
+        });
+      }
+    });
 
 export interface QueryCurrentPanelAsChartWorkflowParams
   extends Record<string, unknown> {
