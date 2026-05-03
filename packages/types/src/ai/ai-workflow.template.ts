@@ -1,10 +1,9 @@
-import type { ZodType } from 'zod';
+﻿import type { ZodType } from 'zod';
 import type {
   WorkflowAction,
   WorkflowId,
 } from './ai-workflow.types';
 import {
-  queryCurrentPanelDslOnlyWorkflowParamsSchema,
   queryCurrentPanelAsChartWorkflowParamsSchema,
   queryCurrentPanelAsTableWorkflowParamsSchema,
   setCurrentPanelItemFormattingWorkflowParamsSchema,
@@ -27,7 +26,7 @@ export const FRONTEND_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   {
     id: 'query_current_panel_as_table_v1',
     title: '查询数据并以表格展示到当前面板',
-    description: '查询当前面板的数据，并将其以表格形式展示',
+    description: '查询当前面板的数据，并将其以表格形式展示。',
     paramsSchema: queryCurrentPanelAsTableWorkflowParamsSchema,
     actions: [
       {
@@ -51,35 +50,13 @@ export const FRONTEND_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     ],
   },
   // ----------------------------------------------------------------------------
-  // Template: query_current_panel_dsl_only_v1
-  // ----------------------------------------------------------------------------
-  {
-    id: 'query_current_panel_dsl_only_v1',
-    title: '仅更新当前面板查询条件并执行预览',
-    description:
-      '只更新当前 panel 的查询 DSL（维度、指标、筛选、排序等），不会修改展示类型、图表配置或高级 Spec。',
-    paramsSchema: queryCurrentPanelDslOnlyWorkflowParamsSchema,
-    actions: [
-      {
-        page: 'panel',
-        type: 'trigger_action',
-        target: 'set_query_state',
-      },
-      {
-        page: 'panel',
-        type: 'trigger_action',
-        target: 'run_preview',
-      },
-    ],
-  },
-  // ----------------------------------------------------------------------------
   // Template: query_current_panel_as_chart_v1
   // ----------------------------------------------------------------------------
   {
     id: 'query_current_panel_as_chart_v1',
     title: '基于当前面板数据配置图表到当前面板',
     description:
-      '执行前应先参考 vchart-development-assistant skill 学习并生成合法的 VChart chart spec；该流程不修改当前查询条件，只通过高级 Spec 将当前面板配置为图表展示。只允许传 spec，不要传 data，也不要传 datasetId、dimensions、metrics、filters、orderBy、topN 等查询参数；当前面板数据会由前端自动注入',
+      '执行前应先参考 vchart-development-assistant skill 学习并生成合法的 VChart chart spec；该流程不修改当前查询条件，只通过高级 Spec 将当前面板配置为图表展示。只允许传 spec，不要传 data，也不要传 datasetId、dimensions、metrics、filters、orderBy、topN 等查询参数；当前面板数据会由前端自动注入。',
     paramsSchema: queryCurrentPanelAsChartWorkflowParamsSchema,
     actions: [
       {
@@ -108,11 +85,6 @@ export const FRONTEND_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
         page: 'panel',
         type: 'trigger_action',
         target: 'set_item_formatting',
-      },
-      {
-        page: 'panel',
-        type: 'trigger_action',
-        target: 'run_preview',
       },
     ],
   },

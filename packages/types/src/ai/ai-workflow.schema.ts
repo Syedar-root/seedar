@@ -242,40 +242,6 @@ export const queryCurrentPanelAsChartWorkflowParamsSchema:
   );
 
 // ----------------------------------------------------------------------------
-// Template: query_current_panel_dsl_only_v1
-// ----------------------------------------------------------------------------
-
-export interface QueryCurrentPanelDslOnlyWorkflowParams
-  extends Record<string, unknown> {
-  set_query_state: PanelQueryStatePayload;
-}
-
-const normalizeQueryCurrentPanelDslOnlyWorkflowParams = (
-  input: unknown,
-): QueryCurrentPanelDslOnlyWorkflowParams | unknown => {
-  if (!isRecord(input)) {
-    return input;
-  }
-
-  const record = input;
-  if (isRecord(record.set_query_state)) {
-    return record;
-  }
-
-  return {
-    set_query_state: buildPanelQueryStateFromRecord(record),
-  };
-};
-
-export const queryCurrentPanelDslOnlyWorkflowParamsSchema:
-  z.ZodType<QueryCurrentPanelDslOnlyWorkflowParams> = z.preprocess(
-    normalizeQueryCurrentPanelDslOnlyWorkflowParams,
-    z.object({
-      set_query_state: panelQueryStatePayloadSchema,
-    }),
-  );
-
-// ----------------------------------------------------------------------------
 // Template: set_current_panel_item_formatting_v1
 // ----------------------------------------------------------------------------
 
@@ -292,14 +258,56 @@ const normalizeSetCurrentPanelItemFormattingWorkflowParams = (
   }
 
   const record = input;
-  const formattingPayload = isRecord(record.set_item_formatting)
+  const rawFormattingPayload = isRecord(record.set_item_formatting)
     ? record.set_item_formatting
     : isRecord(record.itemFormatting)
       ? record.itemFormatting
       : undefined;
 
+  if (!rawFormattingPayload) {
+    return {
+      set_item_formatting: rawFormattingPayload,
+    };
+  }
+
+  if (
+    typeof rawFormattingPayload.kind === 'string' &&
+    typeof rawFormattingPayload.role === 'string' &&
+    isRecord(rawFormattingPayload.target)
+  ) {
+    return {
+      set_item_formatting: {
+        rule: rawFormattingPayload,
+      },
+    };
+  }
+
+  if (
+    typeof rawFormattingPayload.kind === 'string' &&
+    (typeof rawFormattingPayload.fieldId === 'number' ||
+      typeof rawFormattingPayload.metricId === 'number')
+  ) {
+    const isMetric = typeof rawFormattingPayload.metricId === 'number';
+    const targetId = isMetric
+      ? rawFormattingPayload.metricId
+      : rawFormattingPayload.fieldId;
+
+    return {
+      set_item_formatting: {
+        rule: {
+          ...rawFormattingPayload,
+          role: isMetric ? 'metric' : 'dimension',
+          target: {
+            kind: isMetric ? 'metric' : 'field',
+            id: String(targetId),
+          },
+        },
+      },
+    };
+  }
+
   return {
-    set_item_formatting: formattingPayload,
+    set_item_formatting: rawFormattingPayload,
   };
 };
 

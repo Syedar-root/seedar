@@ -154,6 +154,8 @@ interface WorkflowError {
 interface WorkflowFormattingRuleInput {
   id?: string;
   target?: PanelSimpleFormattingRule["target"];
+  fieldId?: number;
+  metricId?: number;
   role?: PanelSimpleFormattingRule["role"];
   kind?: PanelSimpleFormattingRule["kind"];
   enabled?: boolean;
@@ -196,14 +198,35 @@ const parseWorkflowFormattingRule = (
   }
 
   const target = value.target;
-  const role = value.role;
+  const workflowRule = value as WorkflowFormattingRuleInput;
+  const role =
+    value.role === "dimension" || value.role === "metric"
+      ? value.role
+      : typeof workflowRule.metricId === "number"
+        ? "metric"
+        : typeof workflowRule.fieldId === "number"
+          ? "dimension"
+          : undefined;
   const kind = value.kind;
+  const normalizedTarget = isRecord(target)
+    ? target
+    : typeof workflowRule.metricId === "number"
+      ? {
+          kind: "metric",
+          id: String(workflowRule.metricId),
+        }
+      : typeof workflowRule.fieldId === "number"
+        ? {
+            kind: "field",
+            id: String(workflowRule.fieldId),
+          }
+        : undefined;
   const targetKind =
-    isRecord(target) && typeof target.kind === "string"
-      ? target.kind
+    isRecord(normalizedTarget) && typeof normalizedTarget.kind === "string"
+      ? normalizedTarget.kind
       : undefined;
   if (
-    !isRecord(target) ||
+    !isRecord(normalizedTarget) ||
     !targetKind ||
     !WORKFLOW_FORMATTING_TARGET_KINDS.includes(
       targetKind as (typeof WORKFLOW_FORMATTING_TARGET_KINDS)[number],
@@ -221,16 +244,23 @@ const parseWorkflowFormattingRule = (
   const id = typeof value.id === "string" && value.id.trim()
     ? value.id.trim()
     : `workflow_formatting_rule_${index}_${Date.now()}`;
-  const workflowRule = value as WorkflowFormattingRuleInput;
-
   return {
     id,
     target: {
       kind: targetKind as (typeof WORKFLOW_FORMATTING_TARGET_KINDS)[number],
       datasetId:
-        typeof target.datasetId === "number" ? target.datasetId : undefined,
-      id: typeof target.id === "string" ? target.id : undefined,
-      key: typeof target.key === "string" ? target.key : undefined,
+        typeof normalizedTarget.datasetId === "number"
+          ? normalizedTarget.datasetId
+          : undefined,
+      id:
+        typeof normalizedTarget.id === "string" ||
+        typeof normalizedTarget.id === "number"
+          ? String(normalizedTarget.id)
+          : undefined,
+      key:
+        typeof normalizedTarget.key === "string"
+          ? normalizedTarget.key
+          : undefined,
     },
     role,
     kind,
@@ -1138,7 +1168,7 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           specType: specType ?? null,
         };
       },
-      run_preview: async () => {
+      run_preview: async (action) => {
         captureWorkflowSnapshot();
 
         const { hasDataset, canRun, buildDsl, baseDsl, runPreview } =
@@ -1165,6 +1195,9 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           );
         }
 
+        const skipChartRenderValidation =
+          action.payload?.skipChartRenderValidation === true;
+
         chartRenderStatusRef.current = "pending";
         chartRenderErrorRef.current = null;
 
@@ -1176,10 +1209,13 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           );
         }
 
-        await waitForChartRenderResult();
+        if (!skipChartRenderValidation) {
+          await waitForChartRenderResult();
+        }
 
         return {
           previewExecuted: true,
+          skipChartRenderValidation,
           rowCount: getPreviewRowCount(previewResult),
         };
       },

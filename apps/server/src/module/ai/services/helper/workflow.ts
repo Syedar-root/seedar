@@ -38,27 +38,6 @@ const buildStartWorkflowGuardMessage = (
     return null;
   }
 
-  if (workflowId === 'query_current_panel_dsl_only_v1') {
-    const invalidDisplayKeys = [
-      'set_advanced_spec',
-      'advancedSpec',
-      'spec',
-      'chartSpec',
-      'set_item_formatting',
-      'itemFormatting',
-      'set_display_type',
-      'displayType',
-    ].filter((key) => Object.prototype.hasOwnProperty.call(params, key));
-
-    if (invalidDisplayKeys.length > 0) {
-      return [
-        `workflow ${workflowId} 仅用于修改查询 DSL，不接受展示相关参数：${invalidDisplayKeys.join(', ')}。`,
-        '请仅传 set_query_state（或等价的查询参数）。',
-      ].join('');
-    }
-    return null;
-  }
-
   if (workflowId !== 'query_current_panel_as_chart_v1') {
     return null;
   }
