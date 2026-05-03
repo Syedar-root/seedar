@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  HttpStatus,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -27,6 +32,7 @@ import { MySqlConfig } from '@/module/datasource/datasource.types';
 import { DataSourceType } from '@/module/datasource/datasource.types';
 import { DatasetResponse } from '@/module/dataset/dataset.types';
 import { LoggerService } from '@/logger/logger.service';
+import { BusinessException, ExceptionType } from '@/common/exceptions';
 import {
   DSLTransformerV2,
   QueryDSL,
@@ -211,6 +217,17 @@ export class QueryService {
         executionTime,
         columnMappings,
       };
+    } catch (error) {
+      if (error instanceof BusinessException) {
+        throw error;
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BusinessException(
+        ExceptionType.BAD_REQUEST,
+        message,
+        HttpStatus.BAD_REQUEST,
+      );
     } finally {
       await knexConnection.destroy();
     }

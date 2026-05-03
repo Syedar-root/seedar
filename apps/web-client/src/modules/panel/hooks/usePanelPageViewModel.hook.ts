@@ -181,6 +181,79 @@ const createWorkflowError = (code: string, message: string): WorkflowError => ({
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
+const isWorkflowErrorLike = (value: unknown): value is WorkflowError =>
+  isRecord(value) &&
+  typeof value.code === "string" &&
+  typeof value.message === "string";
+
+const extractWorkflowErrorFromUnknown = (
+  error: unknown,
+  fallbackCode: string,
+  fallbackMessage: string,
+): WorkflowError => {
+  if (isWorkflowErrorLike(error)) {
+    return {
+      code: error.code,
+      message: error.message,
+    };
+  }
+
+  if (isRecord(error)) {
+    const maybeMessage =
+      typeof error.message === "string" ? error.message : undefined;
+    const response = isRecord(error.response) ? error.response : undefined;
+    const responseData = response && isRecord(response.data) ? response.data : undefined;
+
+    const responseCode =
+      responseData && typeof responseData.code === "string"
+        ? responseData.code
+        : undefined;
+    const responseMessage =
+      responseData && typeof responseData.message === "string"
+        ? responseData.message
+        : undefined;
+
+    const details = responseData ? responseData.data : undefined;
+    const detailMessage =
+      isRecord(details) && typeof details.message === "string"
+        ? details.message
+        : undefined;
+
+    if (responseCode && (responseMessage || detailMessage)) {
+      return {
+        code: responseCode,
+        message: detailMessage || responseMessage || fallbackMessage,
+      };
+    }
+
+    if (responseMessage) {
+      return {
+        code: responseCode || fallbackCode,
+        message: responseMessage,
+      };
+    }
+
+    if (maybeMessage) {
+      return {
+        code: fallbackCode,
+        message: maybeMessage,
+      };
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return {
+      code: fallbackCode,
+      message: error.message,
+    };
+  }
+
+  return {
+    code: fallbackCode,
+    message: fallbackMessage,
+  };
+};
+
 const WORKFLOW_FORMATTING_TARGET_KINDS = [
   "field",
   "metric",
@@ -1201,7 +1274,17 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
         chartRenderStatusRef.current = "pending";
         chartRenderErrorRef.current = null;
 
-        const previewResult = await runPreview(dsl);
+        let previewResult: ExecuteQueryResponse | undefined;
+        try {
+          previewResult = await runPreview(dsl);
+        } catch (error) {
+          throw extractWorkflowErrorFromUnknown(
+            error,
+            "WORKFLOW_RUN_PREVIEW_FAILED",
+            PANEL_PAGE_COPY.previewFailed,
+          );
+        }
+
         if (!previewResult) {
           throw createWorkflowError(
             "WORKFLOW_RUN_PREVIEW_FAILED",
