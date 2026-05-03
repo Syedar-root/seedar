@@ -164,6 +164,7 @@ export interface AIChatProps {
     isResume?: boolean,
     resumePayload?: AiChatResumeDto,
   ) => void;
+  onStopMessage?: () => void;
   sseData?: SSEData;
   placeholder?: string;
   disabled?: boolean;

@@ -449,6 +449,19 @@ export class ChatService {
     /extract/,
   ];
 
+  private isAbortLikeError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    const message = error.message.toLowerCase();
+    return (
+      error.name === 'AbortError' ||
+      message.includes('aborted') ||
+      message.includes('abort')
+    );
+  }
+
   /**
    * 处理流式对话请求
    * @param aiId AI 实例 ID
@@ -464,6 +477,7 @@ export class ChatService {
     scenes?: AiChatScene[],
     isResume: boolean = false,
     resumePayload?: AiChatResumeDto,
+    signal?: AbortSignal,
   ): AsyncGenerator<AiAgentStreamChunk, void, unknown> {
     try {
       // throw new InternalServerErrorException('streamChat not implemented');
@@ -495,6 +509,7 @@ export class ChatService {
           configurable: {
             thread_id: session.id,
           },
+          signal,
         },
       );
 
@@ -589,6 +604,10 @@ export class ChatService {
       console.log('hcs tool_call', JSON.stringify(tool_call, null, 2));
       yield { sid: currentSid, content: '', done: true };
     } catch (error) {
+      if (signal?.aborted || this.isAbortLikeError(error)) {
+        return;
+      }
+
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       console.error('streamChat error:', errorMessage, error, '\n');
       console.log('error type:', typeof error, '\n');

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAiApi, useAis, useCreateAiSession } from "#pkg/seedar/ui-react";
 import { AIChat } from "./";
 import { useChatState } from "./hooks/useChatState.hook";
@@ -29,6 +29,8 @@ interface AIChatPreviewCache {
   currentSession: AiSessionResponse | null;
   handledInterruptIds: string[];
 }
+
+type StreamController = { close: () => void };
 
 const readPreviewCache = (): AIChatPreviewCache | null => {
   if (typeof window === "undefined") {
@@ -85,6 +87,7 @@ const AIChatPreview: React.FC = () => {
   const [handledInterruptIds, setHandledInterruptIds] = useState<string[]>(
     cachedState?.handledInterruptIds || [],
   );
+  const activeStreamControllerRef = useRef<StreamController | null>(null);
   const location = useLocation();
   const activeScenes = useAiChatScenesStore((state) => state.scenes);
 
@@ -143,6 +146,9 @@ const AIChatPreview: React.FC = () => {
     setIsLoading(true);
     setError(null);
 
+    activeStreamControllerRef.current?.close();
+    activeStreamControllerRef.current = null;
+
     try {
       const controller = aiApi.streamChat(
         {
@@ -172,15 +178,18 @@ const AIChatPreview: React.FC = () => {
             handleSSEData(nextSseData, chunk.sid);
           },
           onDone: () => {
+            activeStreamControllerRef.current = null;
             setIsLoading(false);
           },
           onError: (requestError) => {
+            activeStreamControllerRef.current = null;
             setIsLoading(false);
             setError(requestError);
           },
         },
       );
 
+      activeStreamControllerRef.current = controller;
       return controller;
     } catch (requestError) {
       setIsLoading(false);
@@ -190,6 +199,12 @@ const AIChatPreview: React.FC = () => {
           : "Failed to send message",
       );
     }
+  };
+
+  const handleStopMessage = () => {
+    activeStreamControllerRef.current?.close();
+    activeStreamControllerRef.current = null;
+    setIsLoading(false);
   };
 
   useWorkflowInterruptExecutor({
@@ -210,6 +225,8 @@ const AIChatPreview: React.FC = () => {
   });
 
   const handleAddChat = async () => {
+    activeStreamControllerRef.current?.close();
+    activeStreamControllerRef.current = null;
     chatState.setMessages([]);
     setCurrentSession(null);
     setError(null);
@@ -296,6 +313,13 @@ const AIChatPreview: React.FC = () => {
     handledInterruptIds,
   ]);
 
+  useEffect(() => {
+    return () => {
+      activeStreamControllerRef.current?.close();
+      activeStreamControllerRef.current = null;
+    };
+  }, []);
+
   return (
     <div className={styles["preview-container"]}>
       <section className={styles["preview-section"]}>
@@ -311,6 +335,7 @@ const AIChatPreview: React.FC = () => {
             console.log("显示历史记录");
           }}
           onSendMessage={handleSendMessage}
+          onStopMessage={handleStopMessage}
           commands={commands}
           models={models}
           currentModel={currentModel}

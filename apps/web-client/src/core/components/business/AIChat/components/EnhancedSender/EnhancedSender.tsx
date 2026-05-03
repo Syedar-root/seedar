@@ -30,6 +30,7 @@ interface SuggestionItemType {
 const EnhancedSender: React.FC<EnhancedSenderProps> = ({
   loading = false,
   onSubmit,
+  onCancel,
   placeholder = "输入消息，或用 / 触发命令...",
   disabled = false,
   commands,
@@ -281,6 +282,7 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
               suffix={false}
               ref={senderRef}
               loading={loading}
+              onCancel={onCancel}
               onSubmit={handleSubmit}
               placeholder={placeholder}
               disabled={disabled}
@@ -300,6 +302,7 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
         <Sender
           ref={senderRef}
           loading={loading}
+          onCancel={onCancel}
           onSubmit={handleSubmit}
           placeholder={placeholder}
           disabled={disabled}
@@ -312,3 +315,4 @@ const EnhancedSender: React.FC<EnhancedSenderProps> = ({
 };
 
 export default EnhancedSender;
+
