@@ -84,17 +84,20 @@ const serializeDimensionDsl = (
 
   if (fieldId !== undefined) {
     const field = getFieldById(dataset, fieldId);
+    const isDerivedDimension = typeof dimension.derivedKind === "string";
     const baseInfo = {
       fieldId,
       fieldName: field?.name,
       fieldBusinessName: field?.businessName,
       displayName:
-        (typeof dimension.alias === "string" && dimension.alias) ||
+        (isDerivedDimension &&
+          typeof dimension.alias === "string" &&
+          dimension.alias) ||
         getDisplayName(field) ||
         `field_${fieldId}`,
     };
 
-    if (typeof dimension.derivedKind === "string") {
+    if (isDerivedDimension) {
       return {
         ...dimension,
         ...baseInfo,

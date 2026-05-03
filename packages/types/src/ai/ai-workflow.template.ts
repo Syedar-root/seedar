@@ -4,8 +4,10 @@ import type {
   WorkflowId,
 } from './ai-workflow.types';
 import {
+  queryCurrentPanelDslOnlyWorkflowParamsSchema,
   queryCurrentPanelAsChartWorkflowParamsSchema,
   queryCurrentPanelAsTableWorkflowParamsSchema,
+  setCurrentPanelItemFormattingWorkflowParamsSchema,
 } from './ai-workflow.schema';
 
 export interface WorkflowTemplate<
@@ -49,6 +51,28 @@ export const FRONTEND_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     ],
   },
   // ----------------------------------------------------------------------------
+  // Template: query_current_panel_dsl_only_v1
+  // ----------------------------------------------------------------------------
+  {
+    id: 'query_current_panel_dsl_only_v1',
+    title: '仅更新当前面板查询条件并执行预览',
+    description:
+      '只更新当前 panel 的查询 DSL（维度、指标、筛选、排序等），不会修改展示类型、图表配置或高级 Spec。',
+    paramsSchema: queryCurrentPanelDslOnlyWorkflowParamsSchema,
+    actions: [
+      {
+        page: 'panel',
+        type: 'trigger_action',
+        target: 'set_query_state',
+      },
+      {
+        page: 'panel',
+        type: 'trigger_action',
+        target: 'run_preview',
+      },
+    ],
+  },
+  // ----------------------------------------------------------------------------
   // Template: query_current_panel_as_chart_v1
   // ----------------------------------------------------------------------------
   {
@@ -62,6 +86,28 @@ export const FRONTEND_WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
         page: 'panel',
         type: 'trigger_action',
         target: 'set_advanced_spec',
+      },
+      {
+        page: 'panel',
+        type: 'trigger_action',
+        target: 'run_preview',
+      },
+    ],
+  },
+  // ----------------------------------------------------------------------------
+  // Template: set_current_panel_item_formatting_v1
+  // ----------------------------------------------------------------------------
+  {
+    id: 'set_current_panel_item_formatting_v1',
+    title: '配置当前面板字段或指标格式',
+    description:
+      '为当前 panel 的字段或指标设置格式化规则（数值、百分比、货币、日期等），不修改查询 DSL 与图表结构。',
+    paramsSchema: setCurrentPanelItemFormattingWorkflowParamsSchema,
+    actions: [
+      {
+        page: 'panel',
+        type: 'trigger_action',
+        target: 'set_item_formatting',
       },
       {
         page: 'panel',

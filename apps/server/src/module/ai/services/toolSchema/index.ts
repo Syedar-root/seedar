@@ -54,8 +54,10 @@ const orderDirectionList = ['asc', 'desc'] as const;
 
 const baseDimensionSchema = z.object({
   fieldId: z.number(),
-  alias: z.string().optional(),
-  derivedKind: z.undefined().optional(),
+  alias: z
+    .string()
+    .optional()
+    .describe('普通字段维度请尽量不要传 alias；仅派生维度需要强制 alias'),
 });
 
 const timeGrainDimensionSchema = z.object({

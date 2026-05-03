@@ -2,6 +2,7 @@ import type {
   AiChatScene,
   DatasetResponse,
   ExecuteQueryResponse,
+  PanelSimpleFormattingRule,
   PanelQueryStatePayload,
   QueryDSL,
 } from "#pkg/seedar/types";
@@ -150,6 +151,18 @@ interface WorkflowError {
   message: string;
 }
 
+interface WorkflowFormattingRuleInput {
+  id?: string;
+  target?: PanelSimpleFormattingRule["target"];
+  role?: PanelSimpleFormattingRule["role"];
+  kind?: PanelSimpleFormattingRule["kind"];
+  enabled?: boolean;
+  decimals?: number;
+  useGrouping?: boolean;
+  currency?: string;
+  percentInput?: PanelSimpleFormattingRule["percentInput"];
+}
+
 type ChartRenderStatus = "idle" | "pending" | "success" | "error";
 
 interface ChartRenderWaiter {
@@ -165,6 +178,79 @@ const createWorkflowError = (code: string, message: string): WorkflowError => ({
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const WORKFLOW_FORMATTING_TARGET_KINDS = [
+  "field",
+  "metric",
+  "derived_dimension",
+  "temp_metric",
+  "unknown",
+] as const;
+
+const parseWorkflowFormattingRule = (
+  value: unknown,
+  index: number,
+): PanelSimpleFormattingRule | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const target = value.target;
+  const role = value.role;
+  const kind = value.kind;
+  const targetKind =
+    isRecord(target) && typeof target.kind === "string"
+      ? target.kind
+      : undefined;
+  if (
+    !isRecord(target) ||
+    !targetKind ||
+    !WORKFLOW_FORMATTING_TARGET_KINDS.includes(
+      targetKind as (typeof WORKFLOW_FORMATTING_TARGET_KINDS)[number],
+    ) ||
+    (role !== "dimension" && role !== "metric") ||
+    (kind !== "number" &&
+      kind !== "percent" &&
+      kind !== "currency" &&
+      kind !== "date" &&
+      kind !== "datetime")
+  ) {
+    return undefined;
+  }
+
+  const id = typeof value.id === "string" && value.id.trim()
+    ? value.id.trim()
+    : `workflow_formatting_rule_${index}_${Date.now()}`;
+  const workflowRule = value as WorkflowFormattingRuleInput;
+
+  return {
+    id,
+    target: {
+      kind: targetKind as (typeof WORKFLOW_FORMATTING_TARGET_KINDS)[number],
+      datasetId:
+        typeof target.datasetId === "number" ? target.datasetId : undefined,
+      id: typeof target.id === "string" ? target.id : undefined,
+      key: typeof target.key === "string" ? target.key : undefined,
+    },
+    role,
+    kind,
+    enabled:
+      typeof workflowRule.enabled === "boolean" ? workflowRule.enabled : undefined,
+    decimals:
+      typeof workflowRule.decimals === "number" ? workflowRule.decimals : undefined,
+    useGrouping:
+      typeof workflowRule.useGrouping === "boolean"
+        ? workflowRule.useGrouping
+        : undefined,
+    currency:
+      typeof workflowRule.currency === "string" ? workflowRule.currency : undefined,
+    percentInput:
+      workflowRule.percentInput === "ratio" ||
+      workflowRule.percentInput === "percent"
+        ? workflowRule.percentInput
+        : undefined,
+  };
+};
 
 /**
  * 聚合 PanelPage 所需的业务状态与事件，确保页面层仅负责布局和组件编排。
@@ -903,6 +989,53 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           metrics: queryState.metrics?.length ?? 0,
           filters: queryState.filters?.length ?? 0,
           tempMetrics: queryState.tempMetrics?.length ?? 0,
+        };
+      },
+      set_item_formatting: (action) => {
+        captureWorkflowSnapshot();
+
+        if (!isRecord(action.payload)) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            "缺少合法的 set_item_formatting payload",
+          );
+        }
+
+        const payload = action.payload;
+        const ruleInputs: unknown[] = [];
+        if (isRecord(payload.rule)) {
+          ruleInputs.push(payload.rule);
+        }
+        if (Array.isArray(payload.rules)) {
+          ruleInputs.push(...payload.rules);
+        }
+
+        if (ruleInputs.length === 0) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            "set_item_formatting 至少需要提供一条 rule",
+          );
+        }
+
+        const parsedRules = ruleInputs
+          .map((rule, index) => parseWorkflowFormattingRule(rule, index))
+          .filter((rule): rule is PanelSimpleFormattingRule => Boolean(rule));
+
+        if (parsedRules.length === 0) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            "set_item_formatting 的规则格式不合法",
+          );
+        }
+
+        flushSync(() => {
+          parsedRules.forEach((rule) => {
+            handleSaveItemFormatting(rule);
+          });
+        });
+
+        return {
+          updatedRules: parsedRules.length,
         };
       },
       set_panel_title: (action) => {

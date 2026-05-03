@@ -4,6 +4,7 @@ import {
   PeriodOverPeriodType,
 } from '../dataset';
 import {
+  type PanelWorkflowSetItemFormattingPayload,
   type PanelQueryStateDimensionPayload,
   type PanelQueryStateFilterPayload,
   type PanelQueryStateMetricPayload,
@@ -20,7 +21,12 @@ import {
 const panelQueryStateDimensionPayloadSchema:
   z.ZodType<PanelQueryStateDimensionPayload> = z.object({
     fieldId: z.number().int().optional(),
-    alias: z.string().optional(),
+    alias: z
+      .string()
+      .optional()
+      .describe(
+        'legacy alias (base field dimensions should avoid alias; use derived dimensions when a renamed field is required)',
+      ),
     name: z.string().optional(),
     businessName: z.string().optional(),
     dimensionDsl: z.record(z.string(), z.unknown()).optional(),
@@ -160,6 +166,45 @@ const panelWorkflowSetAdvancedSpecPayloadSchema:
       }
     });
 
+const panelWorkflowSetItemFormattingRulePayloadSchema = z.object({
+  id: z.string().optional(),
+  target: z.object({
+    kind: z.enum([
+      'field',
+      'metric',
+      'derived_dimension',
+      'temp_metric',
+      'unknown',
+    ]),
+    datasetId: z.number().int().optional(),
+    id: z.string().optional(),
+    key: z.string().optional(),
+  }),
+  role: z.enum(['dimension', 'metric']),
+  kind: z.enum(['number', 'percent', 'currency', 'date', 'datetime']),
+  enabled: z.boolean().optional(),
+  decimals: z.number().int().min(0).max(20).optional(),
+  useGrouping: z.boolean().optional(),
+  currency: z.string().optional(),
+  percentInput: z.enum(['ratio', 'percent']).optional(),
+});
+
+const panelWorkflowSetItemFormattingPayloadSchema:
+  z.ZodType<PanelWorkflowSetItemFormattingPayload> = z
+    .object({
+      rule: panelWorkflowSetItemFormattingRulePayloadSchema.optional(),
+      rules: z.array(panelWorkflowSetItemFormattingRulePayloadSchema).optional(),
+    })
+    .superRefine((payload, ctx) => {
+      if (!payload.rule && (!payload.rules || payload.rules.length === 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'set_item_formatting 至少需要提供 rule 或 rules',
+          path: ['rule'],
+        });
+      }
+    });
+
 export interface QueryCurrentPanelAsChartWorkflowParams
   extends Record<string, unknown> {
   set_advanced_spec: PanelWorkflowSetAdvancedSpecPayload;
@@ -193,5 +238,75 @@ export const queryCurrentPanelAsChartWorkflowParamsSchema:
     normalizeQueryCurrentPanelAsChartWorkflowParams,
     z.object({
       set_advanced_spec: panelWorkflowSetAdvancedSpecPayloadSchema,
+    }),
+  );
+
+// ----------------------------------------------------------------------------
+// Template: query_current_panel_dsl_only_v1
+// ----------------------------------------------------------------------------
+
+export interface QueryCurrentPanelDslOnlyWorkflowParams
+  extends Record<string, unknown> {
+  set_query_state: PanelQueryStatePayload;
+}
+
+const normalizeQueryCurrentPanelDslOnlyWorkflowParams = (
+  input: unknown,
+): QueryCurrentPanelDslOnlyWorkflowParams | unknown => {
+  if (!isRecord(input)) {
+    return input;
+  }
+
+  const record = input;
+  if (isRecord(record.set_query_state)) {
+    return record;
+  }
+
+  return {
+    set_query_state: buildPanelQueryStateFromRecord(record),
+  };
+};
+
+export const queryCurrentPanelDslOnlyWorkflowParamsSchema:
+  z.ZodType<QueryCurrentPanelDslOnlyWorkflowParams> = z.preprocess(
+    normalizeQueryCurrentPanelDslOnlyWorkflowParams,
+    z.object({
+      set_query_state: panelQueryStatePayloadSchema,
+    }),
+  );
+
+// ----------------------------------------------------------------------------
+// Template: set_current_panel_item_formatting_v1
+// ----------------------------------------------------------------------------
+
+export interface SetCurrentPanelItemFormattingWorkflowParams
+  extends Record<string, unknown> {
+  set_item_formatting: PanelWorkflowSetItemFormattingPayload;
+}
+
+const normalizeSetCurrentPanelItemFormattingWorkflowParams = (
+  input: unknown,
+): SetCurrentPanelItemFormattingWorkflowParams | unknown => {
+  if (!isRecord(input)) {
+    return input;
+  }
+
+  const record = input;
+  const formattingPayload = isRecord(record.set_item_formatting)
+    ? record.set_item_formatting
+    : isRecord(record.itemFormatting)
+      ? record.itemFormatting
+      : undefined;
+
+  return {
+    set_item_formatting: formattingPayload,
+  };
+};
+
+export const setCurrentPanelItemFormattingWorkflowParamsSchema:
+  z.ZodType<SetCurrentPanelItemFormattingWorkflowParams> = z.preprocess(
+    normalizeSetCurrentPanelItemFormattingWorkflowParams,
+    z.object({
+      set_item_formatting: panelWorkflowSetItemFormattingPayloadSchema,
     }),
   );

@@ -816,7 +816,6 @@ export const usePanelEditorMutations = ({
                   ? parseDimensionDsl(dimension.dimensionDsl)
                   : parseDimensionDsl({
                       fieldId: dimension.fieldId,
-                      alias: dimension.alias,
                     });
 
               if (!parsedDimension) {
