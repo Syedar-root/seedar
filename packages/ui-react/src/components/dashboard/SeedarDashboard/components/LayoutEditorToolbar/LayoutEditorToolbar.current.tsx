@@ -1,9 +1,15 @@
 ﻿import React from "react";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
+import { Button } from "@base-ui/react/button";
+import { NumberField } from "@base-ui/react/number-field";
+import { Select } from "@base-ui/react/select";
+import { Toggle } from "@base-ui/react/toggle";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
 import type { SeedarBreakpoint } from "../../../../../utils/dashboard-layout/constants";
 
 import { useLayoutEditorToolbarViewModel } from "./hooks/useLayoutEditorToolbarViewModel.hook";
+import tokenStyles from "../../SeedarDashboard.tokens.module.css";
 import styles from "./LayoutEditorToolbar.module.css";
 
 export const LayoutEditorToolbar: React.FC = () => {
@@ -37,30 +43,42 @@ export const LayoutEditorToolbar: React.FC = () => {
       <div className={styles.deviceBar}>
         <div className={styles.devicePrimary}>
           <span className={styles.label}>设备断点</span>
-          <div className={styles.breakpoints}>
+          <ToggleGroup
+            className={styles.breakpoints}
+            value={[viewModel.activeBreakpoint]}
+            onValueChange={(values) => {
+              const [breakpoint] = values;
+
+              if (breakpoint) {
+                viewModel.actions.setActiveBreakpoint(breakpoint);
+              }
+            }}
+            aria-label="设备断点"
+          >
             {viewModel.breakpoints.map((item: {
               breakpoint: SeedarBreakpoint;
               configured: boolean;
               isActive: boolean;
               range: string;
             }) => (
-              <button
+              <Toggle
                 key={item.breakpoint}
                 type="button"
+                value={item.breakpoint}
+                pressed={item.isActive}
                 className={clsx(
                   styles.breakpointButton,
                   item.isActive && styles.breakpointButtonActive,
                 )}
-                onClick={() => viewModel.actions.setActiveBreakpoint(item.breakpoint)}
                 title={item.range}
               >
                 <span>{item.breakpoint.toUpperCase()}</span>
                 <span className={styles.breakpointMeta}>
                   {item.configured ? "独立" : "继承"}
                 </span>
-              </button>
+              </Toggle>
             ))}
-          </div>
+          </ToggleGroup>
         </div>
 
         <div className={styles.deviceSecondary}>
@@ -71,25 +89,72 @@ export const LayoutEditorToolbar: React.FC = () => {
 
           <label className={styles.widthPicker}>
             <span className={styles.label}>预览宽度</span>
-            <select
+            <Select.Root
               value={viewModel.lockedCanvasWidth}
-              className={styles.select}
-              onChange={(event) =>
-                viewModel.actions.setLockedCanvasWidth(Number(event.target.value))
-              }
+              onValueChange={(value) => {
+                if (value !== null) {
+                  viewModel.actions.setLockedCanvasWidth(value);
+                }
+              }}
             >
-              {viewModel.lockedWidthOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              <Select.Trigger className={styles.select}>
+                <Select.Value />
+                <Select.Icon className={styles.selectIcon}>⌄</Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Positioner
+                  className={styles.selectPositioner}
+                  sideOffset={4}
+                  align="start"
+                >
+                  <Select.Popup
+                    className={clsx(
+                      tokenStyles["token-scope"],
+                      styles.selectPopup,
+                    )}
+                  >
+                    <Select.List className={styles.selectList}>
+                      {viewModel.lockedWidthOptions.map((option) => (
+                        <Select.Item
+                          key={option.value}
+                          value={option.value}
+                          className={styles.selectItem}
+                        >
+                          <Select.ItemText>{option.label}</Select.ItemText>
+                          <Select.ItemIndicator className={styles.selectItemIndicator}>
+                            ✓
+                          </Select.ItemIndicator>
+                        </Select.Item>
+                      ))}
+                    </Select.List>
+                  </Select.Popup>
+                </Select.Positioner>
+              </Select.Portal>
+            </Select.Root>
           </label>
 
           <label className={styles.widthPicker}>
             <span className={styles.label}>缩放</span>
-            <div className={styles.scaleControl}>
-              <button
+            <NumberField.Root
+              className={styles.scaleControl}
+              value={scaleInputValue === "" ? null : Number(scaleInputValue)}
+              min={viewModel.minViewportScalePercent}
+              max={viewModel.maxViewportScalePercent}
+              step={1}
+              allowOutOfRange
+              onValueChange={(value) => {
+                setScaleInputValue(value === null ? "" : String(value));
+              }}
+              onValueCommitted={(value) => {
+                if (value === null) {
+                  setScaleInputValue(String(viewModel.viewportScaleInputValue));
+                  return;
+                }
+
+                viewModel.actions.setViewportScale(value / 100);
+              }}
+            >
+              <Button
                 type="button"
                 className={clsx(
                   styles.scaleAutoButton,
@@ -100,19 +165,11 @@ export const LayoutEditorToolbar: React.FC = () => {
                 title={`当前自适应 ${viewModel.viewportScaleLabel}`}
               >
                 自适应
-              </button>
-              <input
-                type="number"
+              </Button>
+              <NumberField.Input
                 className={styles.scaleInput}
-                min={viewModel.minViewportScalePercent}
-                max={viewModel.maxViewportScalePercent}
-                step={1}
-                value={scaleInputValue}
-                onChange={(event) => {
-                  setScaleInputValue(event.target.value);
-                }}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") {
+                  if (event.key === "Enter" && event.currentTarget.value !== "") {
                     commitScaleInput(event.currentTarget.value);
                     event.currentTarget.blur();
                   }
@@ -135,17 +192,25 @@ export const LayoutEditorToolbar: React.FC = () => {
                 aria-label="缩放百分比"
               />
               <span className={styles.scaleSuffix}>%</span>
-            </div>
+              <div className={styles.scaleStepper}>
+                <NumberField.Increment className={styles.scaleStepButton}>
+                  +
+                </NumberField.Increment>
+                <NumberField.Decrement className={styles.scaleStepButton}>
+                  -
+                </NumberField.Decrement>
+              </div>
+            </NumberField.Root>
           </label>
 
-          <button
+          <Button
             type="button"
             className={styles.secondaryButton}
             onClick={viewModel.actions.copyActiveBreakpointToOthers}
             disabled={viewModel.copyDisabled}
           >
             同步到其它断点
-          </button>
+          </Button>
         </div>
       </div>
 

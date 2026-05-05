@@ -74,6 +74,7 @@ export const useLayoutEditorToolbarViewModel = () => {
 
     return {
       actions,
+      activeBreakpoint: state.activeBreakpoint,
       breakpoints: BREAKPOINT_ORDER.map((breakpoint: SeedarBreakpoint) => ({
         breakpoint,
         configured: state.configuredBreakpoints.includes(breakpoint),
