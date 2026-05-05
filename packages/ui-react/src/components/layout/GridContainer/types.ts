@@ -8,7 +8,7 @@ export interface GridMetrics {
   containerWidth: number;
   containerBreakpoint: SeedarBreakpoint;
   effectiveGridWidth: number;
-  viewportScale: number;
+  viewportScale?: number;
 }
 
 export interface GridContainerProps {
@@ -20,5 +20,7 @@ export interface GridContainerProps {
   lockedCanvasWidth: number;
   viewportScaleMode: DashboardViewportScaleMode;
   viewportScale: number;
+  effectiveViewportScale: number;
+  autoViewportScaleRequestId: number;
   onMetricsChange?: (metrics: GridMetrics) => void;
 }

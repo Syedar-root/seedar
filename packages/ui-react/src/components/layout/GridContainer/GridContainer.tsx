@@ -1,5 +1,4 @@
 ﻿import { Responsive } from "react-grid-layout";
-import { createScaledStrategy } from "react-grid-layout/core";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import styles from "./GridContainer.module.css";
@@ -21,12 +20,15 @@ export const GridContainer: React.FC<GridContainerProps> = ({
   lockedCanvasWidth,
   viewportScaleMode,
   viewportScale,
+  effectiveViewportScale: storedEffectiveViewportScale,
+  autoViewportScaleRequestId,
   onMetricsChange,
 }) => {
   const isEditMode = mode === "edit";
   const {
     containerRef,
-    frameRef,
+    viewportRef,
+    metaBarRef,
     containerWidth,
     mounted,
     containerBreakpoint,
@@ -50,12 +52,14 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     lockedCanvasWidth,
     viewportScaleMode,
     viewportScale,
+    effectiveViewportScale: storedEffectiveViewportScale,
+    autoViewportScaleRequestId,
     onMetricsChange,
   });
 
   return (
     containerRef && (
-      <div className={styles.viewport}>
+      <div className={styles.viewport} ref={viewportRef}>
         <div
           aria-hidden="true"
           className={styles.measure}
@@ -63,19 +67,20 @@ export const GridContainer: React.FC<GridContainerProps> = ({
         />
         {mounted && (
           <>
-            <div className={styles.metaBar}>
+            <div className={styles.metaBar} ref={metaBarRef}>
               <span className={styles.metaChip}>
                 编辑 {activeBreakpoint.toUpperCase()} ·{" "}
                 {BREAKPOINT_LABELS[activeBreakpoint]}
               </span>
               <span className={styles.metaChip}>
-                容器 {Math.round(containerWidth)}px · {containerBreakpoint.toUpperCase()}
+                容器 {Math.round(containerWidth)}px ·{" "}
+                {containerBreakpoint.toUpperCase()}
               </span>
               <span className={styles.metaChip}>
                 画布 {Math.round(effectiveGridWidth)}px
               </span>
             </div>
-            <div className={styles.frame} ref={frameRef}>
+            <div className={styles.frame}>
               {isEditMode ? (
                 <div
                   className={styles.canvasShell}
@@ -105,9 +110,6 @@ export const GridContainer: React.FC<GridContainerProps> = ({
                       rowHeight={rowHeight}
                       width={effectiveGridWidth}
                       compactor={compactor}
-                      positionStrategy={createScaledStrategy(
-                        effectiveViewportScale,
-                      )}
                       onDragStart={handleDragStart}
                       onResizeStart={handleResizeStart}
                       onDragStop={handleDragStop}
@@ -136,6 +138,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
                     rowHeight={rowHeight}
                     width={effectiveGridWidth}
                     compactor={compactor}
+                    // transformScale={effectiveViewportScale}
                     onDragStart={handleDragStart}
                     onResizeStart={handleResizeStart}
                     onDragStop={handleDragStop}

@@ -51,7 +51,9 @@
 .segmentedButton,
 .breakpointButton,
 .secondaryButton,
-.select {
+.select,
+.scaleAutoButton,
+.scaleInput {
   appearance: none;
   border: none;
   background: transparent;
@@ -138,6 +140,59 @@
   color: #0f172a;
 }
 
+.scaleControl {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid color-mix(in srgb, #1f2937 12%, white);
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+}
+
+.scaleAutoButton {
+  min-height: 32px;
+  padding: 0 10px;
+  border-right: 1px solid color-mix(in srgb, #1f2937 10%, white);
+  color: #475569;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.scaleAutoButton:hover {
+  color: #1d4ed8;
+  background: color-mix(in srgb, #eff6ff 55%, white);
+}
+
+.scaleAutoButtonActive {
+  color: white;
+  background: #1d4ed8;
+}
+
+.scaleInput {
+  width: 66px;
+  min-height: 32px;
+  padding: 0 6px 0 10px;
+  color: #0f172a;
+  text-align: right;
+}
+
+.scaleInput:focus {
+  outline: none;
+  background: color-mix(in srgb, #eff6ff 38%, white);
+}
+
+.scaleSuffix {
+  min-height: 32px;
+  padding-right: 10px;
+  display: inline-flex;
+  align-items: center;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .secondaryButton {
   min-height: 34px;
   padding: 6px 12px;
@@ -192,7 +247,12 @@
   }
 
   .select,
+  .scaleControl,
   .secondaryButton {
     width: 100%;
+  }
+
+  .scaleInput {
+    flex: 1;
   }
 }

@@ -39,17 +39,12 @@ export const BREAKPOINT_CANVAS_WIDTHS: Record<SeedarBreakpoint, number> = {
 };
 
 export const DASHBOARD_VIEWPORT_SCALE_OPTIONS = [
-  0.5,
-  0.67,
-  0.75,
-  0.9,
-  1,
-  1.25,
+  0.5, 0.67, 0.75, 0.9, 1, 1.25,
 ] as const;
 
 export const DEFAULT_DASHBOARD_VIEWPORT_SCALE = 1;
-export const MIN_DASHBOARD_VIEWPORT_SCALE = 0.3;
-export const MAX_DASHBOARD_VIEWPORT_SCALE = 1.5;
+export const MIN_DASHBOARD_VIEWPORT_SCALE = 0.05;
+export const MAX_DASHBOARD_VIEWPORT_SCALE = 2;
 export const DASHBOARD_FRAME_PADDING = 32;
 
 export const COLS = {

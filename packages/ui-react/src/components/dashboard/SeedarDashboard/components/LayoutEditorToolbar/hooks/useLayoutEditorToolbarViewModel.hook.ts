@@ -3,7 +3,8 @@
 import { useSeedarDashboardContext } from "../../../context/SeedarDashboardContext";
 import {
   BREAKPOINT_ORDER,
-  DASHBOARD_VIEWPORT_SCALE_OPTIONS,
+  MAX_DASHBOARD_VIEWPORT_SCALE,
+  MIN_DASHBOARD_VIEWPORT_SCALE,
   type SeedarBreakpoint,
 } from "../../../../../../utils/dashboard-layout/constants";
 import {
@@ -91,13 +92,16 @@ export const useLayoutEditorToolbarViewModel = () => {
         }),
       ),
       viewportHint,
+      maxViewportScalePercent: MAX_DASHBOARD_VIEWPORT_SCALE * 100,
+      minViewportScalePercent: MIN_DASHBOARD_VIEWPORT_SCALE * 100,
       viewportScale: state.viewportScale,
+      viewportScaleInputValue: Math.round(
+        state.viewportScaleMode === "auto"
+          ? state.effectiveViewportScale * 100
+          : state.viewportScale * 100,
+      ),
       viewportScaleLabel: formatViewportScale(state.effectiveViewportScale),
       viewportScaleMode: state.viewportScaleMode,
-      viewportScaleOptions: DASHBOARD_VIEWPORT_SCALE_OPTIONS.map((scale) => ({
-        label: formatViewportScale(scale),
-        value: scale,
-      })),
       widthText: formatWidth(state.containerWidth),
     };
   }, [actions, mode, state]);

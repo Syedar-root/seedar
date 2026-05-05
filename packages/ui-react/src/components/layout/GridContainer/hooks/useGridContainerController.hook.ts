@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useContainerWidth } from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
 import type { LayoutItem } from "#pkg/seedar/types";
@@ -28,10 +28,14 @@ export const useGridContainerController = ({
   lockedCanvasWidth,
   viewportScaleMode,
   viewportScale,
+  effectiveViewportScale: storedEffectiveViewportScale,
+  autoViewportScaleRequestId,
   onMetricsChange,
 }: Omit<GridContainerProps, "children">) => {
   const { width, containerRef, mounted } = useContainerWidth();
-  const { elementRef: frameRef, elementSize: frameSize } =
+  const { elementRef: viewportRef, elementSize: viewportSize } =
+    useElementSize<HTMLDivElement>();
+  const { elementRef: metaBarRef, elementSize: metaBarSize } =
     useElementSize<HTMLDivElement>();
   const {
     enable: enablePreventTextSelection,
@@ -101,38 +105,86 @@ export const useGridContainerController = ({
   const compactor = useMemo(() => createGridCompactor(), []);
   const activeLayout = enhancedLayouts[activeBreakpoint] ?? [];
   const canvasHeight = getLayoutHeight(activeLayout as LayoutItem[], rowHeight, MARGIN);
+  const handledAutoScaleRequestRef = useRef<number | null>(null);
+  const frameWidth = viewportSize.width;
+  const frameHeight = Math.max(viewportSize.height - metaBarSize.height, 0);
   const effectiveViewportScale =
     mode === "view"
       ? 1
-      : getDashboardViewportScale({
-          mode: viewportScaleMode,
-          customScale: viewportScale,
-          canvasWidth: effectiveGridWidth,
-          canvasHeight,
-          frameWidth: frameSize.width,
-          frameHeight: frameSize.height,
-        });
+      : viewportScaleMode === "custom"
+        ? getDashboardViewportScale({
+            mode: viewportScaleMode,
+            customScale: viewportScale,
+            canvasWidth: effectiveGridWidth,
+            canvasHeight,
+            frameWidth,
+            frameHeight,
+          })
+        : storedEffectiveViewportScale;
   const scaledCanvasWidth = effectiveGridWidth * effectiveViewportScale;
   const scaledCanvasHeight = canvasHeight * effectiveViewportScale;
+
+  useEffect(() => {
+    if (
+      mode !== "edit" ||
+      viewportScaleMode !== "auto" ||
+      handledAutoScaleRequestRef.current === autoViewportScaleRequestId ||
+      frameWidth <= 0 ||
+      frameHeight <= 0 ||
+      effectiveGridWidth <= 0
+    ) {
+      return;
+    }
+
+    handledAutoScaleRequestRef.current = autoViewportScaleRequestId;
+    onMetricsChange?.({
+      containerWidth: width,
+      containerBreakpoint,
+      effectiveGridWidth,
+      viewportScale: getDashboardViewportScale({
+        mode: "auto",
+        customScale: viewportScale,
+        canvasWidth: effectiveGridWidth,
+        canvasHeight,
+        frameWidth,
+        frameHeight,
+      }),
+    });
+  }, [
+    autoViewportScaleRequestId,
+    canvasHeight,
+    containerBreakpoint,
+    effectiveGridWidth,
+    frameHeight,
+    frameWidth,
+    mode,
+    onMetricsChange,
+    viewportScale,
+    viewportScaleMode,
+    width,
+  ]);
 
   useEffect(() => {
     onMetricsChange?.({
       containerWidth: width,
       containerBreakpoint,
       effectiveGridWidth,
-      viewportScale: effectiveViewportScale,
+      viewportScale:
+        viewportScaleMode === "auto" ? undefined : effectiveViewportScale,
     });
   }, [
     containerBreakpoint,
     effectiveGridWidth,
     effectiveViewportScale,
     onMetricsChange,
+    viewportScaleMode,
     width,
   ]);
 
   return {
     containerRef,
-    frameRef,
+    viewportRef,
+    metaBarRef,
     containerWidth: width,
     mounted,
     containerBreakpoint,

@@ -1,5 +1,6 @@
 ﻿import React from "react";
 import clsx from "clsx";
+import { useEffect, useState } from "react";
 import type { SeedarBreakpoint } from "../../../../../utils/dashboard-layout/constants";
 
 import { useLayoutEditorToolbarViewModel } from "./hooks/useLayoutEditorToolbarViewModel.hook";
@@ -7,10 +8,29 @@ import styles from "./LayoutEditorToolbar.module.css";
 
 export const LayoutEditorToolbar: React.FC = () => {
   const viewModel = useLayoutEditorToolbarViewModel();
+  const [scaleInputValue, setScaleInputValue] = useState("");
+
+  useEffect(() => {
+    if (!viewModel) {
+      return;
+    }
+
+    setScaleInputValue(String(viewModel.viewportScaleInputValue));
+  }, [viewModel?.viewportScaleInputValue]);
 
   if (!viewModel) {
     return null;
   }
+
+  const commitScaleInput = (value: string) => {
+    const scalePercent = Number(value);
+    if (!Number.isFinite(scalePercent)) {
+      setScaleInputValue(String(viewModel.viewportScaleInputValue));
+      return;
+    }
+
+    viewModel.actions.setViewportScale(scalePercent / 100);
+  };
 
   return (
     <div className={styles.toolbar}>
@@ -68,31 +88,54 @@ export const LayoutEditorToolbar: React.FC = () => {
 
           <label className={styles.widthPicker}>
             <span className={styles.label}>缩放</span>
-            <select
-              value={
-                viewModel.viewportScaleMode === "auto"
-                  ? "auto"
-                  : String(viewModel.viewportScale)
-              }
-              className={styles.select}
-              onChange={(event) => {
-                if (event.target.value === "auto") {
-                  viewModel.actions.setViewportScaleMode("auto");
-                  return;
-                }
+            <div className={styles.scaleControl}>
+              <button
+                type="button"
+                className={clsx(
+                  styles.scaleAutoButton,
+                  viewModel.viewportScaleMode === "auto" &&
+                    styles.scaleAutoButtonActive,
+                )}
+                onClick={() => viewModel.actions.setViewportScaleMode("auto")}
+                title={`当前自适应 ${viewModel.viewportScaleLabel}`}
+              >
+                自适应
+              </button>
+              <input
+                type="number"
+                className={styles.scaleInput}
+                min={viewModel.minViewportScalePercent}
+                max={viewModel.maxViewportScalePercent}
+                step={1}
+                value={scaleInputValue}
+                onChange={(event) => {
+                  setScaleInputValue(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    commitScaleInput(event.currentTarget.value);
+                    event.currentTarget.blur();
+                  }
 
-                viewModel.actions.setViewportScale(Number(event.target.value));
-              }}
-            >
-              <option value="auto">
-                自适应 / {viewModel.viewportScaleLabel}
-              </option>
-              {viewModel.viewportScaleOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+                  if (event.key === "Escape") {
+                    setScaleInputValue(
+                      String(viewModel.viewportScaleInputValue),
+                    );
+                    event.currentTarget.blur();
+                  }
+                }}
+                onBlur={(event) => {
+                  if (event.target.value === "") {
+                    setScaleInputValue(String(viewModel.viewportScaleInputValue));
+                    return;
+                  }
+
+                  commitScaleInput(event.target.value);
+                }}
+                aria-label="缩放百分比"
+              />
+              <span className={styles.scaleSuffix}>%</span>
+            </div>
           </label>
 
           <button

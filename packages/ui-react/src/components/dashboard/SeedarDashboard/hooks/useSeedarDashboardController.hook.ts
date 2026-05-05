@@ -63,6 +63,8 @@ export const useSeedarDashboardController = ({
   const [effectiveViewportScale, setEffectiveViewportScale] = useState(
     DEFAULT_DASHBOARD_VIEWPORT_SCALE,
   );
+  const [autoViewportScaleRequestId, setAutoViewportScaleRequestId] =
+    useState(0);
   const hasEditedBreakpointRef = useRef(false);
 
   const configuredBreakpoints = useMemo(
@@ -71,7 +73,10 @@ export const useSeedarDashboardController = ({
   );
   const activeBreakpointSource = useMemo(
     () =>
-      findNearestConfiguredBreakpoint(dashboardState.localLayout, activeBreakpoint),
+      findNearestConfiguredBreakpoint(
+        dashboardState.localLayout,
+        activeBreakpoint,
+      ),
     [activeBreakpoint, dashboardState.localLayout],
   );
   const effectiveActiveBreakpoint =
@@ -115,13 +120,34 @@ export const useSeedarDashboardController = ({
       setActiveBreakpoint(breakpoint);
       setLockedCanvasWidth(getDefaultLockedCanvasWidth(breakpoint));
       setViewportScaleMode("auto");
+      setAutoViewportScaleRequestId((requestId) => requestId + 1);
     },
     [],
   );
 
+  const handleSetLockedCanvasWidth = useCallback((width: number) => {
+    setLockedCanvasWidth(width);
+    setViewportScaleMode("auto");
+    setAutoViewportScaleRequestId((requestId) => requestId + 1);
+  }, []);
+
+  const handleSetViewportScaleMode = useCallback(
+    (nextMode: DashboardViewportScaleMode) => {
+      setViewportScaleMode(nextMode);
+
+      if (nextMode === "auto" && viewportScaleMode !== "auto") {
+        console.log("hcs ");
+        setAutoViewportScaleRequestId((requestId) => requestId + 1);
+      }
+    },
+    [viewportScaleMode],
+  );
+
   const handleSetViewportScale = useCallback((scale: number) => {
     setViewportScaleMode("custom");
-    setViewportScale(clampDashboardViewportScale(scale));
+    const nextScale = clampDashboardViewportScale(scale);
+    setViewportScale(nextScale);
+    setEffectiveViewportScale(nextScale);
   }, []);
 
   const handleCopyActiveBreakpointToOthers = useCallback(() => {
@@ -134,11 +160,7 @@ export const useSeedarDashboardController = ({
         ),
       ),
     );
-  }, [
-    dashboardActions,
-    dashboardState.localLayout,
-    effectiveActiveBreakpoint,
-  ]);
+  }, [dashboardActions, dashboardState.localLayout, effectiveActiveBreakpoint]);
 
   const handleMetricsChange = useCallback<
     NonNullable<GridContainerProps["onMetricsChange"]>
@@ -158,18 +180,17 @@ export const useSeedarDashboardController = ({
           : containerBreakpoint,
       );
       setEffectiveGridWidth((previousWidth) =>
-        previousWidth === effectiveGridWidth ? previousWidth : effectiveGridWidth,
+        previousWidth === effectiveGridWidth
+          ? previousWidth
+          : effectiveGridWidth,
       );
-      setEffectiveViewportScale((previousScale) =>
-        previousScale === viewportScale ? previousScale : viewportScale,
-      );
-      if (viewportScaleMode === "custom") {
-        setViewportScale((previousScale) =>
+      if (viewportScale !== undefined) {
+        setEffectiveViewportScale((previousScale) =>
           previousScale === viewportScale ? previousScale : viewportScale,
         );
       }
     },
-    [viewportScaleMode],
+    [],
   );
 
   const contextActions = useMemo<SeedarDashboardActions>(
@@ -177,8 +198,8 @@ export const useSeedarDashboardController = ({
       ...dashboardActions,
       addPanel: handleAddPanel,
       setActiveBreakpoint: handleSetActiveBreakpoint,
-      setLockedCanvasWidth,
-      setViewportScaleMode,
+      setLockedCanvasWidth: handleSetLockedCanvasWidth,
+      setViewportScaleMode: handleSetViewportScaleMode,
       setViewportScale: handleSetViewportScale,
       copyActiveBreakpointToOthers: handleCopyActiveBreakpointToOthers,
     }),
@@ -187,7 +208,9 @@ export const useSeedarDashboardController = ({
       handleAddPanel,
       handleCopyActiveBreakpointToOthers,
       handleSetActiveBreakpoint,
+      handleSetLockedCanvasWidth,
       handleSetViewportScale,
+      handleSetViewportScaleMode,
     ],
   );
 
@@ -232,6 +255,8 @@ export const useSeedarDashboardController = ({
       lockedCanvasWidth,
       viewportScaleMode,
       viewportScale,
+      effectiveViewportScale,
+      autoViewportScaleRequestId,
       onMetricsChange: handleMetricsChange,
     }),
     [
@@ -242,6 +267,8 @@ export const useSeedarDashboardController = ({
       lockedCanvasWidth,
       viewportScaleMode,
       viewportScale,
+      effectiveViewportScale,
+      autoViewportScaleRequestId,
       mode,
     ],
   );
