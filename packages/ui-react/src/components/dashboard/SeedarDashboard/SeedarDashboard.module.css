@@ -2,7 +2,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--seedar-dashboard-space-md);
+  color: var(--seedar-dashboard-text);
+  font-family: var(--font-primary, inherit);
   overflow: hidden;
   flex: 1;
   height: auto;

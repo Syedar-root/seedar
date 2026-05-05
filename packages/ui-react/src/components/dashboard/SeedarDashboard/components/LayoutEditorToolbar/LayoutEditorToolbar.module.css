@@ -1,19 +1,19 @@
 .toolbar {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, #1f2937 10%, white);
-  border-radius: 12px;
-  background: #f8fafc;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+  gap: var(--seedar-dashboard-space-sm, 8px);
+  padding: var(--seedar-dashboard-space-md, 12px);
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  border-radius: var(--seedar-dashboard-radius-lg, 12px);
+  background: var(--seedar-dashboard-surface, #f8fafc);
+  box-shadow: var(--seedar-dashboard-shadow, 0 10px 28px rgba(15, 23, 42, 0.04));
 }
 
 .deviceBar {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 10px 14px;
+  gap: var(--seedar-dashboard-space-sm, 8px) var(--seedar-dashboard-space-lg, 16px);
   align-items: stretch;
 }
 
@@ -23,7 +23,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 10px;
+  gap: var(--seedar-dashboard-space-sm, 8px) var(--seedar-dashboard-space-md, 12px);
 }
 
 .devicePrimary {
@@ -36,16 +36,16 @@
 }
 
 .label {
-  font-size: 12px;
+  font-size: var(--seedar-dashboard-font-sm, 12px);
   font-weight: 600;
-  color: #475569;
+  color: var(--seedar-dashboard-text-muted, #475569);
 }
 
 .segmented {
   display: inline-flex;
-  padding: 4px;
-  border-radius: 999px;
-  background: color-mix(in srgb, #e2e8f0 45%, white);
+  padding: var(--seedar-dashboard-space-xs, 4px);
+  border-radius: var(--seedar-dashboard-radius-pill, 9999px);
+  background: var(--seedar-dashboard-surface-muted, #f1f5f9);
 }
 
 .segmentedButton,
@@ -61,32 +61,32 @@
 }
 
 .segmentedButton {
-  padding: 8px 14px;
-  border-radius: 999px;
-  color: #475569;
+  padding: var(--seedar-dashboard-space-sm, 8px) 14px;
+  border-radius: var(--seedar-dashboard-radius-pill, 9999px);
+  color: var(--seedar-dashboard-text-muted, #475569);
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color var(--seedar-dashboard-transition, 0.2s ease), color var(--seedar-dashboard-transition, 0.2s ease);
 }
 
 .segmentedButtonActive {
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--seedar-dashboard-surface-selected, #1d4ed8);
+  color: var(--seedar-dashboard-text-inverse, #fff);
 }
 
 .metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--seedar-dashboard-space-sm, 8px);
 }
 
 .metric {
   min-height: 34px;
   padding: 6px 10px;
-  border: 1px solid color-mix(in srgb, #1f2937 8%, white);
-  border-radius: 8px;
-  background: white;
-  color: #475569;
-  font-size: 12px;
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  border-radius: var(--seedar-dashboard-radius-md, 8px);
+  background: var(--seedar-dashboard-surface-elevated, #fff);
+  color: var(--seedar-dashboard-text-muted, #475569);
+  font-size: var(--seedar-dashboard-font-sm, 12px);
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -104,29 +104,29 @@
   gap: 6px;
   min-height: 34px;
   padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, #1f2937 10%, white);
-  background: white;
+  border-radius: var(--seedar-dashboard-radius-md, 8px);
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  background: var(--seedar-dashboard-surface-elevated, #fff);
   cursor: pointer;
   transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    transform 0.2s ease;
+    border-color var(--seedar-dashboard-transition, 0.2s ease),
+    background-color var(--seedar-dashboard-transition, 0.2s ease),
+    transform var(--seedar-dashboard-transition, 0.2s ease);
 }
 
 .breakpointButton:hover {
-  border-color: color-mix(in srgb, #2563eb 30%, white);
-  background: color-mix(in srgb, #eff6ff 55%, white);
+  border-color: var(--seedar-dashboard-border-hover, #cbd5e1);
+  background: var(--seedar-dashboard-surface-hover, #eff6ff);
 }
 
 .breakpointButtonActive {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
-  color: white;
+  background: var(--seedar-dashboard-surface-selected, #1d4ed8);
+  border-color: var(--seedar-dashboard-surface-selected, #1d4ed8);
+  color: var(--seedar-dashboard-text-inverse, #fff);
 }
 
 .breakpointMeta {
-  font-size: 11px;
+  font-size: var(--font-xs, 11px);
   opacity: 0.75;
 }
 
@@ -134,53 +134,53 @@
   min-width: 188px;
   min-height: 34px;
   padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, #1f2937 12%, white);
-  background: white;
-  color: #0f172a;
+  border-radius: var(--seedar-dashboard-radius-md, 8px);
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  background: var(--seedar-dashboard-surface-elevated, #fff);
+  color: var(--seedar-dashboard-text, #0f172a);
 }
 
 .scaleControl {
   min-height: 34px;
   display: inline-flex;
   align-items: stretch;
-  border: 1px solid color-mix(in srgb, #1f2937 12%, white);
-  border-radius: 8px;
-  background: white;
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  border-radius: var(--seedar-dashboard-radius-md, 8px);
+  background: var(--seedar-dashboard-surface-elevated, #fff);
   overflow: hidden;
 }
 
 .scaleAutoButton {
   min-height: 32px;
   padding: 0 10px;
-  border-right: 1px solid color-mix(in srgb, #1f2937 10%, white);
-  color: #475569;
+  border-right: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  color: var(--seedar-dashboard-text-muted, #475569);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--seedar-dashboard-font-sm, 12px);
   font-weight: 600;
 }
 
 .scaleAutoButton:hover {
-  color: #1d4ed8;
-  background: color-mix(in srgb, #eff6ff 55%, white);
+  color: var(--seedar-dashboard-surface-selected, #1d4ed8);
+  background: var(--seedar-dashboard-surface-hover, #eff6ff);
 }
 
 .scaleAutoButtonActive {
-  color: white;
-  background: #1d4ed8;
+  color: var(--seedar-dashboard-text-inverse, #fff);
+  background: var(--seedar-dashboard-surface-selected, #1d4ed8);
 }
 
 .scaleInput {
   width: 66px;
   min-height: 32px;
   padding: 0 6px 0 10px;
-  color: #0f172a;
+  color: var(--seedar-dashboard-text, #0f172a);
   text-align: right;
 }
 
 .scaleInput:focus {
   outline: none;
-  background: color-mix(in srgb, #eff6ff 38%, white);
+  background: var(--seedar-dashboard-surface-hover, #eff6ff);
 }
 
 .scaleSuffix {
@@ -188,27 +188,27 @@
   padding-right: 10px;
   display: inline-flex;
   align-items: center;
-  color: #64748b;
-  font-size: 12px;
+  color: var(--seedar-dashboard-text-subtle, #64748b);
+  font-size: var(--seedar-dashboard-font-sm, 12px);
   font-weight: 600;
 }
 
 .secondaryButton {
   min-height: 34px;
   padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, #1f2937 12%, white);
-  background: white;
-  color: #0f172a;
+  border-radius: var(--seedar-dashboard-radius-md, 8px);
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  background: var(--seedar-dashboard-surface-elevated, #fff);
+  color: var(--seedar-dashboard-text, #0f172a);
   cursor: pointer;
   transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
+    border-color var(--seedar-dashboard-transition, 0.2s ease),
+    background-color var(--seedar-dashboard-transition, 0.2s ease);
 }
 
 .secondaryButton:hover:not(:disabled) {
-  border-color: color-mix(in srgb, #2563eb 28%, white);
-  background: color-mix(in srgb, #eff6ff 55%, white);
+  border-color: var(--seedar-dashboard-border-hover, #cbd5e1);
+  background: var(--seedar-dashboard-surface-hover, #eff6ff);
 }
 
 .secondaryButton:disabled {
@@ -218,9 +218,9 @@
 
 .helperText {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--seedar-dashboard-font-sm, 12px);
   line-height: 1.5;
-  color: #475569;
+  color: var(--seedar-dashboard-text-muted, #475569);
 }
 
 .helperStack {
@@ -231,7 +231,7 @@
 
 @media (max-width: 768px) {
   .toolbar {
-    padding: 10px;
+    padding: var(--seedar-dashboard-space-sm, 8px);
   }
 
   .devicePrimary,
