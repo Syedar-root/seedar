@@ -1,4 +1,7 @@
-import type { SeedarBreakpoint } from "../../../../utils/dashboard-layout/constants";
+import type {
+  DashboardViewportScaleMode,
+  SeedarBreakpoint,
+} from "../../../../utils/dashboard-layout/constants";
 import type {
   SeedarDashboardBaseState,
   SeedarDashboardState,
@@ -12,6 +15,9 @@ interface BuildSeedarDashboardStateParams {
   containerWidth: number;
   effectiveGridWidth: number;
   lockedCanvasWidth: number;
+  viewportScaleMode: DashboardViewportScaleMode;
+  viewportScale: number;
+  effectiveViewportScale: number;
   configuredBreakpoints: SeedarBreakpoint[];
   activeBreakpointSource: SeedarBreakpoint | null;
 }
@@ -24,6 +30,9 @@ export const buildSeedarDashboardState = ({
   containerWidth,
   effectiveGridWidth,
   lockedCanvasWidth,
+  viewportScaleMode,
+  viewportScale,
+  effectiveViewportScale,
   configuredBreakpoints,
   activeBreakpointSource,
 }: BuildSeedarDashboardStateParams): SeedarDashboardState => ({
@@ -33,6 +42,9 @@ export const buildSeedarDashboardState = ({
   containerWidth,
   effectiveGridWidth,
   lockedCanvasWidth,
+  viewportScaleMode,
+  viewportScale,
+  effectiveViewportScale,
   configuredBreakpoints,
   activeBreakpointSource,
 });

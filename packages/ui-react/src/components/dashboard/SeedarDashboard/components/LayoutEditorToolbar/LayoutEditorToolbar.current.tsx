@@ -14,20 +14,9 @@ export const LayoutEditorToolbar: React.FC = () => {
 
   return (
     <div className={styles.toolbar}>
-      <div className={styles.row}>
-        <div className={styles.metrics}>
-          <span className={styles.metric}>
-            当前容器 {viewModel.widthText} / {viewModel.containerBreakpointLabel}
-          </span>
-          <span className={styles.metric}>
-            编辑画布 {viewModel.effectiveGridWidthText}
-          </span>
-        </div>
-      </div>
-
-      <div className={styles.row}>
-        <div className={styles.group}>
-          <span className={styles.label}>编辑布局版本</span>
+      <div className={styles.deviceBar}>
+        <div className={styles.devicePrimary}>
+          <span className={styles.label}>设备断点</span>
           <div className={styles.breakpoints}>
             {viewModel.breakpoints.map((item: {
               breakpoint: SeedarBreakpoint;
@@ -43,41 +32,78 @@ export const LayoutEditorToolbar: React.FC = () => {
                   item.isActive && styles.breakpointButtonActive,
                 )}
                 onClick={() => viewModel.actions.setActiveBreakpoint(item.breakpoint)}
+                title={item.range}
               >
                 <span>{item.breakpoint.toUpperCase()}</span>
                 <span className={styles.breakpointMeta}>
-                  {item.range} / {item.configured ? "已独立" : "未独立"}
+                  {item.configured ? "独立" : "继承"}
                 </span>
               </button>
             ))}
           </div>
         </div>
 
-        <label className={styles.group}>
-          <span className={styles.label}>断点预览宽度</span>
-          <select
-            value={viewModel.lockedCanvasWidth}
-            className={styles.select}
-            onChange={(event) =>
-              viewModel.actions.setLockedCanvasWidth(Number(event.target.value))
-            }
-          >
-            {viewModel.lockedWidthOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className={styles.deviceSecondary}>
+          <div className={styles.metrics}>
+            <span className={styles.metric}>容器 {viewModel.widthText}</span>
+            <span className={styles.metric}>画布 {viewModel.effectiveGridWidthText}</span>
+          </div>
 
-        <button
-          type="button"
-          className={styles.secondaryButton}
-          onClick={viewModel.actions.copyActiveBreakpointToOthers}
-          disabled={viewModel.copyDisabled}
-        >
-          复制布局到其它断点
-        </button>
+          <label className={styles.widthPicker}>
+            <span className={styles.label}>预览宽度</span>
+            <select
+              value={viewModel.lockedCanvasWidth}
+              className={styles.select}
+              onChange={(event) =>
+                viewModel.actions.setLockedCanvasWidth(Number(event.target.value))
+              }
+            >
+              {viewModel.lockedWidthOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.widthPicker}>
+            <span className={styles.label}>缩放</span>
+            <select
+              value={
+                viewModel.viewportScaleMode === "auto"
+                  ? "auto"
+                  : String(viewModel.viewportScale)
+              }
+              className={styles.select}
+              onChange={(event) => {
+                if (event.target.value === "auto") {
+                  viewModel.actions.setViewportScaleMode("auto");
+                  return;
+                }
+
+                viewModel.actions.setViewportScale(Number(event.target.value));
+              }}
+            >
+              <option value="auto">
+                自适应 / {viewModel.viewportScaleLabel}
+              </option>
+              {viewModel.viewportScaleOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={viewModel.actions.copyActiveBreakpointToOthers}
+            disabled={viewModel.copyDisabled}
+          >
+            同步到其它断点
+          </button>
+        </div>
       </div>
 
       <div className={styles.helperStack}>

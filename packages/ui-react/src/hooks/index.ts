@@ -61,6 +61,8 @@ export { usePreventTextSelection } from "./ui/usePreventTextSelection";
 
 export { useAutoScroll } from "./ui/useAutoScroll";
 
+export { useElementSize } from "./ui/useElementSize.hook";
+
 export {
   useAis,
   useAi,

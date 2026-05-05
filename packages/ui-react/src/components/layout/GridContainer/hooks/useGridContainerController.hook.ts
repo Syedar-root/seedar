@@ -4,13 +4,16 @@ import type { Layout } from "react-grid-layout";
 import type { LayoutItem } from "#pkg/seedar/types";
 
 import { useAutoScroll, usePreventTextSelection } from "../../../../hooks";
+import { useElementSize } from "../../../../hooks";
 import {
   COLS,
   MARGIN,
 } from "../../../../utils/dashboard-layout/constants";
 import {
   getBreakpointByWidth,
+  getDashboardViewportScale,
   getEffectiveGridWidth,
+  getLayoutHeight,
   updateBreakpointLayout,
 } from "../../../../utils/dashboard-layout/layoutEditor";
 import type { GridContainerProps } from "../types";
@@ -23,9 +26,13 @@ export const useGridContainerController = ({
   mode = "edit",
   activeBreakpoint,
   lockedCanvasWidth,
+  viewportScaleMode,
+  viewportScale,
   onMetricsChange,
 }: Omit<GridContainerProps, "children">) => {
   const { width, containerRef, mounted } = useContainerWidth();
+  const { elementRef: frameRef, elementSize: frameSize } =
+    useElementSize<HTMLDivElement>();
   const {
     enable: enablePreventTextSelection,
     disable: disablePreventTextSelection,
@@ -53,14 +60,6 @@ export const useGridContainerController = ({
       findScrollViewport(containerRef.current);
     }
   }, [containerRef, findScrollViewport]);
-
-  useEffect(() => {
-    onMetricsChange?.({
-      containerWidth: width,
-      containerBreakpoint,
-      effectiveGridWidth,
-    });
-  }, [containerBreakpoint, effectiveGridWidth, onMetricsChange, width]);
 
   const startInteractions = useCallback(() => {
     enablePreventTextSelection();
@@ -100,14 +99,48 @@ export const useGridContainerController = ({
   );
 
   const compactor = useMemo(() => createGridCompactor(), []);
+  const activeLayout = enhancedLayouts[activeBreakpoint] ?? [];
+  const canvasHeight = getLayoutHeight(activeLayout as LayoutItem[], rowHeight, MARGIN);
+  const effectiveViewportScale =
+    mode === "view"
+      ? 1
+      : getDashboardViewportScale({
+          mode: viewportScaleMode,
+          customScale: viewportScale,
+          canvasWidth: effectiveGridWidth,
+          canvasHeight,
+          frameWidth: frameSize.width,
+          frameHeight: frameSize.height,
+        });
+  const scaledCanvasWidth = effectiveGridWidth * effectiveViewportScale;
+  const scaledCanvasHeight = canvasHeight * effectiveViewportScale;
+
+  useEffect(() => {
+    onMetricsChange?.({
+      containerWidth: width,
+      containerBreakpoint,
+      effectiveGridWidth,
+      viewportScale: effectiveViewportScale,
+    });
+  }, [
+    containerBreakpoint,
+    effectiveGridWidth,
+    effectiveViewportScale,
+    onMetricsChange,
+    width,
+  ]);
 
   return {
     containerRef,
+    frameRef,
     containerWidth: width,
     mounted,
     containerBreakpoint,
     currentCols,
     effectiveGridWidth,
+    effectiveViewportScale,
+    scaledCanvasWidth,
+    scaledCanvasHeight,
     enhancedLayouts,
     compactor,
     handleDragStart: startInteractions,

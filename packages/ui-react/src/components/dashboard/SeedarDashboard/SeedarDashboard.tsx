@@ -49,7 +49,7 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
         {header}
         <LayoutEditorToolbar />
         {children}
-        <ScrollArea style={{ paddingBottom: "2rem" }}>
+        <ScrollArea className={styles.dashboardScroll}>
           <GridContainer key={dashboardId} {...controller.gridContainerProps}>
             {controller.contextValue.data?.panels.map((panel) => (
               <SeedarPanel

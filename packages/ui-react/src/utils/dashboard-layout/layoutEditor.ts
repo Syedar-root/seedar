@@ -12,7 +12,12 @@ import {
   BREAKPOINT_CANVAS_WIDTHS,
   BREAKPOINT_ORDER,
   COLS,
+  DASHBOARD_FRAME_PADDING,
+  DEFAULT_DASHBOARD_VIEWPORT_SCALE,
+  MAX_DASHBOARD_VIEWPORT_SCALE,
+  MIN_DASHBOARD_VIEWPORT_SCALE,
   type AddPanelScope,
+  type DashboardViewportScaleMode,
   type SeedarBreakpoint,
 } from "./constants";
 
@@ -171,7 +176,7 @@ export const getMaterializedBreakpointLayout = (
 ): LayoutItem[] => {
   const currentLayout = layouts[targetBreakpoint];
   if (currentLayout) {
-    return cloneLayoutItems(currentLayout);
+    return fitLayoutToBreakpoint(currentLayout, targetBreakpoint);
   }
 
   const sourceBreakpoint = findNearestConfiguredBreakpoint(layouts, targetBreakpoint);
@@ -195,7 +200,10 @@ export const normalizeLayouts = (layouts: Layouts): Layouts => {
     items.forEach((item) => {
       seen.set(item.i, { ...item });
     });
-    normalized[breakpoint] = Array.from(seen.values());
+    normalized[breakpoint] = fitLayoutToBreakpoint(
+      Array.from(seen.values()),
+      breakpoint,
+    );
   });
 
   return normalized;
@@ -293,6 +301,58 @@ export const removePanelFromBreakpoints = (
 export const getDefaultLockedCanvasWidth = (
   breakpoint: SeedarBreakpoint,
 ): number => BREAKPOINT_CANVAS_WIDTHS[breakpoint];
+
+export const clampDashboardViewportScale = (scale: number): number => {
+  if (!Number.isFinite(scale)) {
+    return DEFAULT_DASHBOARD_VIEWPORT_SCALE;
+  }
+
+  return Math.min(
+    Math.max(scale, MIN_DASHBOARD_VIEWPORT_SCALE),
+    MAX_DASHBOARD_VIEWPORT_SCALE,
+  );
+};
+
+export const getLayoutHeight = (
+  items: LayoutItem[],
+  rowHeight: number,
+  margin = 0,
+): number => {
+  if (items.length === 0) {
+    return 0;
+  }
+
+  const rowCount = Math.max(...items.map((item) => item.y + item.h));
+  return rowCount * rowHeight + Math.max(rowCount - 1, 0) * margin;
+};
+
+export const getDashboardViewportScale = ({
+  mode,
+  customScale,
+  canvasWidth,
+  canvasHeight,
+  frameWidth,
+  frameHeight,
+}: {
+  mode: DashboardViewportScaleMode;
+  customScale: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  frameWidth: number;
+  frameHeight: number;
+}): number => {
+  if (mode === "custom") {
+    return clampDashboardViewportScale(customScale);
+  }
+
+  const availableWidth = Math.max(frameWidth - DASHBOARD_FRAME_PADDING, 1);
+  const availableHeight = Math.max(frameHeight - DASHBOARD_FRAME_PADDING, 1);
+  const widthScale = availableWidth / Math.max(canvasWidth, 1);
+  const heightScale =
+    canvasHeight > 0 ? availableHeight / canvasHeight : DEFAULT_DASHBOARD_VIEWPORT_SCALE;
+
+  return clampDashboardViewportScale(Math.min(1, widthScale, heightScale));
+};
 
 export const getBreakpointSummaryLabel = (
   breakpoint: SeedarBreakpoint,

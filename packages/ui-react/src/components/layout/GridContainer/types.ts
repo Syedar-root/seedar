@@ -2,11 +2,13 @@ import type { ReactNode } from "react";
 import type { Layouts } from "#pkg/seedar/types";
 
 import type { SeedarBreakpoint } from "../../../utils/dashboard-layout/constants";
+import type { DashboardViewportScaleMode } from "../../../utils/dashboard-layout/constants";
 
 export interface GridMetrics {
   containerWidth: number;
   containerBreakpoint: SeedarBreakpoint;
   effectiveGridWidth: number;
+  viewportScale: number;
 }
 
 export interface GridContainerProps {
@@ -16,5 +18,7 @@ export interface GridContainerProps {
   children: ReactNode;
   activeBreakpoint: SeedarBreakpoint;
   lockedCanvasWidth: number;
+  viewportScaleMode: DashboardViewportScaleMode;
+  viewportScale: number;
   onMetricsChange?: (metrics: GridMetrics) => void;
 }

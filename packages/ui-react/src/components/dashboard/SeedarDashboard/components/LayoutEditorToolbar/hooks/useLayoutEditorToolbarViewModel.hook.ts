@@ -3,6 +3,7 @@
 import { useSeedarDashboardContext } from "../../../context/SeedarDashboardContext";
 import {
   BREAKPOINT_ORDER,
+  DASHBOARD_VIEWPORT_SCALE_OPTIONS,
   type SeedarBreakpoint,
 } from "../../../../../../utils/dashboard-layout/constants";
 import {
@@ -11,6 +12,7 @@ import {
 } from "../../../../../../utils/dashboard-layout/layoutEditor";
 import {
   formatWidth,
+  formatViewportScale,
   getConfiguredLayoutHint,
   getDifferentViewportHint,
   getEmptyLayoutHint,
@@ -89,6 +91,13 @@ export const useLayoutEditorToolbarViewModel = () => {
         }),
       ),
       viewportHint,
+      viewportScale: state.viewportScale,
+      viewportScaleLabel: formatViewportScale(state.effectiveViewportScale),
+      viewportScaleMode: state.viewportScaleMode,
+      viewportScaleOptions: DASHBOARD_VIEWPORT_SCALE_OPTIONS.map((scale) => ({
+        label: formatViewportScale(scale),
+        value: scale,
+      })),
       widthText: formatWidth(state.containerWidth),
     };
   }, [actions, mode, state]);

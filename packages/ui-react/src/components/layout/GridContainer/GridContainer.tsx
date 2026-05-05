@@ -1,4 +1,5 @@
 ﻿import { Responsive } from "react-grid-layout";
+import { createScaledStrategy } from "react-grid-layout/core";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import styles from "./GridContainer.module.css";
@@ -18,15 +19,22 @@ export const GridContainer: React.FC<GridContainerProps> = ({
   children,
   activeBreakpoint,
   lockedCanvasWidth,
+  viewportScaleMode,
+  viewportScale,
   onMetricsChange,
 }) => {
+  const isEditMode = mode === "edit";
   const {
     containerRef,
+    frameRef,
     containerWidth,
     mounted,
     containerBreakpoint,
     currentCols,
     effectiveGridWidth,
+    effectiveViewportScale,
+    scaledCanvasWidth,
+    scaledCanvasHeight,
     enhancedLayouts,
     compactor,
     handleDragStart,
@@ -40,6 +48,8 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     mode,
     activeBreakpoint,
     lockedCanvasWidth,
+    viewportScaleMode,
+    viewportScale,
     onMetricsChange,
   });
 
@@ -65,32 +75,77 @@ export const GridContainer: React.FC<GridContainerProps> = ({
                 画布 {Math.round(effectiveGridWidth)}px
               </span>
             </div>
-            <div className={styles.frame}>
-              <div
-                className={styles.canvas}
-                style={
-                  {
-                    width: mode === "edit" ? effectiveGridWidth : "100%",
-                    "--grid-columns": currentCols,
-                  } as React.CSSProperties
-                }
-              >
-                <Responsive
-                  layouts={enhancedLayouts}
-                  breakpoints={BREAKPOINTS}
-                  cols={COLS}
-                  margin={[MARGIN, MARGIN]}
-                  rowHeight={rowHeight}
-                  width={effectiveGridWidth}
-                  compactor={compactor}
-                  onDragStart={handleDragStart}
-                  onResizeStart={handleResizeStart}
-                  onDragStop={handleDragStop}
-                  onResizeStop={handleResizeStop}
+            <div className={styles.frame} ref={frameRef}>
+              {isEditMode ? (
+                <div
+                  className={styles.canvasShell}
+                  style={
+                    {
+                      width: scaledCanvasWidth,
+                      height:
+                        scaledCanvasHeight > 0 ? scaledCanvasHeight : undefined,
+                    } as React.CSSProperties
+                  }
                 >
-                  {children}
-                </Responsive>
-              </div>
+                  <div
+                    className={styles.canvasEdit}
+                    style={
+                      {
+                        width: effectiveGridWidth,
+                        transform: `scale(${effectiveViewportScale})`,
+                        "--grid-columns": currentCols,
+                      } as React.CSSProperties
+                    }
+                  >
+                    <Responsive
+                      layouts={enhancedLayouts}
+                      breakpoints={BREAKPOINTS}
+                      cols={COLS}
+                      margin={[MARGIN, MARGIN]}
+                      rowHeight={rowHeight}
+                      width={effectiveGridWidth}
+                      compactor={compactor}
+                      positionStrategy={createScaledStrategy(
+                        effectiveViewportScale,
+                      )}
+                      onDragStart={handleDragStart}
+                      onResizeStart={handleResizeStart}
+                      onDragStop={handleDragStop}
+                      onResizeStop={handleResizeStop}
+                      containerPadding={[0, 0]}
+                    >
+                      {children}
+                    </Responsive>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={styles.canvas}
+                  style={
+                    {
+                      width: "100%",
+                      "--grid-columns": currentCols,
+                    } as React.CSSProperties
+                  }
+                >
+                  <Responsive
+                    layouts={enhancedLayouts}
+                    breakpoints={BREAKPOINTS}
+                    cols={COLS}
+                    margin={[MARGIN, MARGIN]}
+                    rowHeight={rowHeight}
+                    width={effectiveGridWidth}
+                    compactor={compactor}
+                    onDragStart={handleDragStart}
+                    onResizeStart={handleResizeStart}
+                    onDragStop={handleDragStop}
+                    onResizeStop={handleResizeStop}
+                    containerPadding={[0, 0]}
+                  >
+                    {children}
+                  </Responsive>
+                </div>
+              )}
             </div>
           </>
         )}
