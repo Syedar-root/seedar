@@ -26,6 +26,9 @@ const queryKeys = {
   execution: (id: string) => [...queryKeys.all, 'execution', id] as const,
 };
 
+const QUERY_EXECUTION_STALE_TIME = 30 * 1000;
+const QUERY_EXECUTION_GC_TIME = 5 * 60 * 1000;
+
 /**
  * 获取查询列表
  * @param status - 查询状态（可选）
@@ -87,6 +90,9 @@ export const useUpdateQuery = () => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.detail(variables.id),
       });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.execution(variables.id),
+      });
     },
   });
 };
@@ -101,9 +107,24 @@ export const useDeleteQuery = () => {
 
   return useMutation({
     mutationFn: (id: string) => queryApi.remove(id),
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.lists() });
+      queryClient.removeQueries({ queryKey: queryKeys.detail(id) });
+      queryClient.removeQueries({ queryKey: queryKeys.execution(id) });
     },
+  });
+};
+
+export const useQueryExecution = (queryId?: string, enabled = true) => {
+  const queryApi = useQueryApi();
+  const stableQueryId = queryId || "";
+
+  return useReactQuery({
+    queryKey: queryKeys.execution(stableQueryId),
+    queryFn: () => queryApi.execute(stableQueryId),
+    enabled: enabled && !!queryId,
+    staleTime: QUERY_EXECUTION_STALE_TIME,
+    gcTime: QUERY_EXECUTION_GC_TIME,
   });
 };
 

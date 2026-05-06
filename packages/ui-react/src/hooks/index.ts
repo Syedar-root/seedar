@@ -32,6 +32,7 @@ export {
   useCreateQuery,
   useUpdateQuery,
   useDeleteQuery,
+  useQueryExecution,
   useExecuteQuery,
   useExecuteTempQuery,
 } from "./api/useQuery";

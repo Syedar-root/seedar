@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import type { ExecuteQueryResponse } from "#pkg/seedar/types";
+import { useMemo } from "react";
 
-import { useExecuteQuery } from "../../../../hooks";
+import { useQueryExecution } from "../../../../hooks";
 import type {
   MetricCardProps,
   MetricCardResolvedProps,
@@ -38,26 +37,8 @@ export const useMetricCardData = (
     changeRate,
     changeValue,
   } = props;
-  const { mutate: executeQuery } = useExecuteQuery();
-  const [rawData, setRawData] = useState<ExecuteQueryResponse | undefined>(data);
-
-  useEffect(() => {
-    if (data) {
-      setRawData(data);
-      return;
-    }
-
-    if (!queryId) {
-      setRawData(undefined);
-      return;
-    }
-
-    executeQuery(queryId, {
-      onSuccess: (queryData) => {
-        setRawData(queryData);
-      },
-    });
-  }, [data, executeQuery, queryId]);
+  const { data: executedData } = useQueryExecution(queryId, !data);
+  const rawData = data || executedData;
 
   return useMemo(
     () =>
