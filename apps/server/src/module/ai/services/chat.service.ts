@@ -217,6 +217,22 @@ export class ChatService implements OnModuleDestroy {
     return this.postgresCheckpointer ?? this.memoryCheckpointer;
   }
 
+  async getCheckpointTupleByThreadId(
+    threadId: string,
+  ): Promise<
+    | {
+        checkpoint?: {
+          channel_values?: Record<string, unknown>;
+        };
+      }
+    | undefined
+  > {
+    await this.ensureCheckpointReady();
+    return this.getCheckpointer().getTuple({
+      configurable: { thread_id: threadId },
+    });
+  }
+
   async onModuleDestroy(): Promise<void> {
     if (this.postgresCheckpointer) {
       await this.postgresCheckpointer.end();

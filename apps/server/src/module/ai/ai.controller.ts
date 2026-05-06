@@ -78,12 +78,22 @@ export class AiController {
   }
 
   @Get('session/:id/messages')
-  listSessionMessages(
+  async listSessionMessages(
     @Param('id') id: string,
     @Query('cursor') cursor?: string,
     @Query('limit') limit: number = 50,
   ): Promise<CursorPaginatedResponse<AiSessionMessageResponse>> {
-    return this.aiSessionMessageService.listBySession(id, cursor, limit);
+    const checkpointTuple = await this.chatService.getCheckpointTupleByThreadId(
+      id,
+    );
+    const checkpointMessages =
+      checkpointTuple?.checkpoint?.channel_values?.messages;
+    return this.aiSessionMessageService.listBySessionOrRecover(
+      id,
+      cursor,
+      limit,
+      checkpointMessages,
+    );
   }
 
   @Patch()

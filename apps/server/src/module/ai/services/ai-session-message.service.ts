@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
+import { BaseMessage, mapStoredMessageToChatMessage } from '@langchain/core/messages';
 import { AiSessionMessage } from '../entities';
 import {
   AiSessionMessageResponse,
@@ -126,6 +127,32 @@ export class AiSessionMessageService {
     };
   }
 
+  async listBySessionOrRecover(
+    sessionId: string,
+    cursor: string | undefined,
+    limit: number,
+    checkpointMessages?: unknown,
+  ): Promise<CursorPaginatedResponse<AiSessionMessageResponse>> {
+    const page = await this.listBySession(sessionId, cursor, limit);
+    if (page.data.length > 0 || cursor) {
+      return page;
+    }
+
+    const recovered = this.tryRecoverMessagesFromCheckpoint(
+      sessionId,
+      checkpointMessages,
+    );
+    if (recovered.length === 0) {
+      return {
+        data: [this.createHistoryUnavailableMessage(sessionId)],
+      };
+    }
+
+    return {
+      data: recovered,
+    };
+  }
+
   buildContextStatusEvent(
     sessionId: string,
     payload: {
@@ -148,6 +175,128 @@ export class AiSessionMessageService {
     return {
       sessionId,
       ...payload,
+    };
+  }
+
+  private tryRecoverMessagesFromCheckpoint(
+    sessionId: string,
+    checkpointMessages: unknown,
+  ): AiSessionMessageResponse[] {
+    if (!Array.isArray(checkpointMessages) || checkpointMessages.length === 0) {
+      return [];
+    }
+
+    const messages: BaseMessage[] = [];
+    for (const item of checkpointMessages) {
+      try {
+        const mapped = mapStoredMessageToChatMessage(
+          item as Parameters<typeof mapStoredMessageToChatMessage>[0],
+        );
+        if (mapped._getType() !== 'remove') {
+          messages.push(mapped);
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    if (messages.length === 0) {
+      return [];
+    }
+
+    return messages.map((message, index) => {
+      const createdAt = new Date(Date.now() + index);
+      const contentText = this.messageContentToText(message.content);
+      const messageType = this.mapMessageTypeFromBaseMessage(message);
+      const role = this.mapRoleFromBaseMessage(message);
+      const sid =
+        ((message.additional_kwargs as Record<string, unknown> | undefined)
+          ?.sid as string | undefined) || `recovered_${index + 1}`;
+
+      return {
+        id: `recovered-${index + 1}`,
+        sessionId,
+        turnId: 'recovered',
+        sid,
+        messageType,
+        role,
+        contentText,
+        contentJson:
+          typeof message.content === 'string'
+            ? undefined
+            : ({ value: message.content } as Record<string, unknown>),
+        metaJson: {
+          recoveredFromCheckpoint: true,
+        },
+        createdAt,
+      };
+    });
+  }
+
+  private messageContentToText(content: unknown): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    if (Array.isArray(content)) {
+      return content
+        .map((item) => {
+          if (typeof item === 'string') {
+            return item;
+          }
+          if (item && typeof item === 'object' && 'text' in item) {
+            const text = (item as { text?: unknown }).text;
+            return typeof text === 'string' ? text : '';
+          }
+          return '';
+        })
+        .filter(Boolean)
+        .join('\n');
+    }
+
+    if (content && typeof content === 'object') {
+      return JSON.stringify(content);
+    }
+
+    return '';
+  }
+
+  private mapMessageTypeFromBaseMessage(message: BaseMessage): string {
+    const type = message._getType();
+    if (type === 'human') {
+      return 'user';
+    }
+    if (type === 'tool') {
+      return 'tool_result';
+    }
+    return 'text';
+  }
+
+  private mapRoleFromBaseMessage(message: BaseMessage): string {
+    const type = message._getType();
+    if (type === 'human') {
+      return 'user';
+    }
+    return 'act';
+  }
+
+  private createHistoryUnavailableMessage(
+    sessionId: string,
+  ): AiSessionMessageResponse {
+    return {
+      id: 'history-unavailable',
+      sessionId,
+      turnId: 'system',
+      sid: 'system_history_unavailable',
+      messageType: 'text',
+      role: 'act',
+      contentText:
+        '该会话创建较早，尚未启用分段消息持久化，历史消息暂不可回放。后续对话会自动保存。',
+      metaJson: {
+        recoveredFromCheckpoint: false,
+        historyUnavailable: true,
+      },
+      createdAt: new Date(),
     };
   }
 
