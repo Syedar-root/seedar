@@ -106,8 +106,8 @@
       var(--seedar-dashboard-surface-selected, #1d4ed8) 20%,
       transparent
     );
-  overflow: hidden;
-  contain: layout paint;
+  /* overflow: hidden; */
+  /* contain: layout paint; */
   transform-origin: top left;
 }
 
@@ -116,11 +116,7 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-color: color-mix(
-    in srgb,
-    var(--seedar-dashboard-surface, #f8fafc) 98%,
-    var(--seedar-dashboard-surface-selected, #1d4ed8) 2%
-  );
+  background-color: var(--seedar-dashboard-surface, #f8fafc);
   background-image:
     linear-gradient(
       to right,
