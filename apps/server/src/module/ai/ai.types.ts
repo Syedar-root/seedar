@@ -70,6 +70,22 @@ export interface StreamChunk<T> {
 
 export type AiAgentStreamChunk = StreamChunk<AiInterruptPayload>;
 
+export interface AiContextStreamChunk {
+  type: 'context';
+  data: {
+    sessionId: string;
+    phase: 'start' | 'success' | 'fallback' | 'failed';
+    strategy: 'preventive' | 'window' | 'summary' | 'trim';
+    beforeTokens: number;
+    afterTokens?: number;
+    summarySegments?: number;
+    message: string;
+  };
+  done: false;
+}
+
+export type AiStreamOutputChunk = AiAgentStreamChunk | AiContextStreamChunk;
+
 export type {
   AiChatScene,
   AiChatMode,

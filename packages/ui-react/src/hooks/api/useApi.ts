@@ -33,10 +33,15 @@ import type {
   CreateAiRequest,
   UpdateAiRequest,
   AiSessionResponse,
+  AiSessionStatus,
+  AiSessionType,
+  AiSessionMessageResponse,
+  CursorPaginatedResponse,
   CreateAiSessionRequest,
   UpdateAiSessionRequest,
   AiChatRequestDto,
   AiAgentStreamChunk,
+  AiContextStatusEvent,
   GenerateFieldBusinessNameRequest,
   GenerateFieldBusinessNameResponse,
 } from "#pkg/seedar/types";
@@ -315,6 +320,19 @@ export const useAiApi = () => {
     [],
   );
 
+  const findSessions = useCallback(
+    (
+      page?: number,
+      pageSize?: number,
+      status?: AiSessionStatus,
+      type?: AiSessionType,
+      options?: RequestOptions,
+    ) => {
+      return AiApi.findSessions(page, pageSize, status, type, options);
+    },
+    [],
+  );
+
   const findSession = useCallback((id: string, options?: RequestOptions) => {
     return AiApi.findSession(id, options);
   }, []);
@@ -326,11 +344,24 @@ export const useAiApi = () => {
     [],
   );
 
+  const listSessionMessages = useCallback(
+    (
+      id: string,
+      cursor?: string,
+      limit: number = 50,
+      options?: RequestOptions,
+    ) => {
+      return AiApi.listSessionMessages(id, cursor, limit, options);
+    },
+    [],
+  );
+
   const streamChat = (
     dto: AiChatRequestDto,
     callbacks: {
       onSession?: (data: { sessionId: string; timestamp: string }) => void;
       onMessage?: (chunk: AiAgentStreamChunk) => void;
+      onContext?: (event: AiContextStatusEvent) => void;
       onDone?: (data: { sessionId: string }) => void;
       onError?: (error: string) => void;
       onPing?: () => void;
@@ -353,8 +384,10 @@ export const useAiApi = () => {
     update,
     remove,
     createSession,
+    findSessions,
     findSession,
     updateSession,
+    listSessionMessages,
     streamChat,
     generateFieldBusinessNames,
   };

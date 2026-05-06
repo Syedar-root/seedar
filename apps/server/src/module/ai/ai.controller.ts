@@ -22,14 +22,18 @@ import { AiResponse } from './dto/ai.response';
 import {
   AiChatRequestDto,
   AiChatResponseDto,
+  QueryAiSessionRequest,
   AiSessionResponse,
+  AiSessionMessageResponse,
+  CursorPaginatedResponse,
   CreateAiSessionRequest,
+  PaginatedAiSessionResponse,
   GenerateFieldBusinessNameRequestDto,
   GenerateFieldBusinessNameResponseDto,
 } from './dto';
 import { AiChatResumeDto, AiChatScene, PaginatedResult } from './ai.types';
 import { Observable } from 'rxjs';
-import { AiSessionService } from './services';
+import { AiSessionMessageService, AiSessionService } from './services';
 
 @Controller('v1/ai')
 export class AiController {
@@ -37,6 +41,7 @@ export class AiController {
     private readonly aiService: AiService,
     private readonly chatService: ChatService,
     private readonly aiSessionService: AiSessionService,
+    private readonly aiSessionMessageService: AiSessionMessageService,
   ) {}
 
   @Post()
@@ -60,9 +65,25 @@ export class AiController {
     return this.aiService.findAll(page, pageSize);
   }
 
+  @Get('session')
+  findAllSessions(
+    @Query() query: QueryAiSessionRequest,
+  ): Promise<PaginatedAiSessionResponse<AiSessionResponse>> {
+    return this.aiSessionService.findAll(query);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string): Promise<AiResponse> {
     return this.aiService.findOne(id);
+  }
+
+  @Get('session/:id/messages')
+  listSessionMessages(
+    @Param('id') id: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit: number = 50,
+  ): Promise<CursorPaginatedResponse<AiSessionMessageResponse>> {
+    return this.aiSessionMessageService.listBySession(id, cursor, limit);
   }
 
   @Patch()
@@ -169,6 +190,14 @@ export class AiController {
           for await (const chunk of stream) {
             if (abortController.signal.aborted || subscriber.closed) {
               break;
+            }
+
+            if (chunk.type === 'context') {
+              subscriber.next({
+                type: 'context',
+                data: chunk.data,
+              } as MessageEvent);
+              continue;
             }
 
             if (chunk.type === 'error') {

@@ -1,8 +1,10 @@
-import {
+﻿import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  OnModuleDestroy,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { BusinessException } from '@/common/exceptions';
 import { AiService } from './ai.service';
 import {
@@ -14,6 +16,7 @@ import {
   InterruptContent,
   LLMConfig,
   StreamChunk,
+  AiStreamOutputChunk,
   YieldType,
 } from '../ai.types';
 import { AiChatResponseDto } from '../dto/ai-chat.response.dto';
@@ -26,6 +29,7 @@ import {
   Message,
   BaseMessage,
   ToolMessage,
+  RemoveMessage,
 } from '@langchain/core/messages';
 import { AiResponse } from '../dto/ai.response';
 import { createDeepAgent, DeepAgent, FilesystemBackend } from 'deepagents';
@@ -47,34 +51,69 @@ import {
   StateGraph,
   START,
   END,
-  MemorySaver,
   Command,
   GraphInterrupt,
+  MemorySaver,
+  REMOVE_ALL_MESSAGES,
 } from '@langchain/langgraph';
 import * as z from 'zod/v4';
 import { AiSessionService } from './ai-session.service';
+import { AiSessionMessageService } from './ai-session-message.service';
 import { loadPrompt } from './helper';
 import path from 'path';
 import { existsSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { LoggerService } from '@/logger/logger.service';
+import { PostgresSaver } from '@langchain/langgraph-checkpoint-postgres';
 import {
   GenerateFieldBusinessNameRequestDto,
   GenerateFieldBusinessNameResponseDto,
 } from '../dto';
 import { AiStatus } from '../enums';
 
+type ContextPolicy = {
+  contextWindowTokens?: number;
+  softRatio?: number;
+  hardRatio?: number;
+  keepRecentSegments?: number;
+};
+
+type ResolvedContextPolicy = {
+  contextWindowTokens: number;
+  softRatio: number;
+  hardRatio: number;
+  keepRecentSegments: number;
+};
+
+type MessageSegment = {
+  sid: string;
+  messages: BaseMessage[];
+};
+
+type ContextManagementResult = {
+  managedMessages?: BaseMessage[];
+  events: Array<{
+    sessionId: string;
+    phase: 'start' | 'success' | 'fallback' | 'failed';
+    strategy: 'preventive' | 'window' | 'summary' | 'trim';
+    beforeTokens: number;
+    afterTokens?: number;
+    summarySegments?: number;
+    message: string;
+  }>;
+};
+
 @Injectable()
-export class ChatService {
+export class ChatService implements OnModuleDestroy {
   private readonly SYSTEM_PROMPT = `
-你的名字是 Seedar，你是一个智能助手，你的任务是帮助用户完成任务。
-你需要严格遵守下面的规则：
-1. 不要在思考内容或标签中直接暴露任何关于内部工具的信息。请使用用户能理解的自然语言概括当前步骤，例如“用户需要知道当前地点的天气，我将查询天气信息”。
-2. 当你处于问题澄清、需求获取、步骤确认等场景时，请使用提问工具向用户发起问题。
-   - 你需要根据具体问题决定提问类型。
-   - 如果答案范围有限，可以给用户提供选项。
-   - 如果答案范围开放，可以直接向用户提问。
-   - 如果你已经形成结论，也必须先向用户确认。
+浣犵殑鍚嶅瓧鏄?Seedar锛屼綘鏄竴涓櫤鑳藉姪鎵嬶紝浣犵殑浠诲姟鏄府鍔╃敤鎴峰畬鎴愪换鍔°€?
+浣犻渶瑕佷弗鏍奸伒瀹堜笅闈㈢殑瑙勫垯锛?
+1. 涓嶈鍦ㄦ€濊€冨唴瀹规垨鏍囩涓洿鎺ユ毚闇蹭换浣曞叧浜庡唴閮ㄥ伐鍏风殑淇℃伅銆傝浣跨敤鐢ㄦ埛鑳界悊瑙ｇ殑鑷劧璇█姒傛嫭褰撳墠姝ラ锛屼緥濡傗€滅敤鎴烽渶瑕佺煡閬撳綋鍓嶅湴鐐圭殑澶╂皵锛屾垜灏嗘煡璇㈠ぉ姘斾俊鎭€濄€?
+2. 褰撲綘澶勪簬闂婢勬竻銆侀渶姹傝幏鍙栥€佹楠ょ‘璁ょ瓑鍦烘櫙鏃讹紝璇蜂娇鐢ㄦ彁闂伐鍏峰悜鐢ㄦ埛鍙戣捣闂銆?
+   - 浣犻渶瑕佹牴鎹叿浣撻棶棰樺喅瀹氭彁闂被鍨嬨€?
+   - 濡傛灉绛旀鑼冨洿鏈夐檺锛屽彲浠ョ粰鐢ㄦ埛鎻愪緵閫夐」銆?
+   - 濡傛灉绛旀鑼冨洿寮€鏀撅紝鍙互鐩存帴鍚戠敤鎴锋彁闂€?
+   - 濡傛灉浣犲凡缁忓舰鎴愮粨璁猴紝涔熷繀椤诲厛鍚戠敤鎴风‘璁ゃ€?
   `;
 
   private readonly DEMAND_TOOL_MAP = {
@@ -90,10 +129,7 @@ export class ChatService {
 
   private readonly DEMAND_SKILL_MAP = {
     'data-query': ['data-query'],
-    'chart-recommend': [
-      'chart-recommend',
-      'vchart-development-assistant',
-    ],
+    'chart-recommend': ['chart-recommend', 'vchart-development-assistant'],
     'convert-to-backend': [],
   };
 
@@ -105,11 +141,19 @@ export class ChatService {
   ];
 
   private readonly WORKFLOW_TOOL_NAMES = ['workflowMarket', 'startWorkflow'];
+  private readonly CONTEXT_POLICY_DEFAULTS: ResolvedContextPolicy = {
+    contextWindowTokens: 64000,
+    softRatio: 0.72,
+    hardRatio: 0.85,
+    keepRecentSegments: 12,
+  };
 
   constructor(
+    private readonly configService: ConfigService,
     private readonly aiService: AiService,
     private readonly toolService: ToolService,
     private readonly aiSessionService: AiSessionService,
+    private readonly aiSessionMessageService: AiSessionMessageService,
     private readonly logger: LoggerService,
   ) {}
 
@@ -124,7 +168,412 @@ export class ChatService {
     isClarify: z.boolean().default(false),
   });
 
-  private readonly checkpointer = new MemorySaver();
+  private readonly memoryCheckpointer = new MemorySaver();
+  private checkpointSetupPromise: Promise<void> | null = null;
+  private postgresCheckpointer: PostgresSaver | null = null;
+
+  private getCheckpointConnectionString(): string | undefined {
+    return this.configService.get<string>('AI_CHECKPOINT_PG_URL');
+  }
+
+  private async ensureCheckpointReady(): Promise<void> {
+    if (this.postgresCheckpointer) {
+      return;
+    }
+
+    if (this.checkpointSetupPromise) {
+      await this.checkpointSetupPromise;
+      return;
+    }
+
+    const connectionString = this.getCheckpointConnectionString();
+    if (!connectionString) {
+      return;
+    }
+
+    this.checkpointSetupPromise = (async () => {
+      try {
+        const checkpointer = PostgresSaver.fromConnString(connectionString);
+        await checkpointer.setup();
+        this.postgresCheckpointer = checkpointer;
+        this.logger.log(
+          'LangGraph checkpoint 已切换为 PostgresSaver',
+          'ChatService',
+        );
+      } catch (error) {
+        this.postgresCheckpointer = null;
+        this.logger.error(
+          'Postgres checkpoint 初始化失败，已降级为 MemorySaver',
+          error instanceof Error ? error.stack : String(error),
+          'ChatService',
+        );
+      }
+    })();
+
+    await this.checkpointSetupPromise;
+  }
+
+  private getCheckpointer(): MemorySaver | PostgresSaver {
+    return this.postgresCheckpointer ?? this.memoryCheckpointer;
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    if (this.postgresCheckpointer) {
+      await this.postgresCheckpointer.end();
+    }
+  }
+
+  private resolveModelContextWindow(model: string): number {
+    const lower = model.toLowerCase();
+    if (lower.startsWith('claude')) {
+      return 200_000;
+    }
+    if (lower.startsWith('gpt')) {
+      return 128_000;
+    }
+    if (lower.startsWith('deepseek')) {
+      return 128_000;
+    }
+    return 64_000;
+  }
+
+  private resolveContextPolicy(
+    ai: AiResponse,
+    llmConfig: LLMConfig,
+  ): ResolvedContextPolicy {
+    const config = ai.config as Record<string, unknown> | undefined;
+    const llm = config?.llm as Record<string, unknown> | undefined;
+    const policy = llm?.contextPolicy as ContextPolicy | undefined;
+    const resolvedWindow =
+      policy?.contextWindowTokens && policy.contextWindowTokens > 0
+        ? policy.contextWindowTokens
+        : this.resolveModelContextWindow(llmConfig.model);
+    return {
+      contextWindowTokens: resolvedWindow,
+      softRatio:
+        typeof policy?.softRatio === 'number'
+          ? policy.softRatio
+          : this.CONTEXT_POLICY_DEFAULTS.softRatio,
+      hardRatio:
+        typeof policy?.hardRatio === 'number'
+          ? policy.hardRatio
+          : this.CONTEXT_POLICY_DEFAULTS.hardRatio,
+      keepRecentSegments:
+        typeof policy?.keepRecentSegments === 'number'
+          ? policy.keepRecentSegments
+          : this.CONTEXT_POLICY_DEFAULTS.keepRecentSegments,
+    };
+  }
+
+  private contentToText(content: unknown): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+    if (Array.isArray(content)) {
+      return content
+        .map((item) => {
+          if (typeof item === 'string') {
+            return item;
+          }
+          if (item && typeof item === 'object') {
+            const maybeText = (item as Record<string, unknown>).text;
+            if (typeof maybeText === 'string') {
+              return maybeText;
+            }
+            return JSON.stringify(item);
+          }
+          return '';
+        })
+        .join('\n');
+    }
+    if (content && typeof content === 'object') {
+      return JSON.stringify(content);
+    }
+    return '';
+  }
+
+  private getMessageKind(message: BaseMessage): string {
+    const msg = message as BaseMessage & {
+      getType?: () => string;
+      type?: string;
+    };
+    if (typeof msg.getType === 'function') {
+      return msg.getType();
+    }
+    return msg.type || 'unknown';
+  }
+
+  private estimateContextTokens(messages: BaseMessage[]): number {
+    if (messages.length === 0) {
+      return 0;
+    }
+    const chars = messages.reduce((acc, msg) => {
+      return acc + this.contentToText(msg.content).length + 8;
+    }, 0);
+    return Math.ceil(chars / 4);
+  }
+
+  private sanitizeMessages(messages: BaseMessage[]): BaseMessage[] {
+    const next: BaseMessage[] = [];
+    for (const msg of messages) {
+      const text = this.contentToText(msg.content).trim();
+      if (!text) {
+        continue;
+      }
+      const last = next[next.length - 1];
+      if (
+        last &&
+        this.getMessageKind(last) === this.getMessageKind(msg) &&
+        this.contentToText(last.content).trim() === text
+      ) {
+        continue;
+      }
+      next.push(msg);
+    }
+    return next;
+  }
+
+  private offloadLargeToolResults(messages: BaseMessage[]): BaseMessage[] {
+    return messages.map((msg) => {
+      if (!(msg instanceof ToolMessage)) {
+        return msg;
+      }
+      const text = this.contentToText(msg.content);
+      if (text.length <= 2400) {
+        return msg;
+      }
+      return new ToolMessage({
+        content: `[tool_result 已压缩展示，原始长度 ${text.length} 字符] ${text.slice(0, 800)}...`,
+        tool_call_id: msg.tool_call_id,
+      });
+    });
+  }
+
+  private splitBySegments(messages: BaseMessage[]): MessageSegment[] {
+    const segments: MessageSegment[] = [];
+    for (const message of messages) {
+      const sid =
+        ((message.additional_kwargs as Record<string, unknown> | undefined)
+          ?.sid as string | undefined) ||
+        message.id ||
+        randomUUID();
+      const last = segments[segments.length - 1];
+      if (last?.sid === sid) {
+        last.messages.push(message);
+      } else {
+        segments.push({ sid, messages: [message] });
+      }
+    }
+    return segments;
+  }
+
+  private async summarizeSegments(
+    llmConfig: LLMConfig,
+    segments: MessageSegment[],
+  ): Promise<string> {
+    const llm = this.createLLM(llmConfig, 0.2, 1200, {
+      thinking: { type: 'disabled' },
+    });
+    const joined = segments
+      .map((segment, index) => {
+        const text = segment.messages
+          .map((msg) => {
+            const role = this.getMessageKind(msg);
+            return `[${role}] ${this.contentToText(msg.content)}`;
+          })
+          .join('\n');
+        return `段${index + 1}(${segment.sid}):\n${text}`;
+      })
+      .join('\n\n');
+
+    const prompt = [
+      '请将以下历史对话段压缩为结构化摘要，保留：用户目标、关键事实、工具调用结果、未完成事项。',
+      '输出中文，控制在 500 字以内，避免冗余。',
+      '',
+      joined,
+    ].join('\n');
+
+    const summary = await llm.invoke([new HumanMessage({ content: prompt })]);
+    const text = this.contentToText(summary.content).trim();
+    if (!text) {
+      throw new Error('上下文摘要为空');
+    }
+    return text;
+  }
+
+  private async manageContextBeforeStream(params: {
+    agent: {
+      getState: (config: { configurable: { thread_id: string } }) => Promise<{
+        values?: Record<string, unknown>;
+      }>;
+      updateState: (
+        config: { configurable: { thread_id: string } },
+        values: Record<string, unknown>,
+      ) => Promise<unknown>;
+    };
+    ai: AiResponse;
+    llmConfig: LLMConfig;
+    threadId: string;
+    sessionId: string;
+  }): Promise<ContextManagementResult> {
+    const { agent, ai, llmConfig, threadId, sessionId } = params;
+    const config = { configurable: { thread_id: threadId } };
+    let state:
+      | {
+          values?: Record<string, unknown>;
+        }
+      | undefined;
+
+    try {
+      state = await agent.getState(config);
+    } catch {
+      return { events: [] };
+    }
+
+    const sourceMessages =
+      (state?.values?.messages as BaseMessage[] | undefined) ?? [];
+    if (sourceMessages.length === 0) {
+      return { events: [] };
+    }
+
+    const sanitized = this.sanitizeMessages(
+      this.offloadLargeToolResults(sourceMessages),
+    );
+    if (sanitized.length === 0) {
+      return { events: [] };
+    }
+
+    const policy = this.resolveContextPolicy(ai, llmConfig);
+    const softThreshold = Math.floor(
+      policy.contextWindowTokens * policy.softRatio,
+    );
+    const hardThreshold = Math.floor(
+      policy.contextWindowTokens * policy.hardRatio,
+    );
+
+    const beforeTokens = this.estimateContextTokens(sanitized);
+    if (beforeTokens <= softThreshold) {
+      if (sanitized.length !== sourceMessages.length) {
+        await agent.updateState(config, {
+          messages: [
+            new RemoveMessage({ id: REMOVE_ALL_MESSAGES }),
+            ...sanitized,
+          ],
+        });
+        return {
+          managedMessages: sanitized,
+          events: [],
+        };
+      }
+      return { events: [] };
+    }
+
+    const events: ContextManagementResult['events'] = [
+      this.aiSessionMessageService.buildContextStatusEvent(sessionId, {
+        phase: 'start',
+        strategy: 'summary',
+        beforeTokens,
+        message: '上下文较长，正在压缩历史上下文...',
+      }),
+    ];
+
+    const segments = this.splitBySegments(sanitized);
+    const keepCount = Math.max(1, policy.keepRecentSegments);
+    const recentSegments = segments.slice(-keepCount);
+    const oldSegments = segments.slice(
+      0,
+      Math.max(0, segments.length - keepCount),
+    );
+    let managedMessages = sanitized;
+
+    try {
+      if (oldSegments.length > 0) {
+        const summary = await this.summarizeSegments(llmConfig, oldSegments);
+        const summaryMessage = new AIMessage({
+          content: `[历史摘要]\n${summary}`,
+          additional_kwargs: {
+            sid: `summary_${Date.now()}`,
+            context_summary: true,
+          },
+        });
+        managedMessages = [
+          summaryMessage,
+          ...recentSegments.flatMap((segment) => segment.messages),
+        ];
+      } else {
+        managedMessages = recentSegments.flatMap((segment) => segment.messages);
+      }
+
+      const afterTokens = this.estimateContextTokens(managedMessages);
+      events.push(
+        this.aiSessionMessageService.buildContextStatusEvent(sessionId, {
+          phase: 'success',
+          strategy: 'summary',
+          beforeTokens,
+          afterTokens,
+          summarySegments: oldSegments.length,
+          message: '上下文压缩完成',
+        }),
+      );
+    } catch (error) {
+      const fallbackMessages = sanitized.slice(-Math.max(1, keepCount * 3));
+      const afterTokens = this.estimateContextTokens(fallbackMessages);
+      managedMessages = fallbackMessages;
+      events.push(
+        this.aiSessionMessageService.buildContextStatusEvent(sessionId, {
+          phase: 'fallback',
+          strategy: 'trim',
+          beforeTokens,
+          afterTokens,
+          message: `上下文摘要失败，已降级为裁剪: ${
+            error instanceof Error ? error.message : 'unknown'
+          }`,
+        }),
+      );
+    }
+
+    const afterTokens = this.estimateContextTokens(managedMessages);
+    if (afterTokens > hardThreshold) {
+      const hardTrimMessages = managedMessages.slice(
+        -Math.max(1, keepCount * 2),
+      );
+      managedMessages = hardTrimMessages;
+      events.push(
+        this.aiSessionMessageService.buildContextStatusEvent(sessionId, {
+          phase: 'fallback',
+          strategy: 'trim',
+          beforeTokens: afterTokens,
+          afterTokens: this.estimateContextTokens(hardTrimMessages),
+          message: '上下文仍超阈值，已执行硬裁剪',
+        }),
+      );
+    }
+
+    try {
+      await agent.updateState(config, {
+        messages: [
+          new RemoveMessage({ id: REMOVE_ALL_MESSAGES }),
+          ...managedMessages,
+        ],
+      });
+    } catch (error) {
+      events.push(
+        this.aiSessionMessageService.buildContextStatusEvent(sessionId, {
+          phase: 'failed',
+          strategy: 'trim',
+          beforeTokens,
+          message: `上下文状态写回失败: ${
+            error instanceof Error ? error.message : 'unknown'
+          }`,
+        }),
+      );
+    }
+
+    return {
+      managedMessages,
+      events,
+    };
+  }
 
   private isGraphInterruptLike(error: unknown): boolean {
     if (error instanceof GraphInterrupt) {
@@ -162,7 +611,7 @@ export class ChatService {
   private getRecoverableToolErrorMessage(error: unknown): string {
     const toolInvocationError = this.getToolInvocationError(error);
     if (toolInvocationError) {
-      return `工具参数校验失败，请修正后重新调用该工具。错误信息：${toolInvocationError.message}`;
+      return `宸ュ叿鍙傛暟鏍￠獙澶辫触锛岃淇鍚庨噸鏂拌皟鐢ㄨ宸ュ叿銆傞敊璇俊鎭細${toolInvocationError.message}`;
     }
 
     if (error instanceof BusinessException) {
@@ -173,14 +622,14 @@ export class ChatService {
         'message' in response &&
         typeof response.message === 'string'
       ) {
-        return `工具执行失败，请根据错误信息调整后重试。错误信息：${response.message}`;
+        return `宸ュ叿鎵ц澶辫触锛岃鏍规嵁閿欒淇℃伅璋冩暣鍚庨噸璇曘€傞敊璇俊鎭細${response.message}`;
       }
 
-      return `工具执行失败，请根据错误信息调整后重试。错误信息：${error.message}`;
+      return `宸ュ叿鎵ц澶辫触锛岃鏍规嵁閿欒淇℃伅璋冩暣鍚庨噸璇曘€傞敊璇俊鎭細${error.message}`;
     }
 
     if (error instanceof Error) {
-      return `工具执行失败，请根据错误信息调整后重试。错误信息：${error.message}`;
+      return `宸ュ叿鎵ц澶辫触锛岃鏍规嵁閿欒淇℃伅璋冩暣鍚庨噸璇曘€傞敊璇俊鎭細${error.message}`;
     }
 
     return '工具执行失败，请调整参数或调用方式后重试。';
@@ -209,7 +658,7 @@ export class ChatService {
           if (toolInvocationError) {
             this.logger.warn(toolInvocationError);
             return new ToolMessage({
-              content: `工具参数校验失败，请修正后重新调用该工具。错误信息：${toolInvocationError.message}`,
+              content: `宸ュ叿鍙傛暟鏍￠獙澶辫触锛岃淇鍚庨噸鏂拌皟鐢ㄨ宸ュ叿銆傞敊璇俊鎭細${toolInvocationError.message}`,
               tool_call_id: request.toolCall.id || '',
             });
           }
@@ -255,15 +704,16 @@ export class ChatService {
     return JSON.stringify(scenes, null, 2);
   }
   /**
-   * 创建对话图
-   * @param aiId AI 实例 ID
-   * @returns 编译后的状态图
+   * 鍒涘缓瀵硅瘽鍥?
+   * @param aiId AI 瀹炰緥 ID
+   * @returns 缂栬瘧鍚庣殑鐘舵€佸浘
    */
   private async createGraph(
     aiId: string,
     mode: AiChatMode,
     scenes?: AiChatScene[],
   ) {
+    await this.ensureCheckpointReady();
     const ai = await this.aiService.findOne(aiId);
 
     const llmConfig = this.getLLMConfig(ai);
@@ -278,7 +728,7 @@ export class ChatService {
       .addEdge('act', END);
 
     return graphBuilder.compile({
-      checkpointer: this.checkpointer,
+      checkpointer: this.getCheckpointer(),
     });
   }
 
@@ -288,18 +738,18 @@ export class ChatService {
   //     const askQuestionTool = tools.find((tool) => tool.name === 'askQuestion');
 
   //     const result = await askQuestionTool?.invoke({
-  //       questions: [{ type: 'text', question: '你好' }],
+  //       questions: [{ type: 'text', question: '浣犲ソ' }],
   //     });
   //     return result;
   //   };
   // }
 
   /**
-   * 创建澄清节点
-   * 负责理解用户需求，并推断本轮允许使用的工具和技能。
+   * 鍒涘缓婢勬竻鑺傜偣
+   * 璐熻矗鐞嗚В鐢ㄦ埛闇€姹傦紝骞舵帹鏂湰杞厑璁镐娇鐢ㄧ殑宸ュ叿鍜屾妧鑳姐€?
    *
-   * @param llmConfig LLM 配置
-   * @returns Graph 节点
+   * @param llmConfig LLM 閰嶇疆
+   * @returns Graph 鑺傜偣
    */
   private createClarifyNode(
     llmConfig: LLMConfig,
@@ -315,22 +765,22 @@ export class ChatService {
 
       const keywordMap: Record<string, string[]> = {
         'data-query': [
-          '数据',
-          '查询',
-          '温度',
-          '信息',
+          '鏁版嵁',
+          '鏌ヨ',
+          '娓╁害',
+          '淇℃伅',
           'data',
           'query',
           'temperature',
           'info',
         ],
         'chart-recommend': [
-          '图表',
-          '画图',
-          '推荐',
+          '鍥捐〃',
+          '鐢诲浘',
+          '鎺ㄨ崘',
           'chart',
           'recommend',
-          '图形',
+          '鍥惧舰',
         ],
       };
 
@@ -344,7 +794,7 @@ export class ChatService {
         maybeUserDemands.push('convert-to-backend');
       }
 
-      // 步骤 4：返回更新后的状态
+      // 姝ラ 4锛氳繑鍥炴洿鏂板悗鐨勭姸鎬?
       return {
         allowTools: Array.from(
           new Set([
@@ -367,11 +817,11 @@ export class ChatService {
   }
 
   /**
-   * 创建执行节点
-   * 负责使用工具和技能完成具体任务。
+   * 鍒涘缓鎵ц鑺傜偣
+   * 璐熻矗浣跨敤宸ュ叿鍜屾妧鑳藉畬鎴愬叿浣撲换鍔°€?
    *
-   * @param llmConfig LLM 配置
-   * @returns Graph 节点
+   * @param llmConfig LLM 閰嶇疆
+   * @returns Graph 鑺傜偣
    */
   private createActNode(
     llmConfig: LLMConfig,
@@ -379,7 +829,7 @@ export class ChatService {
     scenes?: AiChatScene[],
   ): GraphNode<typeof this.State> {
     return async (state) => {
-      // 步骤 1：创建 Deep Agent
+      // 姝ラ 1锛氬垱寤?Deep Agent
       const llm = this.createLLM(llmConfig);
 
       const essentialTools = this.getEssentialToolNames(mode);
@@ -409,17 +859,17 @@ export class ChatService {
         scenesContext: this.formatScenesContext(scenes),
       });
 
-      // 1. 技能根目录：当前服务目录
+      // 1. 鎶€鑳芥牴鐩綍锛氬綋鍓嶆湇鍔＄洰褰?
       const SKILLS_ROOT = path.join(__dirname, '.');
-      // 2. 校验目录是否存在
+      // 2. 鏍￠獙鐩綍鏄惁瀛樺湪
       if (!existsSync(SKILLS_ROOT)) {
         throw new InternalServerErrorException(
-          `技能目录不存在：${SKILLS_ROOT}`,
+          `鎶€鑳界洰褰曚笉瀛樺湪锛?{SKILLS_ROOT}`,
         );
       }
       console.log('hcs SKILLS_ROOT', SKILLS_ROOT); //hcs SKILLS_ROOT D:\Program\projects\seedar\apps\server\dist\module\ai\services
 
-      // 3. 创建文件系统后端，允许读取本地技能文件
+      // 3. 鍒涘缓鏂囦欢绯荤粺鍚庣锛屽厑璁歌鍙栨湰鍦版妧鑳芥枃浠?
       const backend = new FilesystemBackend({
         rootDir: SKILLS_ROOT,
         virtualMode: true,
@@ -435,10 +885,10 @@ export class ChatService {
         skills: ['/skills/'],
       });
 
-      // 步骤 2：执行 Agent
+      // 姝ラ 2锛氭墽琛?Agent
       const response = await agent.invoke({ messages: state.messages });
 
-      // 步骤 3：返回更新后的消息
+      // 姝ラ 3锛氳繑鍥炴洿鏂板悗鐨勬秷鎭?
       return { messages: response.messages };
     };
   }
@@ -463,11 +913,11 @@ export class ChatService {
   }
 
   /**
-   * 处理流式对话请求
-   * @param aiId AI 实例 ID
-   * @param message 用户消息
-   * @param sessionId 会话 ID
-   * @yields 流式响应数据
+   * 澶勭悊娴佸紡瀵硅瘽璇锋眰
+   * @param aiId AI 瀹炰緥 ID
+   * @param message 鐢ㄦ埛娑堟伅
+   * @param sessionId 浼氳瘽 ID
+   * @yields 娴佸紡鍝嶅簲鏁版嵁
    */
   async *streamChat(
     aiId: string,
@@ -478,20 +928,60 @@ export class ChatService {
     isResume: boolean = false,
     resumePayload?: AiChatResumeDto,
     signal?: AbortSignal,
-  ): AsyncGenerator<AiAgentStreamChunk, void, unknown> {
-    try {
-      // throw new InternalServerErrorException('streamChat not implemented');
-      // 步骤 1：获取会话信息
-      const session = await this.aiSessionService.findOne(sessionId);
+  ): AsyncGenerator<AiStreamOutputChunk, void, unknown> {
+    let flushPendingSegment: () => Promise<void> = async () => {};
+    let persistErrorSegment: (
+      errorMessage: string,
+    ) => Promise<void> = async () => {};
 
-      // 步骤 2：创建对话图
+    try {
+      const session = await this.aiSessionService.findOne(sessionId);
+      const ai = await this.aiService.findOne(aiId);
+      const llmConfig = this.getLLMConfig(ai);
+      const turnId = randomUUID();
+
       const agent = await this.createGraph(aiId, mode, scenes);
 
       if (!isResume && !message) {
-        throw new InternalServerErrorException('初始对话缺少 message');
+        throw new InternalServerErrorException('初始化对话缺少 message');
       }
 
-      // 步骤 3：启动流式对话
+      if (message) {
+        await this.aiSessionMessageService.persistSegment(
+          this.aiSessionMessageService.createUserMessageSegment(
+            session.id,
+            turnId,
+            message,
+          ),
+        );
+      }
+
+      const contextResult = await this.manageContextBeforeStream({
+        agent: agent as unknown as {
+          getState: (config: {
+            configurable: { thread_id: string };
+          }) => Promise<{
+            values?: Record<string, unknown>;
+          }>;
+          updateState: (
+            config: { configurable: { thread_id: string } },
+            values: Record<string, unknown>,
+          ) => Promise<unknown>;
+        },
+        ai,
+        llmConfig,
+        threadId: session.id,
+        sessionId: session.id,
+      });
+
+      for (const event of contextResult.events) {
+        yield {
+          type: 'context',
+          data: event,
+          done: false,
+        };
+      }
+
       const stream = await agent.stream(
         !isResume
           ? {
@@ -513,32 +1003,89 @@ export class ChatService {
         },
       );
 
-      const tool_call: any[] = [];
+      const tool_call: unknown[] = [];
       const blacklistToolCallIds: string[] = [];
 
       let currentSid = '';
       let lastType: YieldType | undefined;
+      let pendingSegment: ReturnType<
+        typeof this.aiSessionMessageService.createChunkSegment
+      > | null = null;
 
-      // 步骤 4：处理流式响应
+      flushPendingSegment = async () => {
+        if (!pendingSegment) {
+          return;
+        }
+        const hasText = !!pendingSegment.contentText?.trim();
+        const hasJson = !!pendingSegment.contentJson;
+        if (hasText || hasJson) {
+          await this.aiSessionMessageService.persistSegment(pendingSegment);
+        }
+        pendingSegment = null;
+      };
+
+      const persistChunk = async (chunk: AiAgentStreamChunk) => {
+        if (!chunk.type) {
+          return;
+        }
+
+        if (!pendingSegment) {
+          pendingSegment = this.aiSessionMessageService.createChunkSegment(
+            session.id,
+            turnId,
+            chunk,
+          );
+          return;
+        }
+
+        if (
+          pendingSegment.sid === chunk.sid &&
+          pendingSegment.messageType === chunk.type
+        ) {
+          pendingSegment = this.aiSessionMessageService.appendChunkToSegment(
+            pendingSegment,
+            chunk,
+          );
+          return;
+        }
+
+        await flushPendingSegment();
+        pendingSegment = this.aiSessionMessageService.createChunkSegment(
+          session.id,
+          turnId,
+          chunk,
+        );
+      };
+
+      persistErrorSegment = async (errorMessage: string) => {
+        await this.aiSessionMessageService.persistSegment({
+          sessionId: session.id,
+          turnId,
+          sid: randomUUID(),
+          messageType: 'error',
+          role: 'act',
+          contentText: errorMessage,
+        });
+      };
+
       for await (const [streamMode, chunk] of stream) {
-        // 处理 values 模式中的中断信息
-        // TODO: 这里仍然有一定耦合风险，后续可拆分
         if (streamMode === 'values') {
           const interruptData = this.extractInterrupt(chunk);
           if (interruptData && interruptData?.[0]?.value) {
             currentSid = randomUUID();
             lastType = 'interrupt';
-            yield {
+            const interruptChunk: AiAgentStreamChunk = {
               sid: currentSid,
               content: interruptData[0] as InterruptContent<AiInterruptPayload>,
               type: 'interrupt',
               done: false,
             };
+            await persistChunk(interruptChunk);
+            yield interruptChunk;
           }
           continue;
         }
 
-        // 处理 messages 模式中的常规消息
         const token = chunk[0];
         const metadata = chunk[1];
         const { content, type } =
@@ -559,7 +1106,6 @@ export class ChatService {
         }
 
         if (content && type) {
-          // 判断是否为工具调用结果
           const messageType = token.type === 'tool' ? 'tool_result' : type;
           if (
             messageType === 'tool_result' &&
@@ -568,8 +1114,8 @@ export class ChatService {
             continue;
           }
 
-          // 类型变化时生成新的 sid
           if (messageType !== lastType) {
+            await flushPendingSegment();
             currentSid = randomUUID();
             lastType = messageType as YieldType;
           }
@@ -589,7 +1135,7 @@ export class ChatService {
             role: metadata.lc_agent_name,
           };
 
-          yield {
+          const messageChunk: AiAgentStreamChunk = {
             sid: currentSid,
             content,
             type: messageType as YieldType,
@@ -597,13 +1143,18 @@ export class ChatService {
             role: metadata.lc_agent_name,
             meta,
           };
+
+          await persistChunk(messageChunk);
+          yield messageChunk;
         }
       }
 
-      // 步骤 5：返回完成标记
+      await flushPendingSegment();
       console.log('hcs tool_call', JSON.stringify(tool_call, null, 2));
       yield { sid: currentSid, content: '', done: true };
     } catch (error) {
+      await flushPendingSegment();
+
       if (signal?.aborted || this.isAbortLikeError(error)) {
         return;
       }
@@ -611,6 +1162,8 @@ export class ChatService {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       console.error('streamChat error:', errorMessage, error, '\n');
       console.log('error type:', typeof error, '\n');
+      await persistErrorSegment(errorMessage);
+
       yield {
         sid: randomUUID(),
         content: errorMessage,
@@ -618,14 +1171,15 @@ export class ChatService {
         done: true,
         role: '',
       };
+
       throw new InternalServerErrorException(`流式对话失败: ${errorMessage}`);
     }
   }
 
   /**
-   * 从流数据中提取中断信息
-   * @param chunk 流数据块
-   * @returns 中断信息或 null
+   * 浠庢祦鏁版嵁涓彁鍙栦腑鏂俊鎭?
+   * @param chunk 娴佹暟鎹潡
+   * @returns 涓柇淇℃伅鎴?null
    */
   private extractInterrupt(chunk: unknown): any | null {
     if (
@@ -639,25 +1193,25 @@ export class ChatService {
   }
 
   /**
-   * 从 AI 配置中解析 LLM 配置
-   * @param ai AI 实体
+   * 浠?AI 閰嶇疆涓В鏋?LLM 閰嶇疆
+   * @param ai AI 瀹炰綋
    */
   private getLLMConfig(ai: AiResponse): LLMConfig {
     const config = ai.config as Record<string, unknown> | undefined;
     const llmConfig = config?.llm as Record<string, unknown> | undefined;
     if (!llmConfig) {
-      throw new InternalServerErrorException('AI 配置中缺少 llm 配置');
+      throw new InternalServerErrorException('AI 閰嶇疆涓己灏?llm 閰嶇疆');
     }
 
     const apiKey = llmConfig.apiKey as string | undefined;
     const model = llmConfig.model as string | undefined;
 
     if (!apiKey) {
-      throw new InternalServerErrorException('LLM 配置中缺少 apiKey');
+      throw new InternalServerErrorException('LLM 閰嶇疆涓己灏?apiKey');
     }
 
     if (!model && !ai.name) {
-      throw new InternalServerErrorException('LLM 配置中缺少 model 或 name');
+      throw new InternalServerErrorException('LLM 閰嶇疆涓己灏?model 鎴?name');
     }
 
     return {
@@ -672,8 +1226,8 @@ export class ChatService {
   }
 
   /**
-   * 创建 LLM 实例
-   * @param llmConfig LLM 配置
+   * 鍒涘缓 LLM 瀹炰緥
+   * @param llmConfig LLM 閰嶇疆
    */
   private createLLM(
     llmConfig: LLMConfig,
@@ -693,23 +1247,23 @@ export class ChatService {
     }
 
     /**
-     * 处理 DeepSeek 模型的额外参数，deepseek 模型不支持在langchain中存在兼容性问题，需要禁用 thinking 参数
+     * 澶勭悊 DeepSeek 妯″瀷鐨勯澶栧弬鏁帮紝deepseek 妯″瀷涓嶆敮鎸佸湪langchain涓瓨鍦ㄥ吋瀹规€ч棶棰橈紝闇€瑕佺鐢?thinking 鍙傛暟
      */
-    if(llmConfig.model.includes('deepseek')){
+    if (llmConfig.model.includes('deepseek')) {
       extraBody = {
         ...extraBody,
-        "thinking": {
-          "type": "disabled",
-        }
-      }
+        thinking: {
+          type: 'disabled',
+        },
+      };
     }
 
     switch (llmConfig.type) {
       case 'deepseek':
         return new ChatDeepSeek(llmConfig.model, {
           apiKey: llmConfig.apiKey,
-          modelKwargs:{
-            "tool_choice": "auto",
+          modelKwargs: {
+            tool_choice: 'auto',
             ...extraBody,
           },
           ...config,
@@ -726,8 +1280,8 @@ export class ChatService {
       default:
         return new ChatOpenAI(llmConfig.model, {
           apiKey: llmConfig.apiKey,
-          modelKwargs:{
-            "tool_choice": "auto",
+          modelKwargs: {
+            tool_choice: 'auto',
             ...extraBody,
           },
           ...config,
@@ -774,13 +1328,15 @@ export class ChatService {
 
     const ai = await this.aiService.findOne(request.aiId);
     if (ai.status !== AiStatus.ACTIVE) {
-      throw new BadRequestException('当前模型不可用，请先启用可用模型');
+      throw new BadRequestException(
+        '褰撳墠妯″瀷涓嶅彲鐢紝璇峰厛鍚敤鍙敤妯″瀷',
+      );
     }
 
     const llm = this.createLLM(this.getLLMConfig(ai), 0.3, undefined, {
-      "thinking": {
-        "type": "disabled",
-      }
+      thinking: {
+        type: 'disabled',
+      },
     });
 
     const responseSchema = z.object({

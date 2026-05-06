@@ -12,6 +12,24 @@ export type YieldType =
   | "reasoning"
   | "error";
 
+export type AiContextPhase = "start" | "success" | "fallback" | "failed";
+
+export type AiContextStrategy =
+  | "preventive"
+  | "window"
+  | "summary"
+  | "trim";
+
+export interface AiContextStatusEvent {
+  sessionId: string;
+  phase: AiContextPhase;
+  strategy: AiContextStrategy;
+  beforeTokens: number;
+  afterTokens?: number;
+  summarySegments?: number;
+  message: string;
+}
+
 export type InterruptContent<T> = {
   id: string;
   value: T;
@@ -56,8 +74,8 @@ export interface AiStreamChunk<TInterrupt = AskQuestionParams> {
 export type AiAgentStreamChunk = AiStreamChunk<AiInterruptPayload>;
 
 export interface AiSseEvent<TInterrupt = AskQuestionParams> {
-  type: "ping" | "session" | "message" | "done" | "error";
-  data: string | AiStreamChunk<TInterrupt>;
+  type: "ping" | "session" | "message" | "done" | "error" | "context";
+  data: string | AiStreamChunk<TInterrupt> | AiContextStatusEvent;
   sessionId?: string;
 }
 

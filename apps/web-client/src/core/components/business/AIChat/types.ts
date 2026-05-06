@@ -1,12 +1,11 @@
 import type React from "react";
 import type {
   AiChatMode,
-  AiAgentStreamChunk,
+  AiContextStatusEvent,
+  AiSessionMessageResponse,
   AiChatResumeDto,
   AiInterruptPayload,
-  AiStreamChunk,
   InterruptContent,
-  AskQuestionParams as _AskQuestionParams,
 } from "#pkg/seedar/types";
 
 export type YieldType =
@@ -158,6 +157,9 @@ export interface ChatModeItem {
 
 export interface AIChatProps {
   messages?: ChatMessage[];
+  historyMessages?: ChatMessage[];
+  liveMessages?: ChatMessage[];
+  contextStatus?: AiContextStatusEvent | null;
   loading?: boolean;
   onSendMessage?: (
     content: string,
@@ -247,5 +249,16 @@ export interface SessionActions {
 }
 
 export interface AiStreamChunkAdapter {
-  (chunk: AiAgentStreamChunk): ChatMessage;
+  (chunk: {
+    type?: MessageType;
+    content: string | InterruptContent<AiInterruptPayload>;
+    role?: "user" | "clarify" | "act";
+    done: boolean;
+    meta?: ToolCallMeta | ToolResultMeta;
+  }): ChatMessage;
+}
+
+export interface SessionMessagesState {
+  data: AiSessionMessageResponse[];
+  nextCursor?: string;
 }
