@@ -29,6 +29,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     containerRef,
     viewportRef,
     metaBarRef,
+    canvasRef,
     containerWidth,
     mounted,
     containerBreakpoint,
@@ -123,6 +124,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
               ) : (
                 <div
                   className={styles.canvas}
+                  ref={canvasRef}
                   style={
                     {
                       width: "100%",

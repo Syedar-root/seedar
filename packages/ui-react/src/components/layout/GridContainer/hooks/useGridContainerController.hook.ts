@@ -37,6 +37,8 @@ export const useGridContainerController = ({
     useElementSize<HTMLDivElement>();
   const { elementRef: metaBarRef, elementSize: metaBarSize } =
     useElementSize<HTMLDivElement>();
+  const { elementRef: canvasRef, elementSize: canvasSize } =
+    useElementSize<HTMLDivElement>();
   const {
     enable: enablePreventTextSelection,
     disable: disablePreventTextSelection,
@@ -47,10 +49,12 @@ export const useGridContainerController = ({
     stop: stopAutoScroll,
   } = useAutoScroll();
 
+  const gridContainerWidth =
+    mode === "view" && canvasSize.width > 0 ? canvasSize.width : width;
   const containerBreakpoint = getBreakpointByWidth(width);
   const effectiveGridWidth = getEffectiveGridWidth({
     activeBreakpoint,
-    containerWidth: width,
+    containerWidth: gridContainerWidth,
     mode,
     lockedCanvasWidth,
   });
@@ -185,6 +189,7 @@ export const useGridContainerController = ({
     containerRef,
     viewportRef,
     metaBarRef,
+    canvasRef,
     containerWidth: width,
     mounted,
     containerBreakpoint,
