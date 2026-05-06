@@ -41,6 +41,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     scaledCanvasHeight,
     enhancedLayouts,
     compactor,
+    positionStrategy,
     handleDragStart,
     handleResizeStart,
     handleDragStop,
@@ -113,6 +114,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
                       rowHeight={rowHeight}
                       width={effectiveGridWidth}
                       compactor={compactor}
+                      positionStrategy={positionStrategy}
                       onDragStart={handleDragStart}
                       onResizeStart={handleResizeStart}
                       onDragStop={handleDragStop}
@@ -143,7 +145,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
                     rowHeight={rowHeight}
                     width={effectiveGridWidth}
                     compactor={compactor}
-                    // transformScale={effectiveViewportScale}
+                    positionStrategy={positionStrategy}
                     onDragStart={handleDragStart}
                     onResizeStart={handleResizeStart}
                     onDragStop={handleDragStop}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useContainerWidth } from "react-grid-layout";
+import { defaultPositionStrategy } from "react-grid-layout/core";
 import type { Layout } from "react-grid-layout";
 import type { LayoutItem } from "#pkg/seedar/types";
 
@@ -127,6 +128,16 @@ export const useGridContainerController = ({
         : storedEffectiveViewportScale;
   const scaledCanvasWidth = effectiveGridWidth * effectiveViewportScale;
   const scaledCanvasHeight = canvasHeight * effectiveViewportScale;
+  const positionStrategy = useMemo(
+    () =>
+      effectiveViewportScale === 1
+        ? defaultPositionStrategy
+        : {
+            ...defaultPositionStrategy,
+            scale: effectiveViewportScale,
+          },
+    [effectiveViewportScale],
+  );
 
   useEffect(() => {
     if (
@@ -201,6 +212,7 @@ export const useGridContainerController = ({
     scaledCanvasHeight,
     enhancedLayouts,
     compactor,
+    positionStrategy,
     handleDragStart: startInteractions,
     handleResizeStart: startInteractions,
     handleDragStop: handleLayoutStop,
