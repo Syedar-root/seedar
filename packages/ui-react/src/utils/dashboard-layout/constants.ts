@@ -1,4 +1,4 @@
-export const COLS_RATE = 10;
+export const COLS_RATE = 5;
 export const DEFAULT_W = 6 * COLS_RATE;
 export const DEFAULT_H = 4 * COLS_RATE;
 
@@ -54,4 +54,4 @@ export const COLS = {
   xs: 4 * COLS_RATE,
   xxs: 2 * COLS_RATE,
 };
-export const MARGIN = 0;
+export const MARGIN = 8;

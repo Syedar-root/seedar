@@ -6,6 +6,7 @@ import {
   BREAKPOINTS,
   BREAKPOINT_LABELS,
   COLS,
+  COLS_RATE,
   MARGIN,
 } from "../../../utils/dashboard-layout/constants";
 import { useGridContainerController } from "./hooks/useGridContainerController.hook";
@@ -101,10 +102,18 @@ export const GridContainer: React.FC<GridContainerProps> = ({
                       {
                         width: effectiveGridWidth,
                         transform: `scale(${effectiveViewportScale})`,
-                        "--grid-columns": currentCols,
+                        "--grid-column-width": `${rowHeight}px`,
+                        "--grid-column-step": `${rowHeight + MARGIN}px`,
+                        "--grid-major-column-width": `${(rowHeight + MARGIN) * COLS_RATE - MARGIN}px`,
+                        "--grid-major-column-step": `${(rowHeight + MARGIN) * COLS_RATE}px`,
+                        "--grid-row-height": `${rowHeight}px`,
+                        "--grid-row-step": `${rowHeight + MARGIN}px`,
+                        "--grid-major-row-height": `${(rowHeight + MARGIN) * COLS_RATE - MARGIN}px`,
+                        "--grid-major-row-step": `${(rowHeight + MARGIN) * COLS_RATE}px`,
                       } as React.CSSProperties
                     }
                   >
+                    <div aria-hidden="true" className={styles.gridOverlay} />
                     <Responsive
                       layouts={enhancedLayouts}
                       breakpoint={renderedBreakpoint}
