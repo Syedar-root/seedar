@@ -193,6 +193,7 @@ export const useGridContainerController = ({
     containerWidth: width,
     mounted,
     containerBreakpoint,
+    renderedBreakpoint,
     currentCols,
     effectiveGridWidth,
     effectiveViewportScale,

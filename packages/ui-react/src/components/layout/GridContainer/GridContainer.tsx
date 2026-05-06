@@ -33,6 +33,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
     containerWidth,
     mounted,
     containerBreakpoint,
+    renderedBreakpoint,
     currentCols,
     effectiveGridWidth,
     effectiveViewportScale,
@@ -105,6 +106,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
                   >
                     <Responsive
                       layouts={enhancedLayouts}
+                      breakpoint={renderedBreakpoint}
                       breakpoints={BREAKPOINTS}
                       cols={COLS}
                       margin={[MARGIN, MARGIN]}
@@ -134,6 +136,7 @@ export const GridContainer: React.FC<GridContainerProps> = ({
                 >
                   <Responsive
                     layouts={enhancedLayouts}
+                    breakpoint={renderedBreakpoint}
                     breakpoints={BREAKPOINTS}
                     cols={COLS}
                     margin={[MARGIN, MARGIN]}
