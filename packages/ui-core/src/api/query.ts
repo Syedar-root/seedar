@@ -1,12 +1,15 @@
-import { ApiClient } from './client.js';
-import { RequestOptions } from '#pkg/seedar/types';
-import { QueryResponse, QueryStatus } from '#pkg/seedar/types';
+import { ApiClient } from "./client.js";
+import { createRequestQueue } from "../utils/requestQueue.js";
+import { RequestOptions } from "#pkg/seedar/types";
+import { QueryResponse, QueryStatus } from "#pkg/seedar/types";
 import {
   CreateQueryRequest,
   UpdateQueryRequest,
   ExecuteQueryResponse,
   QueryDSL,
-} from '#pkg/seedar/types';
+} from "#pkg/seedar/types";
+
+const enqueueQueryExecution = createRequestQueue(4);
 
 /**
  * Query API 类
@@ -21,13 +24,13 @@ export class QueryApi {
    */
   static async findAll(
     status?: QueryStatus,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<QueryResponse[]> {
     const params: Record<string, any> = {};
     if (status) {
       params.status = status;
     }
-    return ApiClient.get<QueryResponse[]>('/query', { ...options, params });
+    return ApiClient.get<QueryResponse[]>("/query", { ...options, params });
   }
 
   /**
@@ -38,7 +41,7 @@ export class QueryApi {
    */
   static async findOne(
     id: string,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<QueryResponse> {
     return ApiClient.get<QueryResponse>(`/query/${id}`, options);
   }
@@ -51,9 +54,9 @@ export class QueryApi {
    */
   static async create(
     data: CreateQueryRequest,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<QueryResponse> {
-    return ApiClient.post<QueryResponse>('/query', data, options);
+    return ApiClient.post<QueryResponse>("/query", data, options);
   }
 
   /**
@@ -66,7 +69,7 @@ export class QueryApi {
   static async update(
     id: string,
     data: UpdateQueryRequest,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<QueryResponse> {
     return ApiClient.patch<QueryResponse>(`/query/${id}`, data, options);
   }
@@ -89,12 +92,14 @@ export class QueryApi {
    */
   static async execute(
     queryId: string,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<ExecuteQueryResponse> {
-    return ApiClient.post<ExecuteQueryResponse>(
-      '/query/execute',
-      { queryId },
-      options
+    return enqueueQueryExecution(() =>
+      ApiClient.post<ExecuteQueryResponse>(
+        "/query/execute",
+        { queryId },
+        options,
+      ),
     );
   }
 
@@ -106,12 +111,12 @@ export class QueryApi {
    */
   static async executeTemp(
     dsl: QueryDSL,
-    options?: RequestOptions
+    options?: RequestOptions,
   ): Promise<ExecuteQueryResponse> {
     return ApiClient.post<ExecuteQueryResponse>(
-      '/query/temp',
+      "/query/temp",
       { dsl },
-      options
+      options,
     );
   }
 }

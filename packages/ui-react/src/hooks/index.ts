@@ -32,6 +32,7 @@ export {
   useCreateQuery,
   useUpdateQuery,
   useDeleteQuery,
+  useQueryExecution,
   useExecuteQuery,
   useExecuteTempQuery,
 } from "./api/useQuery";
@@ -60,6 +61,8 @@ export {
 export { usePreventTextSelection } from "./ui/usePreventTextSelection";
 
 export { useAutoScroll } from "./ui/useAutoScroll";
+
+export { useElementSize } from "./ui/useElementSize.hook";
 
 export {
   useAis,

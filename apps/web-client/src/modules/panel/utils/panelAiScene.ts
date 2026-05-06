@@ -1,10 +1,8 @@
 import type { DatasetResponse, QueryDSL } from "#pkg/seedar/types";
-import type { DragItem } from "../components/dndHelper/dragZone/dragZone";
 import type {
   DisplayPanelType,
   PanelEditorConfig,
 } from "../components/panelEditor/types";
-import type { DimensionItem, TempMetricConfig } from "../types";
 
 type PanelReadableDimensionDsl = NonNullable<QueryDSL["dimensions"]>[number];
 
@@ -36,6 +34,30 @@ const getMetricById = (
 const getDisplayName = (item?: { businessName?: string; name?: string }) =>
   item?.businessName || item?.name;
 
+const getAiReadableName = (item: unknown) => {
+  if (!isRecord(item)) {
+    return undefined;
+  }
+
+  if (typeof item.displayName === "string" && item.displayName) {
+    return item.displayName;
+  }
+
+  if (typeof item.businessName === "string" && item.businessName) {
+    return item.businessName;
+  }
+
+  if (typeof item.alias === "string" && item.alias) {
+    return item.alias;
+  }
+
+  if (typeof item.name === "string" && item.name) {
+    return item.name;
+  }
+
+  return undefined;
+};
+
 const serializeDimensionDsl = (
   dimension: PanelReadableDimensionDsl,
   dataset: DatasetResponse | undefined,
@@ -62,17 +84,20 @@ const serializeDimensionDsl = (
 
   if (fieldId !== undefined) {
     const field = getFieldById(dataset, fieldId);
+    const isDerivedDimension = typeof dimension.derivedKind === "string";
     const baseInfo = {
       fieldId,
       fieldName: field?.name,
       fieldBusinessName: field?.businessName,
       displayName:
-        (typeof dimension.alias === "string" && dimension.alias) ||
+        (isDerivedDimension &&
+          typeof dimension.alias === "string" &&
+          dimension.alias) ||
         getDisplayName(field) ||
         `field_${fieldId}`,
     };
 
-    if (typeof dimension.derivedKind === "string") {
+    if (isDerivedDimension) {
       return {
         ...dimension,
         ...baseInfo,
@@ -169,32 +194,16 @@ const serializeOrderByDsl = (
   };
 };
 
-const summarizeDimensionItems = (items: DimensionItem[]) =>
-  items.map((item) => ({
-    id: item.id,
-    name: item.name,
-    businessName: item.businessName,
-    displayName: item.businessName || item.name,
-    isDerived: item.isDerived,
-    derivedKind: item.derivedKind,
-    dimensionDsl: item.dimensionDsl,
-  }));
-
-const summarizeDragItems = (items: DragItem[]) =>
-  items.map((item) => ({
-    id: item.id,
-    name: item.name,
-    businessName: item.businessName,
-    alias: item.alias,
-    displayName: item.businessName || item.alias || item.name,
-  }));
-
 const summarizeEditorConfig = (
   displayType: DisplayPanelType,
   editorConfig: PanelEditorConfig,
 ) => ({
   displayType,
   chartType: editorConfig.type,
+  advancedSpecMode: Boolean(editorConfig.isAdvancedSpecMode),
+  advancedSpec: editorConfig.isAdvancedSpecMode
+    ? editorConfig.advancedSpec
+    : undefined,
   fieldBindings: {
     xField: editorConfig.xField,
     yField: editorConfig.yField,
@@ -203,7 +212,6 @@ const summarizeEditorConfig = (
     valueField: editorConfig.valueField,
     sizeField: editorConfig.sizeField,
   },
-  advancedSpecMode: Boolean(editorConfig.isAdvancedSpecMode),
   visualConfig: {
     smooth: editorConfig.smooth,
     direction: editorConfig.direction,
@@ -224,139 +232,71 @@ export const serializePanelDslForAi = (
   }
 
   return {
-    ...dsl,
     datasetName: dataset?.name,
-    dimensionsReadable: dsl.dimensions?.map((dimension) =>
+    datasetId: dsl.datasetId,
+    tableId: dsl.tableId,
+    dimensions: dsl.dimensions?.map((dimension) =>
       serializeDimensionDsl(dimension, dataset),
     ),
-    metricsReadable: dsl.metrics?.map((metric) =>
-      serializeMetricDsl(metric, dataset),
-    ),
-    filtersReadable: dsl.filters?.map((filter) =>
-      serializeFilterDsl(filter, dataset),
-    ),
-    tempMetricsReadable: dsl.tempMetrics?.map((tempMetric) =>
+    metrics: dsl.metrics?.map((metric) => serializeMetricDsl(metric, dataset)),
+    filters: dsl.filters?.map((filter) => serializeFilterDsl(filter, dataset)),
+    tempMetrics: dsl.tempMetrics?.map((tempMetric) =>
       serializeTempMetricDsl(tempMetric, dataset),
     ),
-    orderByReadable: dsl.orderBy?.map((orderBy) =>
+    orderBy: dsl.orderBy?.map((orderBy) =>
       serializeOrderByDsl(orderBy, dataset),
     ),
+    topN: dsl.topN,
+    limit: dsl.limit,
+    offset: dsl.offset,
   };
 };
 
 export const buildPanelVisualizationSnapshotForAi = (params: {
   displayType: DisplayPanelType;
   editorConfig: PanelEditorConfig;
-  dimensionItems: DimensionItem[];
-  dropMetrics: DragItem[];
-  dropFilters: Array<{
-    id: string | number;
-    fieldId: number;
-    name: string;
-    fieldType?: string;
-    op: string;
-    value?: unknown;
-  }>;
-  tempMetrics: TempMetricConfig[];
 }) => {
-  const {
-    displayType,
-    editorConfig,
-    dimensionItems,
-    dropMetrics,
-    dropFilters,
-    tempMetrics,
-  } = params;
-
-  return {
-    visualization: summarizeEditorConfig(displayType, editorConfig),
-    selectedDimensions: summarizeDimensionItems(dimensionItems),
-    selectedMetrics: summarizeDragItems(dropMetrics),
-    selectedFilters: dropFilters.map((filter) => ({
-      id: filter.id,
-      fieldId: filter.fieldId,
-      displayName: filter.name,
-      op: filter.op,
-      value: filter.value,
-    })),
-    tempMetrics: tempMetrics.map((metric) => ({
-      id: metric.id,
-      alias: metric.alias,
-      businessName: metric.businessName,
-      displayName: metric.businessName || metric.alias || metric.id,
-      type: metric.type,
-      baseMetricId: metric.baseMetricId,
-      timeFieldId: metric.timeFieldId,
-      periodType: metric.periodType,
-      calculationMode: metric.calculationMode,
-    })),
-  };
+  const { displayType, editorConfig } = params;
+  return summarizeEditorConfig(displayType, editorConfig);
 };
 
 export const buildPanelSceneSummaryForAi = (params: {
   datasetName?: string;
-  displayType: DisplayPanelType;
-  editorConfig: PanelEditorConfig;
-  dimensionItems: DimensionItem[];
-  dropMetrics: DragItem[];
-  dropFilters: Array<{
-    id: string | number;
-    fieldId: number;
-    name: string;
-    op: string;
-    value?: unknown;
-  }>;
-  tempMetrics: TempMetricConfig[];
+  dsl:
+    | ReturnType<typeof serializePanelDslForAi>
+    | undefined;
+  visualizationSnapshot: ReturnType<typeof buildPanelVisualizationSnapshotForAi>;
 }) => {
-  const {
-    datasetName,
-    displayType,
-    editorConfig,
-    dimensionItems,
-    dropMetrics,
-    dropFilters,
-    tempMetrics,
-  } = params;
+  const { datasetName, dsl, visualizationSnapshot } = params;
+  const dimensionNames =
+    dsl?.dimensions?.map((item) => getAiReadableName(item)).filter(Boolean) ?? [];
+  const metricNames =
+    dsl?.metrics?.map((item) => getAiReadableName(item)).filter(Boolean) ?? [];
+  const filterNames =
+    dsl?.filters?.map((item) => getAiReadableName(item)).filter(Boolean) ?? [];
+  const tempMetricNames =
+    dsl?.tempMetrics?.map((item) => getAiReadableName(item)).filter(Boolean) ?? [];
 
   return {
-    datasetName,
-    displayType,
-    chartType: editorConfig.type,
-    selectedDimensionNames: dimensionItems.map(
-      (item) => item.businessName || item.name,
-    ),
-    selectedMetricNames: dropMetrics.map(
-      (item) => item.businessName || item.alias || item.name,
-    ),
-    selectedFilterNames: dropFilters.map((filter) => filter.name),
-    tempMetricNames: tempMetrics.map(
-      (metric) => metric.businessName || metric.alias || metric.id,
-    ),
-    fieldBindingsSummary: {
-      xField: editorConfig.xField,
-      yField: editorConfig.yField,
-      seriesField: editorConfig.seriesField,
-      categoryField: editorConfig.categoryField,
-      valueField: editorConfig.valueField,
-      sizeField: editorConfig.sizeField,
-    },
     readableText: [
       datasetName ? `当前数据集：${datasetName}` : "",
-      `当前展示类型：${displayType}`,
-      editorConfig.type ? `图表类型：${editorConfig.type}` : "",
-      dimensionItems.length
-        ? `已选维度：${dimensionItems
-            .map((item) => item.businessName || item.name)
-            .join("、")}`
+      `当前展示类型：${visualizationSnapshot.displayType}`,
+      visualizationSnapshot.chartType
+        ? `图表类型：${visualizationSnapshot.chartType}`
+        : "",
+      dimensionNames.length
+        ? `DSL 维度：${dimensionNames.join("、")}`
         : "已选维度：无",
-      dropMetrics.length
-        ? `已选指标：${dropMetrics
-            .map((item) => item.businessName || item.alias || item.name)
-            .join("、")}`
+      metricNames.length
+        ? `DSL 指标：${metricNames.join("、")}`
         : "已选指标：无",
-      dropFilters.length
-        ? `已选过滤：${dropFilters.map((filter) => filter.name).join("、")}`
+      filterNames.length
+        ? `DSL 过滤：${filterNames.join("、")}`
         : "已选过滤：无",
+      tempMetricNames.length
+        ? `DSL 临时指标：${tempMetricNames.join("、")}`
+        : "",
+      visualizationSnapshot.advancedSpecMode ? "当前已启用高级 Spec 模式" : "",
     ]
       .filter(Boolean)
       .join("；"),

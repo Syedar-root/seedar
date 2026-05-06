@@ -2,6 +2,11 @@ import type {
   PeriodCalculationMode,
   PeriodOverPeriodType,
 } from '../dataset';
+import type {
+  PanelFormattingRole,
+  PanelFormattingTarget,
+  PanelSimpleFormatKind,
+} from '../dashboard';
 import type { QueryOrderDirection } from '../query/query.dto';
 
 export type WorkflowId = string;
@@ -103,6 +108,23 @@ export interface PanelWorkflowSetAdvancedSpecPayload {
   spec: Record<string, unknown>;
 }
 
+export interface PanelWorkflowSetItemFormattingRulePayload {
+  id?: string;
+  target: PanelFormattingTarget;
+  role: PanelFormattingRole;
+  kind: PanelSimpleFormatKind;
+  enabled?: boolean;
+  decimals?: number;
+  useGrouping?: boolean;
+  currency?: string;
+  percentInput?: 'ratio' | 'percent';
+}
+
+export interface PanelWorkflowSetItemFormattingPayload {
+  rule?: PanelWorkflowSetItemFormattingRulePayload;
+  rules?: PanelWorkflowSetItemFormattingRulePayload[];
+}
+
 export interface WorkflowActionPresentation {
   title: string;
   description?: string;
@@ -118,6 +140,7 @@ export type PanelWorkflowTriggerActionTarget =
   | 'select_dataset'
   | 'confirm_dataset_selection'
   | 'set_query_state'
+  | 'set_item_formatting'
   | 'set_panel_title'
   | 'set_display_type'
   | 'set_advanced_spec'
@@ -185,6 +208,11 @@ export const PANEL_WORKFLOW_TRIGGER_ACTION_PRESENTATION: Record<
   set_query_state: {
     title: '更新查询条件',
     description: '写入维度、指标、筛选和临时指标等查询状态。',
+  },
+  set_item_formatting: {
+    title: '配置字段或指标格式',
+    description:
+      '为字段或指标写入格式化规则（如数值、小数位、货币、百分比、日期格式）。',
   },
   set_panel_title: {
     title: '设置图表标题',

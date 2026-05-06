@@ -7,6 +7,7 @@ import type {
 
 import type {
   AddPanelScope,
+  DashboardViewportScaleMode,
   SeedarBreakpoint,
 } from "../../../utils/dashboard-layout/constants";
 
@@ -54,6 +55,8 @@ export interface SeedarDashboardActions {
   closeAddPanelDialog: () => void;
   setActiveBreakpoint: (breakpoint: SeedarBreakpoint) => void;
   setLockedCanvasWidth: (width: number) => void;
+  setViewportScaleMode: (mode: DashboardViewportScaleMode) => void;
+  setViewportScale: (scale: number) => void;
   copyActiveBreakpointToOthers: () => void;
 }
 
@@ -63,6 +66,9 @@ export interface SeedarDashboardState extends SeedarDashboardBaseState {
   containerWidth: number;
   effectiveGridWidth: number;
   lockedCanvasWidth: number;
+  viewportScaleMode: DashboardViewportScaleMode;
+  viewportScale: number;
+  effectiveViewportScale: number;
   configuredBreakpoints: SeedarBreakpoint[];
   activeBreakpointSource: SeedarBreakpoint | null;
 }

@@ -89,13 +89,29 @@ const matchTarget = (
   if (expected.kind && actual.kind !== expected.kind) {
     return false;
   }
-  if (expected.datasetId !== undefined && actual.datasetId !== expected.datasetId) {
+
+  const expectedId =
+    typeof expected.id === 'string' && expected.id.trim().length > 0
+      ? expected.id.trim()
+      : undefined;
+  const actualId =
+    typeof actual.id === 'string' && actual.id.trim().length > 0
+      ? actual.id.trim()
+      : undefined;
+
+  // 对稳定目标优先使用 kind + id 匹配。
+  if (expectedId !== undefined) {
+    return expectedId === actualId;
+  }
+
+  if (expected.key !== undefined && expected.key !== actual.key) {
     return false;
   }
-  if (expected.id !== undefined && actual.id !== expected.id) {
-    return false;
-  }
-  if (expected.key !== undefined && actual.key !== expected.key) {
+  if (
+    expected.datasetId !== undefined &&
+    actual.datasetId !== undefined &&
+    expected.datasetId !== actual.datasetId
+  ) {
     return false;
   }
   return true;
@@ -105,7 +121,9 @@ const resolveSimpleRule = (
   config: PanelSimpleFormattingConfig,
   params: ResolveFormatterParams,
 ): PanelSimpleFormattingRule | undefined => {
-  for (const rule of config.rules) {
+  // 从后往前匹配，确保同 target 的后写规则覆盖前写规则。
+  for (let index = config.rules.length - 1; index >= 0; index -= 1) {
+    const rule = config.rules[index];
     if (rule.enabled === false) {
       continue;
     }

@@ -46,6 +46,7 @@ const AIChat: React.FC<AIChatProps> = ({
   messages = [],
   loading = false,
   onSendMessage,
+  onStopMessage,
   sseData,
   placeholder = "请输入消息...",
   disabled = false,
@@ -431,6 +432,7 @@ const AIChat: React.FC<AIChatProps> = ({
         <EnhancedSender
           loading={loading}
           onSubmit={handleUserSubmit}
+          onCancel={onStopMessage}
           placeholder={placeholder}
           disabled={disabled}
           commands={commands}

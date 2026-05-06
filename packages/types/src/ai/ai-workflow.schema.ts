@@ -4,6 +4,7 @@ import {
   PeriodOverPeriodType,
 } from '../dataset';
 import {
+  type PanelWorkflowSetItemFormattingPayload,
   type PanelQueryStateDimensionPayload,
   type PanelQueryStateFilterPayload,
   type PanelQueryStateMetricPayload,
@@ -20,7 +21,12 @@ import {
 const panelQueryStateDimensionPayloadSchema:
   z.ZodType<PanelQueryStateDimensionPayload> = z.object({
     fieldId: z.number().int().optional(),
-    alias: z.string().optional(),
+    alias: z
+      .string()
+      .optional()
+      .describe(
+        'legacy alias (base field dimensions should avoid alias; use derived dimensions when a renamed field is required)',
+      ),
     name: z.string().optional(),
     businessName: z.string().optional(),
     dimensionDsl: z.record(z.string(), z.unknown()).optional(),
@@ -138,13 +144,66 @@ const panelWorkflowSetAdvancedSpecPayloadSchema:
     .object({
       spec: z.record(z.string(), z.unknown()),
     })
-    .refine(
-      (payload) =>
-        typeof payload.spec.type === 'string' && payload.spec.type.trim().length > 0,
-      {
-        message: 'set_advanced_spec.spec.type 必须是非空字符串',
-      },
-    );
+    .superRefine((payload, ctx) => {
+      if (
+        typeof payload.spec.type !== 'string' ||
+        payload.spec.type.trim().length === 0
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'set_advanced_spec.spec.type 必须是非空字符串',
+          path: ['spec', 'type'],
+        });
+      }
+
+      if (Object.prototype.hasOwnProperty.call(payload.spec, 'data')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'set_advanced_spec.spec 不允许包含 data；当前面板数据会由前端自动注入，请只传 spec 结构与字段映射',
+          path: ['spec', 'data'],
+        });
+      }
+    });
+
+const panelWorkflowSetItemFormattingRulePayloadSchema = z.object({
+  id: z.string().optional(),
+  target: z.object({
+    kind: z.enum([
+      'field',
+      'metric',
+      'derived_dimension',
+      'temp_metric',
+      'unknown',
+    ]),
+    datasetId: z.number().int().optional(),
+    id: z.string().optional(),
+    key: z.string().optional(),
+  }),
+  role: z.enum(['dimension', 'metric']),
+  kind: z.enum(['number', 'percent', 'currency', 'date', 'datetime']),
+  enabled: z.boolean().optional(),
+  decimals: z.number().int().min(0).max(20).optional(),
+  useGrouping: z.boolean().optional(),
+  currency: z.string().optional(),
+  percentInput: z.enum(['ratio', 'percent']).optional(),
+});
+
+const panelWorkflowSetItemFormattingPayloadSchema:
+  z.ZodType<PanelWorkflowSetItemFormattingPayload> = z
+    .object({
+      rule: panelWorkflowSetItemFormattingRulePayloadSchema.optional(),
+      rules: z.array(panelWorkflowSetItemFormattingRulePayloadSchema).optional(),
+    })
+    .superRefine((payload, ctx) => {
+      if (!payload.rule && (!payload.rules || payload.rules.length === 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'set_item_formatting 至少需要提供 rule 或 rules',
+          path: ['rule'],
+        });
+      }
+    });
 
 export interface QueryCurrentPanelAsChartWorkflowParams
   extends Record<string, unknown> {
@@ -179,5 +238,83 @@ export const queryCurrentPanelAsChartWorkflowParamsSchema:
     normalizeQueryCurrentPanelAsChartWorkflowParams,
     z.object({
       set_advanced_spec: panelWorkflowSetAdvancedSpecPayloadSchema,
+    }),
+  );
+
+// ----------------------------------------------------------------------------
+// Template: set_current_panel_item_formatting_v1
+// ----------------------------------------------------------------------------
+
+export interface SetCurrentPanelItemFormattingWorkflowParams
+  extends Record<string, unknown> {
+  set_item_formatting: PanelWorkflowSetItemFormattingPayload;
+}
+
+const normalizeSetCurrentPanelItemFormattingWorkflowParams = (
+  input: unknown,
+): SetCurrentPanelItemFormattingWorkflowParams | unknown => {
+  if (!isRecord(input)) {
+    return input;
+  }
+
+  const record = input;
+  const rawFormattingPayload = isRecord(record.set_item_formatting)
+    ? record.set_item_formatting
+    : isRecord(record.itemFormatting)
+      ? record.itemFormatting
+      : undefined;
+
+  if (!rawFormattingPayload) {
+    return {
+      set_item_formatting: rawFormattingPayload,
+    };
+  }
+
+  if (
+    typeof rawFormattingPayload.kind === 'string' &&
+    typeof rawFormattingPayload.role === 'string' &&
+    isRecord(rawFormattingPayload.target)
+  ) {
+    return {
+      set_item_formatting: {
+        rule: rawFormattingPayload,
+      },
+    };
+  }
+
+  if (
+    typeof rawFormattingPayload.kind === 'string' &&
+    (typeof rawFormattingPayload.fieldId === 'number' ||
+      typeof rawFormattingPayload.metricId === 'number')
+  ) {
+    const isMetric = typeof rawFormattingPayload.metricId === 'number';
+    const targetId = isMetric
+      ? rawFormattingPayload.metricId
+      : rawFormattingPayload.fieldId;
+
+    return {
+      set_item_formatting: {
+        rule: {
+          ...rawFormattingPayload,
+          role: isMetric ? 'metric' : 'dimension',
+          target: {
+            kind: isMetric ? 'metric' : 'field',
+            id: String(targetId),
+          },
+        },
+      },
+    };
+  }
+
+  return {
+    set_item_formatting: rawFormattingPayload,
+  };
+};
+
+export const setCurrentPanelItemFormattingWorkflowParamsSchema:
+  z.ZodType<SetCurrentPanelItemFormattingWorkflowParams> = z.preprocess(
+    normalizeSetCurrentPanelItemFormattingWorkflowParams,
+    z.object({
+      set_item_formatting: panelWorkflowSetItemFormattingPayloadSchema,
     }),
   );

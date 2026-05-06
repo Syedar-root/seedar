@@ -731,21 +731,17 @@ export const usePanelEditorMutations = ({
     (rule: PanelSimpleFormattingRule) => {
       setEditorConfig((previous) => {
         const nextFormatting = toSimpleFormattingConfig(previous.formatting);
-        const nextRules = [...nextFormatting.rules];
-        const targetIndex = nextRules.findIndex((currentRule) =>
-          isSameFormattingTarget(
-            currentRule.target,
-            currentRule.role,
-            rule.target,
-            rule.role,
-          ),
+        const nextRules = nextFormatting.rules.filter(
+          (currentRule) =>
+            !isSameFormattingTarget(
+              currentRule.target,
+              currentRule.role,
+              rule.target,
+              rule.role,
+            ),
         );
-
-        if (targetIndex >= 0) {
-          nextRules[targetIndex] = rule;
-        } else {
-          nextRules.push(rule);
-        }
+        // 相同 target 的规则只保留最新一条，后写覆盖前写。
+        nextRules.push(rule);
 
         return {
           ...previous,
@@ -816,7 +812,6 @@ export const usePanelEditorMutations = ({
                   ? parseDimensionDsl(dimension.dimensionDsl)
                   : parseDimensionDsl({
                       fieldId: dimension.fieldId,
-                      alias: dimension.alias,
                     });
 
               if (!parsedDimension) {

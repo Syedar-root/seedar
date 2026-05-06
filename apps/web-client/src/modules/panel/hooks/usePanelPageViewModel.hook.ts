@@ -2,6 +2,7 @@ import type {
   AiChatScene,
   DatasetResponse,
   ExecuteQueryResponse,
+  PanelSimpleFormattingRule,
   PanelQueryStatePayload,
   QueryDSL,
 } from "#pkg/seedar/types";
@@ -150,6 +151,20 @@ interface WorkflowError {
   message: string;
 }
 
+interface WorkflowFormattingRuleInput {
+  id?: string;
+  target?: PanelSimpleFormattingRule["target"];
+  fieldId?: number;
+  metricId?: number;
+  role?: PanelSimpleFormattingRule["role"];
+  kind?: PanelSimpleFormattingRule["kind"];
+  enabled?: boolean;
+  decimals?: number;
+  useGrouping?: boolean;
+  currency?: string;
+  percentInput?: PanelSimpleFormattingRule["percentInput"];
+}
+
 type ChartRenderStatus = "idle" | "pending" | "success" | "error";
 
 interface ChartRenderWaiter {
@@ -165,6 +180,180 @@ const createWorkflowError = (code: string, message: string): WorkflowError => ({
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const isWorkflowErrorLike = (value: unknown): value is WorkflowError =>
+  isRecord(value) &&
+  typeof value.code === "string" &&
+  typeof value.message === "string";
+
+const extractWorkflowErrorFromUnknown = (
+  error: unknown,
+  fallbackCode: string,
+  fallbackMessage: string,
+): WorkflowError => {
+  if (isWorkflowErrorLike(error)) {
+    return {
+      code: error.code,
+      message: error.message,
+    };
+  }
+
+  if (isRecord(error)) {
+    const maybeMessage =
+      typeof error.message === "string" ? error.message : undefined;
+    const response = isRecord(error.response) ? error.response : undefined;
+    const responseData = response && isRecord(response.data) ? response.data : undefined;
+
+    const responseCode =
+      responseData && typeof responseData.code === "string"
+        ? responseData.code
+        : undefined;
+    const responseMessage =
+      responseData && typeof responseData.message === "string"
+        ? responseData.message
+        : undefined;
+
+    const details = responseData ? responseData.data : undefined;
+    const detailMessage =
+      isRecord(details) && typeof details.message === "string"
+        ? details.message
+        : undefined;
+
+    if (responseCode && (responseMessage || detailMessage)) {
+      return {
+        code: responseCode,
+        message: detailMessage || responseMessage || fallbackMessage,
+      };
+    }
+
+    if (responseMessage) {
+      return {
+        code: responseCode || fallbackCode,
+        message: responseMessage,
+      };
+    }
+
+    if (maybeMessage) {
+      return {
+        code: fallbackCode,
+        message: maybeMessage,
+      };
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return {
+      code: fallbackCode,
+      message: error.message,
+    };
+  }
+
+  return {
+    code: fallbackCode,
+    message: fallbackMessage,
+  };
+};
+
+const WORKFLOW_FORMATTING_TARGET_KINDS = [
+  "field",
+  "metric",
+  "derived_dimension",
+  "temp_metric",
+  "unknown",
+] as const;
+
+const parseWorkflowFormattingRule = (
+  value: unknown,
+  index: number,
+): PanelSimpleFormattingRule | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const target = value.target;
+  const workflowRule = value as WorkflowFormattingRuleInput;
+  const role =
+    value.role === "dimension" || value.role === "metric"
+      ? value.role
+      : typeof workflowRule.metricId === "number"
+        ? "metric"
+        : typeof workflowRule.fieldId === "number"
+          ? "dimension"
+          : undefined;
+  const kind = value.kind;
+  const normalizedTarget = isRecord(target)
+    ? target
+    : typeof workflowRule.metricId === "number"
+      ? {
+          kind: "metric",
+          id: String(workflowRule.metricId),
+        }
+      : typeof workflowRule.fieldId === "number"
+        ? {
+            kind: "field",
+            id: String(workflowRule.fieldId),
+          }
+        : undefined;
+  const targetKind =
+    isRecord(normalizedTarget) && typeof normalizedTarget.kind === "string"
+      ? normalizedTarget.kind
+      : undefined;
+  if (
+    !isRecord(normalizedTarget) ||
+    !targetKind ||
+    !WORKFLOW_FORMATTING_TARGET_KINDS.includes(
+      targetKind as (typeof WORKFLOW_FORMATTING_TARGET_KINDS)[number],
+    ) ||
+    (role !== "dimension" && role !== "metric") ||
+    (kind !== "number" &&
+      kind !== "percent" &&
+      kind !== "currency" &&
+      kind !== "date" &&
+      kind !== "datetime")
+  ) {
+    return undefined;
+  }
+
+  const id = typeof value.id === "string" && value.id.trim()
+    ? value.id.trim()
+    : `workflow_formatting_rule_${index}_${Date.now()}`;
+  return {
+    id,
+    target: {
+      kind: targetKind as (typeof WORKFLOW_FORMATTING_TARGET_KINDS)[number],
+      datasetId:
+        typeof normalizedTarget.datasetId === "number"
+          ? normalizedTarget.datasetId
+          : undefined,
+      id:
+        typeof normalizedTarget.id === "string" ||
+        typeof normalizedTarget.id === "number"
+          ? String(normalizedTarget.id)
+          : undefined,
+      key:
+        typeof normalizedTarget.key === "string"
+          ? normalizedTarget.key
+          : undefined,
+    },
+    role,
+    kind,
+    enabled:
+      typeof workflowRule.enabled === "boolean" ? workflowRule.enabled : undefined,
+    decimals:
+      typeof workflowRule.decimals === "number" ? workflowRule.decimals : undefined,
+    useGrouping:
+      typeof workflowRule.useGrouping === "boolean"
+        ? workflowRule.useGrouping
+        : undefined,
+    currency:
+      typeof workflowRule.currency === "string" ? workflowRule.currency : undefined,
+    percentInput:
+      workflowRule.percentInput === "ratio" ||
+      workflowRule.percentInput === "percent"
+        ? workflowRule.percentInput
+        : undefined,
+  };
+};
 
 /**
  * 聚合 PanelPage 所需的业务状态与事件，确保页面层仅负责布局和组件编排。
@@ -257,32 +446,20 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
       buildPanelVisualizationSnapshotForAi({
         displayType,
         editorConfig,
-        dimensionItems,
-        dropMetrics,
-        dropFilters,
-        tempMetrics,
       }),
-    [dimensionItems, displayType, dropFilters, dropMetrics, editorConfig, tempMetrics],
+    [displayType, editorConfig],
   );
   const panelSceneSummary = useMemo(
     () =>
       buildPanelSceneSummaryForAi({
         datasetName: activeDataset?.name,
-        displayType,
-        editorConfig,
-        dimensionItems,
-        dropMetrics,
-        dropFilters,
-        tempMetrics,
+        dsl: aiDsl,
+        visualizationSnapshot,
       }),
     [
       activeDataset?.name,
-      dimensionItems,
-      displayType,
-      dropFilters,
-      dropMetrics,
-      editorConfig,
-      tempMetrics,
+      aiDsl,
+      visualizationSnapshot,
     ],
   );
   const panelScene = useMemo<AiChatScene>(
@@ -294,11 +471,6 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
       queryId: queryData?.id,
       title,
       dsl: aiDsl,
-      selectedDimensionNames: panelSceneSummary.selectedDimensionNames,
-      selectedMetricNames: panelSceneSummary.selectedMetricNames,
-      selectedFilterNames: panelSceneSummary.selectedFilterNames,
-      tempMetricNames: panelSceneSummary.tempMetricNames,
-      fieldBindingsSummary: panelSceneSummary.fieldBindingsSummary,
       sceneSummaryText: panelSceneSummary.readableText,
       visualizationSnapshot,
     }),
@@ -306,12 +478,7 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
       activeDataset?.id,
       activeDataset?.name,
       aiDsl,
-      panelSceneSummary.fieldBindingsSummary,
       panelSceneSummary.readableText,
-      panelSceneSummary.selectedDimensionNames,
-      panelSceneSummary.selectedFilterNames,
-      panelSceneSummary.selectedMetricNames,
-      panelSceneSummary.tempMetricNames,
       panelData?.id,
       panelId,
       queryData?.id,
@@ -927,6 +1094,53 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           tempMetrics: queryState.tempMetrics?.length ?? 0,
         };
       },
+      set_item_formatting: (action) => {
+        captureWorkflowSnapshot();
+
+        if (!isRecord(action.payload)) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            "缺少合法的 set_item_formatting payload",
+          );
+        }
+
+        const payload = action.payload;
+        const ruleInputs: unknown[] = [];
+        if (isRecord(payload.rule)) {
+          ruleInputs.push(payload.rule);
+        }
+        if (Array.isArray(payload.rules)) {
+          ruleInputs.push(...payload.rules);
+        }
+
+        if (ruleInputs.length === 0) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            "set_item_formatting 至少需要提供一条 rule",
+          );
+        }
+
+        const parsedRules = ruleInputs
+          .map((rule, index) => parseWorkflowFormattingRule(rule, index))
+          .filter((rule): rule is PanelSimpleFormattingRule => Boolean(rule));
+
+        if (parsedRules.length === 0) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            "set_item_formatting 的规则格式不合法",
+          );
+        }
+
+        flushSync(() => {
+          parsedRules.forEach((rule) => {
+            handleSaveItemFormatting(rule);
+          });
+        });
+
+        return {
+          updatedRules: parsedRules.length,
+        };
+      },
       set_panel_title: (action) => {
         captureWorkflowSnapshot();
 
@@ -1027,7 +1241,7 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           specType: specType ?? null,
         };
       },
-      run_preview: async () => {
+      run_preview: async (action) => {
         captureWorkflowSnapshot();
 
         const { hasDataset, canRun, buildDsl, baseDsl, runPreview } =
@@ -1054,10 +1268,23 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           );
         }
 
+        const skipChartRenderValidation =
+          action.payload?.skipChartRenderValidation === true;
+
         chartRenderStatusRef.current = "pending";
         chartRenderErrorRef.current = null;
 
-        const previewResult = await runPreview(dsl);
+        let previewResult: ExecuteQueryResponse | undefined;
+        try {
+          previewResult = await runPreview(dsl);
+        } catch (error) {
+          throw extractWorkflowErrorFromUnknown(
+            error,
+            "WORKFLOW_RUN_PREVIEW_FAILED",
+            PANEL_PAGE_COPY.previewFailed,
+          );
+        }
+
         if (!previewResult) {
           throw createWorkflowError(
             "WORKFLOW_RUN_PREVIEW_FAILED",
@@ -1065,10 +1292,13 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           );
         }
 
-        await waitForChartRenderResult();
+        if (!skipChartRenderValidation) {
+          await waitForChartRenderResult();
+        }
 
         return {
           previewExecuted: true,
+          skipChartRenderValidation,
           rowCount: getPreviewRowCount(previewResult),
         };
       },

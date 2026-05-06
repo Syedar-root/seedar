@@ -58,6 +58,10 @@ allowed-tools:
 - 不要在本 skill 内展开大量 VChart 细节
 - 直接参考 `vchart-development-assistant` skill
 - 由它负责图表类型、字段映射、组件配置、合法 spec 结构
+- 不要自己查询数据，也不要为了生成 spec 去补写 `data`
+- 不要把查询结果内联到 `spec.data`
+- 不要自己重做一套数据映射逻辑；字段引用应直接对应当前 panel 已有 DSL / 已注入数据字段
+- 这里的目标只是生成合法 spec，并把 spec 中需要的字段映射到当前 DSL 已有字段
 
 ### 场景 3：把图表配置到当前页面
 
@@ -80,12 +84,22 @@ allowed-tools:
 - 基于当前面板已有数据配置图表
 - 不修改当前查询条件
 - 只需要传 `spec`
+- 前端会自动注入当前面板数据，不需要也不允许传 `data`
 
 因此你在调用它之前，应先确保：
 
 1. 已参考 `vchart-development-assistant` skill
 2. 生成的是合法的图表 spec
 3. `spec.type` 是 chart 类型，而不是 table/card
+4. `spec` 中不要包含 `data`
+5. 不要传 `datasetId`、`dimensions`、`metrics`、`filters`、`orderBy`、`topN` 等查询参数
+
+如果你发现自己正在做下面这些事，说明方向错了，应立即改为只输出 spec：
+
+- 重新查数
+- 在 `spec` 里写 `data`
+- 手工把后端结果数组塞进图表配置
+- 试图通过 workflow 修改当前 panel 的 DSL
 
 ## 最小化澄清
 

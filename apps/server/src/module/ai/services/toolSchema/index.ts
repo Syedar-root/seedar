@@ -1,4 +1,3 @@
-import { Operator } from '@metric-engine/core';
 import {
   FRONTEND_WORKFLOW_TEMPLATES,
   type AskQuestionItem,
@@ -22,28 +21,145 @@ const getDatasourceInfoSchema = z.object({
 
 type GetDatasourceInfoParams = z.infer<typeof getDatasourceInfoSchema>;
 
-const operatorList = ['=', '!=', '>', '>=', '<', '<='] as const;
+const operatorList = [
+  '=',
+  '!=',
+  '>',
+  '>=',
+  '<',
+  '<=',
+  'in',
+  'not_in',
+  'between',
+  'not_between',
+  'like',
+  'not_like',
+  'is_null',
+  'is_not_null',
+  'recent_days',
+  'recent_weeks',
+  'recent_months',
+] as const;
+
+const timeGrainList = ['day', 'week', 'month', 'quarter', 'year'] as const;
+const periodTypeList = [
+  'day_over_day',
+  'week_over_week',
+  'month_over_month',
+  'quarter_over_quarter',
+  'year_over_year',
+] as const;
+const calculationModeList = ['percentage', 'absolute', 'both'] as const;
+const orderDirectionList = ['asc', 'desc'] as const;
+
+const baseDimensionSchema = z.object({
+  fieldId: z.number(),
+  alias: z
+    .string()
+    .optional()
+    .describe('普通字段维度请尽量不要传 alias；仅派生维度需要强制 alias'),
+});
+
+const timeGrainDimensionSchema = z.object({
+  derivedKind: z.literal('time_grain'),
+  fieldId: z.number(),
+  grain: z.enum(timeGrainList),
+  alias: z.string(),
+});
+
+const bucketDimensionSchema = z.object({
+  derivedKind: z.literal('bucket'),
+  fieldId: z.number(),
+  ranges: z.array(
+    z.object({
+      lt: z.number(),
+      label: z.string(),
+    }),
+  ),
+  defaultLabel: z.string().optional(),
+  alias: z.string(),
+});
+
+const mappingDimensionSchema = z.object({
+  derivedKind: z.literal('mapping'),
+  fieldId: z.number(),
+  rules: z.array(
+    z.object({
+      in: z.array(z.union([z.string(), z.number(), z.boolean()])),
+      label: z.string(),
+    }),
+  ),
+  defaultLabel: z.string().optional(),
+  alias: z.string(),
+});
+
+const expressionDimensionSchema = z.object({
+  derivedKind: z.literal('expression'),
+  expression: z.string(),
+  alias: z.string(),
+});
+
+const queryDimensionSchema = z.union([
+  z.number(),
+  baseDimensionSchema,
+  timeGrainDimensionSchema,
+  bucketDimensionSchema,
+  mappingDimensionSchema,
+  expressionDimensionSchema,
+]);
+
+const queryMetricSchema = z.object({
+  id: z.number(),
+  alias: z.string().optional(),
+});
+
+const queryFilterSchema = z.object({
+  fieldId: z.number(),
+  op: z.enum(operatorList),
+  value: z.any().optional(),
+  raw: z.boolean().optional(),
+});
+
+const tempMetricSchema = z.object({
+  id: z.string(),
+  type: z.literal('period_comparison').optional(),
+  alias: z.string().optional(),
+  businessName: z.string().optional(),
+  baseMetricId: z.number(),
+  timeFieldId: z.number().optional(),
+  periodType: z.enum(periodTypeList).optional(),
+  calculationMode: z.enum(calculationModeList).optional(),
+});
+
+const orderBySchema = z.object({
+  fieldId: z.number().optional(),
+  metricId: z.number().optional(),
+  tempMetricId: z.string().optional(),
+  alias: z.string().optional(),
+  field: z.string().optional(),
+  dir: z.enum(orderDirectionList).optional(),
+  direction: z.enum(orderDirectionList).optional(),
+});
 
 const getDataAtTempSchema = z.object({
   dsl: z.object({
     datasetId: z.union([z.string(), z.number()]).describe('数据集 ID'),
-    tableId: z.number().describe('主表 ID'),
-    dimensions: z.array(z.number()).describe('维度 ID 列表').optional(),
-    metrics: z
-      .array(z.object({ id: z.number() }))
-      .describe('指标 ID 列表')
+    tableId: z.number().optional().describe('主表 ID；V2 中可选，无法自动推导时再显式指定'),
+    dimensions: z
+      .array(queryDimensionSchema)
+      .describe('维度列表，支持普通字段维度与 derivedKind 派生维度')
       .optional(),
-    filters: z
-      .array(
-        z.object({
-          fieldId: z.number(),
-          op: z.enum(operatorList),
-          value: z.any(),
-          raw: z.boolean().optional(),
-        }),
-      )
-      .describe('筛选条件列表')
+    metrics: z.array(queryMetricSchema).describe('指标列表').optional(),
+    filters: z.array(queryFilterSchema).describe('筛选条件列表').optional(),
+    tempMetrics: z
+      .array(tempMetricSchema)
+      .describe('临时指标列表，当前主要用于 period_comparison 同环比指标')
       .optional(),
+    orderBy: z
+      .array(orderBySchema)
+      .describe('排序列表，支持 fieldId、metricId、tempMetricId、alias 排序')
+      .optional(),
+    topN: z.number().int().positive().optional().describe('TopN 语义糖，必须配合 orderBy'),
     limit: z.number().optional(),
     offset: z.number().optional(),
   }),

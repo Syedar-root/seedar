@@ -3,6 +3,8 @@
 import { useSeedarDashboardContext } from "../../../context/SeedarDashboardContext";
 import {
   BREAKPOINT_ORDER,
+  MAX_DASHBOARD_VIEWPORT_SCALE,
+  MIN_DASHBOARD_VIEWPORT_SCALE,
   type SeedarBreakpoint,
 } from "../../../../../../utils/dashboard-layout/constants";
 import {
@@ -11,6 +13,7 @@ import {
 } from "../../../../../../utils/dashboard-layout/layoutEditor";
 import {
   formatWidth,
+  formatViewportScale,
   getConfiguredLayoutHint,
   getDifferentViewportHint,
   getEmptyLayoutHint,
@@ -71,6 +74,7 @@ export const useLayoutEditorToolbarViewModel = () => {
 
     return {
       actions,
+      activeBreakpoint: state.activeBreakpoint,
       breakpoints: BREAKPOINT_ORDER.map((breakpoint: SeedarBreakpoint) => ({
         breakpoint,
         configured: state.configuredBreakpoints.includes(breakpoint),
@@ -89,6 +93,16 @@ export const useLayoutEditorToolbarViewModel = () => {
         }),
       ),
       viewportHint,
+      maxViewportScalePercent: MAX_DASHBOARD_VIEWPORT_SCALE * 100,
+      minViewportScalePercent: MIN_DASHBOARD_VIEWPORT_SCALE * 100,
+      viewportScale: state.viewportScale,
+      viewportScaleInputValue: Math.round(
+        state.viewportScaleMode === "auto"
+          ? state.effectiveViewportScale * 100
+          : state.viewportScale * 100,
+      ),
+      viewportScaleLabel: formatViewportScale(state.effectiveViewportScale),
+      viewportScaleMode: state.viewportScaleMode,
       widthText: formatWidth(state.containerWidth),
     };
   }, [actions, mode, state]);

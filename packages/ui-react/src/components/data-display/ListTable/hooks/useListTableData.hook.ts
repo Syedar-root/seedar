@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { useExecuteQuery } from "../../../../hooks";
+import { useQueryExecution } from "../../../../hooks";
 import type { ListTableProps } from "../types";
 import { transformTableData } from "../utils/transformTableData";
 
@@ -10,40 +10,27 @@ export const useListTableData = ({
   queryId,
   vtableProps = {},
 }: ListTableProps) => {
-  const { mutate: executeQuery } = useExecuteQuery();
+  const { data: executedData } = useQueryExecution(queryId, !data);
   const [tableOption, setTableOption] = useState(() => ({
     ...vtableProps.option,
     autoFillWidth: true,
   }));
 
   useEffect(() => {
-    if (!queryId && !data) {
+    const tableData = data || executedData;
+
+    if (!queryId && !tableData) {
       return;
     }
 
-    if (data) {
-      const transformed = transformTableData(data, formatting);
+    if (tableData) {
+      const transformed = transformTableData(tableData, formatting);
       setTableOption((prev) => ({
         ...prev,
         ...transformed,
       }));
-      return;
     }
-
-    if (!queryId) {
-      return;
-    }
-
-    executeQuery(queryId, {
-      onSuccess: (queryData) => {
-        const transformed = transformTableData(queryData, formatting);
-        setTableOption((prev) => ({
-          ...prev,
-          ...transformed,
-        }));
-      },
-    });
-  }, [data, executeQuery, formatting, queryId]);
+  }, [data, executedData, formatting, queryId]);
 
   return useMemo(
     () => ({

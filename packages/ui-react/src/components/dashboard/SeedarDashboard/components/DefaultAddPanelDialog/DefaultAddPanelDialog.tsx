@@ -11,6 +11,7 @@ import {
   DEFAULT_ADD_PANEL_SCOPE_OPTIONS,
   getDefaultAddPanelDialogHint,
 } from "./utils/getDefaultAddPanelDialogCopy";
+import tokenStyles from "../../SeedarDashboard.tokens.module.css";
 import styles from "./DefaultAddPanelDialog.module.css";
 
 export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
@@ -33,7 +34,7 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
   return (
     <Dialog.Portal>
       <Dialog.Backdrop className={styles.Backdrop} />
-      <Dialog.Popup className={styles.popup}>
+      <Dialog.Popup className={clsx(tokenStyles["token-scope"], styles.popup)}>
         <div className={styles.content}>
           <Dialog.Title className={styles.title}>选择 Panel</Dialog.Title>
           <Dialog.Description className={styles.description}>

@@ -1,47 +1,60 @@
 .toolbar {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 18px;
-  border: 1px solid color-mix(in srgb, #1f2937 10%, white);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, #eff6ff 60%, white) 0%, white 100%);
-  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.06);
+  gap: var(--seedar-dashboard-space-sm, 8px);
+  padding: var(--seedar-dashboard-space-md, 12px);
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  border-radius: var(--seedar-dashboard-radius-lg, 12px);
+  background: var(--seedar-dashboard-surface, #f8fafc);
+  box-shadow: var(--seedar-dashboard-shadow, 0 10px 28px rgba(15, 23, 42, 0.04));
 }
 
-.row {
+.deviceBar {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 12px 16px;
-  align-items: center;
+  gap: var(--seedar-dashboard-space-sm, 8px) var(--seedar-dashboard-space-lg, 16px);
+  align-items: stretch;
 }
 
-.group {
+.devicePrimary,
+.deviceSecondary,
+.widthPicker {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 10px;
+  gap: var(--seedar-dashboard-space-sm, 8px) var(--seedar-dashboard-space-md, 12px);
+}
+
+.devicePrimary {
+  min-width: min(100%, 520px);
+  flex: 1;
+}
+
+.deviceSecondary {
+  justify-content: flex-end;
 }
 
 .label {
-  font-size: 12px;
+  font-size: var(--seedar-dashboard-font-sm, 12px);
   font-weight: 600;
-  color: #475569;
+  color: var(--seedar-dashboard-text-muted, #475569);
 }
 
 .segmented {
   display: inline-flex;
-  padding: 4px;
-  border-radius: 999px;
-  background: color-mix(in srgb, #e2e8f0 45%, white);
+  padding: var(--seedar-dashboard-space-xs, 4px);
+  border-radius: var(--seedar-dashboard-radius-pill, 9999px);
+  background: var(--seedar-dashboard-surface-muted, #f1f5f9);
 }
 
 .segmentedButton,
 .breakpointButton,
 .secondaryButton,
-.select {
+.select,
+.scaleAutoButton,
+.scaleInput,
+.scaleStepButton {
   appearance: none;
   border: none;
   background: transparent;
@@ -49,94 +62,258 @@
 }
 
 .segmentedButton {
-  padding: 8px 14px;
-  border-radius: 999px;
-  color: #475569;
+  padding: var(--seedar-dashboard-space-sm, 8px) 14px;
+  border-radius: var(--seedar-dashboard-radius-pill, 9999px);
+  color: var(--seedar-dashboard-text-muted, #475569);
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color var(--seedar-dashboard-transition, 0.2s ease), color var(--seedar-dashboard-transition, 0.2s ease);
 }
 
 .segmentedButtonActive {
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--seedar-dashboard-surface-selected, #1d4ed8);
+  color: var(--seedar-dashboard-text-inverse, #fff);
 }
 
 .metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--seedar-dashboard-space-sm, 8px);
 }
 
 .metric {
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, #dbeafe 65%, white);
-  color: #1d4ed8;
-  font-size: 12px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  border-radius: var(--seedar-dashboard-radius-md, 8px);
+  background: var(--seedar-dashboard-surface-elevated, #fff);
+  color: var(--seedar-dashboard-text-muted, #475569);
+  font-size: var(--seedar-dashboard-font-sm, 12px);
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
 }
 
 .breakpoints {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .breakpointButton {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, #1f2937 10%, white);
-  background: white;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: var(--seedar-dashboard-radius-md, 8px);
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  background: var(--seedar-dashboard-surface-elevated, #fff);
   cursor: pointer;
   transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    transform 0.2s ease;
+    border-color var(--seedar-dashboard-transition, 0.2s ease),
+    background-color var(--seedar-dashboard-transition, 0.2s ease),
+    transform var(--seedar-dashboard-transition, 0.2s ease);
 }
 
 .breakpointButton:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, #2563eb 30%, white);
+  border-color: var(--seedar-dashboard-border-hover, #cbd5e1);
+  background: var(--seedar-dashboard-surface-hover, #eff6ff);
 }
 
 .breakpointButtonActive {
-  background: #0f172a;
-  border-color: #0f172a;
-  color: #f8fafc;
+  background: var(--seedar-dashboard-surface-selected, #1d4ed8);
+  border-color: var(--seedar-dashboard-surface-selected, #1d4ed8);
+  color: var(--seedar-dashboard-text-inverse, #fff);
+}
+
+.breakpointButton[data-pressed] {
+  background: var(--seedar-dashboard-surface-selected, #1d4ed8);
+  border-color: var(--seedar-dashboard-surface-selected, #1d4ed8);
+  color: var(--seedar-dashboard-text-inverse, #fff);
 }
 
 .breakpointMeta {
-  font-size: 11px;
+  font-size: var(--font-xs, 11px);
   opacity: 0.75;
 }
 
 .select {
-  min-width: 210px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, #1f2937 12%, white);
-  background: white;
-  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--seedar-dashboard-space-sm, 8px);
+  min-width: 188px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: var(--seedar-dashboard-radius-md, 8px);
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  background: var(--seedar-dashboard-surface-elevated, #fff);
+  color: var(--seedar-dashboard-text, #0f172a);
+  cursor: pointer;
+}
+
+.select[data-popup-open] {
+  border-color: var(--seedar-dashboard-border-hover, #cbd5e1);
+  background: var(--seedar-dashboard-surface-hover, #eff6ff);
+}
+
+.selectIcon {
+  color: var(--seedar-dashboard-text-subtle, #64748b);
+  font-size: var(--seedar-dashboard-font-sm, 12px);
+  line-height: 1;
+}
+
+.selectPositioner {
+  z-index: 30;
+}
+
+.selectPopup {
+  min-width: var(--anchor-width);
+  padding: var(--seedar-dashboard-space-xs, 4px);
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  border-radius: var(--seedar-dashboard-radius-md, 8px);
+  background: var(--seedar-dashboard-surface-elevated, #fff);
+  box-shadow: var(--seedar-dashboard-shadow-lg, 0 4px 20px rgba(0, 0, 0, 0.15));
+  color: var(--seedar-dashboard-text, #0f172a);
+}
+
+.selectList {
+  display: grid;
+  gap: 2px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.selectItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--seedar-dashboard-space-sm, 8px);
+  min-height: 32px;
+  padding: 6px 8px;
+  border-radius: var(--seedar-dashboard-radius-sm, 6px);
+  color: var(--seedar-dashboard-text, #0f172a);
+  cursor: pointer;
+  outline: none;
+}
+
+.selectItem[data-highlighted] {
+  background: var(--seedar-dashboard-surface-hover, #eff6ff);
+}
+
+.selectItem[data-selected] {
+  color: var(--seedar-dashboard-surface-selected, #1d4ed8);
+  font-weight: 600;
+}
+
+.selectItemIndicator {
+  color: currentColor;
+  font-size: var(--seedar-dashboard-font-sm, 12px);
+}
+
+.scaleControl {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  border-radius: var(--seedar-dashboard-radius-md, 8px);
+  background: var(--seedar-dashboard-surface-elevated, #fff);
+  overflow: hidden;
+}
+
+.scaleAutoButton {
+  min-height: 32px;
+  padding: 0 10px;
+  border-right: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  color: var(--seedar-dashboard-text-muted, #475569);
+  cursor: pointer;
+  font-size: var(--seedar-dashboard-font-sm, 12px);
+  font-weight: 600;
+}
+
+.scaleAutoButton:hover {
+  color: var(--seedar-dashboard-surface-selected, #1d4ed8);
+  background: var(--seedar-dashboard-surface-hover, #eff6ff);
+}
+
+.scaleAutoButtonActive {
+  color: var(--seedar-dashboard-text-inverse, #fff);
+  background: var(--seedar-dashboard-surface-selected, #1d4ed8);
+}
+
+.scaleAutoButtonActive:hover {
+  color: var(--seedar-dashboard-text-inverse, #fff);
+  background: var(--seedar-dashboard-surface-selected-hover, #2563eb);
+}
+
+.scaleInput {
+  width: 66px;
+  min-height: 32px;
+  padding: 0 6px 0 10px;
+  color: var(--seedar-dashboard-text, #0f172a);
+  text-align: right;
+}
+
+.scaleInput::-webkit-outer-spin-button,
+.scaleInput::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.scaleInput:focus {
+  outline: none;
+  background: var(--seedar-dashboard-surface-hover, #eff6ff);
+}
+
+.scaleSuffix {
+  min-height: 32px;
+  padding-right: 10px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--seedar-dashboard-text-subtle, #64748b);
+  font-size: var(--seedar-dashboard-font-sm, 12px);
+  font-weight: 600;
+}
+
+.scaleStepper {
+  display: grid;
+  width: 24px;
+  border-left: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+}
+
+.scaleStepButton {
+  min-height: 16px;
+  color: var(--seedar-dashboard-text-subtle, #64748b);
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.scaleStepButton:hover {
+  background: var(--seedar-dashboard-surface-hover, #eff6ff);
+  color: var(--seedar-dashboard-surface-selected, #1d4ed8);
+}
+
+.scaleStepButton:first-child {
+  border-bottom: 1px solid var(--seedar-dashboard-border, #e5e7eb);
 }
 
 .secondaryButton {
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, #1f2937 12%, white);
-  background: white;
-  color: #0f172a;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: var(--seedar-dashboard-radius-md, 8px);
+  border: 1px solid var(--seedar-dashboard-border, #e5e7eb);
+  background: var(--seedar-dashboard-surface-elevated, #fff);
+  color: var(--seedar-dashboard-text, #0f172a);
   cursor: pointer;
   transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
+    border-color var(--seedar-dashboard-transition, 0.2s ease),
+    background-color var(--seedar-dashboard-transition, 0.2s ease);
 }
 
 .secondaryButton:hover:not(:disabled) {
-  border-color: color-mix(in srgb, #2563eb 28%, white);
-  background: color-mix(in srgb, #eff6ff 55%, white);
+  border-color: var(--seedar-dashboard-border-hover, #cbd5e1);
+  background: var(--seedar-dashboard-surface-hover, #eff6ff);
 }
 
 .secondaryButton:disabled {
@@ -146,33 +323,41 @@
 
 .helperText {
   margin: 0;
-  font-size: 13px;
-  color: #475569;
+  font-size: var(--seedar-dashboard-font-sm, 12px);
+  line-height: 1.5;
+  color: var(--seedar-dashboard-text-muted, #475569);
 }
 
 .helperStack {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  gap: 4px;
+  padding-top: 2px;
 }
 
 @media (max-width: 768px) {
   .toolbar {
-    padding: 14px;
+    padding: var(--seedar-dashboard-space-sm, 8px);
   }
 
-  .row {
-    align-items: stretch;
-  }
-
-  .group,
+  .devicePrimary,
+  .deviceSecondary,
+  .widthPicker,
   .metrics,
   .breakpoints {
     width: 100%;
   }
 
+  .deviceSecondary {
+    justify-content: flex-start;
+  }
+
   .select,
+  .scaleControl,
   .secondaryButton {
     width: 100%;
+  }
+
+  .scaleInput {
+    flex: 1;
   }
 }

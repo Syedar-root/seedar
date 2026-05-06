@@ -13,6 +13,7 @@ import {
 } from "./SeedarDashboardTriggers";
 import { ScrollArea } from "../../layout/ScrollArea";
 import styles from "./SeedarDashboard.module.css";
+import tokenStyles from "./SeedarDashboard.tokens.module.css";
 import type { SeedarDashboardProps } from "./types";
 
 export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
@@ -45,11 +46,14 @@ export const SeedarDashboard: React.FC<SeedarDashboardProps> & {
     <SeedarDashboardContext.Provider
       value={controller.contextValue}
     >
-      <div className={styles.seedarDashboard}>
+      <div className={`${tokenStyles["token-scope"]} ${styles.seedarDashboard}`}>
         {header}
         <LayoutEditorToolbar />
         {children}
-        <ScrollArea style={{ paddingBottom: "2rem" }}>
+        <ScrollArea
+          className={styles.dashboardScroll}
+          contentClassName={styles.dashboardScrollContent}
+        >
           <GridContainer key={dashboardId} {...controller.gridContainerProps}>
             {controller.contextValue.data?.panels.map((panel) => (
               <SeedarPanel

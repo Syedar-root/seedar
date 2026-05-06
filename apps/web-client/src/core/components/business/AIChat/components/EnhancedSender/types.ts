@@ -8,6 +8,7 @@ import type { AiChatMode } from "#pkg/seedar/types";
 export interface EnhancedSenderProps {
   loading?: boolean;
   onSubmit?: (content: string, isResume?: boolean) => void;
+  onCancel?: () => void;
   placeholder?: string;
   disabled?: boolean;
   commands?: CommandItem[];
