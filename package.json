@@ -18,7 +18,13 @@
     "typecheck:cli": "pnpm --filter @syedar/seedar-cli type-check",
     "typecheck:web": "pnpm --filter @seedar/web-client exec tsc -p tsconfig.json --noEmit && pnpm --filter @seedar/ui-core run type-check && pnpm --filter @seedar/types run type-check",
     "dev:server": "pnpm --filter server run start:dev",
-    "dev:web": "pnpm --filter web-client run start:dev"
+    "dev:web": "pnpm --filter web-client run start:dev",
+    "test": "pnpm test:metric && pnpm test:server",
+    "test:metric": "cd packages/metric_engine && pnpm test",
+    "test:server": "cd apps/server && pnpm test",
+    "test:cov": "pnpm test:cov:metric && pnpm test:cov:server",
+    "test:cov:metric": "cd packages/metric_engine && pnpm test:cov",
+    "test:cov:server": "cd apps/server && pnpm test:cov"
   },
   "workspaces": [
     "apps/*",
