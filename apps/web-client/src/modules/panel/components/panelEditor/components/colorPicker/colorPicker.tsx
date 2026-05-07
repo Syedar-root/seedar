@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import styles from "./colorPicker.module.scss";
 
 interface ColorPickerProps {
@@ -10,18 +9,22 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   colors,
   onChange,
 }) => {
+  const safeColors = Array.isArray(colors)
+    ? colors.filter((color): color is string => typeof color === "string")
+    : [];
+
   const handleColorChange = (index: number, newColor: string) => {
-    const newColors = [...colors];
+    const newColors = [...safeColors];
     newColors[index] = newColor;
     onChange(newColors);
   };
 
   const handleAddColor = () => {
-    onChange([...colors, "#000000"]);
+    onChange([...safeColors, "#000000"]);
   };
 
   const handleRemoveColor = (index: number) => {
-    const newColors = colors.filter((_, i) => i !== index);
+    const newColors = safeColors.filter((_, i) => i !== index);
     onChange(newColors);
   };
 
@@ -29,7 +32,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     <div className={styles.colorPicker}>
       <div className={styles.title}>颜色配置</div>
       <div className={styles.colorList}>
-        {colors.map((color, index) => (
+        {safeColors.map((color, index) => (
           <div key={index} className={styles.colorItem}>
             <div
               className={styles.colorBlock}

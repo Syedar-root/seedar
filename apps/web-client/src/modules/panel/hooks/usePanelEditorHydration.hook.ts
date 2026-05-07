@@ -65,6 +65,24 @@ interface UsePanelEditorHydrationParams {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
+const parseChartColors = (colorSpec: unknown): string[] | undefined => {
+  if (Array.isArray(colorSpec)) {
+    const colors = colorSpec.filter(
+      (entry): entry is string => typeof entry === "string",
+    );
+    return colors.length > 0 ? colors : undefined;
+  }
+
+  if (isRecord(colorSpec) && Array.isArray(colorSpec.range)) {
+    const colors = colorSpec.range.filter(
+      (entry): entry is string => typeof entry === "string",
+    );
+    return colors.length > 0 ? colors : undefined;
+  }
+
+  return undefined;
+};
+
 const parseChartSmooth = (
   chartSpec: Record<string, unknown>,
 ): boolean | undefined => {
@@ -212,13 +230,9 @@ const hydrateChartEditorConfig = (
     nextConfig.direction = chartSpec.direction;
   }
 
-  if (Array.isArray(chartSpec.color)) {
-    const color = chartSpec.color.filter(
-      (entry): entry is string => typeof entry === "string",
-    );
-    if (color.length > 0) {
-      nextConfig.color = color;
-    }
+  const parsedColors = parseChartColors(chartSpec.color);
+  if (parsedColors && parsedColors.length > 0) {
+    nextConfig.color = parsedColors;
   }
 
   const label = chartSpec.label;

@@ -1,5 +1,5 @@
 ﻿import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { BusinessException } from '@/common/exceptions';
+import { BusinessException, ExceptionType } from '@/common/exceptions';
 import { LoggerService } from '@/logger/logger.service';
 import {
   HumanMessage,
@@ -91,8 +91,9 @@ export class ChatGraphService {
   ): AsyncGenerator<AiStreamOutputChunk, void, unknown> {
     // 这两个闭包会在后续初始化；先给默认空实现，确保异常分支也可安全调用。
     let flushPendingSegment: () => Promise<void> = async () => {};
-    let persistErrorSegment: (errorMessage: string) => Promise<void> =
-      async () => {};
+    let persistErrorSegment: (
+      errorMessage: string,
+    ) => Promise<void> = async () => {};
 
     try {
       const session = await this.aiSessionService.findOne(sessionId);
@@ -123,23 +124,24 @@ export class ChatGraphService {
         );
       }
 
-      const contextResult = await this.chatContextService.manageContextBeforeStream({
-        agent: agent as unknown as {
-          getState: (config: {
-            configurable: { thread_id: string };
-          }) => Promise<{
-            values?: Record<string, unknown>;
-          }>;
-          updateState: (
-            config: { configurable: { thread_id: string } },
-            values: Record<string, unknown>,
-          ) => Promise<unknown>;
-        },
-        ai,
-        llmConfig,
-        threadId: session.id,
-        sessionId: session.id,
-      });
+      const contextResult =
+        await this.chatContextService.manageContextBeforeStream({
+          agent: agent as unknown as {
+            getState: (config: {
+              configurable: { thread_id: string };
+            }) => Promise<{
+              values?: Record<string, unknown>;
+            }>;
+            updateState: (
+              config: { configurable: { thread_id: string } },
+              values: Record<string, unknown>,
+            ) => Promise<unknown>;
+          },
+          ai,
+          llmConfig,
+          threadId: session.id,
+          sessionId: session.id,
+        });
 
       for (const event of contextResult.events) {
         // 上下文治理状态只走 SSE，不写消息流渲染链。
@@ -263,7 +265,8 @@ export class ChatGraphService {
 
         const token = chunk[0];
         const metadata = chunk[1];
-        const { content, type } = this.getContentAndTypeWithStreamMessage(token);
+        const { content, type } =
+          this.getContentAndTypeWithStreamMessage(token);
 
         if (
           type === 'tool_call' &&
@@ -331,7 +334,10 @@ export class ChatGraphService {
       }
 
       const errorMessage = error instanceof Error ? error.message : '未知错误';
-      this.logger.error('streamChat error', error instanceof Error ? error.stack : String(error));
+      this.logger.error(
+        'streamChat error',
+        error instanceof Error ? error.stack : String(error),
+      );
       await persistErrorSegment(errorMessage);
 
       yield {
@@ -384,8 +390,24 @@ export class ChatGraphService {
       const lowerContent = content.toLowerCase();
 
       const keywordMap: Record<string, string[]> = {
-        'data-query': ['数据', '查询', '温度', '信息', 'data', 'query', 'temperature', 'info'],
-        'chart-recommend': ['图表', '画图', '推荐', 'chart', 'recommend', '图形'],
+        'data-query': [
+          '数据',
+          '查询',
+          '温度',
+          '信息',
+          'data',
+          'query',
+          'temperature',
+          'info',
+        ],
+        'chart-recommend': [
+          '图表',
+          '画图',
+          '推荐',
+          'chart',
+          'recommend',
+          '图形',
+        ],
       };
 
       for (const [demand, keywords] of Object.entries(keywordMap)) {
@@ -459,11 +481,10 @@ export class ChatGraphService {
         scenesContext: this.formatScenesContext(scenes),
       });
 
-      const skillsRoot = path.join(__dirname, '.');
+      const skillsRoot = path.join(__dirname, '../backend');
+
       if (!existsSync(skillsRoot)) {
-        throw new InternalServerErrorException(
-          `技能目录不存在: ${skillsRoot}`,
-        );
+        throw new InternalServerErrorException(`技能目录不存在: ${skillsRoot}`);
       }
 
       const backend = new FilesystemBackend({
@@ -675,7 +696,8 @@ export class ChatGraphService {
         };
       default:
         return {
-          content: (contentBlock?.[contentBlock?.type || 'text'] as string) || '',
+          content:
+            (contentBlock?.[contentBlock?.type || 'text'] as string) || '',
           type: contentBlock?.type || 'text',
         };
     }
@@ -697,4 +719,3 @@ export class ChatGraphService {
     );
   }
 }
-
