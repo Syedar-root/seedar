@@ -37,6 +37,7 @@ export async function collectInstallConfigIssues(env: EnvConfig): Promise<Instal
     ["DB_USERNAME", env.DB_USERNAME],
     ["DB_PASSWORD", env.DB_PASSWORD],
     ["MYSQL_ROOT_PASSWORD", env.MYSQL_ROOT_PASSWORD],
+    ["AI_CHECKPOINT_PG_PASSWORD", env.AI_CHECKPOINT_PG_PASSWORD],
     ["AES_SECRET", env.AES_SECRET],
   ];
   for (const [field, value] of textChecks) {

@@ -3,6 +3,7 @@ export interface RuntimeLayout {
   runtimeDir: string;
   dataDir: string;
   mysqlDataDir: string;
+  postgresDataDir: string;
   logsDir: string;
   backupsDir: string;
   composePath: string;
@@ -30,6 +31,8 @@ export interface EnvConfig {
   MYSQL_DATABASE: string;
   MYSQL_USER: string;
   MYSQL_PASSWORD: string;
+  AI_CHECKPOINT_PG_PASSWORD: string;
+  AI_CHECKPOINT_PG_URL: string;
   AES_SECRET: string;
 }
 
@@ -47,6 +50,8 @@ export type InstallConfigField =
   | "MYSQL_DATABASE"
   | "MYSQL_USER"
   | "MYSQL_PASSWORD"
+  | "AI_CHECKPOINT_PG_PASSWORD"
+  | "AI_CHECKPOINT_PG_URL"
   | "AES_SECRET";
 
 export interface InstallConfigIssue {

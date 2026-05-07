@@ -38,3 +38,9 @@ jobs:
 
       - name: Validate runtime compose template
         run: docker compose --env-file deploy/templates/runtime.env.example -f deploy/templates/docker-compose.runtime.yml config
+
+      - name: Validate legacy compose template
+        run: docker compose -f deploy/docker-compose.prod.yml config
+        env:
+          AI_CHECKPOINT_PG_PASSWORD: change_me_pg_password
+          AI_CHECKPOINT_PG_URL: postgresql://postgres:change_me_pg_password@postgres:5432/postgres

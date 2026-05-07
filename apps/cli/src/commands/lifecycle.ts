@@ -2,7 +2,7 @@ import { DEFAULT_VERSION } from "../shared/constants.js";
 import { waitForServiceHealthy } from "../docker/health.js";
 import { ensurePrerequisites } from "../docker/prerequisites.js";
 import { runDockerComposeOrThrow } from "../docker/process.js";
-import { startRuntimeServices, stopRuntimeServices } from "../install/flow.js";
+import { startPostgres, startRuntimeServices, stopRuntimeServices } from "../install/flow.js";
 import { writeCliLog } from "../shared/logging.js";
 import type { EnvConfig } from "../shared/types.js";
 import {
@@ -30,6 +30,7 @@ export async function startCommand(): Promise<void> {
 export async function stopCommand(): Promise<void> {
   const layout = getRuntimeLayout();
   await requireRuntimeConfig(layout);
+  await readEnvConfig(layout);
 
   await writeCliLog(layout, "manual stop requested");
   await stopRuntimeServices(layout);
@@ -57,13 +58,14 @@ export async function updateCommand(versionArg: string | undefined): Promise<voi
       layout,
       `开始升级，当前版本 ${currentVersion ?? "unknown"} -> ${nextVersion}`,
     );
-    await runDockerComposeOrThrow(layout, ["pull", "mysql", "server", "web"], {
+    await runDockerComposeOrThrow(layout, ["pull", "mysql", "postgres", "server", "web"], {
       stdio: "inherit",
     });
     await runDockerComposeOrThrow(layout, ["up", "-d", "mysql"], {
       stdio: "inherit",
     });
     await waitForServiceHealthy(layout, "mysql");
+    await startPostgres(layout);
     await runDockerComposeOrThrow(layout, ["run", "--rm", "migrate"], {
       stdio: "inherit",
     });

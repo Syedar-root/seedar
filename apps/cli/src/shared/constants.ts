@@ -4,13 +4,23 @@ export const DEFAULT_PORTS = {
   server: 8090,
   web: 8080,
 } as const;
-
 export const DEFAULT_DB_NAME = "seedar_prod";
 export const DEFAULT_DB_USER = "seedar";
 export const DEFAULT_DOCKER_ORG = "syedarhandsome";
 export const DEFAULT_SERVER_IMAGE = `${DEFAULT_DOCKER_ORG}/seedar-server`;
 export const DEFAULT_WEB_IMAGE = `${DEFAULT_DOCKER_ORG}/seedar-web`;
+export const DEFAULT_POSTGRES_IMAGE = "postgres:16-alpine";
+export const DEFAULT_CHECKPOINT_PG_HOST = "postgres";
+export const DEFAULT_CHECKPOINT_PG_PORT = 5432;
+export const DEFAULT_CHECKPOINT_PG_USER = "postgres";
+export const DEFAULT_CHECKPOINT_PG_DATABASE = "postgres";
 export const MIN_NODE_MAJOR = 18;
+
+export function buildCheckpointPgUrl(password: string): string {
+  return `postgresql://${encodeURIComponent(DEFAULT_CHECKPOINT_PG_USER)}:${encodeURIComponent(
+    password,
+  )}@${DEFAULT_CHECKPOINT_PG_HOST}:${DEFAULT_CHECKPOINT_PG_PORT}/${DEFAULT_CHECKPOINT_PG_DATABASE}`;
+}
 
 export const REQUIRED_ENV_KEYS = [
   "SEEDAR_VERSION",
@@ -29,10 +39,12 @@ export const REQUIRED_ENV_KEYS = [
   "MYSQL_DATABASE",
   "MYSQL_USER",
   "MYSQL_PASSWORD",
+  "AI_CHECKPOINT_PG_PASSWORD",
+  "AI_CHECKPOINT_PG_URL",
   "AES_SECRET",
 ] as const;
 
-export const VALID_SERVICES = ["mysql", "server", "web", "migrate"] as const;
+export const VALID_SERVICES = ["mysql", "postgres", "server", "web", "migrate"] as const;
 
 export const ENV_RENDER_ORDER = [
   "SEEDAR_VERSION",
@@ -51,6 +63,8 @@ export const ENV_RENDER_ORDER = [
   "MYSQL_DATABASE",
   "MYSQL_USER",
   "MYSQL_PASSWORD",
+  "AI_CHECKPOINT_PG_PASSWORD",
+  "AI_CHECKPOINT_PG_URL",
   "AES_SECRET",
 ] as const;
 
@@ -84,12 +98,38 @@ services:
     networks:
       - seedar-net
 
+  postgres:
+    image: ${DEFAULT_POSTGRES_IMAGE}
+    container_name: \${SEEDAR_PROJECT_NAME}-postgres
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_DB: ${DEFAULT_CHECKPOINT_PG_DATABASE}
+      POSTGRES_USER: ${DEFAULT_CHECKPOINT_PG_USER}
+      POSTGRES_PASSWORD: \${AI_CHECKPOINT_PG_PASSWORD}
+    volumes:
+      - "\${SEEDAR_INSTALL_ROOT}/data/postgres:/var/lib/postgresql/data"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -U postgres -d postgres",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - seedar-net
+
   server:
     image: ${DEFAULT_SERVER_IMAGE}:\${SEEDAR_VERSION}
     container_name: \${SEEDAR_PROJECT_NAME}-server
     restart: unless-stopped
     depends_on:
       mysql:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     environment:
       TZ: Asia/Shanghai
@@ -99,6 +139,7 @@ services:
       DB_USERNAME: \${DB_USERNAME}
       DB_PASSWORD: \${DB_PASSWORD}
       DB_DATABASE: \${DB_DATABASE}
+      AI_CHECKPOINT_PG_URL: \${AI_CHECKPOINT_PG_URL}
       AES_SECRET: \${AES_SECRET}
       PORT: 3000
     ports:
@@ -120,6 +161,7 @@ services:
       DB_USERNAME: \${DB_USERNAME}
       DB_PASSWORD: \${DB_PASSWORD}
       DB_DATABASE: \${DB_DATABASE}
+      AI_CHECKPOINT_PG_URL: \${AI_CHECKPOINT_PG_URL}
       AES_SECRET: \${AES_SECRET}
       PORT: 3000
     command:

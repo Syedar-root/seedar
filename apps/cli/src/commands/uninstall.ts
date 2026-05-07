@@ -8,7 +8,12 @@ import { ensurePrerequisites } from "../docker/prerequisites.js";
 import { printInstallDetail, printInstallStage, printInstallSuccess, printInstallWarn } from "../install/output.js";
 import { writeCliLog } from "../shared/logging.js";
 import type { CliFlags } from "../shared/types.js";
-import { getRuntimeLayout, hasRuntimeConfig, writeInstallState } from "../runtime/index.js";
+import {
+  getRuntimeLayout,
+  hasRuntimeConfig,
+  readEnvConfig,
+  writeInstallState,
+} from "../runtime/index.js";
 import { requireRuntimeConfig } from "../runtime/guards.js";
 
 async function isGlobalNpmCliInstall(): Promise<boolean> {
@@ -59,6 +64,7 @@ export async function uninstallCommand(flags: CliFlags): Promise<void> {
   const layout = getRuntimeLayout();
   await ensurePrerequisites();
   await requireRuntimeConfig(layout);
+  await readEnvConfig(layout);
 
   await writeCliLog(layout, "开始卸载");
   await runDockerComposeOrThrow(layout, ["down", "--remove-orphans"], {
@@ -105,6 +111,7 @@ export async function removeAllCommand(flags: CliFlags): Promise<void> {
 
   printInstallStage("移除 Seedar");
   if (await hasRuntimeConfig(layout)) {
+    await readEnvConfig(layout);
     printInstallDetail("开始停止并清理容器");
     const downResult = await runDockerCompose(layout, ["down", "--remove-orphans"]);
     const detail = [downResult.stdout.trim(), downResult.stderr.trim()].filter(Boolean).join("\n");
@@ -178,6 +185,7 @@ export async function purgeCommand(flags: CliFlags): Promise<void> {
   await writeCliLog(layout, "开始彻底删除安装目录");
 
   if (await hasRuntimeConfig(layout)) {
+    await readEnvConfig(layout);
     const downResult = await runDockerCompose(layout, ["down", "--remove-orphans"]);
     if (downResult.code !== 0) {
       const detail = [downResult.stdout.trim(), downResult.stderr.trim()]

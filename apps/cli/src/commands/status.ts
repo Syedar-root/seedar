@@ -19,6 +19,18 @@ import {
   readInstallState,
 } from "../runtime/index.js";
 
+function formatCheckpointTarget(connectionString: string): string {
+  try {
+    const url = new URL(connectionString);
+    const host = url.hostname || "postgres";
+    const port = url.port || "5432";
+    const database = url.pathname.replace(/^\/+/, "") || "postgres";
+    return `${host}:${port}/${database}`;
+  } catch {
+    return "unknown";
+  }
+}
+
 async function getDiskFreeBytes(targetPath: string): Promise<number | null> {
   if (process.platform === "win32") {
     const root = path.parse(path.resolve(targetPath)).root.replace(/\\$/, "");
@@ -243,6 +255,7 @@ export async function statusCommand(): Promise<void> {
   console.log(`Web: http://localhost:${env.WEB_PORT}`);
   console.log(`Server: http://localhost:${env.SERVER_PORT}`);
   console.log(`MySQL: localhost:${env.MYSQL_PORT}`);
+  console.log(`Checkpoint PG: ${formatCheckpointTarget(env.AI_CHECKPOINT_PG_URL)}`);
 
   if (services.length === 0) {
     console.log("当前没有运行中的容器。");

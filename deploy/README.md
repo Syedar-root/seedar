@@ -17,6 +17,7 @@ seedar install [version] [-y]
 seedar update [version]
 seedar status
 seedar logs [service] [-f]
+seedar logs postgres -f
 seedar doctor
 seedar uninstall [--remove-data] [--all] [--force]
 seedar remove --force
@@ -72,7 +73,7 @@ $env:SEEDAR_VERSION = "latest"
 Notes:
 
 - Legacy scripts now **pull remote images** instead of building locally.
-- Only `apps/server/.env.production` is required for legacy deployment.
+- `apps/server/.env.production` should include `AI_CHECKPOINT_PG_URL` (or `AI_CHECKPOINT_PG_PASSWORD`) for the checkpoint Postgres service.
 - New deployments should prefer `seedar install [version] [-y]` and `seedar update [version]`.
 
 ## Templates
