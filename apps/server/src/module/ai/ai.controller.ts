@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -15,7 +15,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { AiService } from './services/ai.service';
-import { ChatService } from './services/chat.service';
+import { ChatService } from './services/chat/chat.service';
 import { CreateAiRequest } from './dto/create-ai.request';
 import { UpdateAiRequest } from './dto/update-ai.request';
 import { AiResponse } from './dto/ai.response';
@@ -263,3 +263,4 @@ export class AiController {
     });
   }
 }
+
