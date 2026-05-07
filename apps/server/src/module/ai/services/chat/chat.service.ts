@@ -24,11 +24,13 @@ import type {
   AiChatScene,
   AiStreamOutputChunk,
 } from '../../ai.types';
+import { AiSessionService } from '../ai-session.service';
 
 @Injectable()
 export class ChatService {
   constructor(
     private readonly aiService: AiService,
+    private readonly aiSessionService: AiSessionService,
     private readonly chatGraphService: ChatGraphService,
     private readonly chatCheckpointService: ChatCheckpointService,
     private readonly chatLlmService: ChatLlmService,
@@ -156,5 +158,80 @@ export class ChatService {
           field.fieldName,
       })),
     };
+  }
+
+  /**
+   * 首轮对话后生成会话标题；仅当标题为空时执行，避免重复生成与覆盖用户已有标题。
+   */
+  async generateSessionTitleIfMissing(params: {
+    sessionId: string;
+    aiId: string;
+    userMessage: string;
+    assistantMessage: string;
+  }): Promise<string | null> {
+    const { sessionId, aiId, userMessage, assistantMessage } = params;
+
+    console.log('hcs userMessage', userMessage);
+    console.log('hcs assistantMessage', assistantMessage);
+
+    const session = await this.aiSessionService.findOne(sessionId);
+    if (session.title?.trim()) {
+      return null;
+    }
+
+    const ai = await this.aiService.findOne(aiId);
+    if (ai.status !== AiStatus.ACTIVE) {
+      return null;
+    }
+
+    const llm = this.chatLlmService.createLLM(
+      this.chatLlmService.getLLMConfig(ai),
+      0.2,
+      64,
+      {
+        thinking: {
+          type: 'disabled',
+        },
+      },
+    );
+
+    const responseSchema = z.object({
+      title: z.string().min(2).max(30),
+    });
+
+    const promptTemplate = PromptTemplate.fromTemplate(
+      await this.chatPromptService.loadSessionTitlePrompt(),
+    );
+    const prompt = await promptTemplate.format({
+      userMessage,
+      assistantMessage,
+    });
+
+    const agent = createAgent({
+      model: llm,
+      tools: [],
+      responseFormat: toolStrategy(responseSchema),
+      systemPrompt: prompt,
+    });
+
+    const result = await agent.invoke({
+      messages: [new HumanMessage('请生成本次会话标题。')],
+    });
+
+    const structuredResponse = result.structuredResponse as
+      | { title: string }
+      | undefined;
+
+    const generatedTitle = structuredResponse?.title?.trim();
+    if (!generatedTitle) {
+      return null;
+    }
+
+    await this.aiSessionService.update({
+      id: sessionId,
+      title: generatedTitle,
+    });
+
+    return generatedTitle;
   }
 }

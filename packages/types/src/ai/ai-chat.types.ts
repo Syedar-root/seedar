@@ -74,8 +74,20 @@ export interface AiStreamChunk<TInterrupt = AskQuestionParams> {
 export type AiAgentStreamChunk = AiStreamChunk<AiInterruptPayload>;
 
 export interface AiSseEvent<TInterrupt = AskQuestionParams> {
-  type: "ping" | "session" | "message" | "done" | "error" | "context";
-  data: string | AiStreamChunk<TInterrupt> | AiContextStatusEvent;
+  type:
+    | "ping"
+    | "session"
+    | "message"
+    | "done"
+    | "error"
+    | "context"
+    | "session_title";
+  data:
+    | string
+    | AiStreamChunk<TInterrupt>
+    | AiContextStatusEvent
+    | { sessionId: string; isOver?: boolean }
+    | { sessionId: string; title: string };
   sessionId?: string;
 }
 

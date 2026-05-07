@@ -34,6 +34,7 @@ import {
 import { AiChatResumeDto, AiChatScene, PaginatedResult } from './ai.types';
 import { Observable } from 'rxjs';
 import { AiSessionMessageService, AiSessionService } from './services';
+import type { AiAgentStreamChunk } from '@seedar/types/ai';
 
 @Controller('v1/ai')
 export class AiController {
@@ -139,6 +140,10 @@ export class AiController {
     const sessionId = dto.sessionId;
 
     return new Observable((subscriber) => {
+      const assistantTextParts: string[] = [];
+      let firstAssistantTextSid: string | undefined;
+      let streamDone = false;
+
       const abortController = new AbortController();
       const abortStream = () => {
         if (!abortController.signal.aborted) {
@@ -225,16 +230,70 @@ export class AiController {
             }
 
             if (chunk.done) {
+              streamDone = true;
               subscriber.next({
                 type: 'done',
-                data: JSON.stringify({ sessionId }),
+                data: JSON.stringify({ sessionId, isOver: false }),
               } as MessageEvent);
               break;
+            }
+
+            if (
+              (chunk as AiAgentStreamChunk).type === 'text' &&
+              typeof (chunk as AiAgentStreamChunk).content === 'string'
+            ) {
+              const textChunk = chunk as AiAgentStreamChunk;
+              if (!firstAssistantTextSid) {
+                firstAssistantTextSid = textChunk.sid;
+              }
+              if (textChunk.sid === firstAssistantTextSid) {
+                assistantTextParts.push(textChunk.content as string);
+              }
             }
 
             subscriber.next({
               type: 'message',
               data: { ...chunk, sessionId },
+            } as MessageEvent);
+          }
+
+          if (
+            streamDone &&
+            !abortController.signal.aborted &&
+            !subscriber.closed &&
+            sessionId &&
+            dto.message
+          ) {
+            try {
+              const title = await this.chatService.generateSessionTitleIfMissing({
+                sessionId,
+                aiId: dto.aiId,
+                userMessage: dto.message,
+                assistantMessage: assistantTextParts.join('').trim(),
+              });
+
+              if (title) {
+                subscriber.next({
+                  type: 'session_title',
+                  data: JSON.stringify({ sessionId, title }),
+                } as MessageEvent);
+              }
+            } catch {
+              // Title generation failure should not affect chat stream lifecycle.
+            }
+
+            subscriber.next({
+              type: 'done',
+              data: JSON.stringify({ sessionId, isOver: true }),
+            } as MessageEvent);
+          } else if (
+            streamDone &&
+            !abortController.signal.aborted &&
+            !subscriber.closed
+          ) {
+            subscriber.next({
+              type: 'done',
+              data: JSON.stringify({ sessionId, isOver: true }),
             } as MessageEvent);
           }
         } catch (error) {

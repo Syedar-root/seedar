@@ -45,6 +45,7 @@ import type {
   GenerateFieldBusinessNameRequest,
   GenerateFieldBusinessNameResponse,
 } from "#pkg/seedar/types";
+import type { AiDoneEventData, AiSessionTitleEventData } from "#pkg/seedar/ui-core";
 
 /**
  * 使用数据源 API 的 Hook
@@ -369,7 +370,8 @@ export const useAiApi = () => {
       onSession?: (data: { sessionId: string; timestamp: string }) => void;
       onMessage?: (chunk: AiAgentStreamChunk) => void;
       onContext?: (event: AiContextStatusEvent) => void;
-      onDone?: (data: { sessionId: string }) => void;
+      onDone?: (data: AiDoneEventData) => void;
+      onSessionTitle?: (data: AiSessionTitleEventData) => void;
       onError?: (error: string) => void;
       onPing?: () => void;
     },

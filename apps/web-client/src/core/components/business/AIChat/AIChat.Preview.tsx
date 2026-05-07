@@ -376,11 +376,34 @@ const AIChatPreview: React.FC = () => {
               );
             }, 3000);
           },
-          onDone: async () => {
-            activeStreamControllerRef.current = null;
+          onSessionTitle: ({ sessionId, title }) => {
+            if (!title?.trim()) {
+              return;
+            }
+
+            setCurrentSession((prev) => {
+              if (!prev || prev.id !== sessionId) {
+                return prev;
+              }
+              return { ...prev, title };
+            });
+            setSessionList((prev) =>
+              prev.map((item) =>
+                item.id === sessionId ? { ...item, title } : item,
+              ),
+            );
+          },
+          onDone: async ({ isOver }) => {
+            // 聊天区 loading 只表达“本轮回复是否完成”，首个 done 到达即结束 loading。
             setIsLoading(false);
+            if (!isOver) {
+              return;
+            }
+
+            activeStreamControllerRef.current = null;
             if (session?.id) {
               await loadSessionHistory(session.id);
+              await loadSessionList();
             } else {
               setHistoryMessages((prev) =>
                 mergeMessages(prev, liveMessagesRef.current),
@@ -583,7 +606,7 @@ const AIChatPreview: React.FC = () => {
           loading={isLoading}
           error={error}
           placeholder="输入 / 获取命令"
-          title="AI 智能助手"
+          title={currentSession?.title || "AI 智能助手"}
           onAddChat={handleAddChat}
           onShowHistory={handleShowHistory}
           onSendMessage={handleSendMessage}

@@ -16,5 +16,12 @@ export class ChatPromptService {
   loadFieldBusinessNamePrompt(): Promise<string> {
     return loadPrompt('field-business-name');
   }
+
+  /**
+   * Load prompt template used for session-title generation.
+   */
+  loadSessionTitlePrompt(): Promise<string> {
+    return loadPrompt('session-title');
+  }
 }
 

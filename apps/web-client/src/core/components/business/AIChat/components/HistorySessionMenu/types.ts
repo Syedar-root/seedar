@@ -10,5 +10,5 @@ export interface HistorySessionMenuProps {
   onSelectSession: (session: AiSessionResponse) => void;
   onDeleteSession: (session: AiSessionResponse) => void;
   onClose: () => void;
-  anchorRef?: React.RefObject<HTMLDivElement | null>;
+  anchorRef?: React.RefObject<HTMLDivElement>;
 }

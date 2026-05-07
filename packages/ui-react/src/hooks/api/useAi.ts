@@ -19,6 +19,7 @@ import type {
   PaginatedResult,
   GenerateFieldBusinessNameRequest,
 } from '#pkg/seedar/types';
+import type { AiDoneEventData, AiSessionTitleEventData } from '#pkg/seedar/ui-core';
 
 const aiKeys = {
   all: ['ai'] as const,
@@ -174,7 +175,8 @@ export const useAiChat = () => {
       onSession?: (data: { sessionId: string; timestamp: string }) => void;
       onMessage?: (chunk: AiAgentStreamChunk) => void;
       onContext?: (event: AiContextStatusEvent) => void;
-      onDone?: (data: { sessionId: string }) => void;
+      onDone?: (data: AiDoneEventData) => void;
+      onSessionTitle?: (data: AiSessionTitleEventData) => void;
       onError?: (error: string) => void;
       onPing?: () => void;
     }

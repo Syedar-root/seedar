@@ -19,6 +19,16 @@ import {
   GenerateFieldBusinessNameResponse,
 } from "#pkg/seedar/types";
 
+export interface AiDoneEventData {
+  sessionId: string;
+  isOver?: boolean;
+}
+
+export interface AiSessionTitleEventData {
+  sessionId: string;
+  title: string;
+}
+
 export class AiApi {
   static async create(
     data: CreateAiRequest,
@@ -130,7 +140,8 @@ export class AiApi {
       onSession?: (data: { sessionId: string; timestamp: string }) => void;
       onMessage?: (chunk: AiAgentStreamChunk) => void;
       onContext?: (event: AiContextStatusEvent) => void;
-      onDone?: (data: { sessionId: string }) => void;
+      onDone?: (data: AiDoneEventData) => void;
+      onSessionTitle?: (data: AiSessionTitleEventData) => void;
       onError?: (error: string) => void;
       onPing?: () => void;
     },
@@ -207,6 +218,9 @@ export class AiApi {
                   case "done":
                     callbacks.onDone?.(JSON.parse(event.data as string));
                     break;
+                  case "session_title":
+                    callbacks.onSessionTitle?.(JSON.parse(event.data as string));
+                    break;
                   case "error":
                     if (typeof event.data === "string") {
                       try {
@@ -227,8 +241,15 @@ export class AiApi {
                       } catch {
                         callbacks.onError?.(event.data);
                       }
-                    } else if (event.data.type === 'error') {
-                      callbacks.onError?.(event.data.content as string);
+                    } else if (
+                      typeof event.data === "object" &&
+                      event.data !== null &&
+                      "type" in event.data &&
+                      event.data.type === "error" &&
+                      "content" in event.data &&
+                      typeof event.data.content === "string"
+                    ) {
+                      callbacks.onError?.(event.data.content);
                     } else {
                       callbacks.onError?.("Unknown error");
                     }
