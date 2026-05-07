@@ -36,4 +36,5 @@ export const databaseConfig = (
       ? ['error', 'warn', 'log', 'info', 'schema', 'migration']
       : ['error', 'warn'],
   charset: 'utf8mb4',
+  timezone: 'Z',
 });

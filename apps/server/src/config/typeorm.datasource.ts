@@ -67,6 +67,7 @@ export default new DataSource({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_DATABASE || 'seedar_db',
   charset: 'utf8mb4',
+  timezone: 'Z',
   synchronize: false,
   logging: isDev ? ['error', 'warn', 'log', 'info', 'schema', 'migration'] : ['error', 'warn'],
   entities: [join(__dirname, '../module/**/*.entity{.ts,.js}')],

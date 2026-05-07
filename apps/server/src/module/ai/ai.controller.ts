@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -15,21 +15,26 @@ import {
   Req,
 } from '@nestjs/common';
 import { AiService } from './services/ai.service';
-import { ChatService } from './services/chat.service';
+import { ChatService } from './services/chat/chat.service';
 import { CreateAiRequest } from './dto/create-ai.request';
 import { UpdateAiRequest } from './dto/update-ai.request';
 import { AiResponse } from './dto/ai.response';
 import {
   AiChatRequestDto,
   AiChatResponseDto,
+  QueryAiSessionRequest,
   AiSessionResponse,
+  AiSessionMessageResponse,
+  CursorPaginatedResponse,
   CreateAiSessionRequest,
+  PaginatedAiSessionResponse,
   GenerateFieldBusinessNameRequestDto,
   GenerateFieldBusinessNameResponseDto,
 } from './dto';
 import { AiChatResumeDto, AiChatScene, PaginatedResult } from './ai.types';
 import { Observable } from 'rxjs';
-import { AiSessionService } from './services';
+import { AiSessionMessageService, AiSessionService } from './services';
+import type { AiAgentStreamChunk } from '@seedar/types/ai';
 
 @Controller('v1/ai')
 export class AiController {
@@ -37,6 +42,7 @@ export class AiController {
     private readonly aiService: AiService,
     private readonly chatService: ChatService,
     private readonly aiSessionService: AiSessionService,
+    private readonly aiSessionMessageService: AiSessionMessageService,
   ) {}
 
   @Post()
@@ -60,9 +66,35 @@ export class AiController {
     return this.aiService.findAll(page, pageSize);
   }
 
+  @Get('session')
+  findAllSessions(
+    @Query() query: QueryAiSessionRequest,
+  ): Promise<PaginatedAiSessionResponse<AiSessionResponse>> {
+    return this.aiSessionService.findAll(query);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string): Promise<AiResponse> {
     return this.aiService.findOne(id);
+  }
+
+  @Get('session/:id/messages')
+  async listSessionMessages(
+    @Param('id') id: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit: number = 50,
+  ): Promise<CursorPaginatedResponse<AiSessionMessageResponse>> {
+    const checkpointTuple = await this.chatService.getCheckpointTupleByThreadId(
+      id,
+    );
+    const checkpointMessages =
+      checkpointTuple?.checkpoint?.channel_values?.messages;
+    return this.aiSessionMessageService.listBySessionOrRecover(
+      id,
+      cursor,
+      limit,
+      checkpointMessages,
+    );
   }
 
   @Patch()
@@ -74,6 +106,12 @@ export class AiController {
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string): Promise<void> {
     return this.aiService.remove(id);
+  }
+
+  @Delete('session/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeSession(@Param('id') id: string): Promise<void> {
+    return this.aiSessionService.remove(id);
   }
 
   @Post('field-business-name')
@@ -102,6 +140,10 @@ export class AiController {
     const sessionId = dto.sessionId;
 
     return new Observable((subscriber) => {
+      const assistantTextParts: string[] = [];
+      let firstAssistantTextSid: string | undefined;
+      let streamDone = false;
+
       const abortController = new AbortController();
       const abortStream = () => {
         if (!abortController.signal.aborted) {
@@ -171,6 +213,14 @@ export class AiController {
               break;
             }
 
+            if (chunk.type === 'context') {
+              subscriber.next({
+                type: 'context',
+                data: chunk.data,
+              } as MessageEvent);
+              continue;
+            }
+
             if (chunk.type === 'error') {
               subscriber.next({
                 type: 'error',
@@ -180,16 +230,70 @@ export class AiController {
             }
 
             if (chunk.done) {
+              streamDone = true;
               subscriber.next({
                 type: 'done',
-                data: JSON.stringify({ sessionId }),
+                data: JSON.stringify({ sessionId, isOver: false }),
               } as MessageEvent);
               break;
+            }
+
+            if (
+              (chunk as AiAgentStreamChunk).type === 'text' &&
+              typeof (chunk as AiAgentStreamChunk).content === 'string'
+            ) {
+              const textChunk = chunk as AiAgentStreamChunk;
+              if (!firstAssistantTextSid) {
+                firstAssistantTextSid = textChunk.sid;
+              }
+              if (textChunk.sid === firstAssistantTextSid) {
+                assistantTextParts.push(textChunk.content as string);
+              }
             }
 
             subscriber.next({
               type: 'message',
               data: { ...chunk, sessionId },
+            } as MessageEvent);
+          }
+
+          if (
+            streamDone &&
+            !abortController.signal.aborted &&
+            !subscriber.closed &&
+            sessionId &&
+            dto.message
+          ) {
+            try {
+              const title = await this.chatService.generateSessionTitleIfMissing({
+                sessionId,
+                aiId: dto.aiId,
+                userMessage: dto.message,
+                assistantMessage: assistantTextParts.join('').trim(),
+              });
+
+              if (title) {
+                subscriber.next({
+                  type: 'session_title',
+                  data: JSON.stringify({ sessionId, title }),
+                } as MessageEvent);
+              }
+            } catch {
+              // Title generation failure should not affect chat stream lifecycle.
+            }
+
+            subscriber.next({
+              type: 'done',
+              data: JSON.stringify({ sessionId, isOver: true }),
+            } as MessageEvent);
+          } else if (
+            streamDone &&
+            !abortController.signal.aborted &&
+            !subscriber.closed
+          ) {
+            subscriber.next({
+              type: 'done',
+              data: JSON.stringify({ sessionId, isOver: true }),
             } as MessageEvent);
           }
         } catch (error) {
@@ -218,3 +322,4 @@ export class AiController {
     });
   }
 }
+

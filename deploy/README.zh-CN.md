@@ -13,11 +13,14 @@ npx @syedar/seedar-cli@latest install
 常用命令：
 
 ```bash
-seedar update
+seedar install [version] [-y]
+seedar update [version]
 seedar status
-seedar logs server --follow
+seedar logs [service] [-f]
 seedar doctor
-seedar uninstall
+seedar uninstall [--remove-data] [--all] [--force]
+seedar remove --force
+seedar purge --force
 ```
 
 运行时文件默认位于：
@@ -55,7 +58,7 @@ $env:SEEDAR_VERSION = "latest"
 
 - Legacy 脚本现在**只拉取远端镜像**，不再本地构建。
 - Legacy 模式只要求 `apps/server/.env.production`。
-- 新部署请优先使用 CLI。
+- 新部署请优先使用 `seedar install [version] [-y]` 和 `seedar update [version]`。
 
 ## 模板文件
 

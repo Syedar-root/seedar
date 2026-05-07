@@ -4,4 +4,5 @@ export interface HeaderProps {
   title?: React.ReactNode;
   onAddChat?: () => void;
   onShowHistory?: () => void;
+  actionsDisabled?: boolean;
 }

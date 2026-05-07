@@ -156,17 +156,26 @@ pnpm build:cli
 
 ```bash
 npx @syedar/seedar-cli@latest install
+seedar install [version] [-y]
+seedar update [version]
+seedar logs [service] [-f]
+seedar uninstall [--remove-data] [--all] [--force]
+seedar remove --force
+seedar purge --force
+seedar doctor
 ```
 
 常用 CLI 命令：
 
 ```bash
-seedar update
 seedar status
-seedar logs server --follow
-seedar doctor
-seedar uninstall
+seedar --help
 ```
+
+说明：
+
+- `service` 可选值：`mysql`、`server`、`web`、`migrate`
+- 全局 flag 也可以放在命令前面，例如 `seedar -y install`
 
 ## 9. 运行时目录
 

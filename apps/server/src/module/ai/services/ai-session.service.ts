@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AiSession } from '../entities/ai-session.entity';
+import { AiSessionMessage } from '../entities/ai-session-message.entity';
 import { AiSessionStatus } from '../enums';
 import {
   CreateAiSessionRequest,
@@ -18,6 +19,8 @@ export class AiSessionService {
   constructor(
     @InjectRepository(AiSession)
     private readonly aiSessionRepository: Repository<AiSession>,
+    @InjectRepository(AiSessionMessage)
+    private readonly aiSessionMessageRepository: Repository<AiSessionMessage>,
   ) {}
 
   async create(request: CreateAiSessionRequest): Promise<AiSessionResponse> {
@@ -86,11 +89,17 @@ export class AiSessionService {
   }
 
   async remove(id: string): Promise<void> {
-    const session = await this.aiSessionRepository.findOne({ where: { id } });
-    if (!session) {
-      throw new NotFoundException(`AI Session with ID ${id} not found`);
-    }
-    await this.aiSessionRepository.softRemove(session);
+    await this.aiSessionRepository.manager.transaction(async (manager) => {
+      const sessionRepository = manager.getRepository(AiSession);
+      const messageRepository = manager.getRepository(AiSessionMessage);
+      const session = await sessionRepository.findOne({ where: { id } });
+      if (!session) {
+        throw new NotFoundException(`AI Session with ID ${id} not found`);
+      }
+
+      await messageRepository.delete({ sessionId: id });
+      await sessionRepository.softRemove(session);
+    });
   }
 
   private toResponse(session: AiSession): AiSessionResponse {

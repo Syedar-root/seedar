@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dayjs from "dayjs";
 import { useAiApi, useAis, useCreateAiSession } from "#pkg/seedar/ui-react";
 import { AIChat } from "./";
-import { useChatState } from "./hooks/useChatState.hook";
 import { useSSEHandler } from "./hooks/useSSEHandler.hook";
 import { useWorkflowInterruptExecutor } from "./hooks/useWorkflowInterruptExecutor.hook";
-import { ModelConfigDialog } from "./components";
+import { ModelConfigDialog, HistorySessionMenu } from "./components";
+import { ScrollArea } from "../../ui/ScrollArea";
 import { useAiChatScenesStore } from "@/core/store";
 import type { ChatMessage, ChatModeItem, CommandItem, SSEData } from "./types";
 import styles from "./AIChat.Preview.module.scss";
@@ -12,17 +13,21 @@ import type {
   AiChatScene,
   AiChatMode,
   AiChatResumeDto,
+  AiContextStatusEvent,
   AiResponse,
   AiSessionResponse,
+  AiSessionMessageResponse,
 } from "#pkg/seedar/types";
 import { formatMessageForDisplay } from "./utils/command.utils";
 import { MessageSquareText, Workflow } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import type { WorkflowRunResult } from "#pkg/seedar/types";
+import { useDeleteAiSession } from "#pkg/seedar/ui-react";
 
 const AI_CHAT_SESSION_STORAGE_KEY = "seedar.ai-chat.preview.session";
 
 interface AIChatPreviewCache {
-  messages: ChatMessage[];
+  historyMessages: ChatMessage[];
   currentModel: string;
   currentMode: AiChatMode;
   error: string | null;
@@ -71,6 +76,80 @@ const AI_CHAT_COMMANDS_RECORD = {
   },
 } satisfies Record<string, CommandItem>;
 
+const mapSessionMessageToChatMessage = (
+  message: AiSessionMessageResponse,
+): ChatMessage => {
+  const rawCreatedAt = message.createdAt as unknown as string | Date;
+  const createdAt =
+    typeof rawCreatedAt === "string" &&
+    !/[zZ]|[+-]\d{2}:\d{2}$/.test(rawCreatedAt)
+      ? dayjs(rawCreatedAt.replace(" ", "T") + "Z")
+      : dayjs(rawCreatedAt);
+
+  const workflowResult = (message.metaJson as Record<string, unknown> | undefined)
+    ?.workflowResult as WorkflowRunResult | undefined;
+  const workflowExecution =
+    message.messageType === "interrupt" &&
+    workflowResult?.kind === "workflow_result"
+      ? {
+          interruptId: workflowResult.interruptId,
+          workflowId: workflowResult.workflowId,
+          status: workflowResult.status,
+          steps: Array.isArray(workflowResult.result?.steps)
+            ? (workflowResult.result?.steps as Array<Record<string, unknown>>).map(
+                (step, index) => ({
+                  key:
+                    typeof step.key === "string"
+                      ? step.key
+                      : `${workflowResult.workflowId}-${index}`,
+                  target:
+                    typeof step.target === "string" ? step.target : "",
+                  title: typeof step.title === "string" ? step.title : "执行步骤",
+                  description:
+                    typeof step.description === "string"
+                      ? step.description
+                      : undefined,
+                  status:
+                    step.status === "pending" ||
+                    step.status === "running" ||
+                    step.status === "done" ||
+                    step.status === "failed"
+                      ? step.status
+                      : workflowResult.status,
+                  result:
+                    step.result && typeof step.result === "object"
+                      ? (step.result as Record<string, unknown>)
+                      : undefined,
+                  error:
+                    step.error && typeof step.error === "object"
+                      ? (step.error as { code: string; message: string })
+                      : undefined,
+                }),
+              )
+            : [],
+          error: workflowResult.error,
+        }
+      : undefined;
+
+  return {
+    id: `${message.id}`,
+    type: message.messageType as ChatMessage["type"],
+    content:
+      message.contentText ??
+      (message.contentJson as ChatMessage["content"]) ??
+      "",
+    role: (message.role as ChatMessage["role"]) || "act",
+    timestamp: createdAt.valueOf(),
+    done: true,
+    meta: (message.metaJson as ChatMessage["meta"]) || undefined,
+    workflowExecution,
+  };
+};
+
+const mergeMessages = (history: ChatMessage[], live: ChatMessage[]) => {
+  return [...history, ...live];
+};
+
 const AIChatPreview: React.FC = () => {
   const cachedState = useMemo(() => readPreviewCache(), []);
   const [currentModel, setCurrentModel] = useState(
@@ -82,22 +161,53 @@ const AIChatPreview: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(cachedState?.error || null);
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
-  const [currentSession, setCurrentSession] =
-    useState<AiSessionResponse | null>(cachedState?.currentSession || null);
+  const [currentSession, setCurrentSession] = useState<AiSessionResponse | null>(
+    cachedState?.currentSession || null,
+  );
   const [handledInterruptIds, setHandledInterruptIds] = useState<string[]>(
     cachedState?.handledInterruptIds || [],
   );
+  const [historyMessages, setHistoryMessages] = useState<ChatMessage[]>(
+    cachedState?.historyMessages || [],
+  );
+  const [liveMessages, setLiveMessages] = useState<ChatMessage[]>([]);
+  const [contextStatus, setContextStatus] = useState<AiContextStatusEvent | null>(
+    null,
+  );
+  const [isHistoryMenuOpen, setIsHistoryMenuOpen] = useState(false);
+  const [sessionList, setSessionList] = useState<AiSessionResponse[]>([]);
+  const [isSessionListLoading, setIsSessionListLoading] = useState(false);
+  const [sessionListError, setSessionListError] = useState<string | null>(null);
+
   const activeStreamControllerRef = useRef<StreamController | null>(null);
+  const liveMessagesRef = useRef<ChatMessage[]>([]);
+  const contextStatusTimerRef = useRef<number | null>(null);
+  const historyMenuRef = useRef<HTMLDivElement | null>(null);
   const location = useLocation();
   const activeScenes = useAiChatScenesStore((state) => state.scenes);
 
-  const chatState = useChatState(cachedState?.messages || []);
   const { handleSSEData } = useSSEHandler({
-    onNewMessage: chatState.addMessage,
-    onUpdateMessage: chatState.updateMessage,
+    onNewMessage: (message) => {
+      setLiveMessages((prev) => [...prev, message]);
+    },
+    onUpdateMessage: (id, updates) => {
+      setLiveMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id !== id) {
+            return msg;
+          }
+          return typeof updates === "function" ? updates(msg) : { ...msg, ...updates };
+        }),
+      );
+    },
   });
 
+  useEffect(() => {
+    liveMessagesRef.current = liveMessages;
+  }, [liveMessages]);
+
   const aiApi = useAiApi();
+  const deleteSessionMutation = useDeleteAiSession();
   const { data: aisData } = useAis();
   const { mutateAsync: createSession } = useCreateAiSession();
   const commands = useMemo(() => Object.values(AI_CHAT_COMMANDS_RECORD), []);
@@ -113,6 +223,74 @@ const AIChatPreview: React.FC = () => {
     ];
   }, [activeScenes, location.hash, location.pathname, location.search]);
 
+  const loadSessionHistory = async (sessionId: string) => {
+    const allMessages: AiSessionMessageResponse[] = [];
+    let cursor: string | undefined;
+
+    do {
+      const page = await aiApi.listSessionMessages(sessionId, cursor, 50);
+      allMessages.unshift(...page.data);
+      cursor = page.nextCursor;
+    } while (cursor);
+
+    const mapped = allMessages.map(mapSessionMessageToChatMessage);
+    setHistoryMessages(mapped);
+    setLiveMessages([]);
+  };
+
+  const loadSessionList = useCallback(async () => {
+    setIsSessionListLoading(true);
+    setSessionListError(null);
+    try {
+      const response = await aiApi.findSessions(1, 50);
+      setSessionList(response.data);
+    } catch (requestError) {
+      setSessionListError(
+        requestError instanceof Error
+          ? requestError.message
+          : "加载历史会话失败",
+      );
+    } finally {
+      setIsSessionListLoading(false);
+    }
+  }, [aiApi]);
+
+  const handleShowHistory = () => {
+    setIsHistoryMenuOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        void loadSessionList();
+      }
+      return next;
+    });
+  };
+
+  const handleSelectSession = (session: AiSessionResponse) => {
+    activeStreamControllerRef.current?.close();
+    activeStreamControllerRef.current = null;
+    setIsLoading(false);
+    setError(null);
+    setContextStatus(null);
+    setHandledInterruptIds([]);
+    setCurrentSession(session);
+    setIsHistoryMenuOpen(false);
+  };
+
+  const handleDeleteSession = async (session: AiSessionResponse) => {
+    const confirmed = window.confirm(`确定删除「${session.title || "新对话"}」吗？`);
+    if (!confirmed) {
+      return;
+    }
+
+    setSessionList((prev) => prev.filter((item) => item.id !== session.id));
+
+    await deleteSessionMutation.mutateAsync(session.id);
+    await loadSessionList();
+    if (currentSession?.id === session.id) {
+      handleAddChat();
+    }
+  };
+
   const handleSendMessage = async (
     content: string,
     isResume: boolean = false,
@@ -126,13 +304,23 @@ const AIChatPreview: React.FC = () => {
           onSuccess: (data) => {
             data.title = data.title || "新对话";
             setCurrentSession(data);
+            setSessionList((prev) => {
+              if (prev.some((item) => item.id === data.id)) {
+                return prev;
+              }
+              return [data, ...prev];
+            });
           },
         },
       ));
 
+    if (session?.id && !currentSession?.id) {
+      setCurrentSession(session);
+    }
+
     if (!isResume) {
       const userMessage: ChatMessage = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
         type: "text",
         content,
         displayContent: formatMessageForDisplay(content, commands),
@@ -140,7 +328,7 @@ const AIChatPreview: React.FC = () => {
         timestamp: Date.now(),
         done: true,
       };
-      chatState.addMessage(userMessage);
+      setLiveMessages((prev) => [...prev, userMessage]);
     }
 
     setIsLoading(true);
@@ -177,9 +365,51 @@ const AIChatPreview: React.FC = () => {
             };
             handleSSEData(nextSseData, chunk.sid);
           },
-          onDone: () => {
-            activeStreamControllerRef.current = null;
+          onContext: (event) => {
+            setContextStatus(event);
+            if (contextStatusTimerRef.current) {
+              window.clearTimeout(contextStatusTimerRef.current);
+            }
+            contextStatusTimerRef.current = window.setTimeout(() => {
+              setContextStatus((prev) =>
+                prev && prev.sessionId === event.sessionId ? null : prev,
+              );
+            }, 3000);
+          },
+          onSessionTitle: ({ sessionId, title }) => {
+            if (!title?.trim()) {
+              return;
+            }
+
+            setCurrentSession((prev) => {
+              if (!prev || prev.id !== sessionId) {
+                return prev;
+              }
+              return { ...prev, title };
+            });
+            setSessionList((prev) =>
+              prev.map((item) =>
+                item.id === sessionId ? { ...item, title } : item,
+              ),
+            );
+          },
+          onDone: async ({ isOver }) => {
+            // 聊天区 loading 只表达“本轮回复是否完成”，首个 done 到达即结束 loading。
             setIsLoading(false);
+            if (!isOver) {
+              return;
+            }
+
+            activeStreamControllerRef.current = null;
+            if (session?.id) {
+              await loadSessionHistory(session.id);
+              await loadSessionList();
+            } else {
+              setHistoryMessages((prev) =>
+                mergeMessages(prev, liveMessagesRef.current),
+              );
+              setLiveMessages([]);
+            }
           },
           onError: (requestError) => {
             activeStreamControllerRef.current = null;
@@ -198,6 +428,7 @@ const AIChatPreview: React.FC = () => {
           ? requestError.message
           : "Failed to send message",
       );
+      return undefined;
     }
   };
 
@@ -209,14 +440,24 @@ const AIChatPreview: React.FC = () => {
 
   useWorkflowInterruptExecutor({
     enabled: !isLoading,
-    messages: chatState.messages,
-    onUpdateMessage: chatState.updateMessage,
+    messages: [...historyMessages, ...liveMessages],
+    onUpdateMessage: (id, updates) => {
+      const applyUpdates = (items: ChatMessage[]) =>
+        items.map((msg) => {
+          if (msg.id !== id) {
+            return msg;
+          }
+          return typeof updates === "function" ? updates(msg) : { ...msg, ...updates };
+        });
+      setLiveMessages((prev) => applyUpdates(prev));
+      setHistoryMessages((prev) => applyUpdates(prev));
+    },
     persistedHandledInterruptIds: handledInterruptIds,
     onHandledInterruptIdsChange: setHandledInterruptIds,
-    onResume: async (resumePayload) => {
+    onResume: async (nextResumePayload) => {
       setIsLoading(true);
       try {
-        await handleSendMessage("", true, resumePayload);
+        await handleSendMessage("", true, nextResumePayload);
       } catch (requestError) {
         setIsLoading(false);
         throw requestError;
@@ -227,10 +468,12 @@ const AIChatPreview: React.FC = () => {
   const handleAddChat = async () => {
     activeStreamControllerRef.current?.close();
     activeStreamControllerRef.current = null;
-    chatState.setMessages([]);
+    setHistoryMessages([]);
+    setLiveMessages([]);
     setCurrentSession(null);
     setError(null);
     setHandledInterruptIds([]);
+    setContextStatus(null);
     clearPreviewCache();
   };
 
@@ -287,12 +530,41 @@ const AIChatPreview: React.FC = () => {
   }, [models]);
 
   useEffect(() => {
+    if (!currentSession?.id) {
+      return;
+    }
+
+    void loadSessionHistory(currentSession.id);
+  }, [currentSession?.id]);
+
+  useEffect(() => {
+    if (!isHistoryMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!historyMenuRef.current) {
+        return;
+      }
+      if (historyMenuRef.current.contains(event.target as Node)) {
+        return;
+      }
+      setIsHistoryMenuOpen(false);
+    };
+
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [isHistoryMenuOpen]);
+
+  useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
     const snapshot: AIChatPreviewCache = {
-      messages: chatState.messages,
+      historyMessages,
       currentModel,
       currentMode,
       error,
@@ -305,7 +577,7 @@ const AIChatPreview: React.FC = () => {
       JSON.stringify(snapshot),
     );
   }, [
-    chatState.messages,
+    historyMessages,
     currentModel,
     currentMode,
     error,
@@ -315,6 +587,9 @@ const AIChatPreview: React.FC = () => {
 
   useEffect(() => {
     return () => {
+      if (contextStatusTimerRef.current) {
+        window.clearTimeout(contextStatusTimerRef.current);
+      }
       activeStreamControllerRef.current?.close();
       activeStreamControllerRef.current = null;
     };
@@ -325,15 +600,15 @@ const AIChatPreview: React.FC = () => {
       <section className={styles["preview-section"]}>
         <AIChat
           style={{ height: "100%", border: "none" }}
-          messages={chatState.messages}
+          historyMessages={historyMessages}
+          liveMessages={liveMessages}
+          contextStatus={contextStatus}
           loading={isLoading}
           error={error}
           placeholder="输入 / 获取命令"
-          title="AI 智能助手"
+          title={currentSession?.title || "AI 智能助手"}
           onAddChat={handleAddChat}
-          onShowHistory={() => {
-            console.log("显示历史记录");
-          }}
+          onShowHistory={handleShowHistory}
           onSendMessage={handleSendMessage}
           onStopMessage={handleStopMessage}
           commands={commands}
@@ -345,6 +620,19 @@ const AIChatPreview: React.FC = () => {
           currentMode={currentMode}
           onModeChange={handleModeChange}
         />
+
+        <HistorySessionMenu
+          open={isHistoryMenuOpen}
+          loading={isSessionListLoading || deleteSessionMutation.isPending}
+          error={sessionListError}
+          sessions={sessionList}
+          currentSessionId={currentSession?.id}
+          onSelectSession={handleSelectSession}
+          onDeleteSession={handleDeleteSession}
+          onClose={() => setIsHistoryMenuOpen(false)}
+          anchorRef={historyMenuRef}
+        />
+
         <ModelConfigDialog
           open={isModelDialogOpen}
           models={activeAiModels}

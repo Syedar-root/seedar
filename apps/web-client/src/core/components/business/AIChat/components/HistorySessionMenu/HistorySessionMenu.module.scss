@@ -1,0 +1,114 @@
+.history-menu {
+  position: absolute;
+  top: 52px;
+  right: 12px;
+  width: min(320px, calc(100vw - 24px));
+  border: 1px solid var(--chat-border-default);
+  border-radius: var(--chat-radius-md);
+  background: var(--chat-bg-primary);
+  box-shadow: var(--chat-shadow-dropdown);
+  z-index: 20;
+  overflow: hidden;
+}
+
+.history-menu__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chat-space-sm);
+  padding: var(--chat-space-sm) var(--chat-space-md);
+  border-bottom: 1px solid var(--chat-border-default);
+}
+
+.history-menu__title {
+  font: var(--chat-text-heading);
+  color: var(--chat-color-primary);
+}
+
+.history-menu__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--chat-radius-sm);
+  background: transparent;
+  color: var(--chat-color-muted);
+  cursor: pointer;
+  transition: all var(--chat-transition-fast);
+
+  &:hover {
+    color: var(--chat-color-danger, #ef4444);
+    background: var(--chat-bg-tertiary);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.history-menu__state {
+  color: var(--chat-color-secondary);
+  font: var(--chat-text-caption);
+  padding: var(--chat-space-md) var(--chat-space-sm);
+}
+
+.history-menu__item {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--chat-radius-sm);
+  background: transparent;
+  text-align: left;
+  padding: var(--chat-space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition:
+    background-color var(--chat-transition-fast),
+    border-color var(--chat-transition-fast);
+}
+
+.history-menu__item:hover {
+  border-color: var(--chat-border-default);
+  background: var(--chat-bg-tertiary);
+}
+
+.history-menu__item--active {
+  border-color: color-mix(
+    in srgb,
+    var(--chat-color-primary) 30%,
+    var(--chat-border-default)
+  );
+  background: color-mix(
+    in srgb,
+    var(--chat-color-primary) 8%,
+    var(--chat-bg-secondary)
+  );
+}
+
+.history-menu__item-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--chat-space-sm);
+}
+
+.history-menu__item-title {
+  color: var(--chat-color-primary);
+  font: var(--chat-text-body);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.history-menu__item-time {
+  color: var(--chat-color-muted);
+  font: var(--chat-text-caption);
+  white-space: nowrap;
+}
+
+.history-menu__item-delete {
+  flex: 0 0 auto;
+}
