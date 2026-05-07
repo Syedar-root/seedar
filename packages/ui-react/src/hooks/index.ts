@@ -74,6 +74,7 @@ export {
   useAiSessions,
   useCreateAiSession,
   useUpdateAiSession,
+  useDeleteAiSession,
   useAiSessionMessages,
   useAiChat,
   useGenerateFieldBusinessNames,

@@ -4,7 +4,7 @@ import { useAiApi, useAis, useCreateAiSession } from "#pkg/seedar/ui-react";
 import { AIChat } from "./";
 import { useSSEHandler } from "./hooks/useSSEHandler.hook";
 import { useWorkflowInterruptExecutor } from "./hooks/useWorkflowInterruptExecutor.hook";
-import { ModelConfigDialog } from "./components";
+import { ModelConfigDialog, HistorySessionMenu } from "./components";
 import { ScrollArea } from "../../ui/ScrollArea";
 import { useAiChatScenesStore } from "@/core/store";
 import type { ChatMessage, ChatModeItem, CommandItem, SSEData } from "./types";
@@ -22,6 +22,7 @@ import { formatMessageForDisplay } from "./utils/command.utils";
 import { MessageSquareText, Workflow } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import type { WorkflowRunResult } from "#pkg/seedar/types";
+import { useDeleteAiSession } from "#pkg/seedar/ui-react";
 
 const AI_CHAT_SESSION_STORAGE_KEY = "seedar.ai-chat.preview.session";
 
@@ -149,15 +150,6 @@ const mergeMessages = (history: ChatMessage[], live: ChatMessage[]) => {
   return [...history, ...live];
 };
 
-const formatSessionTime = (value: string | Date): string => {
-  const parsed =
-    typeof value === "string" && !/[zZ]|[+-]\d{2}:\d{2}$/.test(value)
-      ? dayjs(value.replace(" ", "T") + "Z")
-      : dayjs(value);
-  const formatted = parsed.format("YYYY-MM-DD HH:mm");
-  return formatted === "Invalid Date" ? "" : formatted;
-};
-
 const AIChatPreview: React.FC = () => {
   const cachedState = useMemo(() => readPreviewCache(), []);
   const [currentModel, setCurrentModel] = useState(
@@ -215,6 +207,7 @@ const AIChatPreview: React.FC = () => {
   }, [liveMessages]);
 
   const aiApi = useAiApi();
+  const deleteSessionMutation = useDeleteAiSession();
   const { data: aisData } = useAis();
   const { mutateAsync: createSession } = useCreateAiSession();
   const commands = useMemo(() => Object.values(AI_CHAT_COMMANDS_RECORD), []);
@@ -281,6 +274,21 @@ const AIChatPreview: React.FC = () => {
     setHandledInterruptIds([]);
     setCurrentSession(session);
     setIsHistoryMenuOpen(false);
+  };
+
+  const handleDeleteSession = async (session: AiSessionResponse) => {
+    const confirmed = window.confirm(`确定删除「${session.title || "新对话"}」吗？`);
+    if (!confirmed) {
+      return;
+    }
+
+    setSessionList((prev) => prev.filter((item) => item.id !== session.id));
+
+    await deleteSessionMutation.mutateAsync(session.id);
+    await loadSessionList();
+    if (currentSession?.id === session.id) {
+      handleAddChat();
+    }
   };
 
   const handleSendMessage = async (
@@ -590,45 +598,17 @@ const AIChatPreview: React.FC = () => {
           onModeChange={handleModeChange}
         />
 
-        {isHistoryMenuOpen && (
-          <div className={styles["history-dropdown"]} ref={historyMenuRef}>
-            <div className={styles["history-dropdown-header"]}>历史会话</div>
-            <ScrollArea style={{ height: 320 }} contentStyle={{ padding: 8 }}>
-              {isSessionListLoading && (
-                <div className={styles["history-state"]}>加载中...</div>
-              )}
-              {!isSessionListLoading && sessionListError && (
-                <div className={styles["history-state"]}>{sessionListError}</div>
-              )}
-              {!isSessionListLoading &&
-                !sessionListError &&
-                sessionList.length === 0 && (
-                  <div className={styles["history-state"]}>暂无历史会话</div>
-                )}
-              {!isSessionListLoading &&
-                !sessionListError &&
-                sessionList.map((session) => {
-                  const isActive = currentSession?.id === session.id;
-                  const updatedAt = session.updatedAt || session.createdAt;
-                  const displayTime = formatSessionTime(updatedAt);
-
-                  return (
-                    <button
-                      type="button"
-                      key={session.id}
-                      className={`${styles["history-item"]} ${isActive ? styles["history-item-active"] : ""}`}
-                      onClick={() => handleSelectSession(session)}
-                    >
-                      <span className={styles["history-item-title"]}>
-                        {session.title || "新对话"}
-                      </span>
-                      <span className={styles["history-item-time"]}>{displayTime}</span>
-                    </button>
-                  );
-                })}
-            </ScrollArea>
-          </div>
-        )}
+        <HistorySessionMenu
+          open={isHistoryMenuOpen}
+          loading={isSessionListLoading || deleteSessionMutation.isPending}
+          error={sessionListError}
+          sessions={sessionList}
+          currentSessionId={currentSession?.id}
+          onSelectSession={handleSelectSession}
+          onDeleteSession={handleDeleteSession}
+          onClose={() => setIsHistoryMenuOpen(false)}
+          anchorRef={historyMenuRef}
+        />
 
         <ModelConfigDialog
           open={isModelDialogOpen}

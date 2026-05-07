@@ -6,12 +6,21 @@ import type { HeaderProps } from "./types";
 
 const ACTION_BUTTON_SIZE = 18;
 
-const Header: React.FC<HeaderProps> = ({ title, onAddChat, onShowHistory }) => {
+const Header: React.FC<HeaderProps> = ({
+  title,
+  onAddChat,
+  onShowHistory,
+  actionsDisabled = false,
+}) => {
   return (
     <div className={styles["header-container"]}>
       <div className={styles["left-section"]}>
         {onAddChat && (
-          <Button className={styles["action-button"]} onClick={onAddChat}>
+          <Button
+            className={styles["action-button"]}
+            onClick={onAddChat}
+            disabled={actionsDisabled}
+          >
             <MessageCirclePlus size={ACTION_BUTTON_SIZE} />
           </Button>
         )}
@@ -21,7 +30,11 @@ const Header: React.FC<HeaderProps> = ({ title, onAddChat, onShowHistory }) => {
 
       <div className={styles["right-section"]}>
         {onShowHistory && (
-          <Button className={styles["action-button"]} onClick={onShowHistory}>
+          <Button
+            className={styles["action-button"]}
+            onClick={onShowHistory}
+            disabled={actionsDisabled}
+          >
             <History size={ACTION_BUTTON_SIZE} />
           </Button>
         )}

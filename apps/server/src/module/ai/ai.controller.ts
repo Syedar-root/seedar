@@ -107,6 +107,12 @@ export class AiController {
     return this.aiService.remove(id);
   }
 
+  @Delete('session/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeSession(@Param('id') id: string): Promise<void> {
+    return this.aiSessionService.remove(id);
+  }
+
   @Post('field-business-name')
   generateFieldBusinessName(
     @Body() dto: GenerateFieldBusinessNameRequestDto,

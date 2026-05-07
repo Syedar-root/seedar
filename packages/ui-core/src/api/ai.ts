@@ -98,6 +98,13 @@ export class AiApi {
     return ApiClient.patch<AiSessionResponse>("/v1/ai/session", data, options);
   }
 
+  static async deleteSession(
+    id: string,
+    options?: RequestOptions,
+  ): Promise<void> {
+    return ApiClient.delete<void>(`/v1/ai/session/${id}`, options);
+  }
+
   static async listSessionMessages(
     id: string,
     cursor?: string,

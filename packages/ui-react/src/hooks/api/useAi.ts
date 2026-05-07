@@ -125,6 +125,18 @@ export const useUpdateAiSession = () => {
   });
 };
 
+export const useDeleteAiSession = () => {
+  const queryClient = useQueryClient();
+  const aiApi = useAiApi();
+
+  return useMutation({
+    mutationFn: (id: string) => aiApi.deleteSession(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: aiKeys.sessions() });
+    },
+  });
+};
+
 export const useAiSessions = (
   page?: number,
   pageSize?: number,

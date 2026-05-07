@@ -344,6 +344,13 @@ export const useAiApi = () => {
     [],
   );
 
+  const deleteSession = useCallback(
+    (id: string, options?: RequestOptions) => {
+      return AiApi.deleteSession(id, options);
+    },
+    [],
+  );
+
   const listSessionMessages = useCallback(
     (
       id: string,
@@ -387,6 +394,7 @@ export const useAiApi = () => {
     findSessions,
     findSession,
     updateSession,
+    deleteSession,
     listSessionMessages,
     streamChat,
     generateFieldBusinessNames,

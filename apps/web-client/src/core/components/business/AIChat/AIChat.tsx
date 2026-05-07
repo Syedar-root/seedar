@@ -395,6 +395,7 @@ const AIChat: React.FC<AIChatProps> = ({
           title={title}
           onAddChat={onAddChat}
           onShowHistory={onShowHistory}
+          actionsDisabled={loading}
         />
       )}
 
