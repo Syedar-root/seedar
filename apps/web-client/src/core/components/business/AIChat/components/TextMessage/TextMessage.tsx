@@ -1,8 +1,21 @@
 import React from "react";
 import type { TextMessageProps } from "./types";
-import { XMarkdown } from "@ant-design/x-markdown";
+import { XMarkdown, ComponentProps } from "@ant-design/x-markdown";
 import "@ant-design/x-markdown/themes/light.css";
 import { getFrontendWorkflowTemplate } from "#pkg/seedar/types";
+import { CodeHighlighter, Mermaid } from "@ant-design/x";
+
+const Code: React.FC<ComponentProps> = (props) => {
+  console.log("hcs props", props);
+  const { className, children } = props;
+  const lang = className?.match(/language-(\w+)/)?.[1] || "";
+
+  if (typeof children !== "string") return null;
+  if (lang === "mermaid") {
+    return <Mermaid>{children}</Mermaid>;
+  }
+  return <CodeHighlighter lang={lang}>{children}</CodeHighlighter>;
+};
 
 const TextMessage: React.FC<TextMessageProps> = ({ message }) => {
   switch (message.type) {
@@ -10,9 +23,10 @@ const TextMessage: React.FC<TextMessageProps> = ({ message }) => {
       return (
         <XMarkdown
           className="x-markdown-light"
+          components={{ code: Code }}
           content={
             typeof message.content === "string"
-              ? message.content
+              ? `${message.content}`
               : message.content.value.kind === "ask_user"
                 ? message.content.value.questions
                     .map((q) => q.question)
