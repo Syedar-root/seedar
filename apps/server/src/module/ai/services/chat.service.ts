@@ -972,6 +972,13 @@ export class ChatService implements OnModuleDestroy {
         );
       }
 
+      if (isResume && resumePayload?.kind === 'interrupt_result') {
+        await this.aiSessionMessageService.applyInterruptResumeResult(
+          session.id,
+          resumePayload,
+        );
+      }
+
       const contextResult = await this.manageContextBeforeStream({
         agent: agent as unknown as {
           getState: (config: {
@@ -1024,9 +1031,16 @@ export class ChatService implements OnModuleDestroy {
 
       let currentSid = '';
       let lastType: YieldType | undefined;
-      let pendingSegment: ReturnType<
-        typeof this.aiSessionMessageService.createChunkSegment
-      > | null = null;
+      let pendingSegment: {
+        sessionId: string;
+        turnId: string;
+        sid: string;
+        messageType: YieldType | 'user';
+        role?: string;
+        contentText: string;
+        contentJson?: Record<string, unknown>;
+        metaJson?: Record<string, unknown>;
+      } | null = null;
 
       flushPendingSegment = async () => {
         if (!pendingSegment) {

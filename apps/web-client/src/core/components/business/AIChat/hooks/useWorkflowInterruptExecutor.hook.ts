@@ -32,6 +32,7 @@ const getLatestWorkflowInterrupt = (messages: ChatMessage[]) => {
       return {
         interrupt: message.content.value,
         messageId: message.id,
+        messageMeta: message.meta,
       };
     }
   }
@@ -75,6 +76,23 @@ export const useWorkflowInterruptExecutor = ({
     }
 
     const interruptId = latestWorkflowInterrupt.interrupt.interruptId;
+    const alreadyResolved =
+      latestWorkflowInterrupt.messageMeta &&
+      typeof latestWorkflowInterrupt.messageMeta === "object" &&
+      "interruptResolved" in latestWorkflowInterrupt.messageMeta
+        ? Boolean(
+            (
+              latestWorkflowInterrupt.messageMeta as Record<string, unknown>
+            ).interruptResolved,
+          )
+        : false;
+
+    if (alreadyResolved) {
+      handledInterruptIdsRef.current.add(interruptId);
+      onHandledInterruptIdsChange?.([...handledInterruptIdsRef.current]);
+      return;
+    }
+
     if (handledInterruptIdsRef.current.has(interruptId)) {
       return;
     }

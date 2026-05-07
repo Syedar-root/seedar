@@ -8,6 +8,7 @@ import {
   CursorPaginatedResponse,
 } from '../dto/ai-session-message.response';
 import { YieldType } from '@seedar/types/ai';
+import type { AiChatResumeDto } from '@seedar/types/ai';
 
 type PersistableMessageType = YieldType | 'user';
 type AiContextStrategy = 'preventive' | 'window' | 'summary' | 'trim';
@@ -100,6 +101,92 @@ export class AiSessionMessageService {
       metaJson: segment.metaJson,
     });
     await this.aiSessionMessageRepository.save(message);
+  }
+
+  async applyInterruptResumeResult(
+    sessionId: string,
+    resumePayload?: AiChatResumeDto,
+  ): Promise<void> {
+    if (
+      !resumePayload ||
+      resumePayload.kind !== 'interrupt_result' ||
+      !resumePayload.interruptResult
+    ) {
+      return;
+    }
+
+    const interruptRows = await this.aiSessionMessageRepository.find({
+      where: {
+        sessionId,
+        messageType: 'interrupt',
+      },
+      order: { id: 'DESC' },
+      take: 200,
+    });
+
+    if (interruptRows.length === 0) {
+      return;
+    }
+
+    const interruptResult = resumePayload.interruptResult as unknown as Record<
+      string,
+      unknown
+    >;
+    const resultKind = interruptResult.kind as string | undefined;
+
+    if (resultKind === 'ask_user_result') {
+      const target = interruptRows.find(
+        (row) => this.getInterruptKind(row) === 'ask_user',
+      );
+      if (!target) {
+        return;
+      }
+
+      const nextContentJson = this.mergeAskUserAnswers(
+        target.contentJson,
+        interruptResult,
+      );
+      const nextMetaJson = {
+        ...(target.metaJson ?? {}),
+        interruptResolved: true,
+        interruptResolvedKind: 'ask_user_result',
+        interruptResolvedAt: new Date().toISOString(),
+      };
+
+      target.contentJson =
+        (nextContentJson as unknown as AiSessionMessage['contentJson']) ??
+        undefined;
+      target.metaJson = nextMetaJson as unknown as AiSessionMessage['metaJson'];
+      await this.aiSessionMessageRepository.save(target);
+      return;
+    }
+
+    if (resultKind === 'workflow_result') {
+      const interruptId = interruptResult.interruptId as string | undefined;
+      const target = interruptRows.find((row) => {
+        if (this.getInterruptKind(row) !== 'workflow_run') {
+          return false;
+        }
+        if (!interruptId) {
+          return true;
+        }
+        return this.getWorkflowInterruptId(row) === interruptId;
+      });
+      if (!target) {
+        return;
+      }
+
+      const nextMetaJson = {
+        ...(target.metaJson ?? {}),
+        interruptResolved: true,
+        interruptResolvedKind: 'workflow_result',
+        interruptResolvedAt: new Date().toISOString(),
+        workflowResult: interruptResult,
+      };
+
+      target.metaJson = nextMetaJson as unknown as AiSessionMessage['metaJson'];
+      await this.aiSessionMessageRepository.save(target);
+    }
   }
 
   async listBySession(
@@ -297,6 +384,45 @@ export class AiSessionMessageService {
         historyUnavailable: true,
       },
       createdAt: new Date(),
+    };
+  }
+
+  private getInterruptKind(row: AiSessionMessage): string | undefined {
+    const value = row.contentJson?.value as Record<string, unknown> | undefined;
+    const kind = value?.kind;
+    return typeof kind === 'string' ? kind : undefined;
+  }
+
+  private getWorkflowInterruptId(row: AiSessionMessage): string | undefined {
+    const value = row.contentJson?.value as Record<string, unknown> | undefined;
+    const interruptId = value?.interruptId;
+    return typeof interruptId === 'string' ? interruptId : undefined;
+  }
+
+  private mergeAskUserAnswers(
+    sourceContentJson: Record<string, unknown> | undefined,
+    askUserResult: Record<string, unknown>,
+  ): Record<string, unknown> | undefined {
+    if (!sourceContentJson || typeof sourceContentJson !== 'object') {
+      return sourceContentJson;
+    }
+
+    const value = sourceContentJson.value as Record<string, unknown> | undefined;
+    if (!value || value.kind !== 'ask_user') {
+      return sourceContentJson;
+    }
+
+    const answers = askUserResult.answers;
+    if (!Array.isArray(answers)) {
+      return sourceContentJson;
+    }
+
+    return {
+      ...sourceContentJson,
+      value: {
+        ...value,
+        answers,
+      },
     };
   }
 

@@ -1,4 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dayjs from "dayjs";
 import { useAiApi, useAis, useCreateAiSession } from "#pkg/seedar/ui-react";
 import { AIChat } from "./";
 import { useSSEHandler } from "./hooks/useSSEHandler.hook";
@@ -20,6 +21,7 @@ import type {
 import { formatMessageForDisplay } from "./utils/command.utils";
 import { MessageSquareText, Workflow } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import type { WorkflowRunResult } from "#pkg/seedar/types";
 
 const AI_CHAT_SESSION_STORAGE_KEY = "seedar.ai-chat.preview.session";
 
@@ -76,6 +78,58 @@ const AI_CHAT_COMMANDS_RECORD = {
 const mapSessionMessageToChatMessage = (
   message: AiSessionMessageResponse,
 ): ChatMessage => {
+  const rawCreatedAt = message.createdAt as unknown as string | Date;
+  const createdAt =
+    typeof rawCreatedAt === "string" &&
+    !/[zZ]|[+-]\d{2}:\d{2}$/.test(rawCreatedAt)
+      ? dayjs(rawCreatedAt.replace(" ", "T") + "Z")
+      : dayjs(rawCreatedAt);
+
+  const workflowResult = (message.metaJson as Record<string, unknown> | undefined)
+    ?.workflowResult as WorkflowRunResult | undefined;
+  const workflowExecution =
+    message.messageType === "interrupt" &&
+    workflowResult?.kind === "workflow_result"
+      ? {
+          interruptId: workflowResult.interruptId,
+          workflowId: workflowResult.workflowId,
+          status: workflowResult.status,
+          steps: Array.isArray(workflowResult.result?.steps)
+            ? (workflowResult.result?.steps as Array<Record<string, unknown>>).map(
+                (step, index) => ({
+                  key:
+                    typeof step.key === "string"
+                      ? step.key
+                      : `${workflowResult.workflowId}-${index}`,
+                  target:
+                    typeof step.target === "string" ? step.target : "",
+                  title: typeof step.title === "string" ? step.title : "执行步骤",
+                  description:
+                    typeof step.description === "string"
+                      ? step.description
+                      : undefined,
+                  status:
+                    step.status === "pending" ||
+                    step.status === "running" ||
+                    step.status === "done" ||
+                    step.status === "failed"
+                      ? step.status
+                      : workflowResult.status,
+                  result:
+                    step.result && typeof step.result === "object"
+                      ? (step.result as Record<string, unknown>)
+                      : undefined,
+                  error:
+                    step.error && typeof step.error === "object"
+                      ? (step.error as { code: string; message: string })
+                      : undefined,
+                }),
+              )
+            : [],
+          error: workflowResult.error,
+        }
+      : undefined;
+
   return {
     id: `${message.id}`,
     type: message.messageType as ChatMessage["type"],
@@ -84,14 +138,24 @@ const mapSessionMessageToChatMessage = (
       (message.contentJson as ChatMessage["content"]) ??
       "",
     role: (message.role as ChatMessage["role"]) || "act",
-    timestamp: new Date(message.createdAt).getTime(),
+    timestamp: createdAt.valueOf(),
     done: true,
     meta: (message.metaJson as ChatMessage["meta"]) || undefined,
+    workflowExecution,
   };
 };
 
 const mergeMessages = (history: ChatMessage[], live: ChatMessage[]) => {
   return [...history, ...live];
+};
+
+const formatSessionTime = (value: string | Date): string => {
+  const parsed =
+    typeof value === "string" && !/[zZ]|[+-]\d{2}:\d{2}$/.test(value)
+      ? dayjs(value.replace(" ", "T") + "Z")
+      : dayjs(value);
+  const formatted = parsed.format("YYYY-MM-DD HH:mm");
+  return formatted === "Invalid Date" ? "" : formatted;
 };
 
 const AIChatPreview: React.FC = () => {
@@ -347,14 +411,15 @@ const AIChatPreview: React.FC = () => {
     enabled: !isLoading,
     messages: [...historyMessages, ...liveMessages],
     onUpdateMessage: (id, updates) => {
-      setLiveMessages((prev) =>
-        prev.map((msg) => {
+      const applyUpdates = (items: ChatMessage[]) =>
+        items.map((msg) => {
           if (msg.id !== id) {
             return msg;
           }
           return typeof updates === "function" ? updates(msg) : { ...msg, ...updates };
-        }),
-      );
+        });
+      setLiveMessages((prev) => applyUpdates(prev));
+      setHistoryMessages((prev) => applyUpdates(prev));
     },
     persistedHandledInterruptIds: handledInterruptIds,
     onHandledInterruptIdsChange: setHandledInterruptIds,
@@ -545,15 +610,7 @@ const AIChatPreview: React.FC = () => {
                 sessionList.map((session) => {
                   const isActive = currentSession?.id === session.id;
                   const updatedAt = session.updatedAt || session.createdAt;
-                  const displayTime = new Date(updatedAt).toLocaleString(
-                    "zh-CN",
-                    {
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    },
-                  );
+                  const displayTime = formatSessionTime(updatedAt);
 
                   return (
                     <button
