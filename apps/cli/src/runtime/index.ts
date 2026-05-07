@@ -1,9 +1,10 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { access, copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
 import {
+  buildCheckpointPgUrl,
   COMPOSE_TEMPLATE,
   ENV_RENDER_ORDER,
   REQUIRED_ENV_KEYS,
@@ -23,6 +24,71 @@ export function toDockerPath(targetPath: string): string {
   return path.resolve(targetPath).replace(/\\/g, "/");
 }
 
+export function extractCheckpointPgPassword(connectionString: string): string | null {
+  try {
+    const url = new URL(connectionString);
+    const password = url.password.trim();
+    return password ? decodeURIComponent(password) : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeEnvConfig(env: Record<string, string>): {
+  env: EnvConfig;
+  changed: boolean;
+} {
+  const normalized: Record<string, string> = { ...env };
+  const missing = REQUIRED_ENV_KEYS.filter((key) => !normalized[key]);
+  const checkpointPassword = normalized.AI_CHECKPOINT_PG_PASSWORD?.trim() || "";
+  const checkpointUrl = normalized.AI_CHECKPOINT_PG_URL?.trim() || "";
+  let changed = false;
+
+  if (checkpointPassword) {
+    const nextUrl = buildCheckpointPgUrl(checkpointPassword);
+    if (normalized.AI_CHECKPOINT_PG_PASSWORD !== checkpointPassword) {
+      normalized.AI_CHECKPOINT_PG_PASSWORD = checkpointPassword;
+      changed = true;
+    }
+    if (normalized.AI_CHECKPOINT_PG_URL !== nextUrl) {
+      normalized.AI_CHECKPOINT_PG_URL = nextUrl;
+      changed = true;
+    }
+  } else if (checkpointUrl) {
+    const derivedPassword = extractCheckpointPgPassword(checkpointUrl);
+    if (!derivedPassword) {
+      throw new Error("运行时配置中的 AI_CHECKPOINT_PG_URL 无法解析密码");
+    }
+
+    const nextUrl = buildCheckpointPgUrl(derivedPassword);
+    if (normalized.AI_CHECKPOINT_PG_PASSWORD !== derivedPassword) {
+      normalized.AI_CHECKPOINT_PG_PASSWORD = derivedPassword;
+      changed = true;
+    }
+    if (normalized.AI_CHECKPOINT_PG_URL !== nextUrl) {
+      normalized.AI_CHECKPOINT_PG_URL = nextUrl;
+      changed = true;
+    }
+  } else {
+    const generatedPassword = randomBytes(16).toString("hex");
+    normalized.AI_CHECKPOINT_PG_PASSWORD = generatedPassword;
+    normalized.AI_CHECKPOINT_PG_URL = buildCheckpointPgUrl(generatedPassword);
+    changed = true;
+  }
+
+  const remainingMissing = missing.filter(
+    (key) => key !== "AI_CHECKPOINT_PG_PASSWORD" && key !== "AI_CHECKPOINT_PG_URL",
+  );
+  if (remainingMissing.length > 0) {
+    throw new Error(`运行时配置缺少字段: ${remainingMissing.join(", ")}`);
+  }
+
+  return {
+    env: normalized as unknown as EnvConfig,
+    changed,
+  };
+}
+
 export function getRuntimeLayout(): RuntimeLayout {
   const installRoot = resolveInstallRoot();
   const instanceId = createHash("sha256")
@@ -35,6 +101,7 @@ export function getRuntimeLayout(): RuntimeLayout {
     runtimeDir: path.join(installRoot, "runtime"),
     dataDir: path.join(installRoot, "data"),
     mysqlDataDir: path.join(installRoot, "data", "mysql"),
+    postgresDataDir: path.join(installRoot, "data", "postgres"),
     logsDir: path.join(installRoot, "logs"),
     backupsDir: path.join(installRoot, "backups"),
     composePath: path.join(installRoot, "runtime", "docker-compose.yml"),
@@ -59,6 +126,7 @@ export async function ensureRuntimeDirectories(layout: RuntimeLayout): Promise<v
   await mkdir(layout.runtimeDir, { recursive: true });
   await mkdir(layout.dataDir, { recursive: true });
   await mkdir(layout.mysqlDataDir, { recursive: true });
+  await mkdir(layout.postgresDataDir, { recursive: true });
   await mkdir(layout.logsDir, { recursive: true });
   await mkdir(layout.backupsDir, { recursive: true });
 }
@@ -101,18 +169,15 @@ export function parseEnvFile(content: string): Record<string, string> {
   return result;
 }
 
-export function assertEnvShape(env: Record<string, string>): EnvConfig {
-  const missing = REQUIRED_ENV_KEYS.filter((key) => !env[key]);
-  if (missing.length > 0) {
-    throw new Error(`运行时配置缺少字段: ${missing.join(", ")}`);
-  }
-
-  return env as unknown as EnvConfig;
-}
-
 export async function readEnvConfig(layout: RuntimeLayout): Promise<EnvConfig> {
   const content = await readFile(layout.envPath, "utf8");
-  return assertEnvShape(parseEnvFile(content));
+  const { env, changed } = normalizeEnvConfig(parseEnvFile(content));
+  if (changed) {
+    await ensureRuntimeDirectories(layout);
+    await writeFile(layout.envPath, renderEnvFile(env), "utf8");
+  }
+
+  return env;
 }
 
 export async function writeRuntimeFiles(

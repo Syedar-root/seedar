@@ -8,10 +8,16 @@ import {
   DEFAULT_DB_USER,
   DEFAULT_PORTS,
   DEFAULT_VERSION,
+  buildCheckpointPgUrl,
   REQUIRED_ENV_KEYS,
 } from "../shared/constants.js";
 import { getAvailablePort } from "../docker/ports.js";
-import { buildDefaultEnv, parseEnvFile, pathExists } from "../runtime/index.js";
+import {
+  buildDefaultEnv,
+  extractCheckpointPgPassword,
+  parseEnvFile,
+  pathExists,
+} from "../runtime/index.js";
 import type { CliFlags, EnvConfig, InstallConfigField, RuntimeLayout } from "../shared/types.js";
 
 const PROMPTABLE_INSTALL_FIELDS = [
@@ -22,6 +28,7 @@ const PROMPTABLE_INSTALL_FIELDS = [
   "DB_USERNAME",
   "DB_PASSWORD",
   "MYSQL_ROOT_PASSWORD",
+  "AI_CHECKPOINT_PG_PASSWORD",
   "AES_SECRET",
 ] as const;
 
@@ -29,6 +36,39 @@ type PromptableInstallField = (typeof PROMPTABLE_INSTALL_FIELDS)[number];
 
 function createSecret(bytes = 24): string {
   return randomBytes(bytes).toString("hex");
+}
+
+function normalizeCheckpointRuntimeConfig(env: EnvConfig): EnvConfig {
+  const checkpointPassword = env.AI_CHECKPOINT_PG_PASSWORD.trim();
+  const checkpointUrl = env.AI_CHECKPOINT_PG_URL.trim();
+
+  if (checkpointPassword) {
+    return {
+      ...env,
+      AI_CHECKPOINT_PG_PASSWORD: checkpointPassword,
+      AI_CHECKPOINT_PG_URL: buildCheckpointPgUrl(checkpointPassword),
+    };
+  }
+
+  if (checkpointUrl) {
+    const derivedPassword = extractCheckpointPgPassword(checkpointUrl);
+    if (!derivedPassword) {
+      throw new Error("AI_CHECKPOINT_PG_URL 无法解析密码");
+    }
+
+    return {
+      ...env,
+      AI_CHECKPOINT_PG_PASSWORD: derivedPassword,
+      AI_CHECKPOINT_PG_URL: buildCheckpointPgUrl(derivedPassword),
+    };
+  }
+
+  const generatedPassword = createSecret(16);
+  return {
+    ...env,
+    AI_CHECKPOINT_PG_PASSWORD: generatedPassword,
+    AI_CHECKPOINT_PG_URL: buildCheckpointPgUrl(generatedPassword),
+  };
 }
 
 async function askInput(label: string, defaultValue: string): Promise<string> {
@@ -122,6 +162,15 @@ async function promptInstallFields(
           nextEnv.MYSQL_ROOT_PASSWORD,
         );
         break;
+      case "AI_CHECKPOINT_PG_PASSWORD": {
+        const checkpointPassword = await askInput(
+          "Checkpoint PG 密码",
+          nextEnv.AI_CHECKPOINT_PG_PASSWORD,
+        );
+        nextEnv.AI_CHECKPOINT_PG_PASSWORD = checkpointPassword;
+        nextEnv.AI_CHECKPOINT_PG_URL = buildCheckpointPgUrl(checkpointPassword);
+        break;
+      }
       case "AES_SECRET":
         nextEnv.AES_SECRET = assertAesSecret(await askInput("AES_SECRET", nextEnv.AES_SECRET));
         break;
@@ -139,6 +188,7 @@ export async function collectInstallConfig(
   const version = versionArg ?? DEFAULT_VERSION;
   const defaultDbPassword = createSecret(16);
   const defaultRootPassword = createSecret(16);
+  const defaultCheckpointPassword = createSecret(16);
   const defaultAesSecret = createSecret(24);
   const [mysqlPort, serverPort, webPort] = await Promise.all([
     getAvailablePort(DEFAULT_PORTS.mysql),
@@ -160,18 +210,33 @@ export async function collectInstallConfig(
     MYSQL_DATABASE: DEFAULT_DB_NAME,
     MYSQL_USER: DEFAULT_DB_USER,
     MYSQL_PASSWORD: defaultDbPassword,
+    AI_CHECKPOINT_PG_PASSWORD: defaultCheckpointPassword,
+    AI_CHECKPOINT_PG_URL: buildCheckpointPgUrl(defaultCheckpointPassword),
     AES_SECRET: defaultAesSecret,
   });
   const existingOverrides = await loadExistingEnvOverrides(layout);
-  const defaults: EnvConfig = {
+  const existingCheckpointPassword = existingOverrides.AI_CHECKPOINT_PG_PASSWORD?.trim();
+  const existingCheckpointUrl = existingOverrides.AI_CHECKPOINT_PG_URL?.trim();
+  const derivedCheckpointPassword = existingCheckpointUrl
+    ? extractCheckpointPgPassword(existingCheckpointUrl)
+    : null;
+  if (existingCheckpointUrl && !existingCheckpointPassword && !derivedCheckpointPassword) {
+    throw new Error("AI_CHECKPOINT_PG_URL 无法解析密码");
+  }
+
+  const checkpointPassword =
+    existingCheckpointPassword ?? derivedCheckpointPassword ?? defaultCheckpointPassword;
+  const defaults = normalizeCheckpointRuntimeConfig({
     ...generatedDefaults,
     ...existingOverrides,
+    AI_CHECKPOINT_PG_PASSWORD: checkpointPassword,
+    AI_CHECKPOINT_PG_URL: buildCheckpointPgUrl(checkpointPassword),
     SEEDAR_VERSION:
       versionArg ?? existingOverrides.SEEDAR_VERSION ?? generatedDefaults.SEEDAR_VERSION,
     SEEDAR_INSTALL_ROOT: generatedDefaults.SEEDAR_INSTALL_ROOT,
     SEEDAR_INSTANCE_ID: generatedDefaults.SEEDAR_INSTANCE_ID,
     SEEDAR_PROJECT_NAME: generatedDefaults.SEEDAR_PROJECT_NAME,
-  };
+  });
 
   if (!process.stdin.isTTY || flags.yes) {
     console.log("使用默认安装参数初始化 Seedar。");

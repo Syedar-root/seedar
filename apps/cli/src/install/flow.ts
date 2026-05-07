@@ -9,6 +9,7 @@ import { printInstallDetail, printInstallStage, printInstallSuccess } from "./ou
 
 export async function runInstallFlow(layout: RuntimeLayout, env: EnvConfig): Promise<void> {
   await startMysqlWithRetry(layout, env);
+  await startPostgres(layout);
 
   printInstallStage("执行数据库迁移");
   await runDockerComposeOrThrow(layout, ["run", "--rm", "migrate"], {
@@ -19,7 +20,7 @@ export async function runInstallFlow(layout: RuntimeLayout, env: EnvConfig): Pro
 }
 
 export async function pullInstallImages(layout: RuntimeLayout): Promise<void> {
-  await runDockerComposeOrThrow(layout, ["pull", "mysql", "server", "web"], {
+  await runDockerComposeOrThrow(layout, ["pull", "mysql", "postgres", "server", "web"], {
     stdio: "inherit",
   });
 }
@@ -59,6 +60,17 @@ export async function startMysqlWithRetry(layout: RuntimeLayout, env: EnvConfig)
       );
     }
   }
+}
+
+export async function startPostgres(layout: RuntimeLayout): Promise<void> {
+  printInstallStage("启动 PostgreSQL");
+  await runComposeCommandWithCapturedOutput(
+    layout,
+    ["up", "-d", "postgres"],
+    "docker compose up -d postgres 执行失败",
+  );
+  await waitForServiceHealthy(layout, "postgres");
+  printInstallSuccess("PostgreSQL 容器已启动");
 }
 
 export async function startServerAndWebWithRetry(layout: RuntimeLayout, env: EnvConfig): Promise<void> {
@@ -109,7 +121,7 @@ export async function runInstallFlowWithValidatedConfig(
   printInstallDetail(`安装目录：${layout.installRoot}`);
 
   printInstallStage("拉取镜像");
-  printInstallDetail("开始拉取 mysql、server、web 镜像");
+  printInstallDetail("开始拉取 mysql、postgres、server、web 镜像");
   await pullInstallImages(layout);
   printInstallSuccess("镜像拉取完成");
   await runInstallFlow(layout, env);
@@ -125,7 +137,7 @@ export async function startRuntimeServices(layout: RuntimeLayout, env: EnvConfig
 
 export async function stopRuntimeServices(layout: RuntimeLayout): Promise<void> {
   printInstallStage("停止服务");
-  const result = await runDockerCompose(layout, ["stop", "mysql", "server", "web"]);
+  const result = await runDockerCompose(layout, ["stop", "mysql", "postgres", "server", "web"]);
   const detail = [result.stdout.trim(), result.stderr.trim()].filter(Boolean).join("\n");
   if (detail) {
     console.log(detail);
@@ -133,5 +145,5 @@ export async function stopRuntimeServices(layout: RuntimeLayout): Promise<void> 
   if (result.code !== 0) {
     throw new Error(detail || "停止服务失败");
   }
-  printInstallSuccess("mysql、server、web 已停止");
+  printInstallSuccess("mysql、postgres、server、web 已停止");
 }

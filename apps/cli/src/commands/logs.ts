@@ -1,7 +1,7 @@
 import { runDockerComposeOrThrow } from "../docker/process.js";
 import { VALID_SERVICES } from "../shared/constants.js";
 import type { CliFlags } from "../shared/types.js";
-import { getRuntimeLayout } from "../runtime/index.js";
+import { getRuntimeLayout, readEnvConfig } from "../runtime/index.js";
 import { requireRuntimeConfig } from "../runtime/guards.js";
 
 export function assertValidLogService(serviceArg: string | undefined): void {
@@ -14,6 +14,7 @@ export async function logsCommand(serviceArg: string | undefined, flags: CliFlag
   const layout = getRuntimeLayout();
   assertValidLogService(serviceArg);
   await requireRuntimeConfig(layout);
+  await readEnvConfig(layout);
 
   const args = ["logs", "--tail", "200"];
   if (flags.follow) {

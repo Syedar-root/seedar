@@ -7,6 +7,7 @@ export function printInstallSummary(layout: RuntimeLayout, env: EnvConfig): void
   console.log(`Web: http://localhost:${env.WEB_PORT}`);
   console.log(`Server: http://localhost:${env.SERVER_PORT}`);
   console.log(`MySQL: localhost:${env.MYSQL_PORT}`);
+  console.log(`Checkpoint PG: postgres:5432/postgres`);
   console.log(`版本: ${env.SEEDAR_VERSION}`);
 }
 

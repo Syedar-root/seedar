@@ -28,12 +28,38 @@ services:
     networks:
       - seedar-net
 
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${SEEDAR_PROJECT_NAME}-postgres
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${AI_CHECKPOINT_PG_PASSWORD}
+    volumes:
+      - "${SEEDAR_INSTALL_ROOT}/data/postgres:/var/lib/postgresql/data"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -U postgres -d postgres",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - seedar-net
+
   server:
     image: syedarhandsome/seedar-server:${SEEDAR_VERSION}
     container_name: ${SEEDAR_PROJECT_NAME}-server
     restart: unless-stopped
     depends_on:
       mysql:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     environment:
       TZ: Asia/Shanghai
@@ -43,6 +69,7 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
+      AI_CHECKPOINT_PG_URL: ${AI_CHECKPOINT_PG_URL}
       AES_SECRET: ${AES_SECRET}
       PORT: 3000
     ports:
@@ -64,6 +91,7 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
+      AI_CHECKPOINT_PG_URL: ${AI_CHECKPOINT_PG_URL}
       AES_SECRET: ${AES_SECRET}
       PORT: 3000
     command:

@@ -161,6 +161,7 @@ Examples:
   seedar install
   seedar install 1.2.3 -y
   seedar logs server --follow
+  seedar logs postgres --follow
   seedar uninstall --remove-data --force
 `,
   );

@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import { CommanderError } from "commander";
 
 import { createProgram, main } from "../dist/cli.js";
+import { readEnvConfig } from "../dist/runtime/index.js";
 
 function createSilentProgram(overrides = {}) {
   const program = createProgram(overrides);
@@ -116,10 +120,10 @@ test("route: logs maps service and --follow", async () => {
     },
   });
 
-  await program.parseAsync(["node", "seedar", "logs", "server", "--follow"]);
+  await program.parseAsync(["node", "seedar", "logs", "postgres", "--follow"]);
 
   assert.deepEqual(called, {
-    service: "server",
+    service: "postgres",
     flags: {
       yes: false,
       force: false,
@@ -220,5 +224,64 @@ test("error path: invalid logs service sets non-zero exit code", async () => {
     assert.equal(process.exitCode, 1);
   } finally {
     process.exitCode = previousExitCode;
+  }
+});
+
+test("runtime: readEnvConfig backfills checkpoint password from url", async () => {
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "seedar-cli-test-"));
+  const layout = {
+    installRoot: tempRoot,
+    runtimeDir: path.join(tempRoot, "runtime"),
+    dataDir: path.join(tempRoot, "data"),
+    mysqlDataDir: path.join(tempRoot, "data", "mysql"),
+    postgresDataDir: path.join(tempRoot, "data", "postgres"),
+    logsDir: path.join(tempRoot, "logs"),
+    backupsDir: path.join(tempRoot, "backups"),
+    composePath: path.join(tempRoot, "runtime", "docker-compose.yml"),
+    envPath: path.join(tempRoot, "runtime", ".env"),
+    versionPath: path.join(tempRoot, "runtime", ".installed-version"),
+    statePath: path.join(tempRoot, "runtime", ".install-state"),
+  };
+
+  try {
+    await mkdir(layout.runtimeDir, { recursive: true });
+    await writeFile(
+      layout.envPath,
+      [
+        "SEEDAR_VERSION=latest",
+        `SEEDAR_INSTALL_ROOT=${tempRoot.replace(/\\/g, "/")}`,
+        "SEEDAR_INSTANCE_ID=1234abcd",
+        "SEEDAR_PROJECT_NAME=seedar-1234abcd",
+        "MYSQL_PORT=3306",
+        "SERVER_PORT=8090",
+        "WEB_PORT=8080",
+        "DB_HOST=mysql",
+        "DB_PORT=3306",
+        "DB_USERNAME=seedar",
+        "DB_PASSWORD=change_me_db_password",
+        "DB_DATABASE=seedar_prod",
+        "MYSQL_ROOT_PASSWORD=change_me_root_password",
+        "MYSQL_DATABASE=seedar_prod",
+        "MYSQL_USER=seedar",
+        "MYSQL_PASSWORD=change_me_db_password",
+        "AI_CHECKPOINT_PG_URL=postgresql://postgres:change_me_pg_password@postgres:5432/postgres",
+        "AES_SECRET=change_me_to_a_long_random_secret",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const env = await readEnvConfig(layout);
+    assert.equal(env.AI_CHECKPOINT_PG_PASSWORD, "change_me_pg_password");
+    assert.equal(env.AI_CHECKPOINT_PG_URL, "postgresql://postgres:change_me_pg_password@postgres:5432/postgres");
+
+    const written = await readFile(layout.envPath, "utf8");
+    assert.match(written, /AI_CHECKPOINT_PG_PASSWORD=change_me_pg_password/);
+    assert.match(
+      written,
+      /AI_CHECKPOINT_PG_URL=postgresql:\/\/postgres:change_me_pg_password@postgres:5432\/postgres/,
+    );
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
   }
 });
