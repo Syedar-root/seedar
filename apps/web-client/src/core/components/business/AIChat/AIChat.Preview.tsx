@@ -5,7 +5,6 @@ import { AIChat } from "./";
 import { useSSEHandler } from "./hooks/useSSEHandler.hook";
 import { useWorkflowInterruptExecutor } from "./hooks/useWorkflowInterruptExecutor.hook";
 import { ModelConfigDialog, HistorySessionMenu } from "./components";
-import { ScrollArea } from "../../ui/ScrollArea";
 import { useAiChatScenesStore } from "@/core/store";
 import type { ChatMessage, ChatModeItem, CommandItem, SSEData } from "./types";
 import styles from "./AIChat.Preview.module.scss";
@@ -25,9 +24,11 @@ import type { WorkflowRunResult } from "#pkg/seedar/types";
 import { useDeleteAiSession } from "#pkg/seedar/ui-react";
 
 const AI_CHAT_SESSION_STORAGE_KEY = "seedar.ai-chat.preview.session";
+const WORKFLOW_INTERRUPT_SCAN_LIMIT = 200;
 
 interface AIChatPreviewCache {
   historyMessages: ChatMessage[];
+  historyCursor: string | null;
   currentModel: string;
   currentMode: AiChatMode;
   error: string | null;
@@ -147,7 +148,44 @@ const mapSessionMessageToChatMessage = (
 };
 
 const mergeMessages = (history: ChatMessage[], live: ChatMessage[]) => {
-  return [...history, ...live];
+  const isTextUserMessage = (message: ChatMessage) =>
+    message.role === "user" &&
+    message.type === "text" &&
+    typeof message.content === "string";
+
+  const isOptimisticUserMessage = (message: ChatMessage) =>
+    isTextUserMessage(message) &&
+    Boolean((message.meta as Record<string, unknown> | undefined)?.optimistic);
+
+  const hasCanonicalUserMessage = (candidate: ChatMessage) =>
+    history.some((message) => {
+      if (!isTextUserMessage(message) || !isTextUserMessage(candidate)) {
+        return false;
+      }
+
+      if (message.content !== candidate.content) {
+        return false;
+      }
+
+      return Math.abs(message.timestamp - candidate.timestamp) <= 2 * 60 * 1000;
+    });
+
+  const seenIds = new Set(history.map((message) => message.id));
+  const merged = [...history];
+
+  live.forEach((message) => {
+    if (isOptimisticUserMessage(message) && hasCanonicalUserMessage(message)) {
+      return;
+    }
+
+    if (seenIds.has(message.id)) {
+      return;
+    }
+    seenIds.add(message.id);
+    merged.push(message);
+  });
+
+  return merged;
 };
 
 const AIChatPreview: React.FC = () => {
@@ -170,6 +208,14 @@ const AIChatPreview: React.FC = () => {
   const [historyMessages, setHistoryMessages] = useState<ChatMessage[]>(
     cachedState?.historyMessages || [],
   );
+  const [historyCursor, setHistoryCursor] = useState<string | null>(
+    cachedState?.historyCursor || null,
+  );
+  const [historyLoadedSessionId, setHistoryLoadedSessionId] = useState<
+    string | null
+  >(cachedState?.currentSession?.id || null);
+  const [isLoadingEarlierHistory, setIsLoadingEarlierHistory] =
+    useState(false);
   const [liveMessages, setLiveMessages] = useState<ChatMessage[]>([]);
   const [contextStatus, setContextStatus] = useState<AiContextStatusEvent | null>(
     null,
@@ -180,6 +226,7 @@ const AIChatPreview: React.FC = () => {
   const [sessionListError, setSessionListError] = useState<string | null>(null);
 
   const activeStreamControllerRef = useRef<StreamController | null>(null);
+  const historyRequestTokenRef = useRef(0);
   const liveMessagesRef = useRef<ChatMessage[]>([]);
   const contextStatusTimerRef = useRef<number | null>(null);
   const historyMenuRef = useRef<HTMLDivElement | null>(null);
@@ -223,20 +270,70 @@ const AIChatPreview: React.FC = () => {
     ];
   }, [activeScenes, location.hash, location.pathname, location.search]);
 
-  const loadSessionHistory = async (sessionId: string) => {
-    const allMessages: AiSessionMessageResponse[] = [];
-    let cursor: string | undefined;
+  const loadSessionHistory = useCallback(
+    async (sessionId: string) => {
+      const requestToken = ++historyRequestTokenRef.current;
+      try {
+        const page = await aiApi.listSessionMessages(sessionId, undefined, 50);
+        if (requestToken !== historyRequestTokenRef.current) {
+          return;
+        }
+        setHistoryMessages(page.data.map(mapSessionMessageToChatMessage));
+        setHistoryCursor(page.nextCursor ?? null);
+        setHistoryLoadedSessionId(sessionId);
+      } catch (requestError) {
+        if (requestToken !== historyRequestTokenRef.current) {
+          return;
+        }
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "加载历史消息失败",
+        );
+      }
+    },
+    [aiApi],
+  );
 
-    do {
-      const page = await aiApi.listSessionMessages(sessionId, cursor, 50);
-      allMessages.unshift(...page.data);
-      cursor = page.nextCursor;
-    } while (cursor);
+  const loadOlderHistory = useCallback(async (): Promise<boolean> => {
+    if (!currentSession?.id || !historyCursor || isLoadingEarlierHistory) {
+      return false;
+    }
 
-    const mapped = allMessages.map(mapSessionMessageToChatMessage);
-    setHistoryMessages(mapped);
-    setLiveMessages([]);
-  };
+    const requestToken = ++historyRequestTokenRef.current;
+    setIsLoadingEarlierHistory(true);
+    try {
+      const page = await aiApi.listSessionMessages(
+        currentSession.id,
+        historyCursor,
+        50,
+      );
+      if (requestToken !== historyRequestTokenRef.current) {
+        return false;
+      }
+      setHistoryMessages((prev) => {
+        const existingIds = new Set(prev.map((message) => message.id));
+        const olderMessages = page.data
+          .map(mapSessionMessageToChatMessage)
+          .filter((message) => !existingIds.has(message.id));
+        return [...olderMessages, ...prev];
+      });
+      setHistoryCursor(page.nextCursor ?? null);
+      return true;
+    } catch (requestError) {
+      if (requestToken !== historyRequestTokenRef.current) {
+        return false;
+      }
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "加载历史消息失败",
+      );
+      return false;
+    } finally {
+      setIsLoadingEarlierHistory(false);
+    }
+  }, [aiApi, currentSession?.id, historyCursor, isLoadingEarlierHistory]);
 
   const loadSessionList = useCallback(async () => {
     setIsSessionListLoading(true);
@@ -268,10 +365,16 @@ const AIChatPreview: React.FC = () => {
   const handleSelectSession = (session: AiSessionResponse) => {
     activeStreamControllerRef.current?.close();
     activeStreamControllerRef.current = null;
+    historyRequestTokenRef.current += 1;
     setIsLoading(false);
     setError(null);
     setContextStatus(null);
     setHandledInterruptIds([]);
+    setHistoryMessages([]);
+    setHistoryCursor(null);
+    setHistoryLoadedSessionId(null);
+    setIsLoadingEarlierHistory(false);
+    setLiveMessages([]);
     setCurrentSession(session);
     setIsHistoryMenuOpen(false);
   };
@@ -315,6 +418,8 @@ const AIChatPreview: React.FC = () => {
       ));
 
     if (session?.id && !currentSession?.id) {
+      historyRequestTokenRef.current += 1;
+      setHistoryLoadedSessionId(session.id);
       setCurrentSession(session);
     }
 
@@ -327,6 +432,7 @@ const AIChatPreview: React.FC = () => {
         role: "user",
         timestamp: Date.now(),
         done: true,
+        meta: { optimistic: true },
       };
       setLiveMessages((prev) => [...prev, userMessage]);
     }
@@ -401,14 +507,11 @@ const AIChatPreview: React.FC = () => {
             }
 
             activeStreamControllerRef.current = null;
+            historyRequestTokenRef.current += 1;
+            setHistoryMessages((prev) => mergeMessages(prev, liveMessagesRef.current));
+            setLiveMessages([]);
             if (session?.id) {
-              await loadSessionHistory(session.id);
               await loadSessionList();
-            } else {
-              setHistoryMessages((prev) =>
-                mergeMessages(prev, liveMessagesRef.current),
-              );
-              setLiveMessages([]);
             }
           },
           onError: (requestError) => {
@@ -435,12 +538,22 @@ const AIChatPreview: React.FC = () => {
   const handleStopMessage = () => {
     activeStreamControllerRef.current?.close();
     activeStreamControllerRef.current = null;
+    historyRequestTokenRef.current += 1;
     setIsLoading(false);
   };
 
+  const interruptScanMessages = useMemo(() => {
+    if (liveMessages.length >= WORKFLOW_INTERRUPT_SCAN_LIMIT) {
+      return liveMessages.slice(-WORKFLOW_INTERRUPT_SCAN_LIMIT);
+    }
+
+    const historyTakeCount = WORKFLOW_INTERRUPT_SCAN_LIMIT - liveMessages.length;
+    return [...historyMessages.slice(-historyTakeCount), ...liveMessages];
+  }, [historyMessages, liveMessages]);
+
   useWorkflowInterruptExecutor({
     enabled: !isLoading,
-    messages: [...historyMessages, ...liveMessages],
+    messages: interruptScanMessages,
     onUpdateMessage: (id, updates) => {
       const applyUpdates = (items: ChatMessage[]) =>
         items.map((msg) => {
@@ -468,7 +581,11 @@ const AIChatPreview: React.FC = () => {
   const handleAddChat = async () => {
     activeStreamControllerRef.current?.close();
     activeStreamControllerRef.current = null;
+    historyRequestTokenRef.current += 1;
     setHistoryMessages([]);
+    setHistoryCursor(null);
+    setHistoryLoadedSessionId(null);
+    setIsLoadingEarlierHistory(false);
     setLiveMessages([]);
     setCurrentSession(null);
     setError(null);
@@ -534,8 +651,12 @@ const AIChatPreview: React.FC = () => {
       return;
     }
 
+    if (historyLoadedSessionId === currentSession.id) {
+      return;
+    }
+
     void loadSessionHistory(currentSession.id);
-  }, [currentSession?.id]);
+  }, [currentSession?.id, historyLoadedSessionId, loadSessionHistory]);
 
   useEffect(() => {
     if (!isHistoryMenuOpen) {
@@ -565,6 +686,7 @@ const AIChatPreview: React.FC = () => {
 
     const snapshot: AIChatPreviewCache = {
       historyMessages,
+      historyCursor,
       currentModel,
       currentMode,
       error,
@@ -578,6 +700,7 @@ const AIChatPreview: React.FC = () => {
     );
   }, [
     historyMessages,
+    historyCursor,
     currentModel,
     currentMode,
     error,
@@ -602,6 +725,9 @@ const AIChatPreview: React.FC = () => {
           style={{ height: "100%", border: "none" }}
           historyMessages={historyMessages}
           liveMessages={liveMessages}
+          hasMoreHistory={Boolean(historyCursor)}
+          isLoadingEarlierHistory={isLoadingEarlierHistory}
+          onLoadEarlierHistory={loadOlderHistory}
           contextStatus={contextStatus}
           loading={isLoading}
           error={error}

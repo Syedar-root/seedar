@@ -77,15 +77,19 @@ export const DatasetPage = () => {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
+      <header className={styles.header} data-tour-id="dataset-page-header">
         <h1 className={styles.title}>数据集管理</h1>
-        <button className={styles.createButton} onClick={handleCreateDataset}>
+        <button
+          className={styles.createButton}
+          onClick={handleCreateDataset}
+          data-tour-id="dataset-create-button"
+        >
           <Plus size={16} />
           新建数据集
         </button>
       </header>
 
-      <div className={styles.filters}>
+      <div className={styles.filters} data-tour-id="dataset-page-filters">
         <input
           type="text"
           className={styles.searchInput}
@@ -96,10 +100,11 @@ export const DatasetPage = () => {
           onCompositionEnd={(e) => {
             handleSearchCompositionEnd((e.target as HTMLInputElement).value);
           }}
+          data-tour-id="dataset-search-input"
         />
       </div>
 
-      <main className={styles.content}>
+      <main className={styles.content} data-tour-id="dataset-page-content">
         {isLoading && (
           <div className={styles.loadingState}>
             <Loader2 size={32} className={styles.loadingSpinner} />
@@ -119,7 +124,7 @@ export const DatasetPage = () => {
         {!isLoading &&
           !error &&
           (!filteredDatasets || filteredDatasets.length === 0) && (
-            <div className={styles.emptyState}>
+            <div className={styles.emptyState} data-tour-id="dataset-empty-state">
               <Database size={48} className={styles.emptyIcon} />
               <h3 className={styles.emptyTitle}>暂无数据集</h3>
               <p className={styles.emptyDesc}>
@@ -132,7 +137,7 @@ export const DatasetPage = () => {
           !error &&
           filteredDatasets &&
           filteredDatasets.length > 0 && (
-            <div className={styles.grid}>
+            <div className={styles.grid} data-tour-id="dataset-grid">
               {filteredDatasets.map((dataset) => (
                 <DatasetCard
                   key={dataset.id}

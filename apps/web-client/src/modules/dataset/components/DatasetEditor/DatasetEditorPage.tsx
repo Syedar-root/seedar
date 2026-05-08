@@ -177,7 +177,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
   return (
     <div className={styles.container}>
       {isCreateMode && (
-        <aside className={styles.sidebar}>
+        <aside className={styles.sidebar} data-tour-id="dataset-editor-timeline">
           <Timeline
             steps={timelineSteps}
             currentStep={currentStep}
@@ -186,8 +186,8 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
         </aside>
       )}
 
-      <main className={styles.mainContent}>
-        <div className={styles.header}>
+      <main className={styles.mainContent} data-tour-id="dataset-editor-page">
+        <div className={styles.header} data-tour-id="dataset-editor-header">
           <h1 className={styles.title}>
             {isCreateMode ? "创建数据集" : "编辑数据集"}
           </h1>
@@ -196,12 +196,18 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
           </p>
         </div>
 
-        <div className={styles.content}>{renderStepContent()}</div>
+        <div className={styles.content} data-tour-id="dataset-editor-content">
+          {renderStepContent()}
+        </div>
 
-        <div className={styles.footer}>
+        <div className={styles.footer} data-tour-id="dataset-editor-footer">
           <div className={styles.footerLeft}>
             {!isFirstStep && (
-              <button className={styles.button} onClick={goToPrevStep}>
+              <button
+                className={styles.button}
+                onClick={goToPrevStep}
+                data-tour-id="dataset-editor-prev-button"
+              >
                 <ChevronLeft size={16} />
                 上一步
               </button>
@@ -214,6 +220,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
                 className={`${styles.button} ${styles.primaryButton}`}
                 onClick={handleSubmit}
                 disabled={!canGoNext() || isSubmitting}
+                data-tour-id="dataset-editor-submit-button"
               >
                 {isSubmitting ? (
                   <>
@@ -232,6 +239,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
                 className={`${styles.button} ${styles.primaryButton}`}
                 onClick={goToNextStep}
                 disabled={!canGoNext()}
+                data-tour-id="dataset-editor-next-button"
               >
                 下一步
                 <ChevronRight size={16} />

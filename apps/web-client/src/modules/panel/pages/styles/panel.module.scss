@@ -19,6 +19,15 @@
   background: var(--bg-base);
 }
 
+.leftPaneGroup {
+  display: flex;
+  flex: 0 1 auto;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .editor {
   width: 300px;
   border-left: 1px solid var(--border-base);

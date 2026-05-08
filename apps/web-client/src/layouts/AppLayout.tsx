@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { GlobalNavigation } from "@/core/components/business/GlobalNavigation";
 import AIChatPreview from "@/core/components/business/AIChat";
+import { AppOnboardingManager } from "@/core/components/business/AppOnboardingManager";
 import { useAppStore } from "@/core/store";
 import styles from "./AppLayout.module.scss";
 import type { AppLayoutProps } from "./types";
@@ -62,6 +63,7 @@ const AppLayout = (_props: AppLayoutProps) => {
           </Panel>
         </Group>
       </div>
+      <AppOnboardingManager />
     </div>
   );
 };

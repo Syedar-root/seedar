@@ -159,6 +159,9 @@ export interface AIChatProps {
   messages?: ChatMessage[];
   historyMessages?: ChatMessage[];
   liveMessages?: ChatMessage[];
+  hasMoreHistory?: boolean;
+  isLoadingEarlierHistory?: boolean;
+  onLoadEarlierHistory?: () => boolean | Promise<boolean>;
   contextStatus?: AiContextStatusEvent | null;
   loading?: boolean;
   onSendMessage?: (

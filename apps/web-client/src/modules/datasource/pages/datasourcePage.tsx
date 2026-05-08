@@ -78,12 +78,13 @@ export const DatasourcePage = () => {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
+      <header className={styles.header} data-tour-id="datasource-page-header">
         <h1 className={styles.title}>数据源管理</h1>
         <button
           type="button"
           className={styles.createButton}
           onClick={handleCreateDatasource}
+          data-tour-id="datasource-create-button"
         >
           <Plus size={16} />
           创建数据源
@@ -94,7 +95,7 @@ export const DatasourcePage = () => {
         style={{ flex: 1, minHeight: 0 }}
         contentStyle={{ minWidth: 0 }}
       >
-        <main className={styles.content}>
+        <main className={styles.content} data-tour-id="datasource-page-content">
           {isLoading && (
             <div className={styles.loadingState}>
               <Loader2 size={32} className={styles.loadingSpinner} />
@@ -112,7 +113,7 @@ export const DatasourcePage = () => {
           )}
 
           {!isLoading && !error && (!datasources || datasources.length === 0) && (
-            <div className={styles.emptyState}>
+            <div className={styles.emptyState} data-tour-id="datasource-empty-state">
               <Database size={48} className={styles.emptyIcon} />
               <h3 className={styles.emptyTitle}>暂无数据源</h3>
               <p className={styles.emptyDesc}>
@@ -122,7 +123,7 @@ export const DatasourcePage = () => {
           )}
 
           {!isLoading && !error && datasources && datasources.length > 0 && (
-            <div className={styles.grid}>
+            <div className={styles.grid} data-tour-id="datasource-grid">
               {datasources.map((datasource) => (
                 <DatasourceCard
                   key={datasource.id}

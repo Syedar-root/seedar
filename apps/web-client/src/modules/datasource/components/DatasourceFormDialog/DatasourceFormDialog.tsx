@@ -193,7 +193,7 @@ export const DatasourceFormDialog: React.FC<DatasourceFormDialogProps> = ({
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop className={styles.backdrop} />
-        <Dialog.Popup className={styles.popup}>
+        <Dialog.Popup className={styles.popup} data-tour-id="datasource-form-dialog">
           <div className={styles.content}>
             <Dialog.Title className={styles.title} id="dialog-title">
               {DIALOG_TITLE_MAP[mode]}
@@ -260,8 +260,13 @@ export const DatasourceFormDialog: React.FC<DatasourceFormDialogProps> = ({
               </div>
             </ScrollArea>
 
-            <div className={styles.actions}>
-              <button type="button" className={styles.cancelButton} onClick={onClose}>
+            <div className={styles.actions} data-tour-id="datasource-form-actions">
+              <button
+                type="button"
+                className={styles.cancelButton}
+                onClick={onClose}
+                data-tour-id="datasource-form-cancel-button"
+              >
                 取消
               </button>
               <button
@@ -269,6 +274,7 @@ export const DatasourceFormDialog: React.FC<DatasourceFormDialogProps> = ({
                 className={styles.saveButton}
                 onClick={handleSubmit}
                 disabled={isSubmitting}
+                data-tour-id="datasource-form-save-button"
               >
                 {isSubmitting ? submitLabels.loading : submitLabels.idle}
               </button>

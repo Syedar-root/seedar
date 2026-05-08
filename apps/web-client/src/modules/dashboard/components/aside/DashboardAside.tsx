@@ -34,7 +34,7 @@ export const DashboardAside = () => {
   };
 
   return (
-    <aside className={styles.aside}>
+    <aside className={styles.aside} data-tour-id="dashboard-sidebar">
       <div className={styles.header}>
         <span className={styles.title}>看板列表</span>
         <button

@@ -6,7 +6,6 @@ import { getFrontendWorkflowTemplate } from "#pkg/seedar/types";
 import { CodeHighlighter, Mermaid } from "@ant-design/x";
 
 const Code: React.FC<ComponentProps> = (props) => {
-  console.log("hcs props", props);
   const { className, children } = props;
   const lang = className?.match(/language-(\w+)/)?.[1] || "";
 
