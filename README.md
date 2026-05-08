@@ -162,7 +162,7 @@ $env:SEEDAR_VERSION = "latest"
 .\deploy\up-prod.ps1
 ```
 
-前置条件：配置好 `apps/server/.env.production` 并安装 Docker。
+前置条件：配置好 `apps/server/.env.production` 并安装 Docker
 
 ## 项目结构
 
@@ -183,13 +183,13 @@ seedar/
 
 ## 主要功能模块
 
-| 模块 | 说明 |
-|------|------|
-| **数据源 (Datasource)** | 连接 MySQL、PostgreSQL 等外部数据库，自动同步元数据 |
-| **数据集 (Dataset)** | 基于数据源定义语义化数据集，支持表关联、字段配置、指标计算 |
-| **查询 (Query)** | 使用可视化 DSL 或 AI 生成查询，底层自动转换为 SQL |
-| **仪表盘 (Dashboard)** | 拖拽式面板布局，支持多种图表类型 |
-| **AI 对话 (AI Chat)** | 基于 LangGraph 的智能分析助手，支持多轮对话、工具调用 |
+| 模块                    | 说明                                                       |
+| ----------------------- | ---------------------------------------------------------- |
+| **数据源 (Datasource)** | 连接 MySQL、PostgreSQL 等外部数据库，自动同步元数据        |
+| **数据集 (Dataset)**    | 基于数据源定义语义化数据集，支持表关联、字段配置、指标计算 |
+| **查询 (Query)**        | 使用可视化 DSL 或 AI 生成查询，底层自动转换为 SQL          |
+| **仪表盘 (Dashboard)**  | 拖拽式面板布局，支持多种图表类型                           |
+| **AI 对话 (AI Chat)**   | 基于 LangGraph 的智能分析助手，支持多轮对话、工具调用      |
 
 ## 贡献
 
