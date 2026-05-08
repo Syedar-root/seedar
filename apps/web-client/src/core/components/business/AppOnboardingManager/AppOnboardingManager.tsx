@@ -29,14 +29,14 @@ const ONBOARDING_PRESETS: Record<OnboardingPreset, OnboardingPresetConfig> = {
   },
   guided: {
     label: "看重点",
-    description: "先带我走一遍关键入口，不强制操作。",
+    description: "先带我走一遍关键入口，边看边熟悉。",
     image: keyIllustration,
     imageAlt: "看重点",
     steps: GUIDED_ONBOARDING_STEPS,
   },
   full: {
     label: "完整带我",
-    description: "从路径到动作都讲一遍，并包含强制步骤。",
+    description: "从路径到动作都讲一遍，适合第一次完整上手。",
     image: fullIllustration,
     imageAlt: "完整带我",
     steps: FULL_ONBOARDING_STEPS,
@@ -192,14 +192,14 @@ export const AppOnboardingManager = (_props: AppOnboardingManagerProps) => {
         width={720}
         wrapClassName={styles.modalWrap}
         closable={false}
-        maskClosable={false}
+        mask={{ closable: false }}
         keyboard={false}
         centered
       >
         <div className={styles.panel}>
           <div className={styles.header}>
             <div className={styles.heading}>
-              <h3>你想怎么开始？</h3>
+              <h3>你好！很高兴你开始使用 Seedar</h3>
               <p>选一个方式，我按你的节奏带你上手。</p>
             </div>
           </div>
