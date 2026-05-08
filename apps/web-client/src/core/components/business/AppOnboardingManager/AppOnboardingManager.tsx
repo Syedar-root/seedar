@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { Modal } from "antd";
 import type { NavigateFunction } from "react-router-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -7,24 +8,17 @@ import {
   type AppTourStep,
   type UseAppTourResult,
 } from "@/core/components/business/AppTour";
+import quickIllustration from "@/core/assets/illustration/quick.png";
+import keyIllustration from "@/core/assets/illustration/key.png";
+import fullIllustration from "@/core/assets/illustration/full.png";
+import styles from "./AppOnboardingManager.module.scss";
 
-/**
- * 步骤 1：运行时上下文
- * 仅暴露流程推进所需能力，避免步骤回调直接依赖外部复杂状态。
- */
 interface OnboardingRuntime {
   pathname: string;
   navigate: NavigateFunction;
   tour: Pick<UseAppTourResult, "next" | "finish">;
 }
 
-/**
- * 步骤 2：动作驱动的步骤守卫定义
- * - selector / eventName：声明监听目标与事件类型。
- * - canActivate：运行时门禁（如仅在指定路由生效）。
- * - validate：触发动作后进行业务级校验，支持异步。
- * - onComplete：仅在校验通过后推进步骤。
- */
 interface OnboardingStepCompletion {
   selector?: string;
   eventName?: keyof DocumentEventMap;
@@ -37,24 +31,17 @@ interface OnboardingStepCompletion {
   onTimeout?: (runtime: OnboardingRuntime) => void;
 }
 
-/**
- * 步骤 3：单步配置模型
- * - step：展示层配置（标题、描述、锚点等）。
- * - completion：行为层配置（存在时代表强制动作步骤）。
- */
 interface OnboardingStepConfig {
   step: AppTourStep;
   completion?: OnboardingStepCompletion;
 }
 
+type OnboardingPreset = "quick" | "guided" | "full";
+
 const HIDDEN_ACTION_STYLE = { display: "none" } as const;
 const DEFAULT_WAIT_TIMEOUT_MS = 8000;
-const STEP4_WAIT_SELECTOR = '[data-tour-id="datasource-create-button"]';
+const STEP_CREATE_DATASOURCE_SELECTOR = '[data-tour-id="datasource-create-button"]';
 
-/**
- * 步骤 4：数据驱动的引导步骤定义
- * 后续新增步骤时，优先在这里增改，管理器逻辑保持通用。
- */
 const APP_ONBOARDING_STEP_CONFIGS: OnboardingStepConfig[] = [
   {
     step: {
@@ -86,8 +73,7 @@ const APP_ONBOARDING_STEP_CONFIGS: OnboardingStepConfig[] = [
   {
     step: {
       title: "先进入数据源页面",
-      description:
-        "这是强制步骤：请点击“数据源”导航项，完成后才会继续。",
+      description: "这是强制步骤：请点击“数据源”导航项，完成后才会继续。",
       selector: '[data-tour-id="global-nav-datasource"]',
       placement: "bottom",
       closable: false,
@@ -98,10 +84,11 @@ const APP_ONBOARDING_STEP_CONFIGS: OnboardingStepConfig[] = [
       selector: '[data-tour-id="global-nav-datasource"]',
       eventName: "click",
       onComplete: async ({ navigate, tour }) => {
-        // 关键修复：先导航，再等待下一步目标出现，最后推进到下一步。
-        // 这样可避免“先 next 再渲染”导致的 target 丢失。
         navigate("/datasource");
-        await waitForTarget(STEP4_WAIT_SELECTOR, DEFAULT_WAIT_TIMEOUT_MS);
+        await waitForTarget(
+          STEP_CREATE_DATASOURCE_SELECTOR,
+          DEFAULT_WAIT_TIMEOUT_MS,
+        );
         tour.next();
       },
       onError: (error) => {
@@ -117,14 +104,14 @@ const APP_ONBOARDING_STEP_CONFIGS: OnboardingStepConfig[] = [
       title: "创建数据源",
       description:
         "这是强制步骤：请点击数据源页面右上角的“创建数据源”按钮。",
-      selector: STEP4_WAIT_SELECTOR,
+      selector: STEP_CREATE_DATASOURCE_SELECTOR,
       placement: "bottom",
       closable: false,
       nextButtonProps: { style: HIDDEN_ACTION_STYLE },
       prevButtonProps: { style: HIDDEN_ACTION_STYLE },
     },
     completion: {
-      selector: STEP4_WAIT_SELECTOR,
+      selector: STEP_CREATE_DATASOURCE_SELECTOR,
       eventName: "click",
       canActivate: ({ pathname }) => pathname === "/datasource",
       validate: ({ pathname }) => pathname === "/datasource",
@@ -141,17 +128,39 @@ const APP_ONBOARDING_STEP_CONFIGS: OnboardingStepConfig[] = [
   },
 ];
 
-/**
- * 步骤 5：等待目标元素出现
- * 目的：
- * - SPA 场景下，目标节点可能因路由切换或异步数据而延迟渲染。
- * - 如果只做一次 querySelector，容易错过时机并导致强制步骤卡住。
- *
- * 机制：
- * - 先做一次快速查询；
- * - 未命中时使用 MutationObserver 监听 document.body；
- * - 命中即 resolve，超时即 reject，避免观察器长期驻留。
- */
+const ONBOARDING_PRESETS: Record<
+  OnboardingPreset,
+  {
+    label: string;
+    description: string;
+    image: string;
+    imageAlt: string;
+    stepIndexes: number[];
+  }
+> = {
+  quick: {
+    label: "直接开用",
+    description: "我已经会了，先自己操作。",
+    image: quickIllustration,
+    imageAlt: "直接开用",
+    stepIndexes: [],
+  },
+  guided: {
+    label: "看重点",
+    description: "先带我走一遍关键步骤。",
+    image: keyIllustration,
+    imageAlt: "看重点",
+    stepIndexes: [0, 3, 4],
+  },
+  full: {
+    label: "完整带我",
+    description: "从头到尾讲一遍，我想系统了解。",
+    image: fullIllustration,
+    imageAlt: "完整带我",
+    stepIndexes: [0, 1, 2, 3, 4],
+  },
+};
+
 const waitForTarget = (
   selector: string,
   timeoutMs: number = DEFAULT_WAIT_TIMEOUT_MS,
@@ -202,10 +211,6 @@ const waitForTarget = (
   });
 };
 
-/**
- * 步骤 6：事件委托命中辅助函数
- * 仅在事件目标是 Element 时使用 closest(selector) 进行命中判断。
- */
 const matchByClosest = (eventTarget: EventTarget | null, selector: string) => {
   if (!(eventTarget instanceof Element)) {
     return null;
@@ -219,16 +224,17 @@ export const AppOnboardingManager = (_props: AppOnboardingManagerProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  /**
-   * 步骤 7：引导会话状态
-   * - 使用稳定的 storage key（不带版本后缀）；
-   * - 关闭引导不自动标记完成，强制步骤必须通过动作达成。
-   */
   const tour = useAppTour({
     storageKey: "seedar-onboarding-app-layout-tour",
-    autoStart: true,
+    autoStart: false,
     markCompletedOnClose: false,
   });
+
+  const [selectedPreset, setSelectedPreset] = useState<OnboardingPreset | null>(
+    null,
+  );
+  const isProfileModalOpen = !tour.isCompleted && selectedPreset === null;
+  const hasBootstrappedRef = useRef(false);
 
   const runtime = useMemo<OnboardingRuntime>(
     () => ({
@@ -242,15 +248,37 @@ export const AppOnboardingManager = (_props: AppOnboardingManagerProps) => {
     [location.pathname, navigate, tour.finish, tour.next],
   );
 
-  const currentStepConfig = APP_ONBOARDING_STEP_CONFIGS[tour.current];
+  const activeStepConfigs = useMemo(() => {
+    if (!selectedPreset) {
+      return [];
+    }
+    const indexes = ONBOARDING_PRESETS[selectedPreset].stepIndexes;
+    return indexes.map((index) => APP_ONBOARDING_STEP_CONFIGS[index]);
+  }, [selectedPreset]);
 
-  /**
-   * 步骤 8：活动守卫令牌
-   * 每次步骤变化都更新令牌，异步回调在执行前必须校验令牌一致，
-   * 以避免“旧步骤的异步结果推进新步骤”的竞态问题。
-   */
+  useEffect(() => {
+    if (hasBootstrappedRef.current || !selectedPreset) {
+      return;
+    }
+
+    hasBootstrappedRef.current = true;
+
+    if (selectedPreset === "quick") {
+      tour.finish();
+      return;
+    }
+
+    if (!tour.isCompleted) {
+      tour.start(0);
+    }
+  }, [selectedPreset, tour]);
+
+  const handleSelectPreset = (preset: OnboardingPreset) => {
+    setSelectedPreset(preset);
+  };
+
+  const currentStepConfig = activeStepConfigs[tour.current];
   const guardTokenRef = useRef(0);
-  // 防止双击/冒泡重复触发导致并发进入校验链路。
   const isCompletingRef = useRef(false);
 
   useEffect(() => {
@@ -275,13 +303,6 @@ export const AppOnboardingManager = (_props: AppOnboardingManagerProps) => {
     const timeoutMs = completion.timeoutMs ?? DEFAULT_WAIT_TIMEOUT_MS;
     let isDisposed = false;
 
-    /**
-     * 步骤 9：目标就绪探测
-     * 即使采用事件委托，也提前等待目标出现，收益是：
-     * - 明确强制步骤是否具备可操作目标；
-     * - 提供可控的超时分支；
-     * - 为后续滚动定位等增强留接口。
-     */
     waitForTarget(selector, timeoutMs).catch((error) => {
       if (isDisposed || currentToken !== guardTokenRef.current) {
         return;
@@ -290,13 +311,6 @@ export const AppOnboardingManager = (_props: AppOnboardingManagerProps) => {
       completion.onError?.(error, runtime);
     });
 
-    /**
-     * 步骤 10：基于 document 的事件委托监听
-     * 采用委托的原因：
-     * - 目标节点可能在 React 重新渲染后被替换；
-     * - 直接绑在节点上的监听会随旧节点一起失效；
-     * - 委托 + closest 命中可跨重渲染保持稳定。
-     */
     const handleDelegatedEvent = async (event: Event) => {
       if (isDisposed || currentToken !== guardTokenRef.current) {
         return;
@@ -315,12 +329,8 @@ export const AppOnboardingManager = (_props: AppOnboardingManagerProps) => {
         return;
       }
 
-      // 步骤 10.1：进入校验链路前先加锁，直到本次流程结束。
       isCompletingRef.current = true;
-
       try {
-        // 步骤 10.2：执行步骤守卫校验（可异步）。
-        // validate 返回 false 时，说明动作触发了但业务条件未满足。
         if (completion.validate) {
           const isValid = await completion.validate(runtime);
           if (!isValid) {
@@ -333,43 +343,81 @@ export const AppOnboardingManager = (_props: AppOnboardingManagerProps) => {
           return;
         }
 
-        // 步骤 10.3：校验通过，推进步骤（next 或 finish）。
         await completion.onComplete(runtime);
       } catch (error) {
-        // 步骤 10.4：异常分支外抛给 onError，便于日志与恢复。
         completion.onError?.(error, runtime);
       } finally {
-        // 步骤 10.5：无论成功失败都释放锁，避免后续步骤被阻塞。
         isCompletingRef.current = false;
       }
     };
 
     document.addEventListener(eventName, handleDelegatedEvent, true);
-
     return () => {
       isDisposed = true;
       document.removeEventListener(eventName, handleDelegatedEvent, true);
     };
   }, [currentStepConfig, runtime, tour.open]);
 
-  /**
-   * 步骤 11：交互策略切换
-   * - 强制动作步骤：禁手动关闭/切步，只能通过动作达成推进；
-   * - 普通说明步骤：保留默认下一步与关闭交互。
-   */
   const isActionStep = Boolean(currentStepConfig?.completion);
 
   return (
-    <AppTour
-      open={tour.open}
-      current={tour.current}
-      keyboard={!isActionStep}
-      closable={!isActionStep}
-      disabledInteraction={!isActionStep}
-      onClose={!isActionStep ? tour.close : undefined}
-      onChange={!isActionStep ? tour.setCurrent : undefined}
-      steps={APP_ONBOARDING_STEP_CONFIGS.map((item) => item.step)}
-    />
+    <>
+      <Modal
+        open={isProfileModalOpen}
+        title={null}
+        footer={null}
+        width={720}
+        wrapClassName={styles.modalWrap}
+        closable={false}
+        maskClosable={false}
+        keyboard={false}
+        centered
+      >
+        <div className={styles.panel}>
+          <div className={styles.header}>
+            <div className={styles.heading}>
+              <h3>你想怎么开始？</h3>
+              <p>选一个方式，我按你的节奏带你上手。</p>
+            </div>
+          </div>
+
+          <div className={styles.optionGrid}>
+            {(Object.keys(ONBOARDING_PRESETS) as OnboardingPreset[]).map(
+              (preset) => {
+                const item = ONBOARDING_PRESETS[preset];
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    className={styles.optionCard}
+                    onClick={() => handleSelectPreset(preset)}
+                  >
+                    <img
+                      className={styles.optionImage}
+                      src={item.image}
+                      alt={item.imageAlt}
+                    />
+                    <div className={styles.optionLabel}>{item.label}</div>
+                    <div className={styles.optionDesc}>{item.description}</div>
+                  </button>
+                );
+              },
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      <AppTour
+        open={tour.open && !isProfileModalOpen && activeStepConfigs.length > 0}
+        current={tour.current}
+        keyboard={!isActionStep}
+        closable={!isActionStep}
+        disabledInteraction={!isActionStep}
+        onClose={!isActionStep ? tour.close : undefined}
+        onChange={!isActionStep ? tour.setCurrent : undefined}
+        steps={activeStepConfigs.map((item) => item.step)}
+      />
+    </>
   );
 };
 
