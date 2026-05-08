@@ -20,13 +20,13 @@ export const useAppStore = create<AppState>()(
         setSeeMind: (value) => set({ isSeeMindOn: value }),
       }),
       {
-        name: 'app-storage',
-      }
+        name: 'seedar-app-storage',
+      },
     ),
     {
-      name: 'app-store',
-    }
-  )
+      name: 'seedar-app-store',
+    },
+  ),
 );
 
 export default useAppStore;

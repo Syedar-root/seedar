@@ -84,6 +84,7 @@ export const DatasourcePage = () => {
           type="button"
           className={styles.createButton}
           onClick={handleCreateDatasource}
+          data-tour-id="datasource-create-button"
         >
           <Plus size={16} />
           创建数据源
