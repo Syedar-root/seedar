@@ -148,10 +148,36 @@ const mapSessionMessageToChatMessage = (
 };
 
 const mergeMessages = (history: ChatMessage[], live: ChatMessage[]) => {
+  const isTextUserMessage = (message: ChatMessage) =>
+    message.role === "user" &&
+    message.type === "text" &&
+    typeof message.content === "string";
+
+  const isOptimisticUserMessage = (message: ChatMessage) =>
+    isTextUserMessage(message) &&
+    Boolean((message.meta as Record<string, unknown> | undefined)?.optimistic);
+
+  const hasCanonicalUserMessage = (candidate: ChatMessage) =>
+    history.some((message) => {
+      if (!isTextUserMessage(message) || !isTextUserMessage(candidate)) {
+        return false;
+      }
+
+      if (message.content !== candidate.content) {
+        return false;
+      }
+
+      return Math.abs(message.timestamp - candidate.timestamp) <= 2 * 60 * 1000;
+    });
+
   const seenIds = new Set(history.map((message) => message.id));
   const merged = [...history];
 
   live.forEach((message) => {
+    if (isOptimisticUserMessage(message) && hasCanonicalUserMessage(message)) {
+      return;
+    }
+
     if (seenIds.has(message.id)) {
       return;
     }
@@ -392,6 +418,8 @@ const AIChatPreview: React.FC = () => {
       ));
 
     if (session?.id && !currentSession?.id) {
+      historyRequestTokenRef.current += 1;
+      setHistoryLoadedSessionId(session.id);
       setCurrentSession(session);
     }
 
@@ -404,6 +432,7 @@ const AIChatPreview: React.FC = () => {
         role: "user",
         timestamp: Date.now(),
         done: true,
+        meta: { optimistic: true },
       };
       setLiveMessages((prev) => [...prev, userMessage]);
     }
