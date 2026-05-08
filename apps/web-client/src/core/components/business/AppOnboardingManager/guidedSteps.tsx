@@ -1,3 +1,4 @@
+import { OnboardingCelebrationDescription } from "./components/OnboardingCelebrationDescription";
 import type { OnboardingStepConfig } from "./types";
 
 export const GUIDED_ONBOARDING_STEPS: OnboardingStepConfig[] = [
@@ -58,8 +59,12 @@ export const GUIDED_ONBOARDING_STEPS: OnboardingStepConfig[] = [
   {
     step: {
       title: "引导完成",
-      description:
-        "关键入口已经介绍完了。你可以从数据源开始，也可以随时按自己的节奏继续探索。",
+      description: (
+        <OnboardingCelebrationDescription
+          imageAlt="引导完成庆祝插画"
+          message="关键入口已经介绍完了。你可以从数据源开始，也可以随时按自己的节奏继续探索。"
+        />
+      ),
       placement: "center",
     },
   },

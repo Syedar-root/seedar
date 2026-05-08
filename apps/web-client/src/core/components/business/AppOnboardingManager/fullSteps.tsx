@@ -1,3 +1,4 @@
+import { OnboardingCelebrationDescription } from "./components/OnboardingCelebrationDescription";
 import type { OnboardingRuntime, OnboardingStepConfig } from "./types";
 import {
   DEFAULT_WAIT_TIMEOUT_MS,
@@ -363,8 +364,12 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
   {
     step: {
       title: "完整引导完成",
-      description:
-        "完整流程已经结束。你已经看过数据源、数据集、图表面板和仪表板的主要区块与关键入口。",
+      description: (
+        <OnboardingCelebrationDescription
+          imageAlt="完整引导完成庆祝插画"
+          message="完整流程已经结束。你已经看过数据源、数据集、图表面板和仪表板的主要区块与关键入口。"
+        />
+      ),
       placement: "center",
     },
   },
