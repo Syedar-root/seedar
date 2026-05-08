@@ -6,7 +6,11 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: read
+  contents: write
+
+env:
+  DOCKER_NAMESPACE: ${{ vars.DOCKER_NAMESPACE != '' && vars.DOCKER_NAMESPACE || 'syedarhandsome' }}
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_USERNAME || vars.DOCKER_NAMESPACE != '' && vars.DOCKER_NAMESPACE || 'syedarhandsome' }}
 
 jobs:
   validate:
@@ -50,19 +54,49 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          if [ -z "${DOCKERHUB_USERNAME:-}" ]; then
-            echo "::error::DOCKERHUB_USERNAME secret is empty. Docker image release cannot continue."
+          if [ -z "${DOCKER_NAMESPACE:-}" ]; then
+            echo "::error::DOCKER_NAMESPACE is empty. Set repository variable DOCKER_NAMESPACE or use default."
             exit 1
           fi
           if [ -z "${DOCKERHUB_TOKEN:-}" ]; then
             echo "::error::DOCKERHUB_TOKEN secret is empty. Docker image release cannot continue."
             exit 1
           fi
+          if [ -z "${NPM_TOKEN:-}" ]; then
+            echo "::error::NPM_TOKEN secret is empty. CLI release cannot continue."
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           node -e "const pkg=require('./apps/cli/package.json'); const version=process.argv[1]; if (pkg.version !== version) { console.error(`apps/cli/package.json version ${pkg.version} does not match tag ${version}`); process.exit(1); }" "$VERSION"
         env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKER_NAMESPACE: ${{ env.DOCKER_NAMESPACE }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify publish credentials and target version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ steps.release.outputs.version }}"
+          PACKAGE_NAME=$(node -p "require('./apps/cli/package.json').name")
+
+          TMP_NPMRC="$(mktemp)"
+          trap 'rm -f "$TMP_NPMRC"' EXIT
+          printf "//registry.npmjs.org/:_authToken=%s\n" "$NPM_TOKEN" > "$TMP_NPMRC"
+          NPM_CONFIG_USERCONFIG="$TMP_NPMRC" npm whoami >/dev/null
+
+          if NPM_CONFIG_USERCONFIG="$TMP_NPMRC" npm view "${PACKAGE_NAME}@${VERSION}" version >/dev/null 2>&1; then
+            echo "::error::${PACKAGE_NAME}@${VERSION} already exists on npm. Refuse partial re-release."
+            exit 1
+          fi
+
+          echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin >/dev/null 2>&1
+          docker logout >/dev/null 2>&1 || true
+        env:
+          DOCKERHUB_USERNAME: ${{ env.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Build web dist
         run: |
@@ -79,10 +113,8 @@ jobs:
   build-server-image:
     needs: validate
     runs-on: ubuntu-latest
-    env:
-      DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - platform: linux/amd64
@@ -104,7 +136,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push server image by digest
@@ -137,8 +169,6 @@ jobs:
       - validate
       - build-server-image
     runs-on: ubuntu-latest
-    env:
-      DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
       - name: Download server digest artifacts
@@ -154,7 +184,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Create and verify server image manifest
@@ -184,10 +214,8 @@ jobs:
   build-web-image:
     needs: validate
     runs-on: ubuntu-latest
-    env:
-      DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - platform: linux/amd64
@@ -215,7 +243,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push web image by digest
@@ -247,9 +275,8 @@ jobs:
     needs:
       - validate
       - build-web-image
+      - publish-server-image
     runs-on: ubuntu-latest
-    env:
-      DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
       - name: Download web digest artifacts
@@ -265,7 +292,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Create and verify web image manifest
@@ -326,3 +353,34 @@ jobs:
         run: pnpm publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  cleanup-tag-on-failure:
+    needs:
+      - validate
+      - build-server-image
+      - publish-server-image
+      - build-web-image
+      - publish-web-image
+      - publish-cli
+    runs-on: ubuntu-latest
+    if: ${{ always() && (needs.validate.result == 'failure' || needs.build-server-image.result == 'failure' || needs.publish-server-image.result == 'failure' || needs.build-web-image.result == 'failure' || needs.publish-web-image.result == 'failure' || needs.publish-cli.result == 'failure') }}
+    steps:
+      - name: Delete failing tag
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${tag}`,
+              });
+              core.info(`Deleted tag ${tag}`);
+            } catch (error) {
+              if (error.status === 404 || error.status === 422) {
+                core.info(`Tag ${tag} was already missing or deleted.`);
+                return;
+              }
+              throw error;
+            }
