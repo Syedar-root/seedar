@@ -52,7 +52,7 @@ export const AppOnboardingManager = (_props: AppOnboardingManagerProps) => {
   const tour = useAppTour({
     storageKey: "seedar-onboarding-app-layout-tour",
     autoStart: false,
-    markCompletedOnClose: false,
+    markCompletedOnClose: true,
   });
 
   const [selectedPreset, setSelectedPreset] = useState<OnboardingPreset | null>(
@@ -183,8 +183,6 @@ export const AppOnboardingManager = (_props: AppOnboardingManagerProps) => {
   }, [currentStepConfig, runtime, tour.open]);
 
   const isActionStep = Boolean(currentStepConfig?.completion);
-  const shouldMarkCompletedOnClose = selectedPreset === "guided";
-
   return (
     <>
       <Modal
@@ -236,17 +234,12 @@ export const AppOnboardingManager = (_props: AppOnboardingManagerProps) => {
         open={tour.open && !isProfileModalOpen && activeStepConfigs.length > 0}
         current={tour.current}
         keyboard={!isActionStep}
-        closable={!isActionStep}
+        closable
         disabledInteraction={!isActionStep}
-        onClose={
-          !isActionStep
-            ? shouldMarkCompletedOnClose
-              ? tour.finish
-              : tour.close
-            : undefined
-        }
+        mask={selectedPreset === "guided" ? false : undefined}
+        onClose={tour.close}
         onChange={!isActionStep ? tour.setCurrent : undefined}
-        onFinish={shouldMarkCompletedOnClose ? tour.finish : undefined}
+        onFinish={tour.finish}
         zIndex={2000}
         steps={activeStepConfigs.map((item) => item.step)}
       />

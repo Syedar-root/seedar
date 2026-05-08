@@ -140,11 +140,11 @@ export const DashboardPage = () => {
   return (
     <div className={styles.container} data-tour-id="dashboard-page">
       <DashboardAside />
-      <main className={styles.main}>
+      <main className={styles.main} data-tour-id="dashboard-main">
         {dashboardId ? (
           <>
             {dashboard && (
-              <div className={styles.dashboardInfo}>
+              <div className={styles.dashboardInfo} data-tour-id="dashboard-info">
                 <div className={styles.dashboardInfoHeader}>
                   <div className={styles.dashboardName}>
                     {isEditing ? (
@@ -211,16 +211,26 @@ export const DashboardPage = () => {
                 </div>
               </div>
             )}
-            <SeedarDashboard
-              autoUpdate={true}
-              dashboardId={dashboardId}
-              mode={mode}
-              header={header}
-              panelHeaderExtra={panelHeaderExtra}
-            ></SeedarDashboard>
+            <div
+              className={styles.dashboardContent}
+              data-tour-id="dashboard-content"
+            >
+              <SeedarDashboard
+                autoUpdate={true}
+                dashboardId={dashboardId}
+                mode={mode}
+                header={header}
+                panelHeaderExtra={panelHeaderExtra}
+              ></SeedarDashboard>
+            </div>
           </>
         ) : (
+          <div
+            className={styles.dashboardContent}
+            data-tour-id="dashboard-content"
+          >
           <Empty size="fill" description="请选择一个看板" />
+          </div>
         )}
       </main>
     </div>

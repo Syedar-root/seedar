@@ -77,7 +77,6 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
       description: "先从数据源入口开始，后面的页面都会围绕它建立连接和复用。",
       selector: '[data-tour-id="global-nav-datasource"]',
       placement: "bottom",
-      closable: false,
       nextButtonProps: { style: HIDDEN_ACTION_STYLE },
       prevButtonProps: { style: HIDDEN_ACTION_STYLE },
     },
@@ -91,8 +90,7 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
   {
     step: {
       title: "数据源页头",
-      description:
-        "顶部是页面标题和新建入口，负责进入数据源管理和创建流程。",
+      description: "顶部是页面标题和新建入口，负责进入数据源管理和创建流程。",
       selector: '[data-tour-id="datasource-page-header"]',
       placement: "bottom",
     },
@@ -113,7 +111,6 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
         "这里是强制步骤，点击新建后进入弹窗，先看整体结构，再继续后面的页面。",
       selector: '[data-tour-id="datasource-create-button"]',
       placement: "bottom",
-      closable: false,
       nextButtonProps: { style: HIDDEN_ACTION_STYLE },
       prevButtonProps: { style: HIDDEN_ACTION_STYLE },
     },
@@ -127,10 +124,18 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
     step: {
       title: "数据源弹窗",
       description:
-        "弹窗主体是连接配置区，底部动作区负责取消和保存；本步直接关闭弹窗继续后续流程。",
+        "弹窗主体是连接配置区，底部动作区负责取消和保存。这里先看整体结构，不展开字段填写细节。",
+      selector: '[data-tour-id="datasource-form-dialog"]',
+      placement: "left",
+    },
+  },
+  {
+    step: {
+      title: "关闭数据源弹窗",
+      description:
+        "这是强制步骤：本次不提交，点击取消返回数据源页面继续后面的引导。",
       selector: '[data-tour-id="datasource-form-cancel-button"]',
       placement: "leftBottom",
-      closable: false,
       nextButtonProps: { style: HIDDEN_ACTION_STYLE },
       prevButtonProps: { style: HIDDEN_ACTION_STYLE },
     },
@@ -146,7 +151,6 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
         "接下来切到数据集，关注它如何复用数据源并组织字段、指标和筛选。",
       selector: '[data-tour-id="global-nav-dataset"]',
       placement: "bottom",
-      closable: false,
       nextButtonProps: { style: HIDDEN_ACTION_STYLE },
       prevButtonProps: { style: HIDDEN_ACTION_STYLE },
     },
@@ -160,8 +164,7 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
   {
     step: {
       title: "数据集页头",
-      description:
-        "顶部是页面标题和新建入口，负责进入数据集管理和创建流程。",
+      description: "顶部是页面标题和新建入口，负责进入数据集管理和创建流程。",
       selector: '[data-tour-id="dataset-page-header"]',
       placement: "bottom",
     },
@@ -169,8 +172,7 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
   {
     step: {
       title: "数据集筛选区",
-      description:
-        "这里负责搜索和筛选数据集，帮助你在进入编辑前快速定位目标。",
+      description: "这里负责搜索和筛选数据集，帮助你在进入编辑前快速定位目标。",
       selector: '[data-tour-id="dataset-page-filters"]',
       placement: "bottom",
     },
@@ -191,7 +193,6 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
         "这里是强制步骤，点击新建后进入编辑器，后面只看区块作用，不讲字段填写。",
       selector: '[data-tour-id="dataset-create-button"]',
       placement: "bottom",
-      closable: false,
       nextButtonProps: { style: HIDDEN_ACTION_STYLE },
       prevButtonProps: { style: HIDDEN_ACTION_STYLE },
     },
@@ -218,7 +219,6 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
         "下面进入图表面板列表，先看它的筛选和入口，再进入面板编辑区。",
       selector: '[data-tour-id="global-nav-panel"]',
       placement: "bottom",
-      closable: false,
       nextButtonProps: { style: HIDDEN_ACTION_STYLE },
       prevButtonProps: { style: HIDDEN_ACTION_STYLE },
     },
@@ -232,8 +232,7 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
   {
     step: {
       title: "面板页头",
-      description:
-        "顶部是标题和新建入口，负责进入面板管理和创建流程。",
+      description: "顶部是标题和新建入口，负责进入面板管理和创建流程。",
       selector: '[data-tour-id="panel-list-page-header"]',
       placement: "bottom",
     },
@@ -241,8 +240,7 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
   {
     step: {
       title: "面板筛选区",
-      description:
-        "这里负责搜索和状态筛选，用来在面板列表里快速定位目标。",
+      description: "这里负责搜索和状态筛选，用来在面板列表里快速定位目标。",
       selector: '[data-tour-id="panel-list-filters"]',
       placement: "bottom",
     },
@@ -263,7 +261,6 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
         "这里是强制步骤，点击新建后进入面板编辑器，后面只看布局和功能区块。",
       selector: '[data-tour-id="panel-create-button"]',
       placement: "bottom",
-      closable: false,
       nextButtonProps: { style: HIDDEN_ACTION_STYLE },
       prevButtonProps: { style: HIDDEN_ACTION_STYLE },
     },
@@ -280,7 +277,34 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
       description:
         "左侧是字段与配置侧栏，中间上方是查询区和操作区，中间下方是预览区，完整模式重点看这些区块如何配合。",
       selector: '[data-tour-id="panel-page"]',
+      placement: "center",
+    },
+  },
+  {
+    step: {
+      title: "左侧字段与配置区",
+      description:
+        "这一整块承载左侧字段列表和编辑配置区，负责提供可拖拽资源并维持面板编辑的基础结构。",
+      selector: '[data-tour-id="panel-left-fields-and-editor"]',
       placement: "right",
+    },
+  },
+  {
+    step: {
+      title: "中上操作区",
+      description:
+        "中上区域承载标题、维度、指标、筛选、排序和保存运行等操作，是组织查询和触发预览的核心位置。",
+      selector: '[data-tour-id="panel-main-header"]',
+      placement: "bottom",
+    },
+  },
+  {
+    step: {
+      title: "中下预览区",
+      description:
+        "中下区域展示当前配置生成的图表或空态，用来确认数据、样式和展示效果是否符合预期。",
+      selector: '[data-tour-id="panel-main-content"]',
+      placement: "top",
     },
   },
   {
@@ -290,7 +314,6 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
         "最后看仪表板页。这里左侧负责看板切换，主区会在选中看板后展示信息和画布。",
       selector: '[data-tour-id="global-nav-dashboard"]',
       placement: "bottom",
-      closable: false,
       nextButtonProps: { style: HIDDEN_ACTION_STYLE },
       prevButtonProps: { style: HIDDEN_ACTION_STYLE },
     },
@@ -307,7 +330,42 @@ export const FULL_ONBOARDING_STEPS: OnboardingStepConfig[] = [
       description:
         "左侧是看板列表和新建入口；中间在未选中看板时显示空态，选中后会切到看板信息、模式切换和画布区。",
       selector: '[data-tour-id="dashboard-page"]',
+      placement: "center",
+    },
+  },
+  {
+    step: {
+      title: "仪表板侧栏区",
+      description:
+        "左侧是看板列表和新建入口，用于切换不同看板，也是进入创建流程的起点。",
+      selector: '[data-tour-id="dashboard-sidebar"]',
       placement: "right",
+    },
+  },
+  {
+    step: {
+      title: "仪表板主视图区",
+      description:
+        "主区域承载所选看板的信息和画布。未选中看板时展示空态，选中后展示完整内容。",
+      selector: '[data-tour-id="dashboard-main"]',
+      placement: "left",
+    },
+  },
+  {
+    step: {
+      title: "仪表板内容区",
+      description:
+        "这里展示看板的实际内容，包括看板信息、模式切换和图表画布。",
+      selector: '[data-tour-id="dashboard-content"]',
+      placement: "top",
+    },
+  },
+  {
+    step: {
+      title: "完整引导完成",
+      description:
+        "完整流程已经结束。你已经看过数据源、数据集、图表面板和仪表板的主要区块与关键入口。",
+      placement: "center",
     },
   },
 ];
