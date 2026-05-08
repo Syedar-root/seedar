@@ -14,7 +14,6 @@ jobs:
 
     outputs:
       version: ${{ steps.release.outputs.version }}
-      docker_namespace: ${{ steps.release.outputs.docker_namespace }}
 
     steps:
       - name: Checkout
@@ -51,11 +50,19 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          if [ -z "${DOCKERHUB_USERNAME:-}" ]; then
+            echo "::error::DOCKERHUB_USERNAME secret is empty. Docker image release cannot continue."
+            exit 1
+          fi
+          if [ -z "${DOCKERHUB_TOKEN:-}" ]; then
+            echo "::error::DOCKERHUB_TOKEN secret is empty. Docker image release cannot continue."
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "docker_namespace=${DOCKERHUB_USERNAME}" >> "$GITHUB_OUTPUT"
           node -e "const pkg=require('./apps/cli/package.json'); const version=process.argv[1]; if (pkg.version !== version) { console.error(`apps/cli/package.json version ${pkg.version} does not match tag ${version}`); process.exit(1); }" "$VERSION"
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build web dist
         run: |
@@ -72,6 +79,8 @@ jobs:
   build-server-image:
     needs: validate
     runs-on: ubuntu-latest
+    env:
+      DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
     strategy:
       fail-fast: false
       matrix:
@@ -105,7 +114,7 @@ jobs:
           context: .
           file: deploy/docker/server.Dockerfile
           platforms: ${{ matrix.platform }}
-          outputs: type=image,name=${{ needs.validate.outputs.docker_namespace }}/seedar-server,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ env.DOCKER_NAMESPACE }}/seedar-server,push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=seedar-server-image-${{ matrix.platform_id }}
           cache-to: type=gha,mode=max,scope=seedar-server-image-${{ matrix.platform_id }}
 
@@ -128,6 +137,8 @@ jobs:
       - validate
       - build-server-image
     runs-on: ubuntu-latest
+    env:
+      DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
       - name: Download server digest artifacts
@@ -151,8 +162,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          SERVER_IMAGE="${{ needs.validate.outputs.docker_namespace }}/seedar-server:${{ needs.validate.outputs.version }}"
-          SERVER_REPO="${{ needs.validate.outputs.docker_namespace }}/seedar-server"
+          SERVER_IMAGE="${{ env.DOCKER_NAMESPACE }}/seedar-server:${{ needs.validate.outputs.version }}"
+          SERVER_REPO="${{ env.DOCKER_NAMESPACE }}/seedar-server"
 
           cd /tmp/digests
 
@@ -173,6 +184,8 @@ jobs:
   build-web-image:
     needs: validate
     runs-on: ubuntu-latest
+    env:
+      DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
     strategy:
       fail-fast: false
       matrix:
@@ -212,7 +225,7 @@ jobs:
           context: .
           file: deploy/docker/web.Dockerfile
           platforms: ${{ matrix.platform }}
-          outputs: type=image,name=${{ needs.validate.outputs.docker_namespace }}/seedar-web,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ env.DOCKER_NAMESPACE }}/seedar-web,push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=seedar-web-image-${{ matrix.platform_id }}
           cache-to: type=gha,mode=max,scope=seedar-web-image-${{ matrix.platform_id }}
 
@@ -235,6 +248,8 @@ jobs:
       - validate
       - build-web-image
     runs-on: ubuntu-latest
+    env:
+      DOCKER_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
 
     steps:
       - name: Download web digest artifacts
@@ -258,8 +273,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          WEB_IMAGE="${{ needs.validate.outputs.docker_namespace }}/seedar-web:${{ needs.validate.outputs.version }}"
-          WEB_REPO="${{ needs.validate.outputs.docker_namespace }}/seedar-web"
+          WEB_IMAGE="${{ env.DOCKER_NAMESPACE }}/seedar-web:${{ needs.validate.outputs.version }}"
+          WEB_REPO="${{ env.DOCKER_NAMESPACE }}/seedar-web"
 
           cd /tmp/digests
 
@@ -278,7 +293,10 @@ jobs:
           docker buildx imagetools inspect "$WEB_IMAGE" | grep -q 'linux/arm64'
 
   publish-cli:
-    needs: validate
+    needs:
+      - validate
+      - publish-server-image
+      - publish-web-image
     runs-on: ubuntu-latest
 
     steps:
