@@ -76,3 +76,48 @@
 .spacer {
   flex: 1;
 }
+
+@media (max-width: 720px) {
+  .globalNav {
+    gap: var(--spacing-sm);
+    padding: 0 var(--spacing-md);
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .logo {
+    flex: 0 0 auto;
+  }
+
+  .navItems {
+    flex: 0 0 auto;
+    gap: var(--spacing-xs);
+  }
+
+  .navItem {
+    justify-content: center;
+    flex: 0 0 40px;
+    width: 40px;
+    padding: var(--spacing-sm);
+
+    span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      white-space: nowrap;
+      border: 0;
+      clip: rect(0 0 0 0);
+    }
+  }
+
+  .spacer {
+    min-width: 0;
+  }
+}

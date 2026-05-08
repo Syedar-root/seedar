@@ -51,6 +51,8 @@ export interface RequestOptions {
   headers?: Record<string, string>;
   /** 错误处理函数 */
   onError?: (error: ApiError, globalOnError?: (error: ApiError) => void) => void;
+  /** 请求超时时间（毫秒） */
+  timeout?: number;
 }
 
 export interface PaginatedResult<T> {

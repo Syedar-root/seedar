@@ -10,6 +10,7 @@ import type {
   FilterItem,
   LocalPanelStatus,
   DimensionItem,
+  SortItem,
   TempMetricConfig,
   TitleConfig,
 } from "../types";
@@ -36,6 +37,10 @@ import {
   stripChartEditorMeta,
   VISUAL_CHART_SPEC_KEYS,
 } from "../utils/panelEditorState";
+import {
+  buildSortCandidates,
+  hydrateSortItems,
+} from "../utils/querySort";
 
 interface UsePanelEditorHydrationParams {
   panelId?: string;
@@ -53,10 +58,30 @@ interface UsePanelEditorHydrationParams {
   setDropMetrics: Dispatch<SetStateAction<DragItem[]>>;
   setDropFilters: Dispatch<SetStateAction<FilterItem[]>>;
   setTempMetrics: Dispatch<SetStateAction<TempMetricConfig[]>>;
+  setSortItems: Dispatch<SetStateAction<SortItem[]>>;
+  setTopN: Dispatch<SetStateAction<number | undefined>>;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const parseChartColors = (colorSpec: unknown): string[] | undefined => {
+  if (Array.isArray(colorSpec)) {
+    const colors = colorSpec.filter(
+      (entry): entry is string => typeof entry === "string",
+    );
+    return colors.length > 0 ? colors : undefined;
+  }
+
+  if (isRecord(colorSpec) && Array.isArray(colorSpec.range)) {
+    const colors = colorSpec.range.filter(
+      (entry): entry is string => typeof entry === "string",
+    );
+    return colors.length > 0 ? colors : undefined;
+  }
+
+  return undefined;
+};
 
 const parseChartSmooth = (
   chartSpec: Record<string, unknown>,
@@ -187,7 +212,7 @@ const hydrateChartEditorConfig = (
   mappingKeys.forEach((key) => {
     const value = chartSpec[key];
     if (typeof value === "string") {
-      nextConfig[key] = value;
+      (nextConfig as Record<string, unknown>)[key] = value;
     }
   });
 
@@ -205,18 +230,26 @@ const hydrateChartEditorConfig = (
     nextConfig.direction = chartSpec.direction;
   }
 
-  if (Array.isArray(chartSpec.color)) {
-    const color = chartSpec.color.filter(
-      (entry): entry is string => typeof entry === "string",
-    );
-    if (color.length > 0) {
-      nextConfig.color = color;
-    }
+  const parsedColors = parseChartColors(chartSpec.color);
+  if (parsedColors && parsedColors.length > 0) {
+    nextConfig.color = parsedColors;
   }
 
   const label = chartSpec.label;
   if (isRecord(label) && typeof label.visible === "boolean") {
-    nextConfig.label = { visible: label.visible };
+    nextConfig.label = {
+      visible: label.visible,
+      sourceField:
+        label.sourceField === "xField" ||
+        label.sourceField === "yField" ||
+        label.sourceField === "seriesField" ||
+        label.sourceField === "categoryField" ||
+        label.sourceField === "valueField" ||
+        label.sourceField === "sizeField" ||
+        label.sourceField === "auto"
+          ? label.sourceField
+          : undefined,
+    };
   }
 
   const legends = chartSpec.legends;
@@ -278,6 +311,8 @@ export const usePanelEditorHydration = ({
   setDropMetrics,
   setDropFilters,
   setTempMetrics,
+  setSortItems,
+  setTopN,
 }: UsePanelEditorHydrationParams): void => {
   useEffect(() => {
     if (!panelId) {
@@ -376,9 +411,11 @@ export const usePanelEditorHydration = ({
     }
 
     setSelectedDataset(remoteDatasetData);
-    setDimensionItems(
-      hydrateDimensions(queryData.dsl?.dimensions, remoteDatasetData.fields),
+    const nextDimensionItems = hydrateDimensions(
+      queryData.dsl?.dimensions,
+      remoteDatasetData.fields,
     );
+    setDimensionItems(nextDimensionItems);
 
     const nextMetrics = (
       (queryData.dsl?.metrics as Array<{ id: number }> | undefined) ?? []
@@ -413,6 +450,29 @@ export const usePanelEditorHydration = ({
       (queryData.dsl?.tempMetrics as TempMetricConfig[] | undefined) ?? [];
     setTempMetrics(nextTempMetrics);
 
+    const nextSortCandidates = buildSortCandidates({
+      dimensions: nextDimensionItems,
+      metrics: nextMetrics,
+      tempMetrics: nextTempMetrics,
+    });
+    setSortItems(
+      hydrateSortItems(queryData.dsl?.orderBy, nextSortCandidates),
+    );
+
+    const persistedTopN =
+      typeof queryData.dsl?.topN === "number"
+        ? queryData.dsl.topN
+        : queryData.dsl?.offset
+          ? undefined
+          : queryData.dsl?.limit;
+    setTopN(
+      nextSortCandidates.length > 0 &&
+        typeof persistedTopN === "number" &&
+        persistedTopN > 0
+        ? persistedTopN
+        : undefined,
+    );
+
     hydratedQueryRef.current = queryData.id;
   }, [
     hydratedQueryRef,
@@ -422,6 +482,8 @@ export const usePanelEditorHydration = ({
     setDropFilters,
     setDropMetrics,
     setSelectedDataset,
+    setSortItems,
+    setTopN,
     setTempMetrics,
   ]);
 };

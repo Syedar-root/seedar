@@ -1,4 +1,4 @@
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $composeFile = Join-Path $PSScriptRoot "docker-compose.prod.yml"
@@ -18,6 +18,28 @@ function Get-EnvValue {
   }
 
   return $match.Matches[0].Groups[1].Value.Trim()
+}
+
+function Set-CheckpointEnv {
+  param(
+    [string]$Path
+  )
+
+  $checkpointPassword = Get-EnvValue -Path $Path -Key "AI_CHECKPOINT_PG_PASSWORD"
+  $checkpointUrl = Get-EnvValue -Path $Path -Key "AI_CHECKPOINT_PG_URL"
+
+  if (-not $checkpointPassword -and $checkpointUrl -match '^[^:]+://[^:]+:(.*?)@') {
+    $checkpointPassword = [Uri]::UnescapeDataString($Matches[1])
+  }
+
+  if (-not $checkpointPassword) {
+    throw "Missing checkpoint password. Add AI_CHECKPOINT_PG_URL or AI_CHECKPOINT_PG_PASSWORD to $Path."
+  }
+
+  $checkpointUrl = "postgresql://postgres:$checkpointPassword@postgres:5432/postgres"
+
+  [Environment]::SetEnvironmentVariable("AI_CHECKPOINT_PG_PASSWORD", $checkpointPassword, "Process")
+  [Environment]::SetEnvironmentVariable("AI_CHECKPOINT_PG_URL", $checkpointUrl, "Process")
 }
 
 if (-not (Test-Path $serverEnvFile)) {
@@ -42,6 +64,12 @@ foreach ($key in $requiredServerKeys) {
   }
 }
 
+$hasCheckpointUrl = Select-String -Path $serverEnvFile -Pattern "^\s*AI_CHECKPOINT_PG_URL\s*=" -Quiet
+$hasCheckpointPassword = Select-String -Path $serverEnvFile -Pattern "^\s*AI_CHECKPOINT_PG_PASSWORD\s*=" -Quiet
+if (-not $hasCheckpointUrl -and -not $hasCheckpointPassword) {
+  throw "Missing checkpoint config in $serverEnvFile. Provide AI_CHECKPOINT_PG_URL or AI_CHECKPOINT_PG_PASSWORD."
+}
+
 $mysqlUser = Get-EnvValue -Path $serverEnvFile -Key "MYSQL_USER"
 if ($mysqlUser -eq "root") {
   throw "Invalid MYSQL_USER in $serverEnvFile. MySQL Docker image does not allow MYSQL_USER=root. Use a regular user such as 'seedar' and keep MYSQL_ROOT_PASSWORD for the root account."
@@ -54,7 +82,10 @@ if (-not [Environment]::GetEnvironmentVariable("SEEDAR_VERSION", "Process")) {
   [Environment]::SetEnvironmentVariable("SEEDAR_VERSION", "latest", "Process")
 }
 
+Set-CheckpointEnv -Path $serverEnvFile
+
 Write-Warning "Legacy deployment path. Prefer 'seedar install' or 'seedar update'."
 
-docker compose -f $composeFile up -d mysql
+docker compose -f $composeFile up -d mysql postgres
 docker compose -f $composeFile run --rm migrate
+

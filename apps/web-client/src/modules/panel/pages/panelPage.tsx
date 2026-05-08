@@ -25,13 +25,28 @@ export const PanelPage = () => {
     datasetDialog,
   } = usePanelPageViewModel();
 
-  const asideContent = <Aside {...asideProps} />;
-  const editorContent = <PanelEditor {...panelEditorProps} />;
+  const asideContent = (
+    <div>
+      <Aside {...asideProps} />
+    </div>
+  );
+  const editorContent = (
+    <div>
+      <PanelEditor {...panelEditorProps} />
+    </div>
+  );
 
   return (
-    <div ref={containerRef} className={styles.container}>
+    <div
+      ref={containerRef}
+      className={styles.container}
+      data-tour-id="panel-page"
+    >
       {layout.mode === "expanded" ? (
-        <>
+        <div
+          className={styles.leftPaneGroup}
+          data-tour-id="panel-left-fields-and-editor"
+        >
           <aside className={styles.sidebar}>
             <div className={styles.sideHeader}>
               <span className={styles.sideTitle}>{copy.sideFields}</span>
@@ -58,9 +73,12 @@ export const PanelPage = () => {
             </div>
             <div className={styles.sideContent}>{editorContent}</div>
           </aside>
-        </>
+        </div>
       ) : layout.mode === "collapsed" ? (
-        <aside className={styles.collapsedPane}>
+        <aside
+          className={styles.collapsedPane}
+          data-tour-id="panel-left-fields-and-editor"
+        >
           <div className={styles.collapsedSwitchWrap}>
             {layout.canExpand ? (
               <button
@@ -95,7 +113,10 @@ export const PanelPage = () => {
           </div>
         </aside>
       ) : (
-        <aside className={styles.fullCollapsedRail}>
+        <aside
+          className={styles.fullCollapsedRail}
+          data-tour-id="panel-left-fields-and-editor"
+        >
           <button
             type="button"
             className={styles.railButton}
@@ -111,15 +132,19 @@ export const PanelPage = () => {
       )}
 
       <main className={styles.main}>
-        <header className={styles.mainHeader}>
+        <header className={styles.mainHeader} data-tour-id="panel-main-header">
           <div className={styles.titleArea}>
             <div className={styles.titleMeta}>
               <EditableTitle {...header.titleProps} />
-              <span className={styles.statusBadge}>{header.panelStatusLabel}</span>
+              <span className={styles.statusBadge}>
+                {header.panelStatusLabel}
+              </span>
             </div>
           </div>
 
-          <QueryZone {...queryZoneProps} />
+          <div className={styles.queryZoneArea}>
+            <QueryZone {...queryZoneProps} />
+          </div>
 
           <div className={styles.operations}>
             <button
@@ -191,7 +216,7 @@ export const PanelPage = () => {
           </section>
         ) : null}
 
-        <main className={styles.mainContent}>
+        <main className={styles.mainContent} data-tour-id="panel-main-content">
           {preview.panel ? (
             preview.displayType === "card" ? (
               <div className={styles.cardPreviewShell}>
@@ -209,6 +234,7 @@ export const PanelPage = () => {
                 panelId={preview.panelId ?? preview.panel.id}
                 data={preview.tempData}
                 panel={preview.panel}
+                onChartRenderStatusChange={preview.onChartRenderStatusChange}
               />
             )
           ) : (

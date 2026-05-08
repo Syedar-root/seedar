@@ -1,12 +1,9 @@
 import 'reflect-metadata';
-import { BusinessException, ExceptionType } from '@/common/exceptions';
-import { DatasetService } from '@/module/dataset/services/dataset.service';
-import { QueryService } from '@/module/query/query.service';
+import { randomUUID } from 'crypto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { type ToolRunnableConfig } from '@langchain/core/tools';
 import { interrupt } from '@langchain/langgraph';
 import { tool, Tool } from 'langchain';
-import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import {
   FRONTEND_WORKFLOW_TEMPLATES,
@@ -15,11 +12,20 @@ import {
   type StartWorkflowRequest,
   type WorkflowRunInterrupt,
 } from '@seedar/types';
+import { BusinessException, ExceptionType } from '@/common/exceptions';
+import { DatasetService } from '@/module/dataset/services/dataset.service';
+import { DatasourceService } from '@/module/datasource/service/datasource.service';
+import { QueryService } from '@/module/query/query.service';
 import { ToolConfig } from '../ai.types';
-import { getDatasetInfoCompact } from './helper';
+import {
+  buildStartWorkflowGuardMessage,
+  getDatasetInfoCompact,
+  getDatasourceInfoCompact,
+} from './helper';
 import {
   askQuestionSchema,
   getDataAtTempSchema,
+  getDatasourceInfoSchema,
   getDatasetInfoSchema,
   startWorkflowSchema,
   toolMarketExecutorSchema,
@@ -52,6 +58,7 @@ export class ToolService {
 
   constructor(
     private readonly datasetService: DatasetService,
+    private readonly datasourceService: DatasourceService,
     private readonly queryService: QueryService,
   ) {
     this.collectTools();
@@ -103,10 +110,15 @@ export class ToolService {
 
   @Seedar_Tool({
     name: 'getDatasetInfo',
-    description: '根据数据集 ID 获取表、字段、关联与指标等元信息',
+    description:
+      '根据数据集 ID 查询数据集元信息，返回数据集名称、所属数据源、表、字段、指标与关联关系等结构信息',
     schema: getDatasetInfoSchema,
   })
-  public async getDatasetInfo({ datasetId }: { datasetId: string }) {
+  public async getDatasetInfo({
+    datasetId,
+  }: {
+    datasetId: string | number;
+  }) {
     const id = Number(datasetId);
 
     if (Number.isNaN(id)) {
@@ -119,6 +131,31 @@ export class ToolService {
 
     const dataset = await this.datasetService.findOne(id);
     return getDatasetInfoCompact(dataset);
+  }
+
+  @Seedar_Tool({
+    name: 'getDatasourceInfo',
+    description:
+      '根据数据源 ID 查询数据源元信息，返回数据源名称、类型、连接配置概览、表结构与外键关系等信息',
+    schema: getDatasourceInfoSchema,
+  })
+  public async getDatasourceInfo({
+    datasourceId,
+  }: {
+    datasourceId: string | number;
+  }) {
+    const id = Number(datasourceId);
+
+    if (Number.isNaN(id)) {
+      throw new BusinessException(
+        ExceptionType.AI_AGENT_TOOL_FAILED,
+        '数据源 ID 无效',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    const datasource = await this.datasourceService.findOne(id);
+    return getDatasourceInfoCompact(datasource);
   }
 
   @Seedar_Tool({
@@ -151,7 +188,7 @@ export class ToolService {
 
   @Seedar_Tool({
     name: 'askQuestion',
-    description: '向用户提问，用于澄清需求、补充信息或确认步骤',
+    description: '向用户提问，用于澄清需求、补充信息或确认下一步',
     schema: askQuestionSchema,
   })
   public askQuestion({ questions }: AskQuestionParams) {
@@ -226,11 +263,12 @@ export class ToolService {
     const workflow = getFrontendWorkflowTemplate(workflowId);
 
     if (!workflow) {
-      throw new BusinessException(
-        ExceptionType.AI_AGENT_TOOL_FAILED,
-        `workflow ${workflowId} 不存在`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      return `workflow ${workflowId} 不存在，请先调用 workflowMarket 确认可用 workflow。`;
+    }
+
+    const guardMessage = buildStartWorkflowGuardMessage(workflowId, params);
+    if (guardMessage) {
+      return guardMessage;
     }
 
     const parsedParams = workflow.paramsSchema
@@ -241,11 +279,7 @@ export class ToolService {
         };
 
     if (!parsedParams.success) {
-      throw new BusinessException(
-        ExceptionType.AI_AGENT_TOOL_FAILED,
-        `workflow ${workflowId} 参数校验失败：${parsedParams.error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      return `workflow ${workflowId} 参数校验失败：${parsedParams.error.message}。请按 workflowMarket 返回的 paramsSchema 修正后重试。`;
     }
 
     const request: StartWorkflowRequest = {
@@ -268,7 +302,10 @@ export class ToolService {
   public toolMarket() {
     return {
       toolInfoList: this.getToolConfigs().filter(
-        (item) => !['toolMarket', 'workflowMarket', 'startWorkflow'].includes(item.name),
+        (item) =>
+          !['toolMarket', 'workflowMarket', 'startWorkflow'].includes(
+            item.name,
+          ),
       ),
     };
   }

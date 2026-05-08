@@ -1,12 +1,11 @@
 import type React from "react";
 import type {
   AiChatMode,
-  AiAgentStreamChunk,
+  AiContextStatusEvent,
+  AiSessionMessageResponse,
   AiChatResumeDto,
   AiInterruptPayload,
-  AiStreamChunk,
   InterruptContent,
-  AskQuestionParams as _AskQuestionParams,
 } from "#pkg/seedar/types";
 
 export type YieldType =
@@ -158,12 +157,19 @@ export interface ChatModeItem {
 
 export interface AIChatProps {
   messages?: ChatMessage[];
+  historyMessages?: ChatMessage[];
+  liveMessages?: ChatMessage[];
+  hasMoreHistory?: boolean;
+  isLoadingEarlierHistory?: boolean;
+  onLoadEarlierHistory?: () => boolean | Promise<boolean>;
+  contextStatus?: AiContextStatusEvent | null;
   loading?: boolean;
   onSendMessage?: (
     content: string,
     isResume?: boolean,
     resumePayload?: AiChatResumeDto,
   ) => void;
+  onStopMessage?: () => void;
   sseData?: SSEData;
   placeholder?: string;
   disabled?: boolean;
@@ -172,12 +178,14 @@ export interface AIChatProps {
   models?: ModelItem[];
   currentModel?: string;
   onModelChange?: (modelKey: string) => void;
+  onManageModels?: () => void;
   modes?: ChatModeItem[];
   currentMode?: AiChatMode;
   onModeChange?: (mode: AiChatMode) => void;
   title?: React.ReactNode;
   onAddChat?: () => void;
   onShowHistory?: () => void;
+  error?: string | null;
   aiId?: string;
   initialSessionId?: string;
   onSessionChange?: (sessionId: string) => void;
@@ -244,5 +252,16 @@ export interface SessionActions {
 }
 
 export interface AiStreamChunkAdapter {
-  (chunk: AiAgentStreamChunk): ChatMessage;
+  (chunk: {
+    type?: MessageType;
+    content: string | InterruptContent<AiInterruptPayload>;
+    role?: "user" | "clarify" | "act";
+    done: boolean;
+    meta?: ToolCallMeta | ToolResultMeta;
+  }): ChatMessage;
+}
+
+export interface SessionMessagesState {
+  data: AiSessionMessageResponse[];
+  nextCursor?: string;
 }

@@ -1,0 +1,33 @@
+.token-scope {
+  --seedar-dashboard-surface: var(--bg-base, #f8fafc);
+  --seedar-dashboard-surface-elevated: var(--bg-elevated, #fff);
+  --seedar-dashboard-surface-muted: var(--bg-container, #f1f5f9);
+  --seedar-dashboard-surface-hover: var(--bg-hover, #eff6ff);
+  --seedar-dashboard-surface-active: var(--bg-selected, #e2e8f0);
+  --seedar-dashboard-surface-selected: var(--primary, #1d4ed8);
+  --seedar-dashboard-surface-selected-hover: var(--primary-hover, #2563eb);
+  --seedar-dashboard-text: var(--text-primary, #0f172a);
+  --seedar-dashboard-text-muted: var(--text-secondary, #475569);
+  --seedar-dashboard-text-subtle: var(--text-tertiary, #64748b);
+  --seedar-dashboard-text-disabled: var(--text-disabled, #94a3b8);
+  --seedar-dashboard-text-inverse: var(--text-inverse, #fff);
+  --seedar-dashboard-border: var(--border-base, #e5e7eb);
+  --seedar-dashboard-border-hover: var(--border-hover, #cbd5e1);
+  --seedar-dashboard-border-focus: var(--border-focus, #1d4ed8);
+  --seedar-dashboard-radius-sm: var(--radius-base, 6px);
+  --seedar-dashboard-radius-md: var(--radius-lg, 8px);
+  --seedar-dashboard-radius-lg: var(--radius-card, 12px);
+  --seedar-dashboard-radius-pill: var(--radius-pill, 9999px);
+  --seedar-dashboard-shadow: var(--shadow-md, 0 10px 28px rgba(15, 23, 42, 0.04));
+  --seedar-dashboard-shadow-lg: var(--shadow-lg, 0 4px 20px rgba(0, 0, 0, 0.15));
+  --seedar-dashboard-space-xs: var(--spacing-xs, 4px);
+  --seedar-dashboard-space-sm: var(--spacing-sm, 8px);
+  --seedar-dashboard-space-md: var(--spacing-md, 12px);
+  --seedar-dashboard-space-lg: var(--spacing-lg, 16px);
+  --seedar-dashboard-space-xl: var(--spacing-xl, 24px);
+  --seedar-dashboard-font-sm: var(--font-sm, 12px);
+  --seedar-dashboard-font-base: var(--font-base, 13px);
+  --seedar-dashboard-font-lg: var(--font-lg, 14px);
+  --seedar-dashboard-font-xl: var(--font-xl, 16px);
+  --seedar-dashboard-transition: var(--transition-base, 0.2s ease);
+}

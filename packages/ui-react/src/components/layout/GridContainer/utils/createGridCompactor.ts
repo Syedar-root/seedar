@@ -1,6 +1,6 @@
-import { noCompactor } from "react-grid-layout";
+import { verticalCompactor } from "react-grid-layout/core";
 
 export const createGridCompactor = () => ({
-  ...noCompactor,
-  preventCollision: true,
+  ...verticalCompactor,
+  preventCollision: false,
 });

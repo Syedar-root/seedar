@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { LayoutDashboard, BarChart3, Database, Plug } from "lucide-react";
-import { Switch } from "antd";
 import { useAppStore } from "@/core/store";
+import { SeeMindSwitch } from "./components/SeeMindSwitch";
 import styles from "./GlobalNavigation.module.scss";
 import type { GlobalNavigationProps, NavItem } from "./types";
 
@@ -36,8 +36,12 @@ export const GlobalNavigation = (_props: GlobalNavigationProps) => {
   const { isSeeMindOn, toggleSeeMind } = useAppStore();
 
   return (
-    <nav className={styles.globalNav}>
-      <NavLink to="/dashboard" className={styles.logo}>
+    <nav className={styles.globalNav} data-tour-id="global-nav">
+      <NavLink
+        to="/dashboard"
+        className={styles.logo}
+        data-tour-id="global-nav-logo"
+      >
         Seedar
       </NavLink>
 
@@ -46,6 +50,7 @@ export const GlobalNavigation = (_props: GlobalNavigationProps) => {
           <NavLink
             key={item.id}
             to={item.path}
+            data-tour-id={`global-nav-${item.id}`}
             className={({ isActive }) =>
               `${styles.navItem} ${isActive ? styles.active : ""}`
             }
@@ -59,7 +64,9 @@ export const GlobalNavigation = (_props: GlobalNavigationProps) => {
 
       <div className={styles.spacer} />
 
-      <Switch checked={isSeeMindOn} onChange={toggleSeeMind} />
+      <div data-tour-id="global-nav-seemind-switch">
+        <SeeMindSwitch isActive={isSeeMindOn} onToggle={toggleSeeMind} />
+      </div>
     </nav>
   );
 };

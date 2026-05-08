@@ -1,13 +1,14 @@
-import { ArrowLeft, Database } from "lucide-react";
+import { ArrowLeft, Database, PencilLine } from "lucide-react";
 import { DatasetResponse, DatasetStatus, DatasetType } from "#pkg/seedar/types";
 import styles from "./DatasetHero.module.scss";
 
 interface DatasetHeroProps {
   dataset: DatasetResponse;
   onBack?: () => void;
+  onEdit?: () => void;
 }
 
-export const DatasetHero = ({ dataset, onBack }: DatasetHeroProps) => {
+export const DatasetHero = ({ dataset, onBack, onEdit }: DatasetHeroProps) => {
   const getStatusText = (status: DatasetStatus) => {
     const statusMap: Record<string, string> = {
       [DatasetStatus.ACTIVE]: "启用",
@@ -66,7 +67,20 @@ export const DatasetHero = ({ dataset, onBack }: DatasetHeroProps) => {
             </div>
           </div>
 
-          <h1 className={styles.heroTitle}>{dataset.name}</h1>
+          <div className={styles.titleRow}>
+            <h1 className={styles.heroTitle}>{dataset.name}</h1>
+            {onEdit && (
+              <button
+                type="button"
+                className={styles.editButton}
+                onClick={onEdit}
+                aria-label="编辑数据集"
+              >
+                <PencilLine size={15} />
+                编辑
+              </button>
+            )}
+          </div>
 
           {dataset.description && (
             <p className={styles.heroDescription}>{dataset.description}</p>

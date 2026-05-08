@@ -291,7 +291,9 @@ export const buildBaseDimensionItem = (options: {
   return {
     id: id ?? dimensionDsl.fieldId,
     name: sourceField?.name || fallbackName,
-    businessName: alias || sourceField?.businessName || sourceField?.name || fallbackName,
+    // Base 维度始终使用数据集字段名（优先 businessName）作为展示/映射名，
+    // 避免 workflow 传入的 alias 与查询返回 header 不一致导致图表字段映射失配。
+    businessName: sourceField?.businessName || sourceField?.name || fallbackName,
     fieldType: sourceField?.type,
     isDerived: false,
     dimensionDsl: {

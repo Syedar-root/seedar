@@ -1,0 +1,273 @@
+.container {
+  display: grid;
+  grid-template-columns: 1fr 256px;
+  gap: 16px;
+}
+
+.editorSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editorWrapper {
+  position: relative;
+}
+
+.sender {
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-base);
+  background: var(--bg-elevated);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  overflow: hidden;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-within {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(160, 82, 45, 0.1);
+  }
+
+  :global(.ant-sender-content) {
+    background: transparent;
+  }
+
+  :global(.ant-sender-input) {
+    min-height: 156px;
+    padding: 12px;
+  }
+
+  :global(.ant-sender-input-content) {
+    font-family: var(--font-mono);
+    font-size: var(--font-base);
+    line-height: 1.6;
+    color: var(--text-primary);
+  }
+
+  :global(.ant-sender-input-placeholder) {
+    color: var(--text-tertiary);
+  }
+
+  :global(.ant-sender-input .ant-tag) {
+    margin-inline-end: 4px;
+    border-radius: var(--radius-sm);
+    border-color: var(--border-base);
+    background: var(--bg-hover);
+  }
+}
+
+.fieldTokenLabel,
+.metricTokenLabel {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 4px;
+  border-radius: 999px;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.fieldTokenLabel {
+  background: color-mix(in srgb, var(--info) 16%, transparent);
+  color: var(--info);
+}
+
+.metricTokenLabel {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.senderInput {
+  font-family: inherit;
+  font-size: var(--font-base);
+  line-height: 1.6;
+  color: var(--text-primary);
+
+  &::placeholder {
+    color: var(--text-tertiary);
+  }
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+  border-radius: var(--radius-base);
+  border: 1px solid var(--border-base);
+  overflow: hidden;
+  height: 100%;
+}
+
+.tabHeader {
+  display: flex;
+  border-bottom: 1px solid var(--border-base);
+  background: var(--bg-elevated);
+}
+
+.tabButton {
+  flex: 1;
+  padding: 12px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+
+  &:hover {
+    color: var(--text-primary);
+  }
+
+  &.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+}
+
+.tabContent {
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+.searchIcon {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  width: 100%;
+  height: 32px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+
+  &::placeholder {
+    color: var(--text-tertiary);
+  }
+}
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tableTag {
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  background: var(--bg-elevated);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  flex: 1 1 50%;
+  min-width: 0;
+  max-width: none;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.itemButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-base);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-sm);
+  color: var(--text-primary);
+  text-align: left;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+  }
+}
+
+.itemName {
+  flex: 1 1 50%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emptyState {
+  padding: 20px 12px;
+  text-align: center;
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+}
+
+.functionBadge,
+.fieldBadge,
+.metricBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  font-size: 8px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.functionBadge {
+  background-color: var(--warning-light);
+  color: var(--warning);
+}
+
+.fieldBadge {
+  background-color: var(--info-light);
+  color: var(--info);
+}
+
+.metricBadge {
+  background-color: var(--success-light);
+  color: var(--success);
+}
+
+@media (max-width: 768px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+
+  .referencePanel {
+    flex-wrap: wrap;
+  }
+
+  .referenceSection {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 120px;
+  }
+}

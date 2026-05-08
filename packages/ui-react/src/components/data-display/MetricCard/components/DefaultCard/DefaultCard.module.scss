@@ -70,9 +70,9 @@
   align-items: center;
   gap: $mc-space-xs;
   margin-top: $mc-space-sm;
-  font-size: $mc-font-size-xs;
+  font-size: $mc-font-size-sm;
   line-height: 1.4;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.01em;
 
   svg {
@@ -92,9 +92,9 @@
 }
 
 .trend-section[data-direction="up"] {
-  color: $mc-color-trend-up-soft;
+  color: $mc-color-trend-up;
 }
 
 .trend-section[data-direction="down"] {
-  color: $mc-color-trend-down-soft;
+  color: $mc-color-trend-down;
 }

@@ -20,7 +20,6 @@ export const useChatStore = (initialMessages: ChatMessage[] = []) => {
   }, []);
 
   const addMessage = useCallback((message: ChatMessage) => {
-    console.log("addMessage", message);
     setState((prev) => ({ ...prev, messages: [...prev.messages, message] }));
   }, []);
 

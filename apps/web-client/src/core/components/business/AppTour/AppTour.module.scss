@@ -1,0 +1,130 @@
+@use "@/core/assets/styles/global.variable.scss";
+
+.root {
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+
+  :global(.ant-tour-close) {
+    color: var(--text-tertiary);
+    inset-inline-end: var(--spacing-md);
+    inset-block-start: var(--spacing-md);
+  }
+
+  :global(.ant-tour-close:hover) {
+    color: var(--text-primary);
+  }
+
+  :global(.ant-tour-next-btn),
+  :global(.ant-tour-prev-btn) {
+    border-radius: var(--radius-base);
+    font-size: var(--font-sm);
+    font-weight: 500;
+    height: 32px;
+    padding-inline: var(--spacing-md);
+    box-shadow: none;
+    transition:
+      background-color var(--transition-fast),
+      border-color var(--transition-fast),
+      color var(--transition-fast),
+      box-shadow var(--transition-fast);
+  }
+
+  :global(.ant-tour-prev-btn) {
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+    border-color: var(--border-base);
+  }
+
+  :global(.ant-tour-prev-btn:hover) {
+    color: var(--text-primary) !important;
+    background: var(--bg-hover) !important;
+    border-color: var(--border-hover) !important;
+  }
+
+  :global(.ant-tour-prev-btn.ant-btn-default:not(:disabled):not(.ant-btn-disabled):hover) {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+  }
+
+  :global(.ant-tour-next-btn) {
+    color: var(--text-inverse);
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+
+  :global(.ant-tour-next-btn:hover) {
+    color: var(--text-inverse) !important;
+    background: var(--primary-hover) !important;
+    border-color: var(--primary-hover) !important;
+  }
+
+  :global(.ant-tour-next-btn.ant-btn-default:not(:disabled):not(.ant-btn-disabled):hover) {
+    color: var(--text-inverse);
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+  }
+
+  :global(.ant-tour-next-btn:active) {
+    color: var(--text-inverse) !important;
+    background: var(--primary-active) !important;
+    border-color: var(--primary-active) !important;
+  }
+
+  :global(.ant-tour-next-btn.ant-btn-default:not(:disabled):not(.ant-btn-disabled):active) {
+    color: var(--text-inverse);
+    background: var(--primary-active);
+    border-color: var(--primary-active);
+  }
+
+  :global(.ant-tour-prev-btn.ant-btn-default:not(:disabled):not(.ant-btn-disabled):active) {
+    color: var(--text-primary) !important;
+    background: var(--bg-selected) !important;
+    border-color: var(--border-base) !important;
+  }
+}
+
+.section {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+  padding: var(--spacing-lg);
+}
+
+.header {
+  margin-bottom: var(--spacing-xs);
+}
+
+.title {
+  color: var(--text-primary);
+  font-size: var(--font-lg);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+}
+
+.description {
+  color: var(--text-secondary);
+  font-size: var(--font-base);
+  line-height: var(--line-height-relaxed);
+}
+
+.footer {
+  margin-top: var(--spacing-md);
+}
+
+.indicators {
+  color: var(--text-tertiary);
+  font-size: var(--font-sm);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.indicator {
+  color: var(--text-tertiary);
+}
+
+.actions {
+  gap: var(--spacing-sm);
+}

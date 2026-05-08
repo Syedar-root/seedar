@@ -2,6 +2,12 @@ import type {
   PeriodCalculationMode,
   PeriodOverPeriodType,
 } from '../dataset';
+import type {
+  PanelFormattingRole,
+  PanelFormattingTarget,
+  PanelSimpleFormatKind,
+} from '../dashboard';
+import type { QueryOrderDirection } from '../query/query.dto';
 
 export type WorkflowId = string;
 
@@ -19,6 +25,12 @@ export interface WorkflowActionError {
 export type WorkflowPage =
   | 'panel'
   | 'dataset';
+
+// ----------------------------------------------------------------------------
+// Template: query_current_panel_as_table_v1
+// Template: query_current_panel_as_chart_v1
+// Shared panel workflow payloads
+// ----------------------------------------------------------------------------
 
 export interface PanelQueryStateDimensionPayload {
   fieldId?: number;
@@ -56,12 +68,61 @@ export interface PanelQueryStateTempMetricPayload {
   popConfig?: Record<string, unknown>;
 }
 
+export interface PanelQueryStateOrderByPayload {
+  fieldId?: number;
+  metricId?: number;
+  tempMetricId?: string;
+  alias?: string;
+  field?: string;
+  dir?: QueryOrderDirection;
+  direction?: QueryOrderDirection;
+}
+
 export interface PanelQueryStatePayload {
   datasetId?: number;
   dimensions?: PanelQueryStateDimensionPayload[];
   metrics?: PanelQueryStateMetricPayload[];
   filters?: PanelQueryStateFilterPayload[];
   tempMetrics?: PanelQueryStateTempMetricPayload[];
+  orderBy?: PanelQueryStateOrderByPayload[];
+  topN?: number;
+}
+
+// ----------------------------------------------------------------------------
+// Template: query_current_panel_as_chart_v1
+// ----------------------------------------------------------------------------
+
+export const PANEL_WORKFLOW_CHART_DISPLAY_TYPES = [
+  'line',
+  'bar',
+  'area',
+  'pie',
+  'scatter',
+  'radar',
+] as const;
+
+export type PanelWorkflowChartDisplayType =
+  typeof PANEL_WORKFLOW_CHART_DISPLAY_TYPES[number];
+
+export interface PanelWorkflowSetAdvancedSpecPayload {
+  spec: Record<string, unknown>;
+}
+
+export interface PanelWorkflowSetItemFormattingRulePayload {
+  id?: string;
+  target: PanelFormattingTarget;
+  role: PanelFormattingRole;
+  kind: PanelSimpleFormatKind;
+  enabled?: boolean;
+  decimals?: number;
+  useGrouping?: boolean;
+  currency?: string;
+  percentInput?: 'ratio' | 'percent';
+}
+
+export interface PanelWorkflowSetItemFormattingPayload {
+  rule?: PanelWorkflowSetItemFormattingRulePayload;
+  rules?: PanelWorkflowSetItemFormattingRulePayload[];
 }
 
 export interface WorkflowActionPresentation {
@@ -79,8 +140,10 @@ export type PanelWorkflowTriggerActionTarget =
   | 'select_dataset'
   | 'confirm_dataset_selection'
   | 'set_query_state'
+  | 'set_item_formatting'
   | 'set_panel_title'
   | 'set_display_type'
+  | 'set_advanced_spec'
   | 'run_preview';
 
 export type DatasetWorkflowNavigateTarget =
@@ -146,6 +209,11 @@ export const PANEL_WORKFLOW_TRIGGER_ACTION_PRESENTATION: Record<
     title: '更新查询条件',
     description: '写入维度、指标、筛选和临时指标等查询状态。',
   },
+  set_item_formatting: {
+    title: '配置字段或指标格式',
+    description:
+      '为字段或指标写入格式化规则（如数值、小数位、货币、百分比、日期格式）。',
+  },
   set_panel_title: {
     title: '设置图表标题',
     description: '更新当前图表的标题展示。',
@@ -153,6 +221,10 @@ export const PANEL_WORKFLOW_TRIGGER_ACTION_PRESENTATION: Record<
   set_display_type: {
     title: '切换展示类型',
     description: '将当前图表切换到目标展示形式。',
+  },
+  set_advanced_spec: {
+    title: '配置高级 Spec',
+    description: '将当前图表切换到高级 Spec 模式，并写入图表配置。',
   },
   run_preview: {
     title: '执行预览',

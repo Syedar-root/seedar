@@ -1,21 +1,24 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useDatasource } from "#pkg/seedar/ui-react";
+import { Link2, Table2 } from "lucide-react";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
-import { Table2, Link2 } from "lucide-react";
 import {
+  DatasourceFormDialog,
   DatasourceHero,
-  TableExplorer,
-  RelationshipTimeline,
-  MetadataBar,
-  LoadingState,
-  ErrorState,
   EmptyState,
+  ErrorState,
+  LoadingState,
+  MetadataBar,
+  RelationshipTimeline,
+  TableExplorer,
 } from "../components";
 import styles from "./datasourceDetailPage.module.scss";
 
 export const DatasourceDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const datasourceId = id ? parseInt(id, 10) : 0;
   const { data: datasource, isLoading, error } = useDatasource(datasourceId);
 
@@ -48,12 +51,17 @@ export const DatasourceDetailPage = () => {
       <DatasourceHero
         datasource={datasource}
         onBack={() => navigate("/datasource")}
+        onEdit={() => setIsEditDialogOpen(true)}
       />
 
       <main className={styles.mainContent}>
         <MetadataBar datasource={datasource} />
         <div
-          className={`${styles.contentGrid} ${!datasource.foreignKeys || datasource.foreignKeys.length === 0 ? styles.fullWidth : ""}`}
+          className={`${styles.contentGrid} ${
+            !datasource.foreignKeys || datasource.foreignKeys.length === 0
+              ? styles.fullWidth
+              : ""
+          }`}
         >
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
@@ -86,6 +94,14 @@ export const DatasourceDetailPage = () => {
           )}
         </div>
       </main>
+
+      <DatasourceFormDialog
+        open={isEditDialogOpen}
+        mode="edit"
+        datasource={datasource}
+        onClose={() => setIsEditDialogOpen(false)}
+        onSuccess={() => setIsEditDialogOpen(false)}
+      />
     </div>
   );
 };

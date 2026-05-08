@@ -95,6 +95,87 @@
   gap: var(--spacing-lg);
 }
 
+.deletePopconfirm {
+  :global(.ant-popover-inner) {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-base);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 0;
+  }
+
+  :global(.ant-popover-arrow)::before,
+  :global(.ant-popover-arrow)::after {
+    background: var(--bg-elevated);
+  }
+
+  :global(.ant-popover-inner-content) {
+    padding: var(--spacing-lg);
+  }
+
+  :global(.ant-popconfirm-message) {
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+
+  :global(.ant-popconfirm-message-icon) {
+    color: var(--warning);
+    margin-top: 2px;
+  }
+
+  :global(.ant-popconfirm-title) {
+    color: var(--text-primary);
+    font-size: var(--font-base);
+    line-height: 1.5;
+    font-weight: 600;
+  }
+
+  :global(.ant-popconfirm-buttons) {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    margin-top: 0;
+  }
+
+  :global(.ant-popconfirm-buttons .ant-btn) {
+    height: 32px;
+    padding: 0 14px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-sm);
+    font-weight: 500;
+    box-shadow: none;
+    transition:
+      background-color var(--transition-fast),
+      border-color var(--transition-fast),
+      color var(--transition-fast);
+  }
+
+  :global(.ant-popconfirm-buttons .ant-btn-default) {
+    background: var(--bg-base);
+    border-color: var(--border-base);
+    color: var(--text-primary);
+
+    &:hover {
+      background: var(--bg-hover);
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+    }
+  }
+
+  :global(.ant-popconfirm-buttons .ant-btn-primary) {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--text-inverse);
+
+    &:hover {
+      background: var(--danger-hover);
+      border-color: var(--danger-hover);
+      color: var(--text-inverse);
+    }
+  }
+}
+
 /* 与 DatasetCard 保持一致的卡片样式 */
 .card {
   display: flex;

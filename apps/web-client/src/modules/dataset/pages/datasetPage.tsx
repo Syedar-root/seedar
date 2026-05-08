@@ -2,19 +2,21 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDatasets } from "#pkg/seedar/ui-react";
 import { Plus, AlertCircle, Loader2, Database } from "lucide-react";
-import { DatasetCard } from "../components/DatasetCard";
+import { DatasetCard, DeleteConfirmDialog } from "../components";
 import styles from "./styles/datasetPage.module.scss";
-import { Select } from "@/core/components/ui/Select";
 
 export const DatasetPage = () => {
   const navigate = useNavigate();
   const { data: datasets, isLoading, error } = useDatasets();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDataset, setSelectedDataset] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const [isComposing, setIsComposing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
@@ -46,30 +48,48 @@ export const DatasetPage = () => {
   };
 
   const handleDelete = (id: number) => {
-    console.log("Delete dataset:", id);
+    const dataset = datasets?.find((item) => item.id === id);
+    if (dataset) {
+      setSelectedDataset({
+        id: dataset.id,
+        name: dataset.name,
+      });
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogOpen(false);
+    setSelectedDataset(null);
+  };
+
+  const handleDeleteSuccess = () => {
+    handleDeleteDialogClose();
   };
 
   const filteredDatasets = datasets?.filter((dataset) => {
-    const matchesSearch =
+    return (
       !searchQuery ||
       dataset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      dataset.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = !typeFilter || dataset.type === typeFilter;
-    const matchesStatus = !statusFilter || dataset.status === statusFilter;
-    return matchesSearch && matchesType && matchesStatus;
+      dataset.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
+      <header className={styles.header} data-tour-id="dataset-page-header">
         <h1 className={styles.title}>数据集管理</h1>
-        <button className={styles.createButton} onClick={handleCreateDataset}>
+        <button
+          className={styles.createButton}
+          onClick={handleCreateDataset}
+          data-tour-id="dataset-create-button"
+        >
           <Plus size={16} />
           新建数据集
         </button>
       </header>
 
-      <div className={styles.filters}>
+      <div className={styles.filters} data-tour-id="dataset-page-filters">
         <input
           type="text"
           className={styles.searchInput}
@@ -80,30 +100,11 @@ export const DatasetPage = () => {
           onCompositionEnd={(e) => {
             handleSearchCompositionEnd((e.target as HTMLInputElement).value);
           }}
-        />
-        <Select
-          value={typeFilter}
-          onChange={(val) => setTypeFilter(val ?? "")}
-          label="类型"
-          placeholder="全部类型"
-          options={[
-            { label: "语义型", value: "semantic" },
-            { label: "宽表型", value: "wide" },
-          ]}
-        />
-        <Select
-          value={statusFilter}
-          onChange={(val) => setStatusFilter(val ?? "")}
-          label="状态"
-          placeholder="全部状态"
-          options={[
-            { label: "启用", value: "active" },
-            { label: "禁用", value: "disabled" },
-          ]}
+          data-tour-id="dataset-search-input"
         />
       </div>
 
-      <main className={styles.content}>
+      <main className={styles.content} data-tour-id="dataset-page-content">
         {isLoading && (
           <div className={styles.loadingState}>
             <Loader2 size={32} className={styles.loadingSpinner} />
@@ -123,11 +124,11 @@ export const DatasetPage = () => {
         {!isLoading &&
           !error &&
           (!filteredDatasets || filteredDatasets.length === 0) && (
-            <div className={styles.emptyState}>
+            <div className={styles.emptyState} data-tour-id="dataset-empty-state">
               <Database size={48} className={styles.emptyIcon} />
               <h3 className={styles.emptyTitle}>暂无数据集</h3>
               <p className={styles.emptyDesc}>
-                点击"新建数据集"按钮创建您的第一个数据集
+                点击“新建数据集”按钮创建您的第一个数据集
               </p>
             </div>
           )}
@@ -136,7 +137,7 @@ export const DatasetPage = () => {
           !error &&
           filteredDatasets &&
           filteredDatasets.length > 0 && (
-            <div className={styles.grid}>
+            <div className={styles.grid} data-tour-id="dataset-grid">
               {filteredDatasets.map((dataset) => (
                 <DatasetCard
                   key={dataset.id}
@@ -149,6 +150,16 @@ export const DatasetPage = () => {
             </div>
           )}
       </main>
+
+      {selectedDataset && (
+        <DeleteConfirmDialog
+          open={deleteDialogOpen}
+          onClose={handleDeleteDialogClose}
+          datasetId={selectedDataset.id}
+          datasetName={selectedDataset.name}
+          onSuccess={handleDeleteSuccess}
+        />
+      )}
     </div>
   );
 };

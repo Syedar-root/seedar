@@ -9,12 +9,17 @@ import type {
   CreateAiRequest,
   UpdateAiRequest,
   AiSessionResponse,
+  AiSessionStatus,
+  AiSessionType,
   CreateAiSessionRequest,
   UpdateAiSessionRequest,
   AiChatRequestDto,
   AiAgentStreamChunk,
+  AiContextStatusEvent,
   PaginatedResult,
+  GenerateFieldBusinessNameRequest,
 } from '#pkg/seedar/types';
+import type { AiDoneEventData, AiSessionTitleEventData } from '#pkg/seedar/ui-core';
 
 const aiKeys = {
   all: ['ai'] as const,
@@ -23,6 +28,8 @@ const aiKeys = {
   detail: (id: string) => [...aiKeys.details(), id] as const,
   sessions: () => [...aiKeys.all, 'session'] as const,
   sessionDetail: (id: string) => [...aiKeys.sessions(), id] as const,
+  sessionMessages: (id: string, cursor?: string, limit: number = 50) =>
+    [...aiKeys.sessions(), id, 'messages', cursor ?? null, limit] as const,
 };
 
 export const useAis = (page?: number, pageSize?: number) => {
@@ -119,6 +126,46 @@ export const useUpdateAiSession = () => {
   });
 };
 
+export const useDeleteAiSession = () => {
+  const queryClient = useQueryClient();
+  const aiApi = useAiApi();
+
+  return useMutation({
+    mutationFn: (id: string) => aiApi.deleteSession(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: aiKeys.sessions() });
+    },
+  });
+};
+
+export const useAiSessions = (
+  page?: number,
+  pageSize?: number,
+  status?: AiSessionStatus,
+  type?: AiSessionType,
+) => {
+  const aiApi = useAiApi();
+
+  return useReactQuery({
+    queryKey: [...aiKeys.sessions(), page, pageSize, status, type],
+    queryFn: () => aiApi.findSessions(page, pageSize, status, type),
+  });
+};
+
+export const useAiSessionMessages = (
+  sessionId: string,
+  cursor?: string,
+  limit: number = 50,
+) => {
+  const aiApi = useAiApi();
+
+  return useReactQuery({
+    queryKey: aiKeys.sessionMessages(sessionId, cursor, limit),
+    queryFn: () => aiApi.listSessionMessages(sessionId, cursor, limit),
+    enabled: !!sessionId,
+  });
+};
+
 export const useAiChat = () => {
   const aiApi = useAiApi();
 
@@ -127,7 +174,9 @@ export const useAiChat = () => {
     callbacks: {
       onSession?: (data: { sessionId: string; timestamp: string }) => void;
       onMessage?: (chunk: AiAgentStreamChunk) => void;
-      onDone?: (data: { sessionId: string }) => void;
+      onContext?: (event: AiContextStatusEvent) => void;
+      onDone?: (data: AiDoneEventData) => void;
+      onSessionTitle?: (data: AiSessionTitleEventData) => void;
       onError?: (error: string) => void;
       onPing?: () => void;
     }
@@ -138,4 +187,15 @@ export const useAiChat = () => {
   return {
     streamChat,
   };
+};
+
+export const useGenerateFieldBusinessNames = () => {
+  const aiApi = useAiApi();
+
+  return useMutation({
+    mutationFn: (data: GenerateFieldBusinessNameRequest) =>
+      aiApi.generateFieldBusinessNames(data, {
+        timeout: 600000,
+      }),
+  });
 };

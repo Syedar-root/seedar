@@ -203,7 +203,7 @@ export const useWorkflowActionsStore = create<WorkflowActionsState>()(
       },
     }),
     {
-      name: 'workflow-actions-store',
+      name: 'seedar-workflow-actions-store',
     },
   ),
 );

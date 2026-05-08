@@ -161,7 +161,13 @@ export const buildChartSpecFromEditorConfig = (
   }
 
   if (editorConfig.label?.visible) {
-    baseSpec.label = { visible: true };
+    baseSpec.label = {
+      visible: true,
+      ...(editorConfig.label.sourceField &&
+        editorConfig.label.sourceField !== "auto" && {
+          sourceField: editorConfig.label.sourceField,
+        }),
+    };
   }
 
   if (editorConfig.legends?.visible) {

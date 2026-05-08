@@ -131,6 +131,10 @@ export class ApiClient {
       config.headers = options.headers;
     }
 
+    if (options?.timeout) {
+      config.timeout = options.timeout;
+    }
+
     return config;
   }
 

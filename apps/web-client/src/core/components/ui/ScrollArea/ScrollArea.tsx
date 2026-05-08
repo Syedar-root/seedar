@@ -29,7 +29,10 @@ export const ScrollArea: React.FC<ScrollAreaProps> = ({
       >
         <BaseScrollArea.Content
           className={clsx(styles.content, className)}
-          style={contentStyle}
+          style={{
+            minWidth:"",
+            ...contentStyle,
+          }}
         >
           {children}
         </BaseScrollArea.Content>

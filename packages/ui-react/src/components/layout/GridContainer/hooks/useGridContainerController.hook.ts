@@ -1,16 +1,20 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useContainerWidth } from "react-grid-layout";
+import { defaultPositionStrategy } from "react-grid-layout/core";
 import type { Layout } from "react-grid-layout";
 import type { LayoutItem } from "#pkg/seedar/types";
 
 import { useAutoScroll, usePreventTextSelection } from "../../../../hooks";
+import { useElementSize } from "../../../../hooks";
 import {
   COLS,
   MARGIN,
 } from "../../../../utils/dashboard-layout/constants";
 import {
   getBreakpointByWidth,
+  getDashboardViewportScale,
   getEffectiveGridWidth,
+  getLayoutHeight,
   updateBreakpointLayout,
 } from "../../../../utils/dashboard-layout/layoutEditor";
 import type { GridContainerProps } from "../types";
@@ -23,9 +27,19 @@ export const useGridContainerController = ({
   mode = "edit",
   activeBreakpoint,
   lockedCanvasWidth,
+  viewportScaleMode,
+  viewportScale,
+  effectiveViewportScale: storedEffectiveViewportScale,
+  autoViewportScaleRequestId,
   onMetricsChange,
 }: Omit<GridContainerProps, "children">) => {
   const { width, containerRef, mounted } = useContainerWidth();
+  const { elementRef: viewportRef, elementSize: viewportSize } =
+    useElementSize<HTMLDivElement>();
+  const { elementRef: metaBarRef, elementSize: metaBarSize } =
+    useElementSize<HTMLDivElement>();
+  const { elementRef: canvasRef, elementSize: canvasSize } =
+    useElementSize<HTMLDivElement>();
   const {
     enable: enablePreventTextSelection,
     disable: disablePreventTextSelection,
@@ -36,10 +50,12 @@ export const useGridContainerController = ({
     stop: stopAutoScroll,
   } = useAutoScroll();
 
+  const gridContainerWidth =
+    mode === "view" && canvasSize.width > 0 ? canvasSize.width : width;
   const containerBreakpoint = getBreakpointByWidth(width);
   const effectiveGridWidth = getEffectiveGridWidth({
     activeBreakpoint,
-    containerWidth: width,
+    containerWidth: gridContainerWidth,
     mode,
     lockedCanvasWidth,
   });
@@ -53,14 +69,6 @@ export const useGridContainerController = ({
       findScrollViewport(containerRef.current);
     }
   }, [containerRef, findScrollViewport]);
-
-  useEffect(() => {
-    onMetricsChange?.({
-      containerWidth: width,
-      containerBreakpoint,
-      effectiveGridWidth,
-    });
-  }, [containerBreakpoint, effectiveGridWidth, onMetricsChange, width]);
 
   const startInteractions = useCallback(() => {
     enablePreventTextSelection();
@@ -100,16 +108,111 @@ export const useGridContainerController = ({
   );
 
   const compactor = useMemo(() => createGridCompactor(), []);
+  const activeLayout = enhancedLayouts[activeBreakpoint] ?? [];
+  const canvasHeight = getLayoutHeight(activeLayout as LayoutItem[], rowHeight, MARGIN);
+  const handledAutoScaleRequestRef = useRef<number | null>(null);
+  const frameWidth = viewportSize.width;
+  const frameHeight = Math.max(viewportSize.height - metaBarSize.height, 0);
+  const effectiveViewportScale =
+    mode === "view"
+      ? 1
+      : viewportScaleMode === "custom"
+        ? getDashboardViewportScale({
+            mode: viewportScaleMode,
+            customScale: viewportScale,
+            canvasWidth: effectiveGridWidth,
+            canvasHeight,
+            frameWidth,
+            frameHeight,
+          })
+        : storedEffectiveViewportScale;
+  const scaledCanvasWidth = effectiveGridWidth * effectiveViewportScale;
+  const scaledCanvasHeight = canvasHeight * effectiveViewportScale;
+  const positionStrategy = useMemo(
+    () =>
+      effectiveViewportScale === 1
+        ? defaultPositionStrategy
+        : {
+            ...defaultPositionStrategy,
+            scale: effectiveViewportScale,
+          },
+    [effectiveViewportScale],
+  );
+
+  useEffect(() => {
+    if (
+      mode !== "edit" ||
+      viewportScaleMode !== "auto" ||
+      handledAutoScaleRequestRef.current === autoViewportScaleRequestId ||
+      frameWidth <= 0 ||
+      frameHeight <= 0 ||
+      effectiveGridWidth <= 0
+    ) {
+      return;
+    }
+
+    handledAutoScaleRequestRef.current = autoViewportScaleRequestId;
+    onMetricsChange?.({
+      containerWidth: width,
+      containerBreakpoint,
+      effectiveGridWidth,
+      viewportScale: getDashboardViewportScale({
+        mode: "auto",
+        customScale: viewportScale,
+        canvasWidth: effectiveGridWidth,
+        canvasHeight,
+        frameWidth,
+        frameHeight,
+      }),
+    });
+  }, [
+    autoViewportScaleRequestId,
+    canvasHeight,
+    containerBreakpoint,
+    effectiveGridWidth,
+    frameHeight,
+    frameWidth,
+    mode,
+    onMetricsChange,
+    viewportScale,
+    viewportScaleMode,
+    width,
+  ]);
+
+  useEffect(() => {
+    onMetricsChange?.({
+      containerWidth: width,
+      containerBreakpoint,
+      effectiveGridWidth,
+      viewportScale:
+        viewportScaleMode === "auto" ? undefined : effectiveViewportScale,
+    });
+  }, [
+    containerBreakpoint,
+    effectiveGridWidth,
+    effectiveViewportScale,
+    onMetricsChange,
+    viewportScaleMode,
+    width,
+  ]);
 
   return {
     containerRef,
+    viewportRef,
+    metaBarRef,
+    canvasRef,
     containerWidth: width,
     mounted,
     containerBreakpoint,
+    renderedBreakpoint,
     currentCols,
     effectiveGridWidth,
+    effectiveViewportScale,
+    scaledCanvasWidth,
+    scaledCanvasHeight,
     enhancedLayouts,
     compactor,
+    positionStrategy,
     handleDragStart: startInteractions,
     handleResizeStart: startInteractions,
     handleDragStop: handleLayoutStop,

@@ -19,6 +19,7 @@ export const buildEnhancedLayouts = ({
       ...item,
       isDraggable: mode === "edit",
       isResizable: mode === "edit",
+      isBounded: true,
     }));
   });
 
@@ -29,6 +30,7 @@ export const buildEnhancedLayouts = ({
     ...item,
     isDraggable: mode === "edit",
     isResizable: mode === "edit",
+    isBounded: true,
   }));
 
   return enhanced;

@@ -44,6 +44,63 @@
   margin-bottom: var(--chat-space-md);
 }
 
+.virtual-list {
+  position: relative;
+  width: 100%;
+}
+
+.virtual-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.context-status {
+  margin: 0 0 var(--chat-space-md);
+  padding: 8px 12px;
+  border-radius: var(--chat-radius-sm);
+  border: 1px solid
+    color-mix(in srgb, var(--chat-color-primary) 20%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--chat-color-primary) 8%,
+    var(--chat-bg-secondary)
+  );
+  color: var(--chat-color-secondary);
+  font: var(--chat-text-label);
+}
+
+.history-load-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  margin: 0 0 var(--chat-space-md);
+  padding: 0 12px;
+  border: 1px solid var(--chat-border-default);
+  border-radius: var(--chat-radius-sm);
+  background: var(--chat-bg-secondary);
+  color: var(--chat-color-secondary);
+  font: var(--chat-text-label);
+  cursor: pointer;
+  transition:
+    color var(--chat-transition-fast),
+    border-color var(--chat-transition-fast),
+    background-color var(--chat-transition-fast);
+
+  &:hover:not(:disabled) {
+    color: var(--chat-color-primary);
+    border-color: color-mix(in srgb, var(--chat-color-primary) 30%, var(--chat-border-default));
+    background: color-mix(in srgb, var(--chat-color-primary) 6%, var(--chat-bg-secondary));
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+}
+
 .message-actions {
   display: flex;
   gap: var(--chat-space-sm);
@@ -83,6 +140,34 @@
 .bubble-item {
   margin-bottom: var(--chat-space-md);
   animation: fadeIn 0.3s ease-out;
+}
+
+.error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--chat-space-sm);
+  margin: 0 var(--chat-space-md) var(--chat-space-md);
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, #ef4444 28%, var(--chat-border-default));
+  border-radius: var(--chat-radius-sm);
+  background: color-mix(in srgb, #ef4444 8%, var(--chat-bg-secondary));
+  color: #b91c1c;
+  font: var(--chat-text-label);
+  line-height: 1.5;
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  span {
+    display: -webkit-box;
+    overflow: hidden;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    word-break: break-word;
+  }
 }
 
 @keyframes fadeIn {

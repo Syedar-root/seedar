@@ -13,6 +13,7 @@ import { getConfigComponents } from "./configRegistry";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import type { DragItem } from "../dndHelper/dragZone/dragZone";
 import type { TempMetricConfig } from "../../types";
+import { PanelEditorErrorBoundary } from "./panelEditorErrorBoundary";
 import styles from "./panelEditor.module.scss";
 
 interface PanelEditorProps {
@@ -160,16 +161,18 @@ export const PanelEditor: React.FC<PanelEditorProps> = ({
     <ScrollArea className={styles.editor} contentStyle={{ minWidth: "none" }}>
       <TypeSelector value={currentType} onChange={handleTypeChange} />
 
-      {configComponents.map((Component, index) => (
-        <Component
-          key={index}
-          fields={fields}
-          metrics={metrics}
-          tempMetrics={tempMetrics}
-          config={currentConfig}
-          onChange={handleConfigChange}
-        />
-      ))}
+      <PanelEditorErrorBoundary>
+        {configComponents.map((Component, index) => (
+          <Component
+            key={index}
+            fields={fields}
+            metrics={metrics}
+            tempMetrics={tempMetrics}
+            config={currentConfig}
+            onChange={handleConfigChange}
+          />
+        ))}
+      </PanelEditorErrorBoundary>
     </ScrollArea>
   );
 };

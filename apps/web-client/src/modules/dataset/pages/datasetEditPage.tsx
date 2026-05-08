@@ -131,7 +131,7 @@ export const DatasetEditPage = () => {
       })),
       fields: (dataset.fields || []).map((f) => ({
         id: f.datasourceColumnId?.toString() || "", // 使用dataSourceColumnId作为id，因为id是只读的，不能修改
-        backendId: f.datasourceColumnId,
+        backendId: f.id,
         dataSourceColumnId: f.datasourceColumnId,
         tableId: f.tableId,
         name: f.name,

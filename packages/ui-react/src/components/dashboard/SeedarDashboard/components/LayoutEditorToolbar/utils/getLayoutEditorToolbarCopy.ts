@@ -1,5 +1,8 @@
 ﻿export const formatWidth = (width: number): string => `${Math.round(width)}px`;
 
+export const formatViewportScale = (scale: number): string =>
+  `${Math.round(scale * 100)}%`;
+
 export const getConfiguredLayoutHint = (
   breakpointLabel: string,
   breakpointRange: string,

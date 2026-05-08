@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { Checkbox } from "@base-ui/react/checkbox";
-import { Check, Key } from "lucide-react";
+import { Check, Key, Search } from "lucide-react";
+import clsx from "clsx";
 import { useDatasources } from "#pkg/seedar/ui-react";
+import { HelpTip } from "@/core/components/ui/HelpTip";
 import { ScrollArea } from "@/core/components/ui/ScrollArea";
 import { Select } from "@/core/components/ui/Select";
 import { useDatasetEditorStore } from "../../../../store";
 import type { DatasetFormData } from "../../../../types/editor.types";
 import styles from "./DataSourceStep.module.scss";
-import clsx from "clsx";
 
 interface DataSourceStepProps {
   formData: DatasetFormData;
   onUpdate: (updates: Partial<DatasetFormData>, tag: string) => void;
 }
 
-const TABLE_LIST_MAX_HEIGHT = "min(52vh, 32rem)";
+// 表列表最大高度（这个暂时不用）
+// const TABLE_LIST_MAX_HEIGHT = "min(52vh, 32rem)";
+
+const MAIN_TABLE_HELP_TEXT =
+  "默认入口表是查询时的兜底入口。当系统无法根据本次查询自动推断入口表时，会使用这里的表作为查询起点，因此需要提前指定。";
 
 export const DataSourceStep = ({
   formData,
@@ -26,6 +31,7 @@ export const DataSourceStep = ({
   const [selectedDatasourceId, setSelectedDatasourceId] = useState<string>(
     formData.datasourceId,
   );
+  const [tableSearchKeyword, setTableSearchKeyword] = useState("");
   const [selectedTableNames, setSelectedTableNames] = useState<string[]>(
     formData.tables.map((table) => table.tableName),
   );
@@ -44,15 +50,18 @@ export const DataSourceStep = ({
         "DataSourceStep datasourceId",
       );
       setSelectedTableNames([]);
+      setTableSearchKeyword("");
     }
-  }, [selectedDatasourceId]);
+  }, [formData.datasourceId, onUpdate, selectedDatasourceId]);
 
   useEffect(() => {
-    if (selectedDatasourceId) {
-      const id = parseInt(selectedDatasourceId, 10);
-      if (id > 0) {
-        fetchDatasource(id);
-      }
+    if (!selectedDatasourceId) {
+      return;
+    }
+
+    const id = parseInt(selectedDatasourceId, 10);
+    if (id > 0) {
+      fetchDatasource(id);
     }
   }, [selectedDatasourceId, fetchDatasource]);
 
@@ -89,7 +98,7 @@ export const DataSourceStep = ({
     ) {
       onUpdate({ mainTable: "" }, "DataSourceStep mainTable");
     }
-  }, [selectedTableNames]);
+  }, [formData.mainTable, onUpdate, selectedTableNames, tableIdMap]);
 
   const handleTableToggle = (tableName: string, checked: boolean) => {
     if (checked) {
@@ -116,6 +125,18 @@ export const DataSourceStep = ({
     })) || [];
 
   const availableTables = selectedDatasource?.tables || [];
+  const normalizedTableSearchKeyword = tableSearchKeyword.trim().toLowerCase();
+  const filteredTables = useMemo(
+    () =>
+      !normalizedTableSearchKeyword
+        ? availableTables
+        : availableTables.filter((table) =>
+            table.tableName
+              .toLowerCase()
+              .includes(normalizedTableSearchKeyword),
+          ),
+    [availableTables, normalizedTableSearchKeyword],
+  );
 
   const mainTableOptions = formData.tables.map((table) => ({
     value: table.tableId,
@@ -154,72 +175,99 @@ export const DataSourceStep = ({
           <p className={styles.hint}>请选择需要添加到数据集的表</p>
 
           {availableTables.length > 0 ? (
-            <ScrollArea>
-              <div className={styles.tableGrid}>
-                {availableTables.map((table) => {
-                  const displayColumns = getDisplayColumns(table.columns || []);
-                  const isSelected = selectedTableNames.includes(
-                    table.tableName,
-                  );
+            <>
+              <div className={styles.searchBox}>
+                <Search size={16} className={styles.searchIcon} />
+                <input
+                  type="text"
+                  value={tableSearchKeyword}
+                  onChange={(event) => setTableSearchKeyword(event.target.value)}
+                  placeholder="搜索表名"
+                  aria-label="搜索表名"
+                  className={styles.searchInput}
+                />
+              </div>
 
-                  return (
-                    <label
-                      key={table.tableName}
-                      className={`${styles.tableCard} ${
-                        isSelected ? styles.selected : ""
-                      }`}
-                    >
-                      <Checkbox.Root
-                        checked={isSelected}
-                        onCheckedChange={(checked) =>
-                          handleTableToggle(table.tableName, !!checked)
-                        }
-                        className={styles.checkbox}
-                      >
-                        <Checkbox.Indicator className={styles.checkboxIndicator}>
-                          <Check size={12} />
-                        </Checkbox.Indicator>
-                      </Checkbox.Root>
+              <ScrollArea>
+                {filteredTables.length > 0 ? (
+                  <div className={styles.tableGrid}>
+                    {filteredTables.map((table) => {
+                      const displayColumns = getDisplayColumns(
+                        table.columns || [],
+                      );
+                      const isSelected = selectedTableNames.includes(
+                        table.tableName,
+                      );
 
-                      <div className={styles.cardContent}>
-                        <div className={styles.cardHeader}>
-                          <span className={styles.tableName}>
-                            {table.tableName}
-                          </span>
-                          <span className={styles.columnCount}>
-                            {table.columns?.length || 0} 列
-                          </span>
-                        </div>
-
-                        <div className={styles.cardBody}>
-                          {displayColumns.map((column) => (
-                            <div
-                              key={column.columnName}
-                              className={`${styles.fieldItem} ${
-                                column.isPrimaryKey ? styles.primaryKey : ""
-                              }`}
+                      return (
+                        <label
+                          key={table.tableName}
+                          className={`${styles.tableCard} ${
+                            isSelected ? styles.selected : ""
+                          }`}
+                        >
+                          <Checkbox.Root
+                            checked={isSelected}
+                            onCheckedChange={(checked) =>
+                              handleTableToggle(table.tableName, !!checked)
+                            }
+                            className={styles.checkbox}
+                          >
+                            <Checkbox.Indicator
+                              className={styles.checkboxIndicator}
                             >
-                              <span className={styles.fieldName}>
-                                {column.columnName}
+                              <Check size={12} />
+                            </Checkbox.Indicator>
+                          </Checkbox.Root>
+
+                          <div className={styles.cardContent}>
+                            <div className={styles.cardHeader}>
+                              <span className={styles.tableName}>
+                                {table.tableName}
                               </span>
-                              {column.isPrimaryKey && (
-                                <Key size={10} className={styles.pkIcon} />
+                              <span className={styles.columnCount}>
+                                {table.columns?.length || 0} 列
+                              </span>
+                            </div>
+
+                            <div className={styles.cardBody}>
+                              {displayColumns.map((column) => (
+                                <div
+                                  key={column.columnName}
+                                  className={`${styles.fieldItem} ${
+                                    column.isPrimaryKey
+                                      ? styles.primaryKey
+                                      : ""
+                                  }`}
+                                >
+                                  <span className={styles.fieldName}>
+                                    {column.columnName}
+                                  </span>
+                                  {column.isPrimaryKey && (
+                                    <Key
+                                      size={10}
+                                      className={styles.pkIcon}
+                                    />
+                                  )}
+                                </div>
+                              ))}
+
+                              {(table.columns?.length || 0) > 3 && (
+                                <div className={styles.moreFields}>
+                                  +{(table.columns?.length || 0) - 3} more
+                                </div>
                               )}
                             </div>
-                          ))}
-
-                          {(table.columns?.length || 0) > 3 && (
-                            <div className={styles.moreFields}>
-                              +{(table.columns?.length || 0) - 3} more
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            </ScrollArea>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className={styles.noTables}>未找到匹配的表</p>
+                )}
+              </ScrollArea>
+            </>
           ) : (
             <p className={styles.noTables}>该数据源暂无可用的表</p>
           )}
@@ -229,17 +277,20 @@ export const DataSourceStep = ({
       {formData.tables.length > 0 && (
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>
-            选择主表
+            选择默认入口表
             <span className={styles.required}>*</span>
+            <HelpTip content={MAIN_TABLE_HELP_TEXT} />
           </h3>
           <Select
             value={formData.mainTable}
             onChange={handleMainTableChange}
-            placeholder="请选择主表"
+            placeholder="请选择默认入口表"
             options={mainTableOptions}
             clearable={false}
           />
-          <p className={styles.hint}>主表是数据关联的基准表</p>
+          <p className={styles.hint}>
+            默认入口表会作为系统自动判定失败时的查询兜底入口。
+          </p>
         </div>
       )}
     </div>

@@ -59,7 +59,7 @@ export const ConfirmStep = ({ formData, isSubmitting }: ConfirmStepProps) => {
             <span className={styles.infoValue}>{formData.tables.length}</span>
           </div>
           <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>主表</span>
+                  <span className={styles.infoLabel}>默认入口表</span>
             <span className={styles.infoValue}>
               {formData.tables.find((t) => t.tableId === formData.mainTable)
                 ?.tableName || "-"}

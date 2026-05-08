@@ -1,12 +1,12 @@
 import type {
-  ExecuteQueryResponse,
   PanelFormattingConfig,
 } from "#pkg/seedar/types";
 import type { ISpec } from "@visactor/react-vchart";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { useExecuteQuery } from "../../../../hooks";
+import { useQueryExecution } from "../../../../hooks";
 import { applyFormattingToQueryData } from "../../../../utils/formatting/applyQueryFormatting";
+import { applyChartFormattingToSpec } from "../utils/chartFormatting";
 import { transformData } from "../utils/transformChartSpec";
 import type { ChartProps } from "../types";
 
@@ -37,25 +37,8 @@ export const useChartData = ({
   queryId,
   spec,
 }: Pick<ChartProps, "data" | "queryId" | "spec">): ISpec | undefined => {
-  const { mutate: executeQuery } = useExecuteQuery();
-  const [rawData, setRawData] = useState<ExecuteQueryResponse>();
-
-  useEffect(() => {
-    if (data) {
-      setRawData(data);
-      return;
-    }
-
-    if (!queryId) {
-      return;
-    }
-
-    executeQuery(queryId, {
-      onSuccess: (queryData) => {
-        setRawData(queryData);
-      },
-    });
-  }, [data, executeQuery, queryId]);
+  const { data: executedData } = useQueryExecution(queryId, !data);
+  const rawData = data || executedData;
 
   return useMemo(() => {
     if (!rawData || !spec) {
@@ -73,8 +56,14 @@ export const useChartData = ({
       return undefined;
     }
 
+    const nextSpec = applyChartFormattingToSpec({
+      spec: transformed,
+      data: rawData,
+      formatting,
+    });
+
     return {
-      ...transformed,
+      ...nextSpec,
       autoFit: true,
     };
   }, [rawData, spec]);

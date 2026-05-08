@@ -16,6 +16,12 @@
 =  ==  !=  <>  >  <  >=  <=
 ```
 
+说明：
+
+- `=` 与 `==` 都表示“等于”
+- 在表达式解析阶段，`=` 会被当作合法比较运算符处理
+- 生成 SQL 时，`=` / `==` 最终都会输出为 SQL 的 `=`
+
 ### 筛选运算符
 ```typescript
 IN        // 列表匹配
@@ -58,6 +64,14 @@ COUNT(t1.user_id)
 COUNT(DISTINCT t1.order_id)
 COUNT(DISTINCT t1.user_id)
 ```
+
+补充说明：
+
+- `COUNT(comparison)` 支持条件计数语义
+- `SUM(comparison)` 支持条件求和语义
+- 当聚合参数是比较表达式时，引擎会自动改写为条件表达式再生成 SQL
+- 例如 `COUNT(status = 'paid')` 会等价改写为 `COUNT(CASE WHEN status = 'paid' THEN 1 END)`
+- 例如 `SUM(status = 'paid')` 会等价改写为 `SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END)`
 
 ### 3. 引用字段/指标（DSLTransformerV2 预处理）
 ```javascript
@@ -106,7 +120,34 @@ COUNT(DISTINCT (status == 'paid' ? user_id : null))
 COUNT(DISTINCT CASE WHEN status = 'paid' THEN user_id END)
 ```
 
-### 5. 多指标运算
+### 5. 条件计数简写
+```javascript
+COUNT(status = 'paid')
+COUNT(#F29 = 'Yes')
+```
+```sql
+COUNT(CASE WHEN status = 'paid' THEN 1 END)
+COUNT(CASE WHEN t1.survey_answer = 'Yes' THEN 1 END)
+```
+
+适用场景：
+
+- 统计满足某个条件的记录数
+- 希望直接写成 `COUNT(condition)`，而不是手写三元表达式
+
+等价写法：
+
+```javascript
+COUNT(status = 'paid')
+```
+
+等价于：
+
+```javascript
+COUNT(status = 'paid' ? 1 : null)
+```
+
+### 6. 多指标运算
 ```javascript
 #M100 * 1.1
 ```
@@ -114,13 +155,26 @@ COUNT(DISTINCT CASE WHEN status = 'paid' THEN user_id END)
 (revenue) * 1.1
 ```
 
-### 6. 复杂算术表达式
+### 7. 复杂算术表达式
 ```javascript
 (SUM(amount) - SUM(cost)) / SUM(cost) * 100
 ```
 ```sql
 ((SUM(t1.amount)) - (SUM(t1.cost))) / (SUM(t1.cost)) * 100
 ```
+
+### 8. 条件计数参与算术运算
+```javascript
+COUNT(#F29 = 'Yes') / #M3
+```
+```sql
+COUNT(CASE WHEN t1.survey_answer = 'Yes' THEN 1 END) / (metric_m3)
+```
+
+说明：
+
+- 这类写法适合“满足条件的数量 / 总量”这类比率指标
+- `#F / #M` 仍然先由 `DSLTransformerV2` 预处理展开，再进入表达式引擎解析
 
 ---
 
@@ -232,6 +286,120 @@ paid_at IS NOT NULL
 - SQL 风格 CASE WHEN（只支持三元运算符）
 - AND/OR 组合条件（需通过多个 filter 实现）
 - 表达式字符串解析 IN/BETWEEN/LIKE/IS NULL（需直接构造 AST 对象）
+
+---
+
+## 排序与 TopN
+
+`metricEngineV2` 原生通过 `QuerySpec.orderBy + QuerySpec.limit` 支持排序和 TopN。
+
+其中：
+
+- 排序使用 `orderBy`
+- TopN 本质上使用“先排序，再 limit N”
+- 引擎层没有单独的 `topN` AST / `QuerySpec.topN` 字段
+
+### 1. 引擎层 `QuerySpec` 写法
+
+```typescript
+{
+  dimensions: [
+    new FieldRefExpr("category", "orders", "t1"),
+  ],
+  metrics: [
+    new AggExpr("SUM", new FieldRefExpr("amount", "orders", "t1"), false, {
+      alias: "total_amount",
+    }),
+  ],
+  orderBy: [{ expr: "total_amount", dir: "desc" }],
+  limit: 10,
+}
+```
+
+语义等价于：
+
+```sql
+GROUP BY category
+ORDER BY total_amount DESC
+LIMIT 10
+```
+
+### 2. 业务层 `DSLTransformerV2` 写法
+
+业务侧 DSL 当前支持以下排序输入：
+
+```typescript
+type QueryOrderByDSL = {
+  fieldId?: number;
+  metricId?: number;
+  tempMetricId?: string;
+  alias?: string;
+  field?: string;
+  dir?: "asc" | "desc";
+  direction?: "asc" | "desc";
+};
+```
+
+示例：
+
+```typescript
+{
+  datasetId: 1,
+  dimensions: [12],
+  metrics: [{ id: 101 }],
+  orderBy: [{ metricId: 101, dir: "desc" }],
+  limit: 10,
+}
+```
+
+### 3. 业务层 `topN` 语义糖
+
+`DSLTransformerV2` 额外支持：
+
+```typescript
+{
+  topN: number
+}
+```
+
+说明：
+
+- `topN` 只存在于业务层 DSL，用于表达“按当前排序取前 N 条”
+- 转换后会映射为引擎层的 `limit`
+- `topN` 必须配合 `orderBy` 使用，否则会直接报错
+- `topN` 必须是大于 0 的整数
+- `topN` 不支持和 `offset` 同时使用
+- 如果同时传入 `topN` 与 `limit`，两者必须相同，否则会报错
+
+示例：
+
+```typescript
+{
+  datasetId: 1,
+  dimensions: [12],
+  metrics: [{ id: 101 }],
+  orderBy: [{ metricId: 101, dir: "desc" }],
+  topN: 5,
+}
+```
+
+会被转换为：
+
+```typescript
+{
+  orderBy: [{ expr: "total_amount", dir: "desc" }],
+  limit: 5,
+}
+```
+
+### 4. 派生维度 / 临时指标排序
+
+- 普通字段维度可通过 `fieldId` 排序
+- 派生维度建议通过 `alias` 排序
+- 普通指标可通过 `metricId` 排序
+- 同环比临时指标可通过 `tempMetricId` 排序
+
+同一个字段如果同时出现在多个维度表达式中（例如原字段 + `time_grain` 衍生维度），应改用 `alias` 排序，避免歧义。
 ---
 
 ## V2.1 同环比补充

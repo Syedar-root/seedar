@@ -5,6 +5,9 @@ export type {
   PanelDimensionDsl,
   PeriodOverPeriodConfig,
   QueryDsl,
+  SortCandidate,
+  SortItem,
+  SortSourceType,
   TempMetricConfig,
 } from "./editorState";
 export { CALCULATION_MODE_LABELS } from "./editorState";

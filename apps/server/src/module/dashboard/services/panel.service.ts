@@ -5,6 +5,7 @@ import { Panel } from '../entities/panel.entity';
 import { CreatePanelRequest } from '../dto/create-panel.request';
 import { UpdatePanelRequest } from '../dto/update-panel.request';
 import { PanelResponse } from '../dto/panel.response';
+import { Query } from '@/module/query/entities/query.entity';
 
 @Injectable()
 export class PanelService {
@@ -53,9 +54,18 @@ export class PanelService {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.panelRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Panel with ID ${id} not found`);
-    }
+    await this.panelRepository.manager.transaction(async (manager) => {
+      const panel = await manager.findOne(Panel, { where: { id } });
+
+      if (!panel) {
+        throw new NotFoundException(`Panel with ID ${id} not found`);
+      }
+
+      await manager.delete(Panel, id);
+
+      if (panel.queryId) {
+        await manager.delete(Query, panel.queryId);
+      }
+    });
   }
 }

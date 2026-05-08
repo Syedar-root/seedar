@@ -13,6 +13,7 @@ import {
   PeriodCalculationMode,
 } from '../../dataset/dataset.types';
 import {
+  BinaryExpr,
   InExpr,
   BetweenExpr,
   LikeExpr,
@@ -65,6 +66,7 @@ describe('Dynamic Join Selection', () => {
       description: 'Test dataset for join selection',
       type: 'semantic' as any,
       status: 'active' as any,
+      mainTableId: 1,
       datasource: {
         id: 1,
         name: 'Test Datasource',
@@ -238,6 +240,53 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins[0].table).toBe('customers');
     });
 
+    it('should infer root table from join direction when tableId is omitted', () => {
+      const dsl = {
+        datasetId: 1,
+        dimensions: [6],
+        metrics: [{ id: 1 }],
+      };
+
+      const datasetWithLeftJoin: DatasetResponse = {
+        ...mockDatasetInfo,
+        joins: [
+          {
+            ...mockDatasetInfo.joins![0],
+            joinType: JoinType.LEFT,
+          },
+        ],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        datasetWithLeftJoin,
+        mockTables,
+      );
+
+      expect(result.from.table).toBe('orders');
+      expect(result.from.alias).toBe('t1');
+      expect(result.joins).toHaveLength(1);
+      expect(result.joins[0].table).toBe('customers');
+      expect(result.joins[0].type).toBe(JoinType.LEFT);
+    });
+
+    it('should fall back to mainTableId when root inference is ambiguous', () => {
+      const dsl = {
+        datasetId: 1,
+        dimensions: [6],
+        metrics: [{ id: 1 }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.from.table).toBe('orders');
+      expect(result.from.alias).toBe('t1');
+    });
+
     it('should generate joins for multi-table query via metrics', () => {
       const dsl = {
         datasetId: 1,
@@ -295,6 +344,35 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins).toBeDefined();
       expect(result.joins.length).toBe(1);
       expect(result.joins[0].table).toBe('customers');
+    });
+
+    it('should assign alias correctly when traversing a join in reverse', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 2,
+        dimensions: [6],
+        metrics: [{ id: 1 }],
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.from.alias).toBe('t1');
+      expect(result.joins).toHaveLength(1);
+      expect(result.joins[0].table).toBe('orders');
+      expect(result.joins[0].alias).toBe('t2');
+
+      const joinExpr = result.joins[0].on as ComparisonExpr;
+      expect(joinExpr).toBeInstanceOf(ComparisonExpr);
+      expect(joinExpr.left).toBeInstanceOf(FieldRefExpr);
+      expect(joinExpr.right).toBeInstanceOf(FieldRefExpr);
+      expect((joinExpr.left as FieldRefExpr).getQualifiedName()).toBe('t1.id');
+      expect((joinExpr.right as FieldRefExpr).getQualifiedName()).toBe(
+        't2.customer_id',
+      );
     });
 
     it('should keep backward compatibility for object dimensions with alias', () => {
@@ -419,6 +497,72 @@ describe('Dynamic Join Selection', () => {
       expect(result.orderBy).toEqual([{ expr: 'month_bucket', dir: 'desc' }]);
     });
 
+    it('should map topN to limit when orderBy exists', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        metrics: [{ id: 1 }],
+        orderBy: [{ metricId: 1, dir: 'desc' as const }],
+        topN: 5,
+      };
+
+      const result = DSLTransformerV2.transform(
+        dsl,
+        mockDatasetInfo,
+        mockTables,
+      );
+
+      expect(result.orderBy).toEqual([{ expr: 'total_amount', dir: 'desc' }]);
+      expect(result.limit).toBe(5);
+    });
+
+    it('should reject topN without orderBy', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        metrics: [{ id: 1 }],
+        topN: 5,
+      };
+
+      expect(() =>
+        DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables),
+      ).toThrow(/topN.*orderBy/i);
+    });
+
+    it('should reject conflicting topN and limit', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        metrics: [{ id: 1 }],
+        orderBy: [{ metricId: 1, dir: 'desc' as const }],
+        topN: 5,
+        limit: 10,
+      };
+
+      expect(() =>
+        DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables),
+      ).toThrow(/topN.*limit/i);
+    });
+
+    it('should reject topN with offset pagination', () => {
+      const dsl = {
+        datasetId: 1,
+        tableId: 1,
+        dimensions: [1],
+        metrics: [{ id: 1 }],
+        orderBy: [{ metricId: 1, dir: 'desc' as const }],
+        topN: 5,
+        offset: 1,
+      };
+
+      expect(() =>
+        DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables),
+      ).toThrow(/topN.*offset/i);
+    });
+
     it('should build bucket derived dimension as ConditionalExpr chain', () => {
       const dsl = {
         datasetId: 1,
@@ -506,6 +650,62 @@ describe('Dynamic Join Selection', () => {
       expect(dimensionExpr).toBeInstanceOf(FieldRefExpr);
       expect(dimensionExpr.meta?.alias).toBe('order_id_expr');
       expect(dimensionExpr.meta?.businessName).toBe('order_id_expr');
+    });
+
+    it('should parse COUNT(comparison) expression metrics into conditional count semantics', () => {
+      const expressionMetric = {
+        id: 3,
+        name: 'yes_rate',
+        businessName: 'Yes Rate',
+        metricType: MetricType.ARITHMETIC,
+        expression: "COUNT(#F9 = 'Yes') / #M2",
+      } as DatasetMetricResponse;
+
+      const datasetInfo = {
+        ...mockDatasetInfo,
+        fields: [
+          ...(mockDatasetInfo.fields || []),
+          {
+            id: 9,
+            tableId: 1,
+            name: 'survey_answer',
+            businessName: 'Survey Answer',
+            type: 'string' as any,
+            datasourceColumnId: 9,
+          } as DatasetFieldResponse,
+        ],
+        metrics: [...(mockDatasetInfo.metrics || []), expressionMetric],
+      } as DatasetResponse;
+
+      const result = DSLTransformerV2.transform(
+        {
+          datasetId: 1,
+          tableId: 1,
+          dimensions: [1],
+          metrics: [{ id: 3 }],
+        },
+        datasetInfo,
+        mockTables,
+      );
+
+      const [metricExpr] = result.metrics as [BinaryExpr];
+      expect(metricExpr).toBeInstanceOf(BinaryExpr);
+      expect(metricExpr.operator).toBe('/');
+
+      const numerator = metricExpr.left as AggExpr;
+      expect(numerator).toBeInstanceOf(AggExpr);
+      expect(numerator.functionName).toBe('COUNT');
+      expect(numerator.arg).toBeInstanceOf(ConditionalExpr);
+
+      const conditionalArg = numerator.arg as ConditionalExpr;
+      expect(conditionalArg.condition).toBeInstanceOf(ComparisonExpr);
+      expect((conditionalArg.condition as ComparisonExpr).operator).toBe('=');
+      expect(conditionalArg.consequent).toEqual(new LiteralExpr(1));
+      expect(conditionalArg.alternate).toEqual(new LiteralExpr(null));
+
+      const denominator = metricExpr.right as AggExpr;
+      expect(denominator).toBeInstanceOf(AggExpr);
+      expect(denominator.functionName).toBe('COUNT');
     });
 
     it('should collect joins from derived dimensions on non-main table', () => {

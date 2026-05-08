@@ -1,7 +1,17 @@
 import { useCallback, useMemo, useState } from "react";
 import { SeedarDashboard } from "#pkg/seedar/ui-react";
 import styles from "./styles/dashboard.module.scss";
-import { ExternalLink, Trash2, Edit, Eye, Copy, Check, X } from "lucide-react";
+import {
+  ExternalLink,
+  Trash2,
+  Edit,
+  Eye,
+  Copy,
+  Check,
+  X,
+  Plus,
+  PanelTop,
+} from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Empty } from "@/core/components/ui/Empty";
 import { DashboardAside } from "../components/aside";
@@ -71,24 +81,39 @@ export const DashboardPage = () => {
   const header = useMemo(() => {
     return (
       <div className={styles.header}>
-        <button
-          className={styles.modeToggle}
-          onClick={toggleMode}
-          title={mode === "edit" ? "切换到浏览模式" : "切换到编辑模式"}
-        >
-          {mode === "edit" ? <Eye size={16} /> : <Edit size={16} />}
-          <span>{mode === "edit" ? "浏览模式" : "编辑模式"}</span>
-        </button>
+        <div className={styles.modeSwitch} role="group" aria-label="看板模式">
+          <button
+            className={mode === "view" ? styles.modeActive : undefined}
+            onClick={mode === "view" ? undefined : toggleMode}
+            type="button"
+          >
+            <Eye size={16} />
+            <span>浏览</span>
+          </button>
+          <button
+            className={mode === "edit" ? styles.modeActive : undefined}
+            onClick={mode === "edit" ? undefined : toggleMode}
+            type="button"
+          >
+            <Edit size={16} />
+            <span>编辑</span>
+          </button>
+        </div>
         {mode === "edit" && (
           <div className={styles.headerActions}>
             <SeedarDashboard.AddPanelTrigger>
-              <button className={styles.addPanel}>添加已有面板</button>
+              <button className={styles.addPanel} type="button">
+                <PanelTop size={16} />
+                <span>添加已有面板</span>
+              </button>
             </SeedarDashboard.AddPanelTrigger>
             <button
               className={styles.createPanel}
               onClick={handleCreatePanelClick}
+              type="button"
             >
-              新建面板
+              <Plus size={16} />
+              <span>新建面板</span>
             </button>
           </div>
         )}
@@ -113,13 +138,13 @@ export const DashboardPage = () => {
   );
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-tour-id="dashboard-page">
       <DashboardAside />
-      <main>
+      <main className={styles.main} data-tour-id="dashboard-main">
         {dashboardId ? (
           <>
             {dashboard && (
-              <div className={styles.dashboardInfo}>
+              <div className={styles.dashboardInfo} data-tour-id="dashboard-info">
                 <div className={styles.dashboardInfoHeader}>
                   <div className={styles.dashboardName}>
                     {isEditing ? (
@@ -186,16 +211,26 @@ export const DashboardPage = () => {
                 </div>
               </div>
             )}
-            <SeedarDashboard
-              autoUpdate={true}
-              dashboardId={dashboardId}
-              mode={mode}
-              header={header}
-              panelHeaderExtra={panelHeaderExtra}
-            ></SeedarDashboard>
+            <div
+              className={styles.dashboardContent}
+              data-tour-id="dashboard-content"
+            >
+              <SeedarDashboard
+                autoUpdate={true}
+                dashboardId={dashboardId}
+                mode={mode}
+                header={header}
+                panelHeaderExtra={panelHeaderExtra}
+              ></SeedarDashboard>
+            </div>
           </>
         ) : (
+          <div
+            className={styles.dashboardContent}
+            data-tour-id="dashboard-content"
+          >
           <Empty size="fill" description="请选择一个看板" />
+          </div>
         )}
       </main>
     </div>

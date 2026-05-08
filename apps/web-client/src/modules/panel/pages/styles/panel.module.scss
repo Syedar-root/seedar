@@ -11,12 +11,21 @@
   display: flex;
   flex: 0 1 auto;
   flex-direction: column;
-  width: 200px;
-  min-width: 160px;
+  width: 240px;
+  min-width: 200px;
   height: 100%;
   min-height: 0;
   overflow: hidden;
   background: var(--bg-base);
+}
+
+.leftPaneGroup {
+  display: flex;
+  flex: 0 1 auto;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .editor {
@@ -190,10 +199,15 @@
 
 .operations {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--spacing-sm);
+  min-width: 0;
+  flex: 1 1 100%;
 
   button {
     @include button-style(var(--bg-base), var(--bg-hover));
+    flex-shrink: 0;
   }
 
   .save {
@@ -224,15 +238,18 @@
     background: var(--bg-base);
     padding-inline: var(--spacing-xl);
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
     gap: var(--spacing-md);
 
     .titleArea {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex: 1 1 280px;
+      align-items: flex-start;
       min-width: 0;
-      padding: 0 var(--spacing-sm);
+      padding: 0;
 
       .smartMode {
         flex-shrink: 0;
@@ -251,6 +268,11 @@
 
 .secondaryAction {
   @include button-style(var(--bg-base), var(--bg-hover));
+}
+
+.queryZoneArea {
+  flex: 1 1 100%;
+  min-width: 0;
 }
 
 .workflowConfirmBanner {
@@ -370,13 +392,17 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    flex: 1 1 auto;
     min-width: 0;
+    width: 100%;
+    flex-wrap: nowrap;
   }
 }
 
 .statusBadge {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   height: 24px;
   padding: 0 10px;
   border-radius: 999px;
@@ -420,4 +446,43 @@
 .operations button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+@media (min-width: 1240px) {
+  .main {
+    .mainHeader {
+      align-items: center;
+    }
+  }
+
+  .queryZoneArea {
+    flex: 1 1 100%;
+  }
+
+  .operations {
+    flex: 0 0 auto;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .main {
+    .mainHeader {
+      padding-inline: var(--spacing-lg);
+    }
+
+    .mainContent {
+      padding-inline: var(--spacing-lg);
+    }
+
+    .titleMeta {
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+  }
+
+  .operations {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }

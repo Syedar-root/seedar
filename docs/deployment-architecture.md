@@ -56,4 +56,4 @@ flowchart LR
 - 不再本地 build 镜像。
 - 默认拉取 `syedarhandsome` 下的远端镜像。
 - 默认版本为 `latest`，也可通过 `SEEDAR_VERSION` 覆盖。
-- 新部署路径应优先使用 `seedar install` / `seedar update`。
+- 新部署路径应优先使用 `seedar install [version] [-y]` / `seedar update [version]` / `seedar logs [service] [-f]`。

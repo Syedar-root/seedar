@@ -28,11 +28,50 @@ const ChartErrorFallback: React.FC<FallbackProps> = ({ error }) => (
   </div>
 );
 
+const ChartContent: React.FC<{
+  resolvedSpec: ISpec;
+  vchartProps: React.ComponentProps<typeof VChart>;
+  onRenderStatusChange?: (status: {
+    ok: boolean;
+    error?: Error;
+  }) => void;
+}> = ({ resolvedSpec, vchartProps, onRenderStatusChange }) => {
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        minHeight: 0,
+        overflow: "hidden",
+      }}
+    >
+      <VChart
+        spec={{ ...resolvedSpec }}
+        {...vchartProps}
+        onRenderFinished={(event) => {
+          vchartProps.onRenderFinished?.(event);
+          onRenderStatusChange?.({
+            ok: true,
+          });
+        }}
+        onError={(error) => {
+          vchartProps.onError?.(error);
+          onRenderStatusChange?.({
+            ok: false,
+            error: error instanceof Error ? error : new Error(String(error)),
+          });
+        }}
+      />
+    </div>
+  );
+};
+
 export const Chart: React.FC<ChartProps> = ({
   vchartProps = {},
   spec,
   queryId,
   data,
+  onRenderStatusChange,
 }) => {
   const resolvedSpec = useChartData({
     data,
@@ -50,19 +89,18 @@ export const Chart: React.FC<ChartProps> = ({
       FallbackComponent={ChartErrorFallback}
       onError={(error) => {
         console.error("[Chart] render failed:", error);
+        onRenderStatusChange?.({
+          ok: false,
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
       }}
       resetKeys={[boundaryResetKey]}
     >
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          minHeight: 0,
-          overflow: "hidden",
-        }}
-      >
-        <VChart spec={{ ...resolvedSpec }} {...vchartProps} />
-      </div>
+      <ChartContent
+        resolvedSpec={resolvedSpec}
+        vchartProps={vchartProps}
+        onRenderStatusChange={onRenderStatusChange}
+      />
     </ErrorBoundary>
   );
 };

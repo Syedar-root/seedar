@@ -97,7 +97,9 @@ export const FieldExplorer = ({ fields, tables, mainTableId }: FieldExplorerProp
             <Accordion.Trigger className={styles.trigger}>
               <Table2 size={16} className={styles.tableIcon} />
               <span className={styles.tableName}>{group.tableName}</span>
-              {group.isMainTable && <span className={styles.mainBadge}>主表</span>}
+                {group.isMainTable && (
+                  <span className={styles.mainBadge}>默认入口表</span>
+                )}
               <span className={styles.fieldCount}>{group.fields.length} 字段</span>
               <ChevronDown size={16} className={styles.chevron} />
             </Accordion.Trigger>

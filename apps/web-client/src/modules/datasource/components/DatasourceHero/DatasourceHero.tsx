@@ -1,13 +1,18 @@
-import { ArrowLeft, Database } from "lucide-react";
+import { ArrowLeft, Database, PencilLine } from "lucide-react";
 import { DatasourceResponse } from "#pkg/seedar/types";
 import styles from "./DatasourceHero.module.scss";
 
 interface DatasourceHeroProps {
   datasource: DatasourceResponse;
   onBack?: () => void;
+  onEdit?: () => void;
 }
 
-export const DatasourceHero = ({ datasource, onBack }: DatasourceHeroProps) => {
+export const DatasourceHero = ({
+  datasource,
+  onBack,
+  onEdit,
+}: DatasourceHeroProps) => {
   const getStatusText = (status: string) => {
     const statusMap: Record<string, string> = {
       active: "正常",
@@ -18,7 +23,7 @@ export const DatasourceHero = ({ datasource, onBack }: DatasourceHeroProps) => {
   };
 
   const getStatusClass = (status: string) => {
-    return styles[`status-${status}`] || styles.statusInvalid;
+    return styles[`status-${status}`] || styles["status-invalid"];
   };
 
   const getDatasourceTypeLabel = (type: string) => {
@@ -32,11 +37,20 @@ export const DatasourceHero = ({ datasource, onBack }: DatasourceHeroProps) => {
     return typeLabels[type] || type.toUpperCase();
   };
 
+  const connectionPort =
+    datasource.config?.port ||
+    (datasource.type === "mysql"
+      ? "3306"
+      : datasource.type === "postgres"
+        ? "5432"
+        : "8123");
+
   return (
     <div className={styles.heroSection}>
       <div className={styles.heroContent}>
         {onBack && (
           <button
+            type="button"
             className={styles.backButton}
             onClick={onBack}
             aria-label="返回数据源列表"
@@ -57,7 +71,7 @@ export const DatasourceHero = ({ datasource, onBack }: DatasourceHeroProps) => {
                 </div>
                 {datasource.config?.database && (
                   <div className={styles.databaseName}>
-                    <span className={styles.metaLabel}>数据库:</span>
+                    <span className={styles.metaLabel}>数据库</span>
                     {datasource.config.database}
                   </div>
                 )}
@@ -74,19 +88,26 @@ export const DatasourceHero = ({ datasource, onBack }: DatasourceHeroProps) => {
             </div>
           </div>
 
-          <h1 className={styles.heroTitle}>{datasource.name}</h1>
+          <div className={styles.titleRow}>
+            <h1 className={styles.heroTitle}>{datasource.name}</h1>
+            {onEdit && (
+              <button
+                type="button"
+                className={styles.editButton}
+                onClick={onEdit}
+                aria-label="编辑数据源"
+              >
+                <PencilLine size={15} />
+                编辑
+              </button>
+            )}
+          </div>
 
           {datasource.config?.host && (
             <div className={styles.connectionInfo}>
               <span className={styles.metaLabel}>连接地址:</span>
               <span className={styles.hostInfo}>
-                {datasource.config.host}:
-                {datasource.config.port ||
-                  (datasource.type === "mysql"
-                    ? "3306"
-                    : datasource.type === "postgres"
-                      ? "5432"
-                      : "8123")}
+                {datasource.config.host}:{connectionPort}
               </span>
             </div>
           )}

@@ -16,7 +16,7 @@ export const useAiChatScenesStore = create<AIChatScenesState>()(
       clearScenes: () => set({ scenes: [] }),
     }),
     {
-      name: "ai-chat-scenes-store",
+      name: "seedar-ai-chat-scenes-store",
     },
   ),
 );

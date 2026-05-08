@@ -11,7 +11,7 @@ export const BasicInfoStep = ({ formData, onUpdate }: BasicInfoStepProps) => {
     <div className={styles.container}>
       <div className={styles.field}>
         <label className={styles.label}>
-          数据集名称 <span className={styles.required}>*</span>
+          数据集名称<span className={styles.required}>*</span>
         </label>
         <input
           type="text"
@@ -40,30 +40,6 @@ export const BasicInfoStep = ({ formData, onUpdate }: BasicInfoStepProps) => {
           rows={3}
           maxLength={500}
         />
-      </div>
-
-      <div className={styles.field}>
-        <label className={styles.label}>
-          数据集类型 <span className={styles.required}>*</span>
-        </label>
-        <select
-          className={styles.select}
-          value={formData.type}
-          onChange={(e) =>
-            onUpdate(
-              { type: e.target.value as "semantic" | "wideTable" },
-              "BasicInfoStep type",
-            )
-          }
-        >
-          <option value="semantic">语义型</option>
-          <option value="wideTable">宽表型</option>
-        </select>
-        <p className={styles.hint}>
-          {formData.type === "semantic"
-            ? "语义型数据集支持指标配置和关联关系"
-            : "宽表型数据集适用于大规模数据分析"}
-        </p>
       </div>
     </div>
   );

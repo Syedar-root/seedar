@@ -1,8 +1,8 @@
 # Seedar Production Deployment
 
-The default production path is now the Seedar CLI.ok
+The default production path is now the Seedar CLI.
 
-## Recommended path
+## Recommended Path
 
 Run Seedar without cloning the repo:
 
@@ -13,11 +13,15 @@ npx @syedar/seedar-cli@latest install
 Common commands:
 
 ```bash
-seedar update
+seedar install [version] [-y]
+seedar update [version]
 seedar status
-seedar logs server --follow
+seedar logs [service] [-f]
+seedar logs postgres -f
 seedar doctor
-seedar uninstall
+seedar uninstall [--remove-data] [--all] [--force]
+seedar remove --force
+seedar purge --force
 ```
 
 Runtime files are stored under:
@@ -34,7 +38,7 @@ The CLI generates:
 - `logs/`
 - `backups/`
 
-## Release model
+## Release Model
 
 - Docker images are published to DockerHub:
   - `syedarhandsome/seedar-server:<version>`
@@ -42,7 +46,22 @@ The CLI generates:
 - CLI is published to npm as `@syedar/seedar-cli`.
 - Git tags use `vX.Y.Z`.
 
-## Legacy path
+## Test Branch Flow
+
+- Pushes to the `test` branch run the `Test Release` workflow.
+- Test images are published with the `test` and `test-<sha>` tags.
+- The CLI is packed as a workflow artifact on every `test` branch push.
+- If `NPM_TOKEN` is configured, the CLI is also published to npm with a prerelease version and the `test` dist-tag.
+
+Examples:
+
+```bash
+npx @syedar/seedar-cli@test install
+docker pull syedarhandsome/seedar-server:test
+docker pull syedarhandsome/seedar-web:test
+```
+
+## Legacy Path
 
 The PowerShell scripts are still available as a compatibility path:
 
@@ -54,8 +73,8 @@ $env:SEEDAR_VERSION = "latest"
 Notes:
 
 - Legacy scripts now **pull remote images** instead of building locally.
-- Only `apps/server/.env.production` is required for legacy deployment.
-- New deployments should prefer the CLI.
+- `apps/server/.env.production` should include `AI_CHECKPOINT_PG_URL` (or `AI_CHECKPOINT_PG_PASSWORD`) for the checkpoint Postgres service.
+- New deployments should prefer `seedar install [version] [-y]` and `seedar update [version]`.
 
 ## Templates
 

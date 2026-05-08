@@ -20,6 +20,16 @@ import {
 } from "./ast";
 import { ExprAnalyzer } from "./analyzer";
 
+const jsepModule = jsep as unknown as {
+  addBinaryOp?: (operatorName: string, precedence: number) => void;
+  binary_ops?: Record<string, number>;
+  default?: (expression: string) => jsep.Expression;
+};
+
+if (!jsepModule.binary_ops?.["="]) {
+  jsepModule.addBinaryOp?.("=", 6);
+}
+
 /**
  * 解析上下文接口
  * 用于存储表达式解析过程中需要的上下文信息
@@ -81,13 +91,12 @@ export class ExprParser {
   parse(expression: string): Expr {
     // 使用 jsep 解析表达式字符串，生成 AST
     // jsep 是一个命名空间导出，需要作为函数调用
-    const parseModule = jsep as unknown as {
-      default?: (expression: string) => jsep.Expression;
-    };
-    const parseFn = parseModule.default ?? (jsep as unknown as (expression: string) => jsep.Expression);
+    const parseFn =
+      jsepModule.default ??
+      (jsep as unknown as (expression: string) => jsep.Expression);
     const ast = parseFn(expression);
     // 将 jsep AST 转换为我们的 Expr AST
-    return this.transform(ast);
+    return this.normalizeAggregationArgument(this.transform(ast));
   }
 
   /**
@@ -350,6 +359,94 @@ export class ExprParser {
     // 导入 ConditionalExpr
     // 由于循环依赖问题，这里使用动态导入或延迟处理
     return new ConditionalExpr(condition, consequent, alternate);
+  }
+
+  /**
+   * 归一化聚合参数，兼容 COUNT(condition) / SUM(condition ? value : 0) 这类条件聚合语义。
+   * 这里只把直接传给聚合函数的比较表达式转换为 CASE WHEN 风格 AST，
+   * 避免 SQL 层把 comparison 误当作普通列值处理。
+   */
+  private normalizeAggregationArgument(expr: Expr): Expr {
+    if (expr instanceof AggExpr) {
+      return new AggExpr(
+        expr.functionName,
+        this.normalizeAggregateArg(expr.functionName, expr.arg),
+        expr.distinct,
+        expr.meta,
+      );
+    }
+
+    if (expr instanceof BinaryExpr) {
+      return new BinaryExpr(
+        expr.operator,
+        this.normalizeAggregationArgument(expr.left),
+        this.normalizeAggregationArgument(expr.right),
+        expr.meta,
+      );
+    }
+
+    if (expr instanceof ComparisonExpr) {
+      return new ComparisonExpr(
+        expr.operator,
+        this.normalizeAggregationArgument(expr.left),
+        this.normalizeAggregationArgument(expr.right),
+        expr.meta,
+      );
+    }
+
+    if (expr instanceof ConditionalExpr) {
+      return new ConditionalExpr(
+        this.normalizeAggregationArgument(expr.condition),
+        this.normalizeAggregationArgument(expr.consequent),
+        this.normalizeAggregationArgument(expr.alternate),
+        expr.meta,
+      );
+    }
+
+    if (expr instanceof CallExpr) {
+      return new CallExpr(
+        expr.functionName,
+        expr.args.map((arg) => this.normalizeAggregationArgument(arg)),
+        expr.meta,
+      );
+    }
+
+    if (expr instanceof PeriodComparisonExpr) {
+      return new PeriodComparisonExpr(
+        this.normalizeAggregationArgument(expr.baseMetric),
+        expr.offsetType,
+        expr.comparisonMode,
+        expr.timeField,
+        expr.customTimeRange,
+        expr.meta,
+      );
+    }
+
+    return expr;
+  }
+
+  private normalizeAggregateArg(functionName: AggFuncName, arg: Expr): Expr {
+    const normalizedArg = this.normalizeAggregationArgument(arg);
+
+    if (normalizedArg instanceof ComparisonExpr) {
+      if (functionName === "COUNT") {
+        return new ConditionalExpr(
+          normalizedArg,
+          new LiteralExpr(1),
+          new LiteralExpr(null),
+        );
+      }
+
+      if (functionName === "SUM") {
+        return new ConditionalExpr(
+          normalizedArg,
+          new LiteralExpr(1),
+          new LiteralExpr(0),
+        );
+      }
+    }
+
+    return normalizedArg;
   }
 
   /**

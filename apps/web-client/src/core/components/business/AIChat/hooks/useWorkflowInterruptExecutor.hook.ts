@@ -16,6 +16,8 @@ interface UseWorkflowInterruptExecutorParams {
   messages: ChatMessage[];
   onResume: (resumePayload: AiChatResumeDto) => Promise<unknown>;
   onUpdateMessage: (id: string, updates: MessageUpdate) => void;
+  persistedHandledInterruptIds?: string[];
+  onHandledInterruptIdsChange?: (interruptIds: string[]) => void;
 }
 
 const getLatestWorkflowInterrupt = (messages: ChatMessage[]) => {
@@ -30,6 +32,7 @@ const getLatestWorkflowInterrupt = (messages: ChatMessage[]) => {
       return {
         interrupt: message.content.value,
         messageId: message.id,
+        messageMeta: message.meta,
       };
     }
   }
@@ -42,6 +45,8 @@ export const useWorkflowInterruptExecutor = ({
   messages,
   onResume,
   onUpdateMessage,
+  persistedHandledInterruptIds = [],
+  onHandledInterruptIdsChange,
 }: UseWorkflowInterruptExecutorParams) => {
   const navigate = useNavigate();
   const handledInterruptIdsRef = useRef(new Set<string>());
@@ -51,10 +56,15 @@ export const useWorkflowInterruptExecutor = ({
   );
 
   useEffect(() => {
+    handledInterruptIdsRef.current = new Set(persistedHandledInterruptIds);
+  }, [persistedHandledInterruptIds]);
+
+  useEffect(() => {
     if (messages.length === 0) {
       handledInterruptIdsRef.current.clear();
+      onHandledInterruptIdsChange?.([]);
     }
-  }, [messages.length]);
+  }, [messages.length, onHandledInterruptIdsChange]);
 
   useEffect(() => {
     if (!enabled) {
@@ -66,11 +76,31 @@ export const useWorkflowInterruptExecutor = ({
     }
 
     const interruptId = latestWorkflowInterrupt.interrupt.interruptId;
+    const alreadyResolved =
+      latestWorkflowInterrupt.messageMeta &&
+      typeof latestWorkflowInterrupt.messageMeta === "object" &&
+      "interruptResolved" in latestWorkflowInterrupt.messageMeta
+        ? Boolean(
+            (
+              latestWorkflowInterrupt.messageMeta as Record<string, unknown>
+            ).interruptResolved,
+          )
+        : false;
+
+    if (alreadyResolved) {
+      handledInterruptIdsRef.current.add(interruptId);
+      onHandledInterruptIdsChange?.([...handledInterruptIdsRef.current]);
+      return;
+    }
+
     if (handledInterruptIdsRef.current.has(interruptId)) {
       return;
     }
 
     handledInterruptIdsRef.current.add(interruptId);
+    onHandledInterruptIdsChange?.([
+      ...handledInterruptIdsRef.current,
+    ]);
 
     void (async () => {
       const interrupt = latestWorkflowInterrupt.interrupt as WorkflowRunInterrupt;
@@ -97,6 +127,9 @@ export const useWorkflowInterruptExecutor = ({
         });
       } catch (error) {
         handledInterruptIdsRef.current.delete(interruptId);
+        onHandledInterruptIdsChange?.([
+          ...handledInterruptIdsRef.current,
+        ]);
         throw error;
       }
     })().catch((error) => {

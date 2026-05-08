@@ -26,7 +26,7 @@ const STEP_LABELS: Record<EditorSteps, string> = {
   joinConfig: "关联配置",
   fieldConfig: "字段选择",
   metricConfig: "指标配置",
-  confirm: "确认创建",
+  confirm: "确认提交",
 };
 
 export interface DatasetEditorPageProps {
@@ -48,9 +48,13 @@ export interface DatasetEditorPageProps {
   ) => Set<string>;
   toggleField: (fieldId: string, lockedFields: Set<string>) => void;
   updateFieldBusinessName: (fieldId: string, businessName: string) => void;
+  updateFieldBusinessNames: (
+    updates: Array<{ fieldId: string; businessName: string }>,
+  ) => void;
   addJoin: (join: JoinConfig) => void;
   removeJoin: (joinId: string) => void;
   updateJoin: (joinId: string, updates: Partial<JoinConfig>) => void;
+  replaceJoins: (joins: JoinConfig[]) => void;
   addMetric: (metric: MetricConfig) => void;
   removeMetric: (metricId: string) => void;
   updateMetric: (metricId: string, updates: Partial<MetricConfig>) => void;
@@ -76,9 +80,11 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
     getLockedFields,
     toggleField,
     updateFieldBusinessName,
+    updateFieldBusinessNames,
     addJoin,
     removeJoin,
     updateJoin,
+    replaceJoins,
     addMetric,
     removeMetric,
     updateMetric,
@@ -95,7 +101,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
       setDatasourceId(id);
       fetchDatasource(id);
     }
-  }, [formData.datasourceId]);
+  }, [fetchDatasource, formData.datasourceId, setDatasourceId]);
 
   const timelineSteps: Array<{
     key: string;
@@ -133,6 +139,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
               onAddJoin={addJoin}
               onRemoveJoin={removeJoin}
               onUpdateJoin={updateJoin}
+              onReplaceJoins={replaceJoins}
             />
           </ReactFlowProvider>
         );
@@ -141,13 +148,14 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
           <FieldConfigStep
             formData={formData}
             lockedFields={getLockedFields(datasource)}
-            onToggleField={(fieldId) =>
-              toggleField(fieldId, getLockedFields(datasource))
-            }
-            onUpdateFieldBusinessName={updateFieldBusinessName}
-            selectedDatasource={datasource ?? undefined}
-          />
-        );
+              onToggleField={(fieldId) =>
+                toggleField(fieldId, getLockedFields(datasource))
+              }
+              onUpdateFieldBusinessName={updateFieldBusinessName}
+              onUpdateFieldBusinessNames={updateFieldBusinessNames}
+              selectedDatasource={datasource ?? undefined}
+            />
+          );
       case "metricConfig":
         return <MetricConfigStep formData={formData} />;
       case "confirm":
@@ -169,7 +177,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
   return (
     <div className={styles.container}>
       {isCreateMode && (
-        <aside className={styles.sidebar}>
+        <aside className={styles.sidebar} data-tour-id="dataset-editor-timeline">
           <Timeline
             steps={timelineSteps}
             currentStep={currentStep}
@@ -178,23 +186,28 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
         </aside>
       )}
 
-      <main className={styles.mainContent}>
-        <div className={styles.header}>
+      <main className={styles.mainContent} data-tour-id="dataset-editor-page">
+        <div className={styles.header} data-tour-id="dataset-editor-header">
           <h1 className={styles.title}>
             {isCreateMode ? "创建数据集" : "编辑数据集"}
           </h1>
           <p className={styles.stepIndicator}>
-            步骤 {currentStepIndex + 1} / {steps.length}：
-            {STEP_LABELS[currentStep]}
+            步骤 {currentStepIndex + 1} / {steps.length}：{STEP_LABELS[currentStep]}
           </p>
         </div>
 
-        <div className={styles.content}>{renderStepContent()}</div>
+        <div className={styles.content} data-tour-id="dataset-editor-content">
+          {renderStepContent()}
+        </div>
 
-        <div className={styles.footer}>
+        <div className={styles.footer} data-tour-id="dataset-editor-footer">
           <div className={styles.footerLeft}>
             {!isFirstStep && (
-              <button className={styles.button} onClick={goToPrevStep}>
+              <button
+                className={styles.button}
+                onClick={goToPrevStep}
+                data-tour-id="dataset-editor-prev-button"
+              >
                 <ChevronLeft size={16} />
                 上一步
               </button>
@@ -207,16 +220,17 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
                 className={`${styles.button} ${styles.primaryButton}`}
                 onClick={handleSubmit}
                 disabled={!canGoNext() || isSubmitting}
+                data-tour-id="dataset-editor-submit-button"
               >
                 {isSubmitting ? (
                   <>
                     <div className={styles.buttonSpinner} />
-                    创建中...
+                    {isCreateMode ? "创建中..." : "保存中..."}
                   </>
                 ) : (
                   <>
                     <Check size={16} />
-                    创建数据集
+                    {isCreateMode ? "创建数据集" : "保存修改"}
                   </>
                 )}
               </button>
@@ -225,6 +239,7 @@ export const DatasetEditorPage = (props: DatasetEditorPageProps) => {
                 className={`${styles.button} ${styles.primaryButton}`}
                 onClick={goToNextStep}
                 disabled={!canGoNext()}
+                data-tour-id="dataset-editor-next-button"
               >
                 下一步
                 <ChevronRight size={16} />

@@ -152,14 +152,59 @@
   border: 1px solid var(--danger);
 }
 
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  width: 100%;
+  margin-bottom: var(--spacing-md);
+  animation: fadeIn 0.5s ease-out 0.15s both;
+}
+
+.editButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+
+  &:hover {
+    border-color: var(--border-secondary);
+    background: var(--bg-base);
+    color: var(--text-primary);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent);
+    outline-offset: 2px;
+  }
+}
+
 .heroTitle {
   font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0 0 var(--spacing-md) 0;
+  margin: 0;
   letter-spacing: -0.01em;
   line-height: 1.25;
-  animation: fadeIn 0.5s ease-out 0.15s both;
 }
 
 .heroStats {
@@ -218,10 +263,19 @@
     font-size: 1.5rem;
   }
 
+  .titleRow {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
   .heroStats {
     flex-wrap: wrap;
     gap: var(--spacing-sm);
     width: 100%;
+  }
+
+  .editButton {
+    min-height: 36px;
   }
 
   .statDivider {

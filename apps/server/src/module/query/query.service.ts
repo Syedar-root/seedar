@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  HttpStatus,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -27,14 +32,29 @@ import { MySqlConfig } from '@/module/datasource/datasource.types';
 import { DataSourceType } from '@/module/datasource/datasource.types';
 import { DatasetResponse } from '@/module/dataset/dataset.types';
 import { LoggerService } from '@/logger/logger.service';
+import { BusinessException, ExceptionType } from '@/common/exceptions';
 import {
   DSLTransformerV2,
   QueryDSL,
   QueryDimensionDSL,
 } from './dsl-transformer/dsl-transformer.v2';
 
+interface CachedQueryExecution {
+  expiresAt: number;
+  response: ExecuteQueryResponse;
+}
+
+const QUERY_EXECUTION_CACHE_TTL_MS = 30 * 1000;
+
 @Injectable()
 export class QueryService {
+  private readonly executionCache = new Map<string, CachedQueryExecution>();
+  private readonly pendingExecutions = new Map<
+    string,
+    Promise<ExecuteQueryResponse>
+  >();
+  private readonly executionGenerations = new Map<string, number>();
+
   constructor(
     @InjectRepository(Query)
     private readonly queryRepository: Repository<Query>,
@@ -77,7 +97,9 @@ export class QueryService {
   ): Promise<Query> {
     const query = await this.findOne(id);
     Object.assign(query, updateQueryRequest);
-    return this.queryRepository.save(query);
+    const savedQuery = await this.queryRepository.save(query);
+    this.clearExecutionCache(id);
+    return savedQuery;
   }
 
   async remove(id: string): Promise<void> {
@@ -85,20 +107,85 @@ export class QueryService {
     if (result.affected === 0) {
       throw new NotFoundException(`Query with ID ${id} not found`);
     }
+    this.clearExecutionCache(id);
   }
 
   async execute(queryId: string): Promise<ExecuteQueryResponse> {
+    const cachedResponse = this.getCachedExecution(queryId);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
+    const pendingExecution = this.pendingExecutions.get(queryId);
+    if (pendingExecution) {
+      return pendingExecution;
+    }
+
+    const executionGeneration = this.getExecutionGeneration(queryId);
+    const execution = this.executeSavedQuery(queryId, executionGeneration);
+    this.pendingExecutions.set(queryId, execution);
+
+    try {
+      return await execution;
+    } finally {
+      if (this.pendingExecutions.get(queryId) === execution) {
+        this.pendingExecutions.delete(queryId);
+      }
+    }
+  }
+
+  async executeTemp(dsl: QueryDSL): Promise<ExecuteQueryResponse> {
+    return this.executeDSL(dsl, dsl.datasetId);
+  }
+
+  private async executeSavedQuery(
+    queryId: string,
+    executionGeneration: number,
+  ): Promise<ExecuteQueryResponse> {
     const query = await this.findOne(queryId);
 
     if (!query.dsl) {
       throw new Error('Query DSL is required for execution');
     }
 
-    return this.executeDSL(query.dsl, query.datasetId);
+    const response = await this.executeDSL(query.dsl, query.datasetId);
+    if (this.getExecutionGeneration(queryId) === executionGeneration) {
+      this.executionCache.set(queryId, {
+        response,
+        expiresAt: Date.now() + QUERY_EXECUTION_CACHE_TTL_MS,
+      });
+    }
+
+    return response;
   }
 
-  async executeTemp(dsl: QueryDSL): Promise<ExecuteQueryResponse> {
-    return this.executeDSL(dsl, dsl.datasetId);
+  private getCachedExecution(
+    queryId: string,
+  ): ExecuteQueryResponse | undefined {
+    const cachedExecution = this.executionCache.get(queryId);
+    if (!cachedExecution) {
+      return undefined;
+    }
+
+    if (cachedExecution.expiresAt <= Date.now()) {
+      this.executionCache.delete(queryId);
+      return undefined;
+    }
+
+    return cachedExecution.response;
+  }
+
+  private clearExecutionCache(queryId: string): void {
+    this.executionCache.delete(queryId);
+    this.pendingExecutions.delete(queryId);
+    this.executionGenerations.set(
+      queryId,
+      this.getExecutionGeneration(queryId) + 1,
+    );
+  }
+
+  private getExecutionGeneration(queryId: string): number {
+    return this.executionGenerations.get(queryId) || 0;
   }
 
   private async executeDSL(
@@ -211,6 +298,17 @@ export class QueryService {
         executionTime,
         columnMappings,
       };
+    } catch (error) {
+      if (error instanceof BusinessException) {
+        throw error;
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BusinessException(
+        ExceptionType.BAD_REQUEST,
+        message,
+        HttpStatus.BAD_REQUEST,
+      );
     } finally {
       await knexConnection.destroy();
     }

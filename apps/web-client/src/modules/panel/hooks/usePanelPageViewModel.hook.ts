@@ -2,6 +2,7 @@ import type {
   AiChatScene,
   DatasetResponse,
   ExecuteQueryResponse,
+  PanelSimpleFormattingRule,
   PanelQueryStatePayload,
   QueryDSL,
 } from "#pkg/seedar/types";
@@ -18,7 +19,10 @@ import { Aside } from "../components/aside";
 import { DatasetSelector } from "../components/datasetSelector";
 import { EditableTitle } from "../components/editableTitle";
 import { PanelEditor } from "../components/panelEditor";
-import type { DisplayPanelType } from "../components/panelEditor/types";
+import type {
+  ChartType,
+  DisplayPanelType,
+} from "../components/panelEditor/types";
 import { QueryZone } from "../components/queryZone/queryZone";
 import type { PanelEditorSnapshot } from "./usePanelEditorStateComposed.hook";
 import { useDatasetSelector } from "./useDatasetSelector";
@@ -34,12 +38,18 @@ import {
   getPreviewRowCount,
   getViewportMode,
   PANEL_PAGE_COPY,
+  PANEL_WORKFLOW_ADVANCED_SPEC_DISPLAY_TYPES,
   PANEL_STATUS_LABELS,
   PANEL_WORKFLOW_DISPLAY_TYPES,
   type LayoutMode,
   type PreviewPanel,
   type SidePaneKey,
 } from "../utils/panelPage.utils";
+import {
+  buildPanelSceneSummaryForAi,
+  buildPanelVisualizationSnapshotForAi,
+  serializePanelDslForAi,
+} from "../utils/panelAiScene";
 
 interface PanelWorkflowSnapshot {
   editor: PanelEditorSnapshot;
@@ -105,6 +115,10 @@ interface PanelPagePreview {
   cardConfig: ReturnType<typeof usePanelEditorState>["editorConfig"]["card"];
   emptyText: string;
   panelId?: string;
+  onChartRenderStatusChange: (status: {
+    ok: boolean;
+    error?: Error;
+  }) => void;
 }
 
 export interface UsePanelPageViewModelReturn {
@@ -137,10 +151,209 @@ interface WorkflowError {
   message: string;
 }
 
+interface WorkflowFormattingRuleInput {
+  id?: string;
+  target?: PanelSimpleFormattingRule["target"];
+  fieldId?: number;
+  metricId?: number;
+  role?: PanelSimpleFormattingRule["role"];
+  kind?: PanelSimpleFormattingRule["kind"];
+  enabled?: boolean;
+  decimals?: number;
+  useGrouping?: boolean;
+  currency?: string;
+  percentInput?: PanelSimpleFormattingRule["percentInput"];
+}
+
+type ChartRenderStatus = "idle" | "pending" | "success" | "error";
+
+interface ChartRenderWaiter {
+  resolve: () => void;
+  reject: (error: WorkflowError) => void;
+  timeoutId: ReturnType<typeof setTimeout>;
+}
+
 const createWorkflowError = (code: string, message: string): WorkflowError => ({
   code,
   message,
 });
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const isWorkflowErrorLike = (value: unknown): value is WorkflowError =>
+  isRecord(value) &&
+  typeof value.code === "string" &&
+  typeof value.message === "string";
+
+const extractWorkflowErrorFromUnknown = (
+  error: unknown,
+  fallbackCode: string,
+  fallbackMessage: string,
+): WorkflowError => {
+  if (isWorkflowErrorLike(error)) {
+    return {
+      code: error.code,
+      message: error.message,
+    };
+  }
+
+  if (isRecord(error)) {
+    const maybeMessage =
+      typeof error.message === "string" ? error.message : undefined;
+    const response = isRecord(error.response) ? error.response : undefined;
+    const responseData = response && isRecord(response.data) ? response.data : undefined;
+
+    const responseCode =
+      responseData && typeof responseData.code === "string"
+        ? responseData.code
+        : undefined;
+    const responseMessage =
+      responseData && typeof responseData.message === "string"
+        ? responseData.message
+        : undefined;
+
+    const details = responseData ? responseData.data : undefined;
+    const detailMessage =
+      isRecord(details) && typeof details.message === "string"
+        ? details.message
+        : undefined;
+
+    if (responseCode && (responseMessage || detailMessage)) {
+      return {
+        code: responseCode,
+        message: detailMessage || responseMessage || fallbackMessage,
+      };
+    }
+
+    if (responseMessage) {
+      return {
+        code: responseCode || fallbackCode,
+        message: responseMessage,
+      };
+    }
+
+    if (maybeMessage) {
+      return {
+        code: fallbackCode,
+        message: maybeMessage,
+      };
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return {
+      code: fallbackCode,
+      message: error.message,
+    };
+  }
+
+  return {
+    code: fallbackCode,
+    message: fallbackMessage,
+  };
+};
+
+const WORKFLOW_FORMATTING_TARGET_KINDS = [
+  "field",
+  "metric",
+  "derived_dimension",
+  "temp_metric",
+  "unknown",
+] as const;
+
+const parseWorkflowFormattingRule = (
+  value: unknown,
+  index: number,
+): PanelSimpleFormattingRule | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const target = value.target;
+  const workflowRule = value as WorkflowFormattingRuleInput;
+  const role =
+    value.role === "dimension" || value.role === "metric"
+      ? value.role
+      : typeof workflowRule.metricId === "number"
+        ? "metric"
+        : typeof workflowRule.fieldId === "number"
+          ? "dimension"
+          : undefined;
+  const kind = value.kind;
+  const normalizedTarget = isRecord(target)
+    ? target
+    : typeof workflowRule.metricId === "number"
+      ? {
+          kind: "metric",
+          id: String(workflowRule.metricId),
+        }
+      : typeof workflowRule.fieldId === "number"
+        ? {
+            kind: "field",
+            id: String(workflowRule.fieldId),
+          }
+        : undefined;
+  const targetKind =
+    isRecord(normalizedTarget) && typeof normalizedTarget.kind === "string"
+      ? normalizedTarget.kind
+      : undefined;
+  if (
+    !isRecord(normalizedTarget) ||
+    !targetKind ||
+    !WORKFLOW_FORMATTING_TARGET_KINDS.includes(
+      targetKind as (typeof WORKFLOW_FORMATTING_TARGET_KINDS)[number],
+    ) ||
+    (role !== "dimension" && role !== "metric") ||
+    (kind !== "number" &&
+      kind !== "percent" &&
+      kind !== "currency" &&
+      kind !== "date" &&
+      kind !== "datetime")
+  ) {
+    return undefined;
+  }
+
+  const id = typeof value.id === "string" && value.id.trim()
+    ? value.id.trim()
+    : `workflow_formatting_rule_${index}_${Date.now()}`;
+  return {
+    id,
+    target: {
+      kind: targetKind as (typeof WORKFLOW_FORMATTING_TARGET_KINDS)[number],
+      datasetId:
+        typeof normalizedTarget.datasetId === "number"
+          ? normalizedTarget.datasetId
+          : undefined,
+      id:
+        typeof normalizedTarget.id === "string" ||
+        typeof normalizedTarget.id === "number"
+          ? String(normalizedTarget.id)
+          : undefined,
+      key:
+        typeof normalizedTarget.key === "string"
+          ? normalizedTarget.key
+          : undefined,
+    },
+    role,
+    kind,
+    enabled:
+      typeof workflowRule.enabled === "boolean" ? workflowRule.enabled : undefined,
+    decimals:
+      typeof workflowRule.decimals === "number" ? workflowRule.decimals : undefined,
+    useGrouping:
+      typeof workflowRule.useGrouping === "boolean"
+        ? workflowRule.useGrouping
+        : undefined,
+    currency:
+      typeof workflowRule.currency === "string" ? workflowRule.currency : undefined,
+    percentInput:
+      workflowRule.percentInput === "ratio" ||
+      workflowRule.percentInput === "percent"
+        ? workflowRule.percentInput
+        : undefined,
+  };
+};
 
 /**
  * 聚合 PanelPage 所需的业务状态与事件，确保页面层仅负责布局和组件编排。
@@ -161,6 +374,10 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
   const [hasPendingWorkflowChanges, setHasPendingWorkflowChanges] =
     useState(false);
   const workflowSnapshotRef = useRef<PanelWorkflowSnapshot | null>(null);
+  const chartRenderStatusRef = useRef<ChartRenderStatus>("idle");
+  const chartRenderErrorRef = useRef<Error | null>(null);
+  const chartRenderWaiterRef = useRef<ChartRenderWaiter | null>(null);
+  const currentDisplayTypeRef = useRef<DisplayPanelType>("table");
   const workflowPreviewContextRef = useRef<WorkflowPreviewContext>({
     hasDataset: false,
     canRun: false,
@@ -173,6 +390,8 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
     dropMetrics,
     dropFilters,
     tempMetrics,
+    sortItems,
+    topN,
     displayType,
     editorConfig,
     tempData,
@@ -190,6 +409,7 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
     handleUpdateDerivedDimension,
     handleUpdateTempMetric,
     handleRemoveTempMetric,
+    handleApplySortConfig,
     handleEditorChange,
     handleSaveItemFormatting,
     handleRemoveItemFormatting,
@@ -217,22 +437,53 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
     () => buildCurrentDsl(buildDsl, queryData?.dsl as QueryDSL | undefined),
     [buildDsl, queryData?.dsl],
   );
+  const aiDsl = useMemo(
+    () => serializePanelDslForAi(currentDsl, activeDataset),
+    [activeDataset, currentDsl],
+  );
+  const visualizationSnapshot = useMemo(
+    () =>
+      buildPanelVisualizationSnapshotForAi({
+        displayType,
+        editorConfig,
+      }),
+    [displayType, editorConfig],
+  );
+  const panelSceneSummary = useMemo(
+    () =>
+      buildPanelSceneSummaryForAi({
+        datasetName: activeDataset?.name,
+        dsl: aiDsl,
+        visualizationSnapshot,
+      }),
+    [
+      activeDataset?.name,
+      aiDsl,
+      visualizationSnapshot,
+    ],
+  );
   const panelScene = useMemo<AiChatScene>(
     () => ({
       path: `/panel/${panelData?.id ?? panelId ?? "create"}`,
       panelId: panelData?.id ?? panelId,
       datasetId: activeDataset?.id,
+      datasetName: activeDataset?.name,
       queryId: queryData?.id,
       title,
-      dsl: currentDsl,
+      dsl: aiDsl,
+      sceneSummaryText: panelSceneSummary.readableText,
+      visualizationSnapshot,
     }),
     [
       activeDataset?.id,
-      currentDsl,
+      activeDataset?.name,
+      aiDsl,
+      panelSceneSummary.readableText,
       panelData?.id,
       panelId,
       queryData?.id,
       title,
+      visualizationSnapshot,
     ],
   );
 
@@ -282,6 +533,7 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
   });
 
   const previewSpec = usePreviewSpec(displayType, editorConfig);
+  currentDisplayTypeRef.current = displayType;
   workflowPreviewContextRef.current = {
     hasDataset,
     canRun,
@@ -514,6 +766,82 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
     restoreWorkflowSnapshot();
     toast.success(PANEL_PAGE_COPY.workflowChangesDiscarded);
   }, [restoreWorkflowSnapshot]);
+
+  const clearChartRenderWaiter = useCallback(() => {
+    const waiter = chartRenderWaiterRef.current;
+    if (!waiter) {
+      return;
+    }
+
+    clearTimeout(waiter.timeoutId);
+    chartRenderWaiterRef.current = null;
+  }, []);
+
+  const createChartPreviewFailure = useCallback(() => {
+    const error = chartRenderErrorRef.current;
+    return createWorkflowError(
+      "WORKFLOW_RUN_PREVIEW_FAILED",
+      error?.message
+        ? `${PANEL_PAGE_COPY.previewFailed}: ${error.message}`
+        : PANEL_PAGE_COPY.previewFailed,
+    );
+  }, []);
+
+  const handleChartRenderStatusChange = useCallback(
+    (status: { ok: boolean; error?: Error }) => {
+      chartRenderStatusRef.current = status.ok ? "success" : "error";
+      chartRenderErrorRef.current = status.ok ? null : (status.error ?? null);
+
+       const waiter = chartRenderWaiterRef.current;
+       if (!waiter) {
+         return;
+       }
+
+       clearChartRenderWaiter();
+       if (status.ok) {
+         waiter.resolve();
+         return;
+       }
+
+       waiter.reject(createChartPreviewFailure());
+    },
+    [clearChartRenderWaiter, createChartPreviewFailure],
+  );
+
+  const waitForChartRenderResult = useCallback(async () => {
+    const currentDisplayType = currentDisplayTypeRef.current;
+    if (currentDisplayType === "table" || currentDisplayType === "card") {
+      return;
+    }
+
+    if (chartRenderStatusRef.current === "success") {
+      return;
+    }
+
+    if (chartRenderStatusRef.current === "error") {
+      throw createChartPreviewFailure();
+    }
+
+    clearChartRenderWaiter();
+
+    await new Promise<void>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        chartRenderWaiterRef.current = null;
+        reject(
+          createWorkflowError(
+            "WORKFLOW_RUN_PREVIEW_TIMEOUT",
+            PANEL_PAGE_COPY.previewFailed,
+          ),
+        );
+      }, 1500);
+
+      chartRenderWaiterRef.current = {
+        resolve,
+        reject,
+        timeoutId,
+      };
+    });
+  }, [clearChartRenderWaiter, createChartPreviewFailure]);
 
   const onPrimarySave = useCallback(() => {
     if (!hasDataset) {
@@ -766,6 +1094,53 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           tempMetrics: queryState.tempMetrics?.length ?? 0,
         };
       },
+      set_item_formatting: (action) => {
+        captureWorkflowSnapshot();
+
+        if (!isRecord(action.payload)) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            "缺少合法的 set_item_formatting payload",
+          );
+        }
+
+        const payload = action.payload;
+        const ruleInputs: unknown[] = [];
+        if (isRecord(payload.rule)) {
+          ruleInputs.push(payload.rule);
+        }
+        if (Array.isArray(payload.rules)) {
+          ruleInputs.push(...payload.rules);
+        }
+
+        if (ruleInputs.length === 0) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            "set_item_formatting 至少需要提供一条 rule",
+          );
+        }
+
+        const parsedRules = ruleInputs
+          .map((rule, index) => parseWorkflowFormattingRule(rule, index))
+          .filter((rule): rule is PanelSimpleFormattingRule => Boolean(rule));
+
+        if (parsedRules.length === 0) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            "set_item_formatting 的规则格式不合法",
+          );
+        }
+
+        flushSync(() => {
+          parsedRules.forEach((rule) => {
+            handleSaveItemFormatting(rule);
+          });
+        });
+
+        return {
+          updatedRules: parsedRules.length,
+        };
+      },
       set_panel_title: (action) => {
         captureWorkflowSnapshot();
 
@@ -807,7 +1182,66 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           displayType: nextDisplayType,
         };
       },
-      run_preview: async () => {
+      set_advanced_spec: (action) => {
+        captureWorkflowSnapshot();
+
+        if (!isRecord(action.payload)) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            PANEL_PAGE_COPY.advancedSpecPayloadInvalid,
+          );
+        }
+
+        const payload = action.payload;
+        const spec = payload.spec;
+        if (!isRecord(spec)) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            PANEL_PAGE_COPY.advancedSpecPayloadInvalid,
+          );
+        }
+
+        const specType =
+          typeof spec.type === "string" ? spec.type : undefined;
+        if (!specType?.trim()) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            PANEL_PAGE_COPY.advancedSpecTypeInvalid,
+          );
+        }
+
+        const nextDisplayType =
+          displayType !== "table" && displayType !== "card"
+            ? displayType
+            : PANEL_WORKFLOW_ADVANCED_SPEC_DISPLAY_TYPES.includes(
+                  specType as DisplayPanelType,
+                )
+              ? (specType as DisplayPanelType)
+              : "bar";
+
+        if (!PANEL_WORKFLOW_ADVANCED_SPEC_DISPLAY_TYPES.includes(nextDisplayType)) {
+          throw createWorkflowError(
+            "WORKFLOW_PARAM_INVALID",
+            PANEL_PAGE_COPY.advancedSpecDisplayTypeInvalid,
+          );
+        }
+
+        flushSync(() => {
+          handleEditorChange(nextDisplayType as DisplayPanelType, {
+            ...editorConfig,
+            type: nextDisplayType as ChartType,
+            isAdvancedSpecMode: true,
+            advancedSpec: { ...spec },
+          });
+        });
+
+        return {
+          displayType: nextDisplayType,
+          advancedSpecMode: true,
+          specType: specType ?? null,
+        };
+      },
+      run_preview: async (action) => {
         captureWorkflowSnapshot();
 
         const { hasDataset, canRun, buildDsl, baseDsl, runPreview } =
@@ -834,7 +1268,23 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           );
         }
 
-        const previewResult = await runPreview(dsl);
+        const skipChartRenderValidation =
+          action.payload?.skipChartRenderValidation === true;
+
+        chartRenderStatusRef.current = "pending";
+        chartRenderErrorRef.current = null;
+
+        let previewResult: ExecuteQueryResponse | undefined;
+        try {
+          previewResult = await runPreview(dsl);
+        } catch (error) {
+          throw extractWorkflowErrorFromUnknown(
+            error,
+            "WORKFLOW_RUN_PREVIEW_FAILED",
+            PANEL_PAGE_COPY.previewFailed,
+          );
+        }
+
         if (!previewResult) {
           throw createWorkflowError(
             "WORKFLOW_RUN_PREVIEW_FAILED",
@@ -842,8 +1292,13 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
           );
         }
 
+        if (!skipChartRenderValidation) {
+          await waitForChartRenderResult();
+        }
+
         return {
           previewExecuted: true,
+          skipChartRenderValidation,
           rowCount: getPreviewRowCount(previewResult),
         };
       },
@@ -936,6 +1391,7 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
       cardConfig: editorConfig.card,
       emptyText: PANEL_PAGE_COPY.previewEmpty,
       panelId,
+      onChartRenderStatusChange: handleChartRenderStatusChange,
     },
     copy: {
       sideFields: PANEL_PAGE_COPY.sideFields,
@@ -947,12 +1403,10 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
     asideProps: {
       fields: activeDataset?.fields ?? [],
       metrics: activeDataset?.metrics ?? [],
-      datasetId: activeDataset?.id,
       datasetName: activeDataset?.name,
       hasDataset,
       canChangeDataset: !isDatasetLocked,
       onOpenDatasetSelector: handleOpenDatasetSelector,
-      onMetricCreated: handleMetricCreated,
     },
     panelEditorProps: {
       fields: dimensionItems,
@@ -973,6 +1427,9 @@ export const usePanelPageViewModel = (): UsePanelPageViewModelReturn => {
       onUpdateMetricPopConfig: handleUpdateTempMetric,
       tempMetrics,
       onRemoveTempMetric: handleRemoveTempMetric,
+      sortItems,
+      topN,
+      onApplySortConfig: handleApplySortConfig,
       onAddDerivedDimension: handleAddDerivedDimension,
       onUpdateDerivedDimension: handleUpdateDerivedDimension,
       formatting: editorConfig.formatting,
