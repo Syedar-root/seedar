@@ -7,14 +7,20 @@ import { writeRuntimeFiles } from "../runtime/index.js";
 import { autoShiftConflictPort, findPortKeyByPort, getPortLabel, parseComposePortConflict } from "./ports.js";
 import { printInstallDetail, printInstallStage, printInstallSuccess } from "./output.js";
 
+export async function runMigrations(layout: RuntimeLayout): Promise<void> {
+  const result = await runDockerCompose(layout, ["run", "--rm", "migrate"]);
+  if (result.code !== 0) {
+    const detail = [result.stdout.trim(), result.stderr.trim()].filter(Boolean).join("\n");
+    throw new Error(detail || "docker compose run --rm migrate 执行失败");
+  }
+}
+
 export async function runInstallFlow(layout: RuntimeLayout, env: EnvConfig): Promise<void> {
   await startMysqlWithRetry(layout, env);
   await startPostgres(layout);
 
   printInstallStage("执行数据库迁移");
-  await runDockerComposeOrThrow(layout, ["run", "--rm", "migrate"], {
-    stdio: "inherit",
-  });
+  await runMigrations(layout);
 
   await startServerAndWebWithRetry(layout, env);
 }

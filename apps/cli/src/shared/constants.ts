@@ -1,8 +1,8 @@
 export const DEFAULT_VERSION = "latest";
 export const DEFAULT_PORTS = {
-  mysql: 3306,
-  server: 8090,
-  web: 8080,
+  mysql: 23306,
+  server: 28090,
+  web: 28080,
 } as const;
 export const DEFAULT_DB_NAME = "seedar_prod";
 export const DEFAULT_DB_USER = "seedar";

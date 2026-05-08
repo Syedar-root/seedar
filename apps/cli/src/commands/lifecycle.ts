@@ -2,7 +2,8 @@ import { DEFAULT_VERSION } from "../shared/constants.js";
 import { waitForServiceHealthy } from "../docker/health.js";
 import { ensurePrerequisites } from "../docker/prerequisites.js";
 import { runDockerComposeOrThrow } from "../docker/process.js";
-import { startPostgres, startRuntimeServices, stopRuntimeServices } from "../install/flow.js";
+import { runMigrations, startPostgres, startRuntimeServices, stopRuntimeServices } from "../install/flow.js";
+import { printServiceEndpoints } from "../install/output.js";
 import { writeCliLog } from "../shared/logging.js";
 import type { EnvConfig } from "../shared/types.js";
 import {
@@ -66,9 +67,7 @@ export async function updateCommand(versionArg: string | undefined): Promise<voi
     });
     await waitForServiceHealthy(layout, "mysql");
     await startPostgres(layout);
-    await runDockerComposeOrThrow(layout, ["run", "--rm", "migrate"], {
-      stdio: "inherit",
-    });
+    await runMigrations(layout);
     await runDockerComposeOrThrow(layout, ["up", "-d", "server", "web"], {
       stdio: "inherit",
     });
@@ -76,6 +75,7 @@ export async function updateCommand(versionArg: string | undefined): Promise<voi
     await writeInstallState(layout, "installed");
     await writeCliLog(layout, `升级完成，版本 ${nextVersion}`);
     console.log(`Seedar 已升级到 ${nextVersion}`);
+    printServiceEndpoints(nextEnv);
     console.log(`备份目录: ${backupDir}`);
   } catch (error) {
     await restoreRuntimeFromBackup(layout, backupDir);

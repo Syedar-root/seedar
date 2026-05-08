@@ -2,6 +2,7 @@ import { access } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  DEFAULT_PORTS,
   DEFAULT_SERVER_IMAGE,
   DEFAULT_WEB_IMAGE,
   MIN_NODE_MAJOR,
@@ -147,9 +148,9 @@ export async function collectDoctorChecks(layout: RuntimeLayout): Promise<Doctor
   const hasConfig = await hasRuntimeConfig(layout);
   if (!hasConfig) {
     const defaultPorts: Array<[string, string]> = [
-      ["D009", "3306"],
-      ["D010", "8090"],
-      ["D011", "8080"],
+      ["D009", String(DEFAULT_PORTS.mysql)],
+      ["D010", String(DEFAULT_PORTS.server)],
+      ["D011", String(DEFAULT_PORTS.web)],
     ];
     for (const [code, port] of defaultPorts) {
       const available = await isPortAvailable(Number(port));
