@@ -1,13 +1,5 @@
 # Changelog
 
-## [1.3.1](https://github.com/Syedar-root/seedar/compare/v1.3.0...v1.3.1) (2026-05-08)
-
-
-### Bug Fixes
-
-* 优化发布工作流配置 ([dfcf378](https://github.com/Syedar-root/seedar/commit/dfcf3783643ca28fdede4bf07c6a78cba0c7f723))
-* 优化发布工作流配置 ([c3a2e7a](https://github.com/Syedar-root/seedar/commit/c3a2e7a26e7938bc7f71fd47e1c56865632556de))
-
 ## [1.3.0](https://github.com/Syedar-root/seedar/compare/v1.2.0...v1.3.0) (2026-05-08)
 
 
