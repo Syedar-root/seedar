@@ -162,7 +162,7 @@ $env:SEEDAR_VERSION = "latest"
 .\deploy\up-prod.ps1
 ```
 
-前置条件：配置好 `apps/server/.env.production` 并安装 Docker
+前置条件：配置好 `apps/server/.env.production` 并安装 Docker。
 
 ## 项目结构
 
