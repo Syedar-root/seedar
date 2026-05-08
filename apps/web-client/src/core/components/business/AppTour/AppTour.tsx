@@ -1,34 +1,56 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Tour } from "antd";
-import type { AppTourProps } from "./types";
+import type { AppTourProps, AppTourStep } from "./types";
+import styles from "./AppTour.module.scss";
 
 export const AppTour = ({ steps, ...tourProps }: AppTourProps) => {
-  const [isDomReady, setIsDomReady] = useState(false);
+  const renderStepIndicator = (current: number, total: number) => {
+    return `${current + 1}/${total}`;
+  };
 
-  useEffect(() => {
-    setIsDomReady(true);
-  }, []);
+  const classNames = useMemo(
+    () => ({
+      root: styles.root,
+      section: styles.section,
+      footer: styles.footer,
+      actions: styles.actions,
+      indicators: styles.indicators,
+      indicator: styles.indicator,
+      header: styles.header,
+      title: styles.title,
+      description: styles.description,
+    }),
+    [],
+  );
 
-  const resolvedSteps = steps.map((step) => {
-    if (step.target || !step.selector) {
-      return step;
-    }
+  const resolvedSteps = useMemo(
+    () =>
+      steps.map((step) => {
+        if (step.target || !step.selector) {
+          return step;
+        }
 
-    if (!isDomReady) {
-      return step;
-    }
+        const selector = step.selector;
+        const target = (() => {
+          const node = document.querySelector(selector);
+          return node instanceof HTMLElement ? node : null;
+        }) as AppTourStep["target"];
+        return {
+          ...step,
+          target,
+        };
+      }),
+    [steps],
+  );
 
-    const selector = step.selector;
-    const node = document.querySelector(selector);
-
-    if (!(node instanceof HTMLElement)) {
-      return step;
-    }
-
-    return { ...step, target: node };
-  });
-
-  return <Tour {...tourProps} steps={resolvedSteps} />;
+  return (
+    <Tour
+      indicatorsRender={renderStepIndicator}
+      classNames={classNames}
+      {...tourProps}
+      steps={resolvedSteps}
+    />
+  );
 };
 
 export default AppTour;

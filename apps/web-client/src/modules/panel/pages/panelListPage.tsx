@@ -23,15 +23,19 @@ export const PanelListPage = () => {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
+      <header className={styles.header} data-tour-id="panel-list-page-header">
         <h1 className={styles.title}>面板管理</h1>
-        <button className={styles.createButton} onClick={handleCreatePanel}>
+        <button
+          className={styles.createButton}
+          onClick={handleCreatePanel}
+          data-tour-id="panel-create-button"
+        >
           <Plus size={16} />
           新建面板
         </button>
       </header>
 
-      <div className={styles.filters}>
+      <div className={styles.filters} data-tour-id="panel-list-filters">
         <input
           type="text"
           className={styles.searchInput}
@@ -42,6 +46,7 @@ export const PanelListPage = () => {
           onCompositionEnd={(event) => {
             handleSearchCompositionEnd((event.target as HTMLInputElement).value);
           }}
+          data-tour-id="panel-search-input"
         />
         <Select
           value={statusFilter}
@@ -55,13 +60,13 @@ export const PanelListPage = () => {
         />
       </div>
 
-      <main className={styles.content}>
+      <main className={styles.content} data-tour-id="panel-list-page-content">
         {isLoading ? (
           <div>加载中...</div>
         ) : filteredPanels.length === 0 ? (
           <Empty description="暂无面板" />
         ) : (
-          <div className={styles.grid}>
+          <div className={styles.grid} data-tour-id="panel-grid">
             {filteredPanels.map((panel) => (
               <article
                 key={panel.id}

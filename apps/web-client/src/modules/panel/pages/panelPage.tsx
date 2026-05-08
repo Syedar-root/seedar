@@ -29,7 +29,11 @@ export const PanelPage = () => {
   const editorContent = <PanelEditor {...panelEditorProps} />;
 
   return (
-    <div ref={containerRef} className={styles.container}>
+    <div
+      ref={containerRef}
+      className={styles.container}
+      data-tour-id="panel-page"
+    >
       {layout.mode === "expanded" ? (
         <>
           <aside className={styles.sidebar}>

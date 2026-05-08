@@ -138,7 +138,7 @@ export const DashboardPage = () => {
   );
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-tour-id="dashboard-page">
       <DashboardAside />
       <main className={styles.main}>
         {dashboardId ? (
