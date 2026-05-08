@@ -1,4 +1,9 @@
-﻿import React, { useLayoutEffect, useCallback, useMemo, useRef } from "react";
+﻿import React, {
+  useLayoutEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { AlertCircle } from "lucide-react";
 import {
   Bubble,
@@ -27,6 +32,7 @@ import type { AiChatResumeDto } from "#pkg/seedar/types";
 import type { AIChatProps, ChatMessage } from "./types";
 import type { ToolCallMessageProps } from "./components";
 import clsx from "clsx";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { ScrollArea } from "../../ui/ScrollArea";
 import { DotsJumpLoading } from "./components/DotsJumpLoading";
 
@@ -42,6 +48,8 @@ type RenderDeps = {
     resumePayload?: AiChatResumeDto,
   ) => void;
 };
+
+const HISTORY_LOAD_MORE_LABEL = "加载更早消息";
 
 const splitMessageGroups = (messages: ChatMessage[]) => {
   const userMessages: ChatMessage[] = [];
@@ -247,64 +255,137 @@ const renderAssistantGroup = (
   );
 };
 
-const MessageSlice = React.memo(
-  ({ messages, deps }: { messages: ChatMessage[]; deps: RenderDeps }) => {
-    const { userMessages, assistantGroups } = useMemo(
-      () => splitMessageGroups(messages),
-      [messages],
-    );
+interface ConversationRow {
+  key: string;
+  userMessage?: ChatMessage;
+  assistantGroup?: AssistantMessageGroup;
+}
 
+const buildConversationRows = (messages: ChatMessage[]): ConversationRow[] => {
+  const { userMessages, assistantGroups } = splitMessageGroups(messages);
+  const rowCount = Math.max(userMessages.length, assistantGroups.length);
+  const rows: ConversationRow[] = [];
+
+  for (let index = 0; index < rowCount; index += 1) {
+    const userMessage = userMessages[index];
+    const assistantGroup = assistantGroups[index];
+
+    if (assistantGroup) {
+      rows.push({
+        key: `${assistantGroup[0]?.id || "assistant-group"}-${index}`,
+        userMessage,
+        assistantGroup,
+      });
+      continue;
+    }
+
+    if (userMessage) {
+      rows.push({
+        key: `${userMessage.id}-${index}`,
+        userMessage,
+      });
+    }
+  }
+
+  return rows;
+};
+
+const MessageRow = React.memo(
+  ({
+    row,
+    rowIndex,
+    deps,
+  }: {
+    row: ConversationRow;
+    rowIndex: number;
+    deps: RenderDeps;
+  }) => {
     const userBubbleItems = useMemo(() => {
-      return userMessages.map((message) => {
-        const command =
-          typeof message.content === "string"
-            ? resolveCommandFromMessage(message.content, deps.commands)
-            : undefined;
+      if (!row.userMessage) {
+        return [];
+      }
 
-        return {
-          key: message.id,
-          role: message.role as "user" | "assistant",
+      const command =
+        typeof row.userMessage.content === "string"
+          ? resolveCommandFromMessage(row.userMessage.content, deps.commands)
+          : undefined;
+
+      return [
+        {
+          key: row.userMessage.id,
+          role: row.userMessage.role as "user" | "assistant",
           content: command ? (
             <Tag variant="filled" color="blue">
               {command.label}
             </Tag>
-          ) : typeof message.content === "string" ? (
-            message.displayContent ||
-            formatMessageForDisplay(message.content, deps.commands)
+          ) : typeof row.userMessage.content === "string" ? (
+            row.userMessage.displayContent ||
+            formatMessageForDisplay(row.userMessage.content, deps.commands)
           ) : (
-            message.content
+            row.userMessage.content
           ),
           placement: "end" as const,
-          loading: !message.done,
-        };
-      });
-    }, [deps.commands, userMessages]);
+          loading: !row.userMessage.done,
+        },
+      ];
+    }, [deps.commands, row.userMessage]);
 
     return (
       <>
-        {assistantGroups.map((group, index) => {
-          const userMessageBefore = userMessages[index];
-          return (
-            <React.Fragment key={`${group[0]?.id || "group"}-${index}`}>
-              {userMessageBefore && (
-                <Bubble.List
-                  items={[userBubbleItems[index]]}
-                  className={styles["bubble-item"]}
-                />
-              )}
-              {renderAssistantGroup(group, index, deps)}
-            </React.Fragment>
-          );
-        })}
-        {userMessages.length > assistantGroups.length && (
-          <Bubble.List items={[userBubbleItems[userBubbleItems.length - 1]]} />
+        {row.userMessage && (
+          <Bubble.List items={userBubbleItems} className={styles["bubble-item"]} />
         )}
+        {row.assistantGroup && renderAssistantGroup(row.assistantGroup, rowIndex, deps)}
       </>
     );
   },
 );
 
-MessageSlice.displayName = "MessageSlice";
+MessageRow.displayName = "MessageRow";
+
+const VirtualizedMessageList: React.FC<{
+  messages: ChatMessage[];
+  deps: RenderDeps;
+  scrollContainerRef: React.RefObject<HTMLDivElement>;
+}> = ({ messages, deps, scrollContainerRef }) => {
+  const rows = useMemo(() => buildConversationRows(messages), [messages]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollContainerRef.current,
+    getItemKey: (index) => rows[index]?.key ?? index,
+    estimateSize: () => 240,
+    overscan: 8,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+
+  return (
+    <div
+      className={styles["virtual-list"]}
+      style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+    >
+      {virtualRows.map((virtualRow) => {
+        const row = rows[virtualRow.index];
+        if (!row) {
+          return null;
+        }
+
+        return (
+          <div
+            key={row.key}
+            data-index={virtualRow.index}
+            ref={rowVirtualizer.measureElement}
+            className={styles["virtual-row"]}
+            style={{ transform: `translateY(${virtualRow.start}px)` }}
+          >
+            <MessageRow row={row} rowIndex={virtualRow.index} deps={deps} />
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 const AIChat: React.FC<AIChatProps> = ({
   messages = [],
@@ -328,6 +409,9 @@ const AIChat: React.FC<AIChatProps> = ({
   title,
   onAddChat,
   onShowHistory,
+  hasMoreHistory = false,
+  isLoadingEarlierHistory = false,
+  onLoadEarlierHistory,
   error,
   className,
   style,
@@ -335,6 +419,10 @@ const AIChat: React.FC<AIChatProps> = ({
   const { getMessageActions } = useMessageActions();
   const messagesListRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
+  const pendingHistoryScrollRef = useRef<{
+    previousScrollTop: number;
+    previousScrollHeight: number;
+  } | null>(null);
 
   const mergedMessages = useMemo(() => {
     if (historyMessages || liveMessages) {
@@ -344,9 +432,6 @@ const AIChat: React.FC<AIChatProps> = ({
   }, [historyMessages, liveMessages, messages]);
 
   const stableHistoryMessages = historyMessages || mergedMessages;
-  const stableLiveMessages =
-    liveMessages ||
-    (historyMessages ? mergedMessages.slice(historyMessages.length) : []);
 
   const deps = useMemo<RenderDeps>(
     () => ({
@@ -371,6 +456,18 @@ const AIChat: React.FC<AIChatProps> = ({
     }
   }, [mergedMessages, loading, contextStatus]);
 
+  useLayoutEffect(() => {
+    const pending = pendingHistoryScrollRef.current;
+    if (!pending || !messagesListRef.current) {
+      return;
+    }
+
+    const nextScrollHeight = messagesListRef.current.scrollHeight;
+    const delta = nextScrollHeight - pending.previousScrollHeight;
+    messagesListRef.current.scrollTop = pending.previousScrollTop + delta;
+    pendingHistoryScrollRef.current = null;
+  }, [stableHistoryMessages.length]);
+
   const hasPendingInterrupt = useMemo(() => {
     const lastMessage = mergedMessages[mergedMessages.length - 1];
     return !loading && lastMessage?.type === "interrupt";
@@ -382,6 +479,22 @@ const AIChat: React.FC<AIChatProps> = ({
     },
     [onSendMessage, hasPendingInterrupt],
   );
+
+  const handleLoadEarlierHistory = useCallback(async () => {
+    if (!onLoadEarlierHistory || !messagesListRef.current || isLoadingEarlierHistory) {
+      return;
+    }
+
+    pendingHistoryScrollRef.current = {
+      previousScrollTop: messagesListRef.current.scrollTop,
+      previousScrollHeight: messagesListRef.current.scrollHeight,
+    };
+
+    const loaded = await onLoadEarlierHistory();
+    if (!loaded) {
+      pendingHistoryScrollRef.current = null;
+    }
+  }, [isLoadingEarlierHistory, onLoadEarlierHistory]);
 
   return (
     <div
@@ -420,8 +533,22 @@ const AIChat: React.FC<AIChatProps> = ({
             </div>
           )}
 
-          <MessageSlice messages={stableHistoryMessages} deps={deps} />
-          <MessageSlice messages={stableLiveMessages} deps={deps} />
+          {hasMoreHistory && (
+            <button
+              type="button"
+              className={styles["history-load-more"]}
+              onClick={() => void handleLoadEarlierHistory()}
+              disabled={loading || isLoadingEarlierHistory}
+            >
+              {isLoadingEarlierHistory ? "加载中..." : HISTORY_LOAD_MORE_LABEL}
+            </button>
+          )}
+
+          <VirtualizedMessageList
+            messages={mergedMessages}
+            deps={deps}
+            scrollContainerRef={messagesListRef}
+          />
 
           {loading && (
             <DotsJumpLoading
@@ -467,3 +594,4 @@ const AIChat: React.FC<AIChatProps> = ({
 };
 
 export default AIChat;
+
