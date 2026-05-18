@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 import { QuerySpec, SQLResult, JoinSpec } from "./types";
-import { Expr, AggLevel, PeriodComparisonExpr } from "../expr";
+import { Expr, AggLevel, PeriodComparisonExpr, RawSqlFragment } from "../expr";
 import { DatabaseDialect } from "../../core/types";
 import { ExprAnalyzer } from "../expr/analyzer";
 import { PeriodComparisonBuilder } from "./period-comparison-builder";
@@ -173,7 +173,7 @@ export class KnexQueryBuilder {
         // 获取排序表达式，可能是字段名或复杂表达式
         const orderExpr =
           typeof order.expr === "string"
-            ? order.expr
+            ? this.validateSqlIdentifier(order.expr, "orderBy")
             : this.buildExpr(order.expr);
         // 根据排序方向添加排序规则
         qb.orderBy(orderExpr, order.dir);
@@ -376,7 +376,7 @@ export class KnexQueryBuilder {
       spec.orderBy.forEach((order) => {
         let orderExpr: string;
         if (typeof order.expr === "string") {
-          orderExpr = order.expr;
+          orderExpr = this.validateSqlIdentifier(order.expr, "orderBy");
         } else {
           // 将排序表达式中的字段引用替换为 CTE 列别名
           orderExpr =
@@ -619,9 +619,16 @@ export class KnexQueryBuilder {
       return expr.negated ? `${exprStr} IS NOT NULL` : `${exprStr} IS NULL`;
     }
 
-    // 如果是字符串，直接返回
+    // 内部可信 SQL 片段
+    if (expr instanceof RawSqlFragment) {
+      return expr.sql;
+    }
+
+    // 裸字符串不允许直接拼入 SQL（防注入）
     if (typeof expr === "string") {
-      return aliasMap.get(expr) || expr;
+      throw new Error(
+        `buildExprWithAlias received a raw string: "${expr}". Raw strings are blocked for SQL injection safety. Use Expr AST objects (FieldRefExpr, LiteralExpr, etc.) instead.`,
+      );
     }
 
     return "";
@@ -1044,9 +1051,16 @@ export class KnexQueryBuilder {
       return expr.negated ? `${exprStr} IS NOT NULL` : `${exprStr} IS NULL`;
     }
 
-    // 如果是字符串，直接返回
+    // 内部可信 SQL 片段（仅 TimeFilterPlanner 等内部代码使用）
+    if (expr instanceof RawSqlFragment) {
+      return expr.sql;
+    }
+
+    // 裸字符串不允许直接拼入 SQL（防注入）
     if (typeof expr === "string") {
-      return expr;
+      throw new Error(
+        `buildExpr received a raw string: "${expr}". Raw strings are blocked for SQL injection safety. Use Expr AST objects (FieldRefExpr, LiteralExpr, etc.) instead.`,
+      );
     }
 
     // 默认返回空字符串
@@ -1113,6 +1127,22 @@ export class KnexQueryBuilder {
     }
 
     return false;
+  }
+
+  /**
+   * 校验 SQL 标识符（列别名、字段名等），防止注入
+   * 使用黑名单策略：拦截注入关键字符，允许 Unicode（中文等合法标识符）
+   * @param str - 待校验的标识符字符串
+   * @param context - 上下文描述（用于错误消息）
+   * @returns 校验通过的原始字符串
+   */
+  private validateSqlIdentifier(str: string, context: string): string {
+    if (/['";\x00-\x1f\\]/.test(str) || str.includes("--") || str.includes("/*")) {
+      throw new Error(
+        `Invalid SQL identifier in ${context}: "${str}". Contains forbidden characters (quotes, semicolon, comments, control chars, backslash).`,
+      );
+    }
+    return str;
   }
 
   /**

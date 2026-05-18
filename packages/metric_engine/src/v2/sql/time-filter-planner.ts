@@ -5,18 +5,15 @@ import {
   Expr,
   FieldRefExpr,
   LiteralExpr,
+  RawSqlFragment,
 } from "../expr";
 import { DatabaseDialect } from "../../core/types";
 import { PeriodOffsetType } from "../expr/types";
 
-export interface RawSqlDescriptor {
-  sql: string;
-}
-
 export interface PlannedTimeFilters {
   inheritedFilters: Expr[];
-  currentTimeFilter: RawSqlDescriptor;
-  comparisonTimeFilter: RawSqlDescriptor;
+  currentTimeFilter: RawSqlFragment;
+  comparisonTimeFilter: RawSqlFragment;
 }
 
 interface TimeRangeDescriptor {
@@ -152,25 +149,25 @@ export class TimeFilterPlanner {
 
   private static buildCurrentFilter(
     descriptor: TimeRangeDescriptor,
-  ): RawSqlDescriptor {
+  ): RawSqlFragment {
     const fieldSql = descriptor.field.getQualifiedName();
     if (descriptor.kind === "absolute") {
-      return {
-        sql: `${fieldSql} >= ${this.quoteDate(descriptor.start!)} AND ${fieldSql} < ${this.quoteDate(descriptor.end!)}`,
-      };
+      return new RawSqlFragment(
+        `${fieldSql} >= ${this.quoteDate(descriptor.start!)} AND ${fieldSql} < ${this.quoteDate(descriptor.end!)}`,
+      );
     }
 
     const start = this.nowMinus(descriptor.amount!, descriptor.unit!);
     const end = this.nowSql();
-    return {
-      sql: `${fieldSql} >= ${start} AND ${fieldSql} < ${end}`,
-    };
+    return new RawSqlFragment(
+      `${fieldSql} >= ${start} AND ${fieldSql} < ${end}`,
+    );
   }
 
   private static buildComparisonFilter(
     descriptor: TimeRangeDescriptor,
     offsetType: PeriodOffsetType,
-  ): RawSqlDescriptor {
+  ): RawSqlFragment {
     const fieldSql = descriptor.field.getQualifiedName();
     if (descriptor.kind === "absolute") {
       const shifted = this.shiftAbsoluteRange(
@@ -178,9 +175,9 @@ export class TimeFilterPlanner {
         descriptor.end!,
         offsetType,
       );
-      return {
-        sql: `${fieldSql} >= ${this.quoteDate(shifted.start)} AND ${fieldSql} < ${this.quoteDate(shifted.end)}`,
-      };
+      return new RawSqlFragment(
+        `${fieldSql} >= ${this.quoteDate(shifted.start)} AND ${fieldSql} < ${this.quoteDate(shifted.end)}`,
+      );
     }
 
     const start = this.shiftSql(
@@ -188,9 +185,9 @@ export class TimeFilterPlanner {
       offsetType,
     );
     const end = this.shiftSql(this.nowSql(), offsetType);
-    return {
-      sql: `${fieldSql} >= ${start} AND ${fieldSql} < ${end}`,
-    };
+    return new RawSqlFragment(
+      `${fieldSql} >= ${start} AND ${fieldSql} < ${end}`,
+    );
   }
 
   private static isSameField(left: FieldRefExpr, right: FieldRefExpr): boolean {

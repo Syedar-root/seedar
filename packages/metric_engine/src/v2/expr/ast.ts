@@ -394,3 +394,15 @@ export class PeriodComparisonExpr extends Expr {
     );
   }
 }
+
+/**
+ * 内部可信 SQL 片段标记类
+ *
+ * 仅供 TimeFilterPlanner 等内部可信代码使用，用于将预构建的安全 SQL
+ * 片段注入到 buildExpr/exprToSQL 管道中。
+ *
+ * 不继承 Expr —— 它不是用户可构造的表达式 AST 节点。
+ */
+export class RawSqlFragment {
+  constructor(public readonly sql: string) {}
+}
