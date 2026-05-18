@@ -35,10 +35,12 @@ describe("V2 筛选表达式测试", () => {
 
       const result = builder.build(spec as any);
       expect(result.sql).toContain("IN");
-      expect(result.sql).toContain("'paid'");
-      expect(result.sql).toContain("'shipped'");
-      expect(result.sql).toContain("'completed'");
-      console.log("SQL:", result.sql);
+      // Plan B: 字符串值走参数化绑定，SQL 中是 ? 占位符
+      expect(result.sql).toContain("?");
+      expect(result.bindings).toContain("paid");
+      expect(result.bindings).toContain("shipped");
+      expect(result.bindings).toContain("completed");
+      console.log("SQL:", result.sql, "bindings:", result.bindings);
     });
 
     it("应正确生成 NOT IN 列表 SQL", () => {
@@ -58,9 +60,11 @@ describe("V2 筛选表达式测试", () => {
 
       const result = builder.build(spec as any);
       expect(result.sql).toContain("NOT IN");
-      expect(result.sql).toContain("'cancelled'");
-      expect(result.sql).toContain("'refunded'");
-      console.log("SQL:", result.sql);
+      // Plan B: 字符串值走参数化绑定
+      expect(result.sql).toContain("?");
+      expect(result.bindings).toContain("cancelled");
+      expect(result.bindings).toContain("refunded");
+      console.log("SQL:", result.sql, "bindings:", result.bindings);
     });
 
     it("应正确处理数值列表", () => {
@@ -79,9 +83,11 @@ describe("V2 筛选表达式测试", () => {
 
       const result = builder.build(spec as any);
       expect(result.sql).toContain("IN");
-      expect(result.sql).toContain("1");
-      expect(result.sql).toContain("2");
-      expect(result.sql).toContain("3");
+      // Plan B: 数值也走参数化绑定
+      expect(result.sql).toContain("?");
+      expect(result.bindings).toContain(1);
+      expect(result.bindings).toContain(2);
+      expect(result.bindings).toContain(3);
       console.log("SQL:", result.sql);
     });
   });
@@ -104,8 +110,10 @@ describe("V2 筛选表达式测试", () => {
 
       const result = builder.build(spec as any);
       expect(result.sql).toContain("BETWEEN");
-      expect(result.sql).toContain("100");
-      expect(result.sql).toContain("1000");
+      // Plan B: 数值也走参数化绑定
+      expect(result.sql).toContain("?");
+      expect(result.bindings).toContain(100);
+      expect(result.bindings).toContain(1000);
       expect(result.sql).toContain("AND");
       console.log("SQL:", result.sql);
     });
@@ -147,8 +155,10 @@ describe("V2 筛选表达式测试", () => {
 
       const result = builder.build(spec as any);
       expect(result.sql).toContain("BETWEEN");
-      expect(result.sql).toContain("'2024-01-01'");
-      expect(result.sql).toContain("'2024-12-31'");
+      // Plan B: 日期字符串走参数化绑定
+      expect(result.sql).toContain("?");
+      expect(result.bindings).toContain("2024-01-01");
+      expect(result.bindings).toContain("2024-12-31");
     });
   });
 
@@ -169,7 +179,9 @@ describe("V2 筛选表达式测试", () => {
 
       const result = builder.build(spec as any);
       expect(result.sql).toContain("LIKE");
-      expect(result.sql).toContain("'%张%'");
+      // Plan B: LIKE 模式走参数化绑定
+      expect(result.sql).toContain("?");
+      expect(result.bindings).toContain("%张%");
     });
 
     it("应正确生成 NOT LIKE SQL", () => {
@@ -207,7 +219,9 @@ describe("V2 筛选表达式测试", () => {
 
       const result = builder.build(spec as any);
       expect(result.sql).toContain("LIKE");
-      expect(result.sql).toContain("'PROD_%'");
+      // Plan B: LIKE 模式走参数化绑定
+      expect(result.sql).toContain("?");
+      expect(result.bindings).toContain("PROD_%");
     });
   });
 
