@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.4.0](https://github.com/Syedar-root/seedar/compare/v1.3.2...v1.4.0) (2026-06-06)
+
+
+### Features
+
+* 为metric_engine添加SQL注入防护 ([4610f39](https://github.com/Syedar-root/seedar/commit/4610f39113555acd710828d6c671e27158d74472))
+* 新增RawSqlFragment并增强SQL注入防护 ([7ddbdd2](https://github.com/Syedar-root/seedar/commit/7ddbdd22ebe88b57ca3279aef0d8b8337ef51c91))
+* 添加页面全屏浏览和窗口全屏功能 ([b34060c](https://github.com/Syedar-root/seedar/commit/b34060cb46a76c22935749850927083860b5d428))
+
+
+### Bug Fixes
+
+* 更新gitignore配置 ([9ca1d92](https://github.com/Syedar-root/seedar/commit/9ca1d92739ac621ad830e724ff89d53d0c1b666f))
+
 ## [1.3.2](https://github.com/Syedar-root/seedar/compare/v1.3.1...v1.3.2) (2026-05-08)
 
 
