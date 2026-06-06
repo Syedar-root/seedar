@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SeedarDashboard } from "#pkg/seedar/ui-react";
 import styles from "./styles/dashboard.module.scss";
 import {
@@ -11,11 +11,16 @@ import {
   X,
   Plus,
   PanelTop,
+  Maximize,
+  Minimize,
+  Expand,
+  Shrink,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Empty } from "@/core/components/ui/Empty";
 import { DashboardAside } from "../components/aside";
 import { useDashboard, useUpdateDashboard } from "#pkg/seedar/ui-react";
+import { useAppStore } from "@/core/store";
 
 export const DashboardPage = () => {
   const navigate = useNavigate();
@@ -23,6 +28,48 @@ export const DashboardPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingName, setEditingName] = useState("");
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isContentFullscreen, setIsContentFullscreen] = useState(false);
+  const isWindowFullscreen = useAppStore((s) => s.isWindowFullscreen);
+  const setWindowFullscreen = useAppStore((s) => s.setWindowFullscreen);
+  /** 记录进入窗口全屏前的全屏浏览状态，退出时恢复 */
+  const contentFullscreenBeforeWindow = useRef(false);
+
+  /** 监听浏览器全屏变化（用户按 Esc 或 F11 退出时同步状态） */
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const nowFullscreen = !!document.fullscreenElement;
+      setWindowFullscreen(nowFullscreen);
+      if (!nowFullscreen) {
+        // 退出窗口全屏时，恢复之前的全屏浏览状态
+        setIsContentFullscreen(contentFullscreenBeforeWindow.current);
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      // 组件卸载时（如导航离开）若仍在全屏中，退出全屏并重置状态，防止导航栏永久隐藏
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+        setWindowFullscreen(false);
+        setIsContentFullscreen(contentFullscreenBeforeWindow.current);
+      }
+    };
+  }, [setWindowFullscreen]);
+
+  const toggleWindowFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      // 进入窗口全屏前：记录当前全屏浏览状态，并强制开启全屏浏览以消除黑边
+      contentFullscreenBeforeWindow.current = isContentFullscreen;
+      setIsContentFullscreen(true);
+      await document.documentElement.requestFullscreen();
+    }
+  }, [isContentFullscreen]);
+
+  const toggleContentFullscreen = useCallback(() => {
+    setIsContentFullscreen((prev) => !prev);
+  }, []);
 
   const { dashboardId } = useParams();
   const { data: dashboard } = useDashboard(dashboardId || "");
@@ -99,6 +146,30 @@ export const DashboardPage = () => {
             <span>编辑</span>
           </button>
         </div>
+        <div className={styles.headerActions}>
+          <button
+            className={styles.fullscreenButton}
+            onClick={toggleContentFullscreen}
+            type="button"
+            title={isContentFullscreen ? "退出全屏浏览" : "全屏浏览"}
+          >
+            {isContentFullscreen ? <Shrink size={16} /> : <Expand size={16} />}
+            <span>{isContentFullscreen ? "退出全屏" : "全屏浏览"}</span>
+          </button>
+          <button
+            className={styles.fullscreenButton}
+            onClick={toggleWindowFullscreen}
+            type="button"
+            title={isWindowFullscreen ? "退出窗口全屏" : "窗口全屏"}
+          >
+            {isWindowFullscreen ? (
+              <Minimize size={16} />
+            ) : (
+              <Maximize size={16} />
+            )}
+            <span>{isWindowFullscreen ? "退出窗口" : "窗口全屏"}</span>
+          </button>
+        </div>
         {mode === "edit" && (
           <div className={styles.headerActions}>
             <SeedarDashboard.AddPanelTrigger>
@@ -119,7 +190,7 @@ export const DashboardPage = () => {
         )}
       </div>
     );
-  }, [handleCreatePanelClick, mode, toggleMode]);
+  }, [handleCreatePanelClick, mode, toggleMode, isContentFullscreen, isWindowFullscreen, toggleContentFullscreen, toggleWindowFullscreen]);
 
   const panelHeaderExtra = useCallback(
     (panelId: string) => {
@@ -139,11 +210,14 @@ export const DashboardPage = () => {
 
   return (
     <div className={styles.container} data-tour-id="dashboard-page">
-      <DashboardAside />
-      <main className={styles.main} data-tour-id="dashboard-main">
+      {!isContentFullscreen && <DashboardAside />}
+      <main
+        className={`${styles.main} ${isContentFullscreen ? styles.contentFullscreen : ""}`}
+        data-tour-id="dashboard-main"
+      >
         {dashboardId ? (
           <>
-            {dashboard && (
+            {!isContentFullscreen && dashboard && (
               <div className={styles.dashboardInfo} data-tour-id="dashboard-info">
                 <div className={styles.dashboardInfoHeader}>
                   <div className={styles.dashboardName}>

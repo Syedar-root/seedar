@@ -7,6 +7,8 @@ interface AppState {
   isSeeMindOn: boolean;
   toggleSeeMind: () => void;
   setSeeMind: (value: boolean) => void;
+  isWindowFullscreen: boolean;
+  setWindowFullscreen: (value: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -18,6 +20,8 @@ export const useAppStore = create<AppState>()(
         isSeeMindOn: false,
         toggleSeeMind: () => set((state) => ({ isSeeMindOn: !state.isSeeMindOn })),
         setSeeMind: (value) => set({ isSeeMindOn: value }),
+        isWindowFullscreen: false,
+        setWindowFullscreen: (value) => set({ isWindowFullscreen: value }),
       }),
       {
         name: 'seedar-app-storage',
