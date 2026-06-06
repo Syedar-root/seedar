@@ -10,6 +10,7 @@ import { useAppLayoutSidebarController } from "./hooks";
 
 const AppLayout = (_props: AppLayoutProps) => {
   const isSeeMindOn = useAppStore((state) => state.isSeeMindOn);
+  const isWindowFullscreen = useAppStore((state) => state.isWindowFullscreen);
   const {
     sidebarPanelRef,
     isSidebarContentVisible,
@@ -19,7 +20,7 @@ const AppLayout = (_props: AppLayoutProps) => {
 
   return (
     <div className={styles.layout}>
-      <GlobalNavigation />
+      {!isWindowFullscreen && <GlobalNavigation />}
       <div className={styles.content}>
         <Group orientation="horizontal">
           <Panel

@@ -29,7 +29,7 @@ import {
   LiteralExpr,
 } from '@metric-engine/core';
 
-describe('Dynamic Join Selection', () => {
+describe('动态关联选择', () => {
   let mockDatasetInfo: DatasetResponse;
   let mockTables: any[];
 
@@ -202,8 +202,8 @@ describe('Dynamic Join Selection', () => {
     };
   });
 
-  describe('V2 Transformer', () => {
-    it('should not generate joins for single table query', () => {
+  describe('V2 转换器', () => {
+    it('正常流程：单表查询不生成关联', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -221,7 +221,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins.length).toBe(0);
     });
 
-    it('should generate joins for multi-table query via dimensions', () => {
+    it('正常流程：通过维度触发多表关联', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -240,7 +240,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins[0].table).toBe('customers');
     });
 
-    it('should infer root table from join direction when tableId is omitted', () => {
+    it('正常流程：省略 tableId 时按关联方向推断根表', () => {
       const dsl = {
         datasetId: 1,
         dimensions: [6],
@@ -270,7 +270,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins[0].type).toBe(JoinType.LEFT);
     });
 
-    it('should fall back to mainTableId when root inference is ambiguous', () => {
+    it('正常流程：根表推断冲突时回退 mainTableId', () => {
       const dsl = {
         datasetId: 1,
         dimensions: [6],
@@ -287,7 +287,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.from.alias).toBe('t1');
     });
 
-    it('should generate joins for multi-table query via metrics', () => {
+    it('正常流程：通过指标触发多表关联', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -306,7 +306,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins[0].table).toBe('customers');
     });
 
-    it('should generate multiple joins for query with multiple table dependencies', () => {
+    it('正常流程：多表依赖时生成多条关联', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -326,7 +326,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins.map((j) => j.table)).toContain('products');
     });
 
-    it('should generate joins for filters', () => {
+    it('正常流程：过滤条件触发表关联生成', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -346,7 +346,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins[0].table).toBe('customers');
     });
 
-    it('should assign alias correctly when traversing a join in reverse', () => {
+    it('正常流程：反向遍历关联时正确分配别名', () => {
       const dsl = {
         datasetId: 1,
         tableId: 2,
@@ -375,7 +375,7 @@ describe('Dynamic Join Selection', () => {
       );
     });
 
-    it('should keep backward compatibility for object dimensions with alias', () => {
+    it('正常流程：对象维度别名保持向后兼容', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -395,7 +395,7 @@ describe('Dynamic Join Selection', () => {
       expect(dimensionExpr.meta?.alias).toBe('order_id_alias');
     });
 
-    it('should build time_grain derived dimension as CallExpr with metadata', () => {
+    it('正常流程：time_grain 衍生维度转换为 CallExpr', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -426,7 +426,7 @@ describe('Dynamic Join Selection', () => {
       expect(dimensionExpr.meta?.businessName).toBe('month_bucket');
     });
 
-    it('should build orderBy for selected dimensions and metrics', () => {
+    it('正常流程：为维度与指标生成排序表达式', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -450,7 +450,7 @@ describe('Dynamic Join Selection', () => {
       ]);
     });
 
-    it('should require alias when one field maps to multiple selected dimensions', () => {
+    it('异常流程：同字段映射多个维度时必须提供 alias', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -472,7 +472,7 @@ describe('Dynamic Join Selection', () => {
       ).toThrow(/多个维度.*alias/i);
     });
 
-    it('should support alias-based orderBy for derived dimensions', () => {
+    it('正常流程：衍生维度支持 alias 排序', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -497,7 +497,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.orderBy).toEqual([{ expr: 'month_bucket', dir: 'desc' }]);
     });
 
-    it('should map topN to limit when orderBy exists', () => {
+    it('正常流程：存在排序时将 topN 映射为 limit', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -517,7 +517,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.limit).toBe(5);
     });
 
-    it('should reject topN without orderBy', () => {
+    it('异常流程：缺少 orderBy 时拒绝 topN', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -531,7 +531,7 @@ describe('Dynamic Join Selection', () => {
       ).toThrow(/topN.*orderBy/i);
     });
 
-    it('should reject conflicting topN and limit', () => {
+    it('异常流程：topN 与 limit 冲突时报错', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -547,7 +547,7 @@ describe('Dynamic Join Selection', () => {
       ).toThrow(/topN.*limit/i);
     });
 
-    it('should reject topN with offset pagination', () => {
+    it('异常流程：topN 不允许与 offset 同时使用', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -563,7 +563,7 @@ describe('Dynamic Join Selection', () => {
       ).toThrow(/topN.*offset/i);
     });
 
-    it('should build bucket derived dimension as ConditionalExpr chain', () => {
+    it('正常流程：bucket 衍生维度构建条件链', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -595,7 +595,7 @@ describe('Dynamic Join Selection', () => {
       expect((dimensionExpr.condition as ComparisonExpr).operator).toBe('<');
     });
 
-    it('should build mapping derived dimension as first-match ConditionalExpr chain', () => {
+    it('正常流程：mapping 衍生维度按首个命中构建条件链', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -626,7 +626,7 @@ describe('Dynamic Join Selection', () => {
       expect((dimensionExpr.condition as ComparisonExpr).operator).toBe('=');
     });
 
-    it('should build expression derived dimension and keep alias metadata', () => {
+    it('正常流程：expression 衍生维度保留 alias 元信息', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -652,7 +652,7 @@ describe('Dynamic Join Selection', () => {
       expect(dimensionExpr.meta?.businessName).toBe('order_id_expr');
     });
 
-    it('should parse COUNT(comparison) expression metrics into conditional count semantics', () => {
+    it('正常流程：COUNT 比较表达式转换为条件计数语义', () => {
       const expressionMetric = {
         id: 3,
         name: 'yes_rate',
@@ -708,7 +708,7 @@ describe('Dynamic Join Selection', () => {
       expect(denominator.functionName).toBe('COUNT');
     });
 
-    it('should collect joins from derived dimensions on non-main table', () => {
+    it('正常流程：非主表衍生维度可收集关联', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -733,7 +733,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins[0].table).toBe('customers');
     });
 
-    it('should reject derived dimensions without alias', () => {
+    it('异常流程：衍生维度缺少 alias 时拒绝', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -752,7 +752,7 @@ describe('Dynamic Join Selection', () => {
       ).toThrow(/alias/i);
     });
 
-    it('should reject unsupported derivedKind', () => {
+    it('异常流程：不支持的 derivedKind 报错', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -771,7 +771,7 @@ describe('Dynamic Join Selection', () => {
       ).toThrow(/derivedKind/i);
     });
 
-    it('should reject expression derived dimension with #M refs', () => {
+    it('异常流程：expression 衍生维度禁止引用 #M', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -791,8 +791,8 @@ describe('Dynamic Join Selection', () => {
     });
   });
 
-  describe('V1 Transformer', () => {
-    it('should not generate joins for single table query', () => {
+  describe('V1 转换器', () => {
+    it('正常流程：单表查询不生成关联', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -806,7 +806,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins.length).toBe(0);
     });
 
-    it('should generate joins for multi-table query via dimensions', () => {
+    it('正常流程：通过维度触发多表关联', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -821,7 +821,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins[0].rightTable.name).toBe('customers');
     });
 
-    it('should generate joins for multi-table query via metrics', () => {
+    it('正常流程：通过指标触发多表关联', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -836,7 +836,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins[0].rightTable.name).toBe('customers');
     });
 
-    it('should generate multiple joins for query with multiple table dependencies', () => {
+    it('正常流程：多表依赖时生成多条关联', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -852,7 +852,7 @@ describe('Dynamic Join Selection', () => {
       expect(result.joins.map((j) => j.rightTable.name)).toContain('products');
     });
 
-    it('should generate joins for filters', () => {
+    it('正常流程：过滤条件触发表关联生成', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -870,7 +870,7 @@ describe('Dynamic Join Selection', () => {
   });
 });
 
-describe('Period Comparison Expressions', () => {
+describe('同期对比表达式', () => {
   let mockDatasetInfo: DatasetResponse;
   let mockTables: any[];
   type TestDatasetMetricResponse = DatasetMetricResponse & {
@@ -1050,7 +1050,7 @@ describe('Period Comparison Expressions', () => {
     } as DatasetResponse;
   });
 
-  it('should parse MOM(#M,#F) into PeriodComparisonExpr', () => {
+  it('正常流程：MOM 临时指标转换为同期对比表达式', () => {
     const result = DSLTransformerV2.transform(
       createDsl(),
       mockDatasetInfo,
@@ -1066,7 +1066,7 @@ describe('Period Comparison Expressions', () => {
     expect(expr.baseMetric).toBeInstanceOf(AggExpr);
   });
 
-  it('should collect joins for referenced metric and time field tables', () => {
+  it('正常流程：收集指标与时间字段关联链路', () => {
     const result = DSLTransformerV2.transform(
       createDsl(),
       mockDatasetInfo,
@@ -1077,7 +1077,7 @@ describe('Period Comparison Expressions', () => {
     );
   });
 
-  it('should respect calculationMode absolute override', () => {
+  it('正常流程：支持 absolute 计算模式覆盖', () => {
     const result = DSLTransformerV2.transform(
       createDsl({
         tempMetricOverrides: {
@@ -1091,7 +1091,7 @@ describe('Period Comparison Expressions', () => {
     expect(expr.comparisonMode).toBe(ComparisonMode.ABSOLUTE);
   });
 
-  it('should reject calculationMode both', () => {
+  it('异常流程：calculationMode=both 时拒绝', () => {
     expect(() =>
       DSLTransformerV2.transform(
         createDsl({
@@ -1105,14 +1105,14 @@ describe('Period Comparison Expressions', () => {
     ).toThrow(/calculationMode.*both/i);
   });
 
-  it('should reject missing matching time filter', () => {
+  it('异常流程：缺少匹配时间过滤条件时报错', () => {
     const dsl = createDsl({ filters: [{ fieldId: 3, op: '=', value: 100 }] });
     expect(() =>
       DSLTransformerV2.transform(dsl, mockDatasetInfo, mockTables),
     ).toThrow(/time\s*filter|时间过滤器/i);
   });
 
-  it('should derive the period comparison metric from the base aggregate', () => {
+  it('正常流程：基于基础聚合构造同期对比指标', () => {
     const result = DSLTransformerV2.transform(
       createDsl(),
       mockDatasetInfo,
@@ -1124,7 +1124,7 @@ describe('Period Comparison Expressions', () => {
     expect((expr.baseMetric as AggExpr).arg).toBeInstanceOf(FieldRefExpr);
   });
 
-  it('should build orderBy for selected temp metrics', () => {
+  it('正常流程：临时指标生成排序表达式', () => {
     const result = DSLTransformerV2.transform(
       createDsl({
         orderBy: [{ tempMetricId: 'temp-pop', dir: 'desc' }],
@@ -1136,7 +1136,7 @@ describe('Period Comparison Expressions', () => {
     expect(result.orderBy).toEqual([{ expr: 'amount_mom', dir: 'desc' }]);
   });
 
-  it('should reject temp metrics without an effective timeFieldId', () => {
+  it('异常流程：临时指标缺少有效 timeFieldId 报错', () => {
     baseMetric.timeFieldId = undefined;
     expect(() =>
       DSLTransformerV2.transform(
@@ -1152,7 +1152,7 @@ describe('Period Comparison Expressions', () => {
   });
 });
 
-describe('Filter Expression Types', () => {
+describe('过滤表达式类型', () => {
   let mockDatasetInfo: DatasetResponse;
   let mockTables: any[];
 
@@ -1244,8 +1244,8 @@ describe('Filter Expression Types', () => {
     };
   });
 
-  describe('IN Expression', () => {
-    it('should transform IN filter to InExpr', () => {
+  describe('IN 表达式', () => {
+    it('正常流程：IN 过滤转换为 InExpr', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -1265,7 +1265,7 @@ describe('Filter Expression Types', () => {
       expect((result.filters[0] as InExpr).negated).toBe(false);
     });
 
-    it('should transform NOT IN filter to InExpr with negated=true', () => {
+    it('正常流程：NOT IN 过滤转换为否定 InExpr', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -1285,8 +1285,8 @@ describe('Filter Expression Types', () => {
     });
   });
 
-  describe('BETWEEN Expression', () => {
-    it('should transform BETWEEN filter to BetweenExpr', () => {
+  describe('BETWEEN 表达式', () => {
+    it('正常流程：BETWEEN 过滤转换为 BetweenExpr', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -1307,7 +1307,7 @@ describe('Filter Expression Types', () => {
       expect((result.filters[0] as BetweenExpr).negated).toBe(false);
     });
 
-    it('should transform NOT BETWEEN filter to BetweenExpr with negated=true', () => {
+    it('正常流程：NOT BETWEEN 过滤转换为否定 BetweenExpr', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -1329,8 +1329,8 @@ describe('Filter Expression Types', () => {
     });
   });
 
-  describe('LIKE Expression', () => {
-    it('should transform LIKE filter to LikeExpr', () => {
+  describe('LIKE 表达式', () => {
+    it('正常流程：LIKE 过滤转换为 LikeExpr', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -1349,7 +1349,7 @@ describe('Filter Expression Types', () => {
       expect((result.filters[0] as LikeExpr).negated).toBe(false);
     });
 
-    it('should transform NOT LIKE filter to LikeExpr with negated=true', () => {
+    it('正常流程：NOT LIKE 过滤转换为否定 LikeExpr', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -1369,8 +1369,8 @@ describe('Filter Expression Types', () => {
     });
   });
 
-  describe('IS NULL Expression', () => {
-    it('should transform IS NULL filter to IsNullExpr', () => {
+  describe('IS NULL 表达式', () => {
+    it('正常流程：IS NULL 过滤转换为 IsNullExpr', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,
@@ -1389,7 +1389,7 @@ describe('Filter Expression Types', () => {
       expect((result.filters[0] as IsNullExpr).negated).toBe(false);
     });
 
-    it('should transform IS NOT NULL filter to IsNullExpr with negated=true', () => {
+    it('正常流程：IS NOT NULL 过滤转换为否定 IsNullExpr', () => {
       const dsl = {
         datasetId: 1,
         tableId: 1,

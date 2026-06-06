@@ -285,7 +285,6 @@ export class AggregateMetric extends Metric {
   }
 
   toSQL(): string {
-    console.log(this.field);
     const fieldExpr =
       this.field instanceof Field
         ? this.field.getFullName()

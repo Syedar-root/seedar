@@ -45,3 +45,5 @@ commit_msg.txt
 **/assets/**/font/**
 
 docs/v2/pptx-docs/**
+
+.agents/

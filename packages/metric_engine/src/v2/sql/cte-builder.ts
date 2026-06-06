@@ -9,6 +9,7 @@ import {
   LiteralExpr,
   ConditionalExpr,
   ComparisonExpr,
+  RawSqlFragment,
 } from "../expr";
 import { ExprAnalyzer } from "../expr/analyzer";
 import { DatabaseDialect } from "../../core/types";
@@ -352,6 +353,9 @@ export class CTEBuilder {
     let orderByClause = "";
     if (spec.orderBy && spec.orderBy.length > 0) {
       const orderParts = spec.orderBy.map((order) => {
+        if (typeof order.expr === "string") {
+          this.validateSqlIdentifier(order.expr, "orderBy");
+        }
         const orderExpr = this.exprToSQL(order.expr as Expr);
         return `${orderExpr} ${order.dir.toUpperCase()}`;
       });
@@ -383,6 +387,11 @@ export class CTEBuilder {
    * @returns SQL 字符串片段
    */
   private exprToSQL(expr: Expr): string {
+    // 内部可信 SQL 片段
+    if (expr instanceof RawSqlFragment) {
+      return expr.sql;
+    }
+
     // 字面量表达式：根据值类型生成 SQL
     if (expr instanceof LiteralExpr) {
       if (expr.value === null) {
@@ -447,6 +456,18 @@ export class CTEBuilder {
     // 默认情况：返回空字符串
     // 注意：如果遇到未知表达式类型，可能需要扩展此方法
     return "";
+  }
+
+  /**
+   * 校验 SQL 标识符（列别名、字段名等），防止注入
+   * 黑名单策略：拦截注入关键字符，允许 Unicode（中文等合法标识符）
+   */
+  private validateSqlIdentifier(str: string, context: string): void {
+    if (/['";\x00-\x1f\\]/.test(str) || str.includes("--") || str.includes("/*")) {
+      throw new Error(
+        `Invalid SQL identifier in ${context}: "${str}". Contains forbidden characters (quotes, semicolon, comments, control chars, backslash).`,
+      );
+    }
   }
 
   /**

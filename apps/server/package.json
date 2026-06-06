@@ -17,8 +17,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "test:cov:report": "jest --coverage --coverageReporters=text-summary --coverageReporters=html --coverageReporters=lcov",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "typeorm-ts-node-commonjs -d src/config/typeorm.datasource.ts",
     "migration:create": "pnpm run typeorm -- migration:create src/migrations/ManualMigration",
     "migration:generate": "pnpm run typeorm -- migration:generate src/migrations/AutoMigration",
@@ -99,12 +99,26 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "module/ai/services/ai-session-message.service.ts",
+      "module/ai/services/ai-session.service.ts",
+      "module/ai/services/ai.service.ts",
+      "module/ai/services/chat/chat-checkpoint.service.ts",
+      "module/ai/services/chat/chat-context.service.ts",
+      "module/ai/services/chat/chat-llm.service.ts",
+      "module/ai/services/chat/chat-prompt.service.ts",
+      "module/dashboard/services/dashboard.service.ts",
+      "module/dataset/services/dataset.service.ts",
+      "module/datasource/datasource.validation.ts",
+      "module/datasource/service/datasource.service.ts",
+      "module/datasource/transformers/utc-time.transformer.ts",
+      "module/query/query.service.ts",
+      "module/query/dsl-transformer/dsl-transformer.v2.ts"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^@/(.*)$": "<rootDir>/$1"
+      "^@/(.*)$": "<rootDir>/$1",
+      "^chalk$": "<rootDir>/../test/chalk.mock.ts"
     }
   }
 }

@@ -111,6 +111,24 @@
     box-shadow: var(--shadow-sm);
   }
 
+  .fullscreenButton {
+    @include button-base;
+    min-height: 32px;
+    padding: 0 10px;
+    background: var(--bg-color);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-base);
+    border-radius: 6px;
+    font-size: var(--font-sm);
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--bg-hover);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+  }
+
   .createPanel {
     @include button-base;
     min-height: 34px;
@@ -188,6 +206,21 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
+}
+
+/* 全屏浏览模式：main 区域去掉 padding 和 gap，内容撑满 */
+.contentFullscreen {
+  padding: 0;
+  gap: 0;
+}
+
+/* 窗口全屏：浏览器原生全屏时确保页面铺满无黑边 */
+html:fullscreen {
+  background: var(--bg-base);
+}
+
+html:fullscreen::backdrop {
+  background: var(--bg-base);
 }
 
 .dashboardName {

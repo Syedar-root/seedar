@@ -208,7 +208,7 @@ export class PeriodComparisonBuilder {
       ],
       filters: [
         ...plannedFilters.inheritedFilters,
-        plannedFilters.currentTimeFilter.sql,
+        plannedFilters.currentTimeFilter,
       ],
     };
   }
@@ -230,7 +230,7 @@ export class PeriodComparisonBuilder {
       ),
       filters: [
         ...plannedFilters.inheritedFilters,
-        plannedFilters.comparisonTimeFilter.sql,
+        plannedFilters.comparisonTimeFilter,
       ],
     };
   }
@@ -450,6 +450,7 @@ ${fromClause}${joinParts.length > 0 ? `\n${joinParts.join("\n")}` : ""}${orderBy
 
     const parts = spec.orderBy.map((order) => {
       if (typeof order.expr === "string") {
+        this.validateSqlIdentifier(order.expr, "orderBy");
         return `${order.expr} ${order.dir.toUpperCase()}`;
       }
 
@@ -475,6 +476,18 @@ ${fromClause}${joinParts.length > 0 ? `\n${joinParts.join("\n")}` : ""}${orderBy
       sql += `\nOFFSET ${spec.offset}`;
     }
     return sql;
+  }
+
+  /**
+   * 校验 SQL 标识符（列别名、字段名等），防止注入
+   * 黑名单策略：拦截注入关键字符，允许 Unicode（中文等合法标识符）
+   */
+  private validateSqlIdentifier(str: string, context: string): void {
+    if (/['";\x00-\x1f\\]/.test(str) || str.includes("--") || str.includes("/*")) {
+      throw new Error(
+        `Invalid SQL identifier in ${context}: "${str}". Contains forbidden characters (quotes, semicolon, comments, control chars, backslash).`,
+      );
+    }
   }
 
   private buildColumnMappings(

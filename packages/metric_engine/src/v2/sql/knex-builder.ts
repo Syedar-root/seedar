@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 import { QuerySpec, SQLResult, JoinSpec } from "./types";
-import { Expr, AggLevel, PeriodComparisonExpr } from "../expr";
+import { Expr, AggLevel, PeriodComparisonExpr, RawSqlFragment } from "../expr";
 import { DatabaseDialect } from "../../core/types";
 import { ExprAnalyzer } from "../expr/analyzer";
 import { PeriodComparisonBuilder } from "./period-comparison-builder";
@@ -149,7 +149,10 @@ export class KnexQueryBuilder {
     if (spec.filters && spec.filters.length > 0) {
       spec.filters.forEach((filter) => {
         // 将过滤条件添加到 WHERE 子句
-        qb.whereRaw(this.buildExpr(filter));
+        // Plan B: 使用参数化绑定，值走 ? 占位符，防止 SQL 注入
+        const filterBindings: any[] = [];
+        const filterSql = this.buildExpr(filter, filterBindings);
+        qb.whereRaw(filterSql, filterBindings);
       });
     }
 
@@ -170,7 +173,7 @@ export class KnexQueryBuilder {
         // 获取排序表达式，可能是字段名或复杂表达式
         const orderExpr =
           typeof order.expr === "string"
-            ? order.expr
+            ? this.validateSqlIdentifier(order.expr, "orderBy")
             : this.buildExpr(order.expr);
         // 根据排序方向添加排序规则
         qb.orderBy(orderExpr, order.dir);
@@ -301,7 +304,9 @@ export class KnexQueryBuilder {
     // 添加 WHERE 过滤条件到 CTE
     if (spec.filters && spec.filters.length > 0) {
       spec.filters.forEach((filter) => {
-        cteQueryBuilder.whereRaw(this.buildExpr(filter));
+        const filterBindings: any[] = [];
+        const filterSql = this.buildExpr(filter, filterBindings);
+        cteQueryBuilder.whereRaw(filterSql, filterBindings);
       });
     }
 
@@ -371,7 +376,7 @@ export class KnexQueryBuilder {
       spec.orderBy.forEach((order) => {
         let orderExpr: string;
         if (typeof order.expr === "string") {
-          orderExpr = order.expr;
+          orderExpr = this.validateSqlIdentifier(order.expr, "orderBy");
         } else {
           // 将排序表达式中的字段引用替换为 CTE 列别名
           orderExpr =
@@ -465,9 +470,10 @@ export class KnexQueryBuilder {
    * 构建表达式并将字段引用替换为 CTE 列别名
    * @param expr - 表达式对象
    * @param aliasMap - 字段名到 CTE 别名的映射
+   * @param bindings - 可选，收集参数化绑定的数组
    * @returns string - 转换后的 SQL 表达式字符串
    */
-  private buildExprWithAlias(expr: any, aliasMap: Map<string, string>): string {
+  private buildExprWithAlias(expr: any, aliasMap: Map<string, string>, bindings?: any[]): string {
     if (expr instanceof PeriodComparisonExpr) {
       throw new Error(
         "PeriodComparisonExpr must be handled by PeriodComparisonBuilder",
@@ -482,14 +488,24 @@ export class KnexQueryBuilder {
 
     // 如果有 value 属性且没有其他属性（字面量）
     if (expr.value !== undefined && !expr.functionName && !expr.operator) {
-      return typeof expr.value === "string"
-        ? `'${expr.value}'`
-        : String(expr.value);
+      // Plan B: 走参数化绑定
+      if (bindings) {
+        bindings.push(expr.value);
+        return "?";
+      }
+      // Plan A: 转义单引号
+      if (expr.value === null) {
+        return "NULL";
+      }
+      if (typeof expr.value === "string") {
+        return `'${expr.value.replace(/'/g, "''")}'`;
+      }
+      return String(expr.value);
     }
 
     // 处理聚合函数表达式
     if (expr.functionName && expr.arg !== undefined && !expr.args) {
-      const argStr = this.buildExprWithAlias(expr.arg, aliasMap);
+      const argStr = this.buildExprWithAlias(expr.arg, aliasMap, bindings);
       // DISTINCT_COUNT 已经是去重计数语义，转换为 COUNT(DISTINCT ...)
       if (expr.functionName === "DISTINCT_COUNT") {
         return `COUNT(DISTINCT ${argStr})`;
@@ -504,20 +520,20 @@ export class KnexQueryBuilder {
     if (expr.functionName && expr.args) {
       if (expr.functionName === "TIME_GRAIN") {
         return this.buildTimeGrainSQL(expr.args, (arg) =>
-          this.buildExprWithAlias(arg, aliasMap),
+          this.buildExprWithAlias(arg, aliasMap, bindings),
         );
       }
 
       const argsStr = expr.args
-        .map((arg: any) => this.buildExprWithAlias(arg, aliasMap))
+        .map((arg: any) => this.buildExprWithAlias(arg, aliasMap, bindings))
         .join(", ");
       return `${expr.functionName}(${argsStr})`;
     }
 
     // 处理二元运算表达式
     if (expr.operator && expr.left && expr.right) {
-      const leftStr = this.buildExprWithAlias(expr.left, aliasMap);
-      const rightStr = this.buildExprWithAlias(expr.right, aliasMap);
+      const leftStr = this.buildExprWithAlias(expr.left, aliasMap, bindings);
+      const rightStr = this.buildExprWithAlias(expr.right, aliasMap, bindings);
 
       // 转换运算符：== -> =, <> -> !=
       let sqlOperator = expr.operator;
@@ -531,7 +547,7 @@ export class KnexQueryBuilder {
 
     // 处理一元运算表达式
     if (expr.operator && expr.operand) {
-      const operandStr = this.buildExprWithAlias(expr.operand, aliasMap);
+      const operandStr = this.buildExprWithAlias(expr.operand, aliasMap, bindings);
       return `${expr.operator}${operandStr}`;
     }
 
@@ -541,9 +557,9 @@ export class KnexQueryBuilder {
       expr.consequent !== undefined &&
       expr.alternate !== undefined
     ) {
-      const condStr = this.buildExprWithAlias(expr.condition, aliasMap);
-      const consStr = this.buildExprWithAlias(expr.consequent, aliasMap);
-      const altStr = this.buildExprWithAlias(expr.alternate, aliasMap);
+      const condStr = this.buildExprWithAlias(expr.condition, aliasMap, bindings);
+      const consStr = this.buildExprWithAlias(expr.consequent, aliasMap, bindings);
+      const altStr = this.buildExprWithAlias(expr.alternate, aliasMap, bindings);
 
       // 如果 alternate 是 null 字面量，生成不带 ELSE 的 CASE WHEN
       if (expr.alternate.value !== undefined && expr.alternate.value === null) {
@@ -558,9 +574,9 @@ export class KnexQueryBuilder {
       Array.isArray(expr.values) &&
       expr.expr !== undefined
     ) {
-      const leftStr = this.buildExprWithAlias(expr.expr, aliasMap);
+      const leftStr = this.buildExprWithAlias(expr.expr, aliasMap, bindings);
       const valuesStr = expr.values
-        .map((v: any) => this.buildExprWithAlias(v, aliasMap))
+        .map((v: any) => this.buildExprWithAlias(v, aliasMap, bindings))
         .join(", ");
       const op = expr.negated ? "NOT IN" : "IN";
       return `${leftStr} ${op} (${valuesStr})`;
@@ -572,9 +588,9 @@ export class KnexQueryBuilder {
       expr.high !== undefined &&
       expr.expr !== undefined
     ) {
-      const exprStr = this.buildExprWithAlias(expr.expr, aliasMap);
-      const lowStr = this.buildExprWithAlias(expr.low, aliasMap);
-      const highStr = this.buildExprWithAlias(expr.high, aliasMap);
+      const exprStr = this.buildExprWithAlias(expr.expr, aliasMap, bindings);
+      const lowStr = this.buildExprWithAlias(expr.low, aliasMap, bindings);
+      const highStr = this.buildExprWithAlias(expr.high, aliasMap, bindings);
       const op = expr.negated ? "NOT BETWEEN" : "BETWEEN";
       return `${exprStr} ${op} ${lowStr} AND ${highStr}`;
     }
@@ -585,8 +601,8 @@ export class KnexQueryBuilder {
       expr.expr !== undefined &&
       expr.values === undefined
     ) {
-      const leftStr = this.buildExprWithAlias(expr.expr, aliasMap);
-      const patternStr = this.buildExprWithAlias(expr.pattern, aliasMap);
+      const leftStr = this.buildExprWithAlias(expr.expr, aliasMap, bindings);
+      const patternStr = this.buildExprWithAlias(expr.pattern, aliasMap, bindings);
       const op = expr.negated ? "NOT LIKE" : "LIKE";
       return `${leftStr} ${op} ${patternStr}`;
     }
@@ -599,13 +615,20 @@ export class KnexQueryBuilder {
       expr.pattern === undefined &&
       expr.low === undefined
     ) {
-      const exprStr = this.buildExprWithAlias(expr.expr, aliasMap);
+      const exprStr = this.buildExprWithAlias(expr.expr, aliasMap, bindings);
       return expr.negated ? `${exprStr} IS NOT NULL` : `${exprStr} IS NULL`;
     }
 
-    // 如果是字符串，直接返回
+    // 内部可信 SQL 片段
+    if (expr instanceof RawSqlFragment) {
+      return expr.sql;
+    }
+
+    // 裸字符串不允许直接拼入 SQL（防注入）
     if (typeof expr === "string") {
-      return aliasMap.get(expr) || expr;
+      throw new Error(
+        `buildExprWithAlias received a raw string: "${expr}". Raw strings are blocked for SQL injection safety. Use Expr AST objects (FieldRefExpr, LiteralExpr, etc.) instead.`,
+      );
     }
 
     return "";
@@ -858,9 +881,10 @@ export class KnexQueryBuilder {
    * 构建表达式为 SQL 字符串
    * 将 Expr 对象转换为可执行的 SQL 表达式字符串
    * @param expr - 表达式对象
+   * @param bindings - 可选，收集参数化绑定的数组。传入时 LiteralExpr 值走 ? 占位符
    * @returns string - SQL 表达式字符串
    */
-  private buildExpr(expr: any): string {
+  private buildExpr(expr: any, bindings?: any[]): string {
     if (expr instanceof PeriodComparisonExpr) {
       throw new Error(
         "PeriodComparisonExpr must be handled by PeriodComparisonBuilder",
@@ -874,15 +898,25 @@ export class KnexQueryBuilder {
 
     // 如果表达式有 value 属性且没有其他属性（字面量）
     if (expr.value !== undefined && !expr.functionName && !expr.operator) {
-      return typeof expr.value === "string"
-        ? `'${expr.value}'`
-        : String(expr.value);
+      // Plan B: 走参数化绑定，值用 ? 占位符，防注入最彻底
+      if (bindings) {
+        bindings.push(expr.value);
+        return "?";
+      }
+      // Plan A: 字符串拼接路径，转义单引号
+      if (expr.value === null) {
+        return "NULL";
+      }
+      if (typeof expr.value === "string") {
+        return `'${expr.value.replace(/'/g, "''")}'`;
+      }
+      return String(expr.value);
     }
 
     // 处理聚合函数表达式 (AggExpr)
     // AggExpr 有 functionName 和 arg（单数），以及 distinct 属性
     if (expr.functionName && expr.arg !== undefined && !expr.args) {
-      const argStr = this.buildExpr(expr.arg);
+      const argStr = this.buildExpr(expr.arg, bindings);
 
       // DISTINCT_COUNT 已经是"去重计数"语义，直接转换为 COUNT(DISTINCT ...)
       if (expr.functionName === "DISTINCT_COUNT") {
@@ -900,14 +934,14 @@ export class KnexQueryBuilder {
     if (expr.functionName && expr.args) {
       // 兼容V1：特殊处理 TIME_FILTER 函数
       if (expr.functionName === "TIME_FILTER") {
-        return this.buildTimeFilterSQL(expr.args);
+        return this.buildTimeFilterSQL(expr.args, bindings);
       }
       if (expr.functionName === "TIME_GRAIN") {
-        return this.buildTimeGrainSQL(expr.args, (arg) => this.buildExpr(arg));
+        return this.buildTimeGrainSQL(expr.args, (arg) => this.buildExpr(arg, bindings));
       }
 
       const argsStr = expr.args
-        .map((arg: any) => this.buildExpr(arg))
+        .map((arg: any) => this.buildExpr(arg, bindings))
         .join(", ");
       return `${expr.functionName}(${argsStr})`;
     }
@@ -928,11 +962,11 @@ export class KnexQueryBuilder {
       );
 
       const leftStr = leftNeedsParens
-        ? `(${this.buildExpr(expr.left)})`
-        : this.buildExpr(expr.left);
+        ? `(${this.buildExpr(expr.left, bindings)})`
+        : this.buildExpr(expr.left, bindings);
       const rightStr = rightNeedsParens
-        ? `(${this.buildExpr(expr.right)})`
-        : this.buildExpr(expr.right);
+        ? `(${this.buildExpr(expr.right, bindings)})`
+        : this.buildExpr(expr.right, bindings);
 
       // 转换运算符：== -> =, <> -> !=
       let sqlOperator = expr.operator;
@@ -945,7 +979,7 @@ export class KnexQueryBuilder {
 
     // 处理一元运算表达式 (UnaryExpr)
     if (expr.operator && expr.operand) {
-      const operandStr = this.buildExpr(expr.operand);
+      const operandStr = this.buildExpr(expr.operand, bindings);
       return `${expr.operator}${operandStr}`;
     }
 
@@ -955,9 +989,9 @@ export class KnexQueryBuilder {
       expr.consequent !== undefined &&
       expr.alternate !== undefined
     ) {
-      const condStr = this.buildExpr(expr.condition);
-      const consStr = this.buildExpr(expr.consequent);
-      const altStr = this.buildExpr(expr.alternate);
+      const condStr = this.buildExpr(expr.condition, bindings);
+      const consStr = this.buildExpr(expr.consequent, bindings);
+      const altStr = this.buildExpr(expr.alternate, bindings);
 
       // 如果 alternate 是 null 字面量，生成不带 ELSE 的 CASE WHEN
       if (expr.alternate.value !== undefined && expr.alternate.value === null) {
@@ -972,9 +1006,9 @@ export class KnexQueryBuilder {
       Array.isArray(expr.values) &&
       expr.expr !== undefined
     ) {
-      const leftStr = this.buildExpr(expr.expr);
+      const leftStr = this.buildExpr(expr.expr, bindings);
       const valuesStr = expr.values
-        .map((v: any) => this.buildExpr(v))
+        .map((v: any) => this.buildExpr(v, bindings))
         .join(", ");
       const op = expr.negated ? "NOT IN" : "IN";
       return `${leftStr} ${op} (${valuesStr})`;
@@ -986,9 +1020,9 @@ export class KnexQueryBuilder {
       expr.high !== undefined &&
       expr.expr !== undefined
     ) {
-      const exprStr = this.buildExpr(expr.expr);
-      const lowStr = this.buildExpr(expr.low);
-      const highStr = this.buildExpr(expr.high);
+      const exprStr = this.buildExpr(expr.expr, bindings);
+      const lowStr = this.buildExpr(expr.low, bindings);
+      const highStr = this.buildExpr(expr.high, bindings);
       const op = expr.negated ? "NOT BETWEEN" : "BETWEEN";
       return `${exprStr} ${op} ${lowStr} AND ${highStr}`;
     }
@@ -999,8 +1033,8 @@ export class KnexQueryBuilder {
       expr.expr !== undefined &&
       expr.values === undefined
     ) {
-      const leftStr = this.buildExpr(expr.expr);
-      const patternStr = this.buildExpr(expr.pattern);
+      const leftStr = this.buildExpr(expr.expr, bindings);
+      const patternStr = this.buildExpr(expr.pattern, bindings);
       const op = expr.negated ? "NOT LIKE" : "LIKE";
       return `${leftStr} ${op} ${patternStr}`;
     }
@@ -1013,13 +1047,20 @@ export class KnexQueryBuilder {
       expr.pattern === undefined &&
       expr.low === undefined
     ) {
-      const exprStr = this.buildExpr(expr.expr);
+      const exprStr = this.buildExpr(expr.expr, bindings);
       return expr.negated ? `${exprStr} IS NOT NULL` : `${exprStr} IS NULL`;
     }
 
-    // 如果是字符串，直接返回
+    // 内部可信 SQL 片段（仅 TimeFilterPlanner 等内部代码使用）
+    if (expr instanceof RawSqlFragment) {
+      return expr.sql;
+    }
+
+    // 裸字符串不允许直接拼入 SQL（防注入）
     if (typeof expr === "string") {
-      return expr;
+      throw new Error(
+        `buildExpr received a raw string: "${expr}". Raw strings are blocked for SQL injection safety. Use Expr AST objects (FieldRefExpr, LiteralExpr, etc.) instead.`,
+      );
     }
 
     // 默认返回空字符串
@@ -1089,19 +1130,35 @@ export class KnexQueryBuilder {
   }
 
   /**
+   * 校验 SQL 标识符（列别名、字段名等），防止注入
+   * 使用黑名单策略：拦截注入关键字符，允许 Unicode（中文等合法标识符）
+   * @param str - 待校验的标识符字符串
+   * @param context - 上下文描述（用于错误消息）
+   * @returns 校验通过的原始字符串
+   */
+  private validateSqlIdentifier(str: string, context: string): string {
+    if (/['";\x00-\x1f\\]/.test(str) || str.includes("--") || str.includes("/*")) {
+      throw new Error(
+        `Invalid SQL identifier in ${context}: "${str}". Contains forbidden characters (quotes, semicolon, comments, control chars, backslash).`,
+      );
+    }
+    return str;
+  }
+
+  /**
    * 构建 TIME_FILTER 函数的 SQL
    * 根据不同数据库方言生成正确的时间过滤 SQL
    * @param args TIME_FILTER 函数的参数 [field, timeRange, timeValue, startDate, endDate]
    * @returns 生成的 SQL 字符串
    */
-  private buildTimeFilterSQL(args: any[]): string {
+  private buildTimeFilterSQL(args: any[], bindings?: any[]): string {
     if (args.length < 3) {
       throw new Error(
         "TIME_FILTER 需要至少3个参数: field, timeRange, timeValue",
       );
     }
 
-    const fieldExpr = this.buildExpr(args[0]);
+    const fieldExpr = this.buildExpr(args[0], bindings);
     const timeRange = args[1]?.value || args[1];
     const timeValue = args[2]?.value ?? args[2];
     const startDate = args[3]?.value ?? args[3];
@@ -1142,7 +1199,11 @@ export class KnexQueryBuilder {
         if (!startDate || !endDate) {
           throw new Error("CUSTOM_DATE_RANGE 需要指定 startDate 和 endDate");
         }
-        return `${fieldExpr} >= '${startDate}' AND ${fieldExpr} <= '${endDate}'`;
+        if (bindings) {
+          bindings.push(startDate, endDate);
+          return `${fieldExpr} >= ? AND ${fieldExpr} <= ?`;
+        }
+        return `${fieldExpr} >= '${String(startDate).replace(/'/g, "''")}' AND ${fieldExpr} <= '${String(endDate).replace(/'/g, "''")}'`;
 
       default:
         throw new Error(`不支持的时间范围类型: ${timeRange}`);
