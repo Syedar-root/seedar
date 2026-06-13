@@ -4,7 +4,8 @@
   inset: 0;
   background-color: var(--text-primary, #0f172a);
   opacity: 0.2;
-  transition: opacity var(--duration-fast, 150ms) var(--ease-out-quart, cubic-bezier(0.45, 1.005, 0, 1.005));
+  transition: opacity var(--duration-fast, 150ms)
+    var(--ease-out-quart, cubic-bezier(0.45, 1.005, 0, 1.005));
   touch-action: none;
 
   /* iOS 26+: Ensure the backdrop covers the entire visible viewport. */
@@ -32,18 +33,18 @@
   color: var(--seedar-dashboard-text, #0f172a);
   font-family: var(--font-primary, inherit);
   width: 80vw;
-  height: 80vh;
-  overflow-y: auto;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .content {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   padding: var(--seedar-dashboard-space-xl, 24px);
-  min-width: 300px;
 }
 
 .title {
@@ -62,10 +63,12 @@
 .panelList {
   position: relative;
   flex: 1;
+  min-height: 0;
   margin-top: var(--seedar-dashboard-space-lg, 16px);
   overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: clamp(220px, 28vh, 500px);
   align-content: start;
   gap: var(--seedar-dashboard-space-md, 12px);
 }
@@ -78,10 +81,8 @@
 
 .panelItem {
   position: relative;
-  overflow: hidden;
   width: 100%;
-  aspect-ratio: 4/3;
-  margin-bottom: var(--seedar-dashboard-space-sm, 8px);
+  height: 100%;
   text-align: left;
   cursor: pointer;
   transition:
@@ -95,6 +96,8 @@
   border-radius: var(--seedar-dashboard-radius-md, 8px);
   background-color: var(--seedar-dashboard-surface-elevated, #fff);
   padding: var(--seedar-dashboard-space-lg, 16px);
+  overflow: hidden;
+  min-height: 0;
 
   &:has([data-checked]) {
     border-color: var(--seedar-dashboard-surface-selected, #1d4ed8);
@@ -145,7 +148,8 @@
 }
 
 .scopeButton {
-  padding: var(--seedar-dashboard-space-sm, 8px) var(--seedar-dashboard-space-md, 12px);
+  padding: var(--seedar-dashboard-space-sm, 8px)
+    var(--seedar-dashboard-space-md, 12px);
   border-radius: var(--seedar-dashboard-radius-pill, 9999px);
   border: 1px solid var(--seedar-dashboard-border-hover, #cbd5e1);
   background: var(--seedar-dashboard-surface-elevated, #fff);
@@ -170,7 +174,8 @@
 }
 
 .actionsButton {
-  padding: var(--seedar-dashboard-space-sm, 8px) var(--seedar-dashboard-space-lg, 16px);
+  padding: var(--seedar-dashboard-space-sm, 8px)
+    var(--seedar-dashboard-space-lg, 16px);
   border-radius: var(--seedar-dashboard-radius-sm, 6px);
   cursor: pointer;
   font-size: var(--seedar-dashboard-font-lg, 14px);

@@ -48,6 +48,8 @@ export interface PanelResponse {
   height?: number;
   createdAt: Date;
   updatedAt: Date;
+  datasetId?: number;
+  datasetName?: string;
 }
 
 export type PanelConfig = Record<string, any> & {

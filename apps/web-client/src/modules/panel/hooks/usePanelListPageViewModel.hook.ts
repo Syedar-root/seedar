@@ -8,6 +8,7 @@ interface PanelListItem {
   title?: string;
   status: PanelStatus;
   createdAt: string | Date;
+  datasetName?: string;
 }
 
 interface UsePanelListPageViewModelReturn {
@@ -15,10 +16,12 @@ interface UsePanelListPageViewModelReturn {
   filteredPanels: PanelListItem[];
   searchInput: string;
   statusFilter: string;
+  datasetFilter: string;
   handleSearchChange: (value: string) => void;
   handleSearchCompositionStart: () => void;
   handleSearchCompositionEnd: (value: string) => void;
   handleStatusFilterChange: (value: string) => void;
+  handleDatasetFilterChange: (value: string) => void;
   handleCreatePanel: () => void;
   handleOpenPanel: (panelId: string) => void;
   handleStatusToggle: (panel: { id: string; status: PanelStatus }) => void;
@@ -35,6 +38,7 @@ export const usePanelListPageViewModel = (): UsePanelListPageViewModelReturn => 
   const [isComposing, setIsComposing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [datasetFilter, setDatasetFilter] = useState("");
 
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
@@ -57,6 +61,10 @@ export const usePanelListPageViewModel = (): UsePanelListPageViewModelReturn => 
     setStatusFilter(value);
   };
 
+  const handleDatasetFilterChange = (value: string) => {
+    setDatasetFilter(value);
+  };
+
   const handleCreatePanel = () => {
     navigate("/panel/create");
   };
@@ -72,10 +80,15 @@ export const usePanelListPageViewModel = (): UsePanelListPageViewModelReturn => 
           !searchQuery ||
           panel.title?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchStatus = !statusFilter || panel.status === statusFilter;
-        return matchTitle && matchStatus;
+        const matchDataset =
+          !datasetFilter ||
+          panel.datasetName
+            ?.toLowerCase()
+            .includes(datasetFilter.toLowerCase());
+        return matchTitle && matchStatus && matchDataset;
       }) ?? []
     );
-  }, [panels, searchQuery, statusFilter]);
+  }, [panels, searchQuery, statusFilter, datasetFilter]);
 
   const handleStatusToggle = (panel: { id: string; status: PanelStatus }) => {
     const newStatus =
@@ -94,10 +107,12 @@ export const usePanelListPageViewModel = (): UsePanelListPageViewModelReturn => 
     filteredPanels,
     searchInput,
     statusFilter,
+    datasetFilter,
     handleSearchChange,
     handleSearchCompositionStart,
     handleSearchCompositionEnd,
     handleStatusFilterChange,
+    handleDatasetFilterChange,
     handleCreatePanel,
     handleOpenPanel,
     handleStatusToggle,

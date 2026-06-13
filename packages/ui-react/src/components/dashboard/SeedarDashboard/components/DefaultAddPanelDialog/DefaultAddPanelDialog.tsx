@@ -62,7 +62,7 @@ export const DefaultAddPanelDialog: React.FC<DefaultAddPanelDialogProps> = ({
                     )}
                     {panel.title || "未命名 Panel"}
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                     <SeedarPanel
                       style={{
                         padding: 0,
