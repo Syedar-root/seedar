@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.5.2](https://github.com/Syedar-root/seedar/compare/v1.5.1...v1.5.2) (2026-06-13)
+
+
+### Bug Fixes
+
+* 修复一些已知问题 ([87aac77](https://github.com/Syedar-root/seedar/commit/87aac779db6f6d0aa43f5b99fcda73eb0e070971))
+* 修复一些已知问题 ([045ae99](https://github.com/Syedar-root/seedar/commit/045ae99daf026175c5281e2bcdbe1764e4f46429))
+* 补充Panel查询中的loading状态 ([791a097](https://github.com/Syedar-root/seedar/commit/791a097a95580da2d07fefdf9e0ff6d98e7b8ee8))
+* 补充Panel查询中的loading状态 ([9c7d9e5](https://github.com/Syedar-root/seedar/commit/9c7d9e58c0d6fb420bb8d8b87f289618f60649a2))
+
 ## [1.5.1](https://github.com/Syedar-root/seedar/compare/v1.5.0...v1.5.1) (2026-06-13)
 
 
