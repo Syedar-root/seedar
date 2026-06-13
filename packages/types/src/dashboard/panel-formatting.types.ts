@@ -47,6 +47,8 @@ export interface PanelSimpleFormattingRule {
   useGrouping?: boolean;
   currency?: string;
   percentInput?: 'ratio' | 'percent';
+  /** 显示时乘以该系数。例如数据以"分"存储时设为 0.01 即可显示为"元"。不影响原始数据，仅在展示层生效。 */
+  multiplier?: number;
 }
 
 export interface PanelSimpleFormattingConfig {
