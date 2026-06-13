@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.1](https://github.com/Syedar-root/seedar/compare/v1.5.0...v1.5.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* 修复datasource列无法同步类型问题 ([d9418dd](https://github.com/Syedar-root/seedar/commit/d9418dd417bb735e9daa5b2f35fd5e93b85e3d17))
+* 修复datasource列无法同步类型问题 ([fa5da4b](https://github.com/Syedar-root/seedar/commit/fa5da4b68715b9068c2fb15c0086be287ca508bc))
+
 ## [1.5.0](https://github.com/Syedar-root/seedar/compare/v1.4.0...v1.5.0) (2026-06-13)
 
 
