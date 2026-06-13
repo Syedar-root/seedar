@@ -175,11 +175,15 @@ const formatBySimpleRule = (
     return String(value);
   }
 
+  const displayNumber =
+    rule.multiplier !== undefined ? baseNumber * rule.multiplier : baseNumber;
+
   const decimals = rule.decimals;
   const useGrouping = rule.useGrouping ?? true;
 
   if (rule.kind === 'percent') {
-    const numericInput = rule.percentInput === 'percent' ? baseNumber / 100 : baseNumber;
+    const numericInput =
+      rule.percentInput === 'percent' ? displayNumber / 100 : displayNumber;
     return new Intl.NumberFormat(locale, {
       style: 'percent',
       useGrouping,
@@ -196,7 +200,7 @@ const formatBySimpleRule = (
       useGrouping,
       minimumFractionDigits: decimals ?? 2,
       maximumFractionDigits: decimals ?? 2,
-    }).format(baseNumber);
+    }).format(displayNumber);
   }
 
   return new Intl.NumberFormat(locale, {
@@ -204,7 +208,7 @@ const formatBySimpleRule = (
     useGrouping,
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  }).format(baseNumber);
+  }).format(displayNumber);
 };
 
 const normalizeColumnMappings = (
