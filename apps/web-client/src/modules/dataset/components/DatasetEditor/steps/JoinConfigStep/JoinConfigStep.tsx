@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect, useRef } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import {
   ReactFlow,
   Controls,
@@ -258,8 +258,6 @@ export const JoinConfigStep = ({
   const [edgesState, setEdges, onEdgesChange] = useEdgesState(rawEdges);
   const { fitView } = useReactFlow();
 
-  const prevNodeCount = useRef(0);
-
   const syncGraphLayout = useCallback(
     (nodesInput: TableNode[], edgesInput: Edge[]) => {
       const layoutedNodes = getLayoutedElements(nodesInput, edgesInput, {
@@ -297,44 +295,8 @@ export const JoinConfigStep = ({
   }, [edgesState, nodesState, syncGraphLayout]);
 
   useEffect(() => {
-    if (rawNodes.length === 0) {
-      prevNodeCount.current = 0;
-      return;
-    }
-
-    const nodesChanged = rawNodes.length !== prevNodeCount.current;
-    prevNodeCount.current = rawNodes.length;
-
-    if (nodesChanged) {
-      // 表增删 → 全量 dagre 自动布局
-      syncGraphLayout(rawNodes, rawEdges);
-      return;
-    }
-
-    // 仅连线变化 → 增量更新边 + connectedFields，保留节点当前位置
-    setEdges(rawEdges);
-    setNodes((prev) =>
-      prev.map((node) => {
-        const nodeData = node.data as TableFieldNodeData;
-        const connectedFields = getConnectedFieldsSet(
-          rawEdges as Edge<JoinEdgeData>[],
-          node.id,
-        );
-        const prevFields = nodeData.connectedFields;
-        if (
-          prevFields &&
-          prevFields.size === connectedFields.size &&
-          [...connectedFields].every((f) => prevFields.has(f))
-        ) {
-          return node;
-        }
-        return {
-          ...node,
-          data: { ...nodeData, connectedFields },
-        };
-      }) as TableNode[],
-    );
-  }, [rawEdges, rawNodes, syncGraphLayout, setEdges, setNodes]);
+    syncGraphLayout(rawNodes, rawEdges);
+  }, [rawEdges, rawNodes, syncGraphLayout]);
 
   const isValidConnection = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) {
