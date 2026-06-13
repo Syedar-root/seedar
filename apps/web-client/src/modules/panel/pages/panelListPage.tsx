@@ -11,10 +11,12 @@ export const PanelListPage = () => {
     filteredPanels,
     searchInput,
     statusFilter,
+    datasetFilter,
     handleSearchChange,
     handleSearchCompositionStart,
     handleSearchCompositionEnd,
     handleStatusFilterChange,
+    handleDatasetFilterChange,
     handleCreatePanel,
     handleOpenPanel,
     handleStatusToggle,
@@ -58,6 +60,13 @@ export const PanelListPage = () => {
             { label: "已发布", value: PanelStatus.PUBLISHED },
           ]}
         />
+        <input
+          type="text"
+          className={styles.searchInput}
+          placeholder="筛选数据集..."
+          value={datasetFilter}
+          onChange={(event) => handleDatasetFilterChange(event.target.value)}
+        />
       </div>
 
       <main className={styles.content} data-tour-id="panel-list-page-content">
@@ -89,6 +98,7 @@ export const PanelListPage = () => {
                 </div>
                 <div className={styles.cardMeta}>
                   创建于 {new Date(panel.createdAt).toLocaleDateString()}
+                  {panel.datasetName && ` · ${panel.datasetName}`}
                 </div>
                 <div
                   className={styles.cardActions}

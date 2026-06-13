@@ -68,10 +68,12 @@ export const DatasetPage = () => {
   };
 
   const filteredDatasets = datasets?.filter((dataset) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
     return (
-      !searchQuery ||
-      dataset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      dataset.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      dataset.name.toLowerCase().includes(q) ||
+      dataset.description?.toLowerCase().includes(q) ||
+      dataset.datasource?.name?.toLowerCase().includes(q)
     );
   });
 
@@ -93,7 +95,7 @@ export const DatasetPage = () => {
         <input
           type="text"
           className={styles.searchInput}
-          placeholder="搜索数据集..."
+          placeholder="搜索数据集或数据源..."
           value={searchInput}
           onChange={(e) => handleSearchChange(e.target.value)}
           onCompositionStart={handleSearchCompositionStart}

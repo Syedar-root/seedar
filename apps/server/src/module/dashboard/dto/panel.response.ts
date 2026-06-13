@@ -12,6 +12,8 @@ export class PanelResponse {
   status: string;
   createdAt: Date;
   updatedAt: Date;
+  datasetId?: number;
+  datasetName?: string;
 
   static fromEntity(panel: Panel): PanelResponse {
     const response = new PanelResponse();

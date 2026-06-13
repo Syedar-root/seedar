@@ -28,8 +28,36 @@ export class PanelService {
   }
 
   async findAll(): Promise<PanelResponse[]> {
-    const panels = await this.panelRepository.find();
-    return panels.map((p) => PanelResponse.fromEntity(p));
+    const panels = await this.panelRepository
+      .createQueryBuilder('panel')
+      .leftJoin('query', 'q', 'q.id = panel.queryId')
+      .leftJoin('dataset', 'ds', 'ds.id = q.datasetId')
+      .select([
+        'panel.id',
+        'panel.title',
+        'panel.titleConfig',
+        'panel.type',
+        'panel.queryId',
+        'panel.config',
+        'panel.width',
+        'panel.height',
+        'panel.status',
+        'panel.createdAt',
+        'panel.updatedAt',
+        'ds.id',
+        'ds.name',
+      ])
+      .getRawAndEntities();
+
+    return panels.entities.map((p, i) => {
+      const response = PanelResponse.fromEntity(p);
+      const raw = panels.raw[i];
+      if (raw?.ds_id !== null && raw?.ds_id !== undefined) {
+        response.datasetId = Number(raw.ds_id);
+        response.datasetName = raw.ds_name ?? undefined;
+      }
+      return response;
+    });
   }
 
   async findOne(id: string): Promise<PanelResponse> {
