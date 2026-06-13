@@ -27,7 +27,28 @@ export class DatasourceColumnService {
     return this.datasourceColumnRepository.save(entity);
   }
 
+  async findByTableIdAndColumnName(
+    tableId: number,
+    columnName: string,
+  ): Promise<DatasourceColumn | null> {
+    return this.datasourceColumnRepository.findOne({
+      where: { tableId, columnName },
+    });
+  }
+
+  async update(
+    id: number,
+    data: Partial<DatasourceColumn>,
+  ): Promise<void> {
+    await this.datasourceColumnRepository.update(id, data);
+  }
+
   async deleteByTableId(tableId: number): Promise<void> {
     await this.datasourceColumnRepository.delete({ tableId });
+  }
+
+  async deleteByIds(ids: number[]): Promise<void> {
+    if (ids.length === 0) return;
+    await this.datasourceColumnRepository.delete(ids);
   }
 }
