@@ -42,7 +42,6 @@ export const FormattingDialog = ({
   const [useGrouping, setUseGrouping] = useState<boolean>(true);
   const [enabled, setEnabled] = useState<boolean>(true);
   const [percentInput, setPercentInput] = useState<"ratio" | "percent">("ratio");
-  const [multiplier, setMultiplier] = useState<string>("");
 
   useEffect(() => {
     if (!open) {
@@ -57,11 +56,6 @@ export const FormattingDialog = ({
     setUseGrouping(initialRule?.useGrouping ?? true);
     setEnabled(initialRule?.enabled !== false);
     setPercentInput(initialRule?.percentInput || "ratio");
-    setMultiplier(
-      initialRule?.multiplier === undefined
-        ? ""
-        : String(initialRule.multiplier),
-    );
   }, [initialRule, open]);
 
   const isDecimalVisible = useMemo(
@@ -78,9 +72,6 @@ export const FormattingDialog = ({
       ? Number.parseInt(decimals, 10)
       : undefined;
 
-    const parsedMultiplier =
-      multiplier.trim().length > 0 ? Number(multiplier) : undefined;
-
     onSave({
       enabled,
       kind,
@@ -88,10 +79,6 @@ export const FormattingDialog = ({
       currency: isCurrencyVisible ? currency || "CNY" : undefined,
       useGrouping: isDecimalVisible ? useGrouping : undefined,
       percentInput: isPercentInputVisible ? percentInput : undefined,
-      multiplier:
-        parsedMultiplier !== undefined && Number.isFinite(parsedMultiplier)
-          ? parsedMultiplier
-          : undefined,
     });
   };
 
@@ -165,23 +152,6 @@ export const FormattingDialog = ({
                   onChange={(event) => setDecimals(event.target.value)}
                   placeholder="留空则不强制"
                 />
-              </label>
-            ) : null}
-
-            {isDecimalVisible ? (
-              <label className={styles.row}>
-                <span className={styles.label}>显示倍率</span>
-                <div className={styles.inputGroup}>
-                  <input
-                    className={styles.input}
-                    type="number"
-                    step="any"
-                    value={multiplier}
-                    onChange={(event) => setMultiplier(event.target.value)}
-                    placeholder="默认 1（不缩放）"
-                  />
-                  <span className={styles.hint}>如数据以"分"存储，填 0.01 显示为"元"</span>
-                </div>
               </label>
             ) : null}
 
