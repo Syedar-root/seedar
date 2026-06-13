@@ -31,7 +31,29 @@ export const SeedarPanel = forwardRef<HTMLDivElement, SeedarPanelProps>(
     });
 
     if (!finalPanel && isPending) {
-      return null;
+      return (
+        <GridPanel
+          panelId={panelId}
+          ref={ref}
+          className={className}
+          style={style}
+          content={
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                color: "var(--seedar-dashboard-text-muted, #94a3b8)",
+                fontSize: 14,
+              }}
+            >
+              加载中...
+            </div>
+          }
+          {...rest}
+        />
+      );
     }
 
     if (isError || !finalPanel) {
