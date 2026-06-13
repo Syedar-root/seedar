@@ -395,62 +395,58 @@ export class DatasourceService {
 
   /**
    * 保存数据源的表和列信息到数据库
-   * 如果已有表信息会先删除再重新创建
+   * 增量同步：已有表更新列类型，新表创建，不再全量删重建（避免外键冲突）
    */
   private async saveTablesAndColumns(datasource: Datasource): Promise<void> {
-    this.logger.debug('开始获取并保存表和列信息', 'SaveTablesAndColumnsStart');
+    this.logger.debug('开始增量同步表和列信息', 'SaveTablesAndColumnsStart');
 
     try {
-      // 先删除已有的表和列信息（级联删除会自动删除列）
-      await this.datasourceTableService.deleteByDataSourceId(datasource.id);
-      this.logger.debug('已删除旧的表和列信息', 'DeleteOldTables');
+      // 1. 从源库拉取最新 schema
+      const freshTables = await this.getTableSchemas(datasource);
+      const freshTableNames = new Set(freshTables.map((t) => t.tableName));
 
-      const tables = await this.getTableSchemas(datasource);
+      // 2. 查询已有 datasource_table 记录
+      const existingTables =
+        await this.datasourceTableService.findByDataSourceId(datasource.id);
+      const existingTableMap = new Map(
+        existingTables.map((t) => [t.tableName, t]),
+      );
 
-      // 第一步：创建所有表和列
-      const savedTables: DatasourceTable[] = [];
-      for (const table of tables) {
-        // 创建表
-        const savedTable = await this.datasourceTableService.create({
-          dataSourceId: datasource.id,
-          tableName: table.tableName,
-        });
-        savedTables.push(savedTable);
+      // 3. 逐个表做增量同步
+      for (const fresh of freshTables) {
+        let tableId: number;
+        const existing = existingTableMap.get(fresh.tableName);
 
-        // 创建列
-        for (const column of table.columns) {
-          await this.datasourceColumnService.create({
-            tableId: savedTable.id,
-            columnName: column.columnName,
-            rawDataType: column.rawDataType,
-            normalizedType: column.normalizedType,
-            nullable: column.nullable,
-            isPrimaryKey: column.isPrimaryKey,
+        if (existing) {
+          tableId = existing.id;
+          existingTableMap.delete(fresh.tableName); // 标记为已处理
+          this.logger.debug(`表 ${fresh.tableName} 已存在，增量更新列`, 'UpdateExistingTable');
+        } else {
+          const created = await this.datasourceTableService.create({
+            dataSourceId: datasource.id,
+            tableName: fresh.tableName,
           });
+          tableId = created.id;
+          this.logger.debug(`表 ${fresh.tableName} 新建，ID=${tableId}`, 'CreateNewTable');
         }
+
+        // 同步该表的列
+        await this.syncTableColumns(tableId, fresh.columns);
       }
 
-      // 第二步：更新每个表的 primaryFieldId
-      for (const savedTable of savedTables) {
-        // 获取该表的列
-        const columns = await this.datasourceColumnService.findByTableId(
-          savedTable.id,
+      // 4. 源库中已不存在的旧表：跳过（可能被数据集引用，不可强制删除）
+      for (const [staleName] of existingTableMap) {
+        this.logger.debug(
+          `表 ${staleName} 在源库中已不存在，跳过删除（可能被数据集引用）`,
+          'SkipStaleTable',
         );
-        // 找到主键列
-        const primaryKeyColumn = columns.find((col) => col.isPrimaryKey);
-        if (primaryKeyColumn) {
-          await this.datasourceTableService.updatePrimaryFieldId(
-            savedTable.id,
-            primaryKeyColumn.id,
-          );
-        }
       }
 
-      // 获取并保存外键关系
+      // 5. 更新外键关系
       await this.saveForeignKeys(datasource);
 
       this.logger.debug(
-        `表和列信息保存完成，共处理 ${tables.length} 个表`,
+        `表和列增量同步完成，共处理 ${freshTables.length} 个表`,
         'SaveTablesAndColumnsCompleted',
       );
     } catch (error: any) {
@@ -459,8 +455,81 @@ export class DatasourceService {
         (error as unknown as Error).stack,
         'SaveTablesAndColumnsError',
       );
-      // 这里不抛出异常，因为数据源已经创建成功，只是元数据保存失败
-      // 可以考虑后续通过其他方式重新获取元数据
+      throw error;
+    }
+  }
+
+  /**
+   * 增量同步单个数据源表下的列信息
+   * - 已存在的列：更新 rawDataType / normalizedType / nullable / isPrimaryKey
+   * - 新列：创建
+   * - 源库中已不存在的列：删除
+   */
+  private async syncTableColumns(
+    tableId: number,
+    freshColumns: Array<{
+      columnName: string;
+      rawDataType: string;
+      normalizedType: FieldType;
+      nullable: boolean;
+      isPrimaryKey: boolean;
+    }>,
+  ): Promise<void> {
+    const existingColumns =
+      await this.datasourceColumnService.findByTableId(tableId);
+    const existingColumnMap = new Map(
+      existingColumns.map((c) => [c.columnName, c]),
+    );
+
+    // 找出需要删除的列（DB 中有但源库 schema 中已不存在）
+    const freshColumnNames = new Set(freshColumns.map((c) => c.columnName));
+    const staleColumnIds = existingColumns
+      .filter((c) => !freshColumnNames.has(c.columnName))
+      .map((c) => c.id);
+
+    if (staleColumnIds.length > 0) {
+      await this.datasourceColumnService.deleteByIds(staleColumnIds);
+    }
+
+    // 更新或创建每一列
+    for (const fresh of freshColumns) {
+      const existing = existingColumnMap.get(fresh.columnName);
+
+      if (existing) {
+        // 仅当类型/属性有变化时才更新
+        if (
+          existing.rawDataType !== fresh.rawDataType ||
+          existing.normalizedType !== fresh.normalizedType ||
+          existing.nullable !== fresh.nullable ||
+          existing.isPrimaryKey !== fresh.isPrimaryKey
+        ) {
+          await this.datasourceColumnService.update(existing.id, {
+            rawDataType: fresh.rawDataType,
+            normalizedType: fresh.normalizedType,
+            nullable: fresh.nullable,
+            isPrimaryKey: fresh.isPrimaryKey,
+          });
+        }
+      } else {
+        await this.datasourceColumnService.create({
+          tableId,
+          columnName: fresh.columnName,
+          rawDataType: fresh.rawDataType,
+          normalizedType: fresh.normalizedType,
+          nullable: fresh.nullable,
+          isPrimaryKey: fresh.isPrimaryKey,
+        });
+      }
+    }
+
+    // 更新表的 primaryFieldId
+    const columns = await this.datasourceColumnService.findByTableId(tableId);
+    const pk = columns.find((c) => c.isPrimaryKey);
+    if (pk) {
+      const tableEntity = await this.datasourceTableService.findOne(tableId);
+      if (tableEntity && tableEntity.primaryFieldId !== pk.id) {
+        await this.datasourceTableService.updatePrimaryFieldId(tableId, pk.id);
+      }
     }
   }
 
